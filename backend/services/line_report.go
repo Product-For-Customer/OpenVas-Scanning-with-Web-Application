@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -21,7 +23,7 @@ type lineMessage struct {
 	PreviewImageURL    string `json:"previewImageUrl,omitempty"`
 }
 
-func SendReportToLINE(filePath string, publicURL string) error {
+func SendReportToLINE(pngPath string, pngPublicURL string, pdfPath string, pdfPublicURL string) error {
 	channelToken := os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
 	userID := os.Getenv("LINE_USER_ID")
 
@@ -29,10 +31,15 @@ func SendReportToLINE(filePath string, publicURL string) error {
 		return fmt.Errorf("LINE_CHANNEL_ACCESS_TOKEN or LINE_USER_ID is empty")
 	}
 
-	text := fmt.Sprintf(
-		"รายงาน OpenVAS ถูกสร้างแล้ว\nเวลา: %s\nไฟล์: %s",
+	pngFileName := filepath.Base(pngPath)
+	pdfFileName := filepath.Base(pdfPath)
+
+	textSummary := fmt.Sprintf(
+		"รายงาน OpenVAS ถูกสร้างแล้ว\nเวลา: %s\nรูปภาพ: %s\nPDF: %s\nลิงก์ PDF:\n%s",
 		time.Now().Format("2006-01-02 15:04:05"),
-		filePath,
+		pngFileName,
+		pdfFileName,
+		pdfPublicURL,
 	)
 
 	payload := linePushRequest{
@@ -40,12 +47,12 @@ func SendReportToLINE(filePath string, publicURL string) error {
 		Messages: []lineMessage{
 			{
 				Type: "text",
-				Text: text,
+				Text: textSummary,
 			},
 			{
 				Type:               "image",
-				OriginalContentURL: publicURL,
-				PreviewImageURL:    publicURL,
+				OriginalContentURL: pngPublicURL,
+				PreviewImageURL:    pngPublicURL,
 			},
 		},
 	}
@@ -74,8 +81,10 @@ func SendReportToLINE(filePath string, publicURL string) error {
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("line api returned status: %s", resp.Status)
+		return fmt.Errorf("line api returned status: %s, body: %s", resp.Status, string(respBody))
 	}
 
 	return nil

@@ -44,33 +44,40 @@ func StartCaptureReportScheduler() {
 			}
 
 			waitDuration := time.Until(nextRun)
-			log.Printf("[capture-report] next run at %s (in %s)", nextRun.Format(time.RFC3339), waitDuration)
+			log.Printf("[mixed-report] next run at %s (in %s)", nextRun.Format(time.RFC3339), waitDuration)
 
 			time.Sleep(waitDuration)
 
-			log.Println("[capture-report] started")
+			log.Println("[mixed-report] started")
 
-			filePath, err := CaptureFrontendReportPage()
+			result, err := GenerateMixedReportFiles()
 			if err != nil {
-				log.Printf("[capture-report] capture failed: %v", err)
+				log.Printf("[mixed-report] generate files failed: %v", err)
 				time.Sleep(2 * time.Second)
 				continue
 			}
 
-			publicURL, err := BuildReportPublicURL(filePath)
+			pngPublicURL, err := BuildReportPublicURL(result.PNGPath)
 			if err != nil {
-				log.Printf("[capture-report] build public url failed: %v", err)
+				log.Printf("[mixed-report] build png public url failed: %v", err)
 				time.Sleep(2 * time.Second)
 				continue
 			}
 
-			if err := SendReportToLINE(filePath, publicURL); err != nil {
-				log.Printf("[capture-report] line send failed: %v", err)
+			pdfPublicURL, err := BuildReportPublicURL(result.PDFPath)
+			if err != nil {
+				log.Printf("[mixed-report] build pdf public url failed: %v", err)
 				time.Sleep(2 * time.Second)
 				continue
 			}
 
-			log.Printf("[capture-report] success: %s | %s", filePath, publicURL)
+			if err := SendReportToLINE(result.PNGPath, pngPublicURL, result.PDFPath, pdfPublicURL); err != nil {
+				log.Printf("[mixed-report] line send failed: %v", err)
+				time.Sleep(2 * time.Second)
+				continue
+			}
+
+			log.Printf("[mixed-report] success: png=%s pdf=%s", result.PNGPath, result.PDFPath)
 			time.Sleep(2 * time.Second)
 		}
 	}()
