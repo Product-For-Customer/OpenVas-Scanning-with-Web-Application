@@ -321,11 +321,42 @@ export const UpdateSendEmailByID = async (
 };
 
 // =======================
-// Types
+// Types: AppTarget
 // =======================
-export type AppTargetMiniResponse = {
+export type AppTargetResponse = {
   id: number;
   name: string;
+  ip_host: string;
+  mac_address: string;
+  created_at?: string;
+  updated_at?: string;
+  message?: string;
+  error?: string;
+};
+
+export type CreateAppTargetInput = {
+  name: string;
+  ip_host: string;
+  mac_address?: string;
+};
+
+export type UpdateAppTargetInput = {
+  name?: string;
+  ip_host?: string;
+  mac_address?: string;
+};
+
+export type DeleteAppTargetResponse = {
+  message: string;
+};
+
+// =======================
+// Types: Location
+// =======================
+export type TargetMiniResponse = {
+  id: number;
+  name: string;
+  ip_host: string;
   mac_address: string;
 };
 
@@ -337,7 +368,7 @@ export type LocationResponse = {
   latitude: number;
   longtitude: number;
   app_target_id: number;
-  app_target?: AppTargetMiniResponse;
+  app_target: TargetMiniResponse;
   created_at?: string;
   updated_at?: string;
   message?: string;
@@ -367,17 +398,131 @@ export type DeleteLocationResponse = {
 };
 
 // =======================
-// API: GET /locations
+// AppTarget APIs
 // =======================
+
+// GET /app-targets
+export const ListAppTarget = async (): Promise<AppTargetResponse[] | null> => {
+  try {
+    const response = await userApi.get("/app-targets");
+
+    console.log("ListAppTarget raw response:", response.data);
+
+    const data = response.data?.data ?? response.data;
+
+    if (Array.isArray(data)) {
+      return data as AppTargetResponse[];
+    }
+
+    console.error("Expected array but got:", response.data);
+    return null;
+  } catch (error) {
+    console.error("ListAppTarget error:", error);
+    return null;
+  }
+};
+
+// GET /app-targets/:id
+export const ListAppTargetByID = async (
+  id: number | string
+): Promise<AppTargetResponse | null> => {
+  try {
+    const response = await userApi.get(`/app-targets/${id}`);
+
+    console.log("ListAppTargetByID raw response:", response.data);
+
+    const data = response.data?.data ?? response.data;
+
+    if (data && typeof data === "object") {
+      return data as AppTargetResponse;
+    }
+
+    console.error("Unexpected ListAppTargetByID response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("ListAppTargetByID error:", error);
+    return null;
+  }
+};
+
+// POST /create-app-targets
+export const CreateAppTarget = async (
+  payload: CreateAppTargetInput
+): Promise<AppTargetResponse | null> => {
+  try {
+    const response = await userApi.post("/create-app-targets", payload);
+
+    console.log("CreateAppTarget raw response:", response.data);
+
+    const data = response.data?.data ?? response.data;
+
+    if (data && typeof data === "object") {
+      return data as AppTargetResponse;
+    }
+
+    console.error("Unexpected CreateAppTarget response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("CreateAppTarget error:", error);
+    return null;
+  }
+};
+
+// PATCH /update-app-targets/:id
+export const UpdateTargetByID = async (
+  id: number | string,
+  payload: UpdateAppTargetInput
+): Promise<AppTargetResponse | null> => {
+  try {
+    const response = await userApi.patch(`/update-app-targets/${id}`, payload);
+
+    console.log("UpdateTargetByID raw response:", response.data);
+
+    const data = response.data?.data ?? response.data;
+
+    if (data && typeof data === "object") {
+      return data as AppTargetResponse;
+    }
+
+    console.error("Unexpected UpdateTargetByID response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("UpdateTargetByID error:", error);
+    return null;
+  }
+};
+
+// DELETE /delete-app-targets/:id
+export const DeleteTargetByID = async (
+  id: number | string
+): Promise<DeleteAppTargetResponse | null> => {
+  try {
+    const response = await userApi.delete(`/delete-app-targets/${id}`);
+
+    console.log("DeleteTargetByID raw response:", response.data);
+
+    if (response.data && response.data.message) {
+      return response.data as DeleteAppTargetResponse;
+    }
+
+    console.error("Unexpected DeleteTargetByID response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("DeleteTargetByID error:", error);
+    return null;
+  }
+};
+
+// =======================
+// Location APIs
+// =======================
+
+// GET /locations
 export const ListLocation = async (): Promise<LocationResponse[] | null> => {
   try {
     const response = await userApi.get("/locations");
 
     console.log("ListLocation raw response:", response.data);
-
-    if (Array.isArray(response.data)) {
-      return response.data as LocationResponse[];
-    }
 
     const data = response.data?.data ?? response.data;
 
@@ -385,7 +530,7 @@ export const ListLocation = async (): Promise<LocationResponse[] | null> => {
       return data as LocationResponse[];
     }
 
-    console.error("Expected location array but got:", response.data);
+    console.error("Expected array but got:", response.data);
     return null;
   } catch (error) {
     console.error("ListLocation error:", error);
@@ -393,9 +538,7 @@ export const ListLocation = async (): Promise<LocationResponse[] | null> => {
   }
 };
 
-// =======================
-// API: GET /locations/:id
-// =======================
+// GET /locations/:id
 export const ListLocationByID = async (
   id: number | string
 ): Promise<LocationResponse | null> => {
@@ -404,12 +547,10 @@ export const ListLocationByID = async (
 
     console.log("ListLocationByID raw response:", response.data);
 
-    if (response.data?.data && typeof response.data.data === "object") {
-      return response.data.data as LocationResponse;
-    }
+    const data = response.data?.data ?? response.data;
 
-    if (response.data && typeof response.data === "object") {
-      return response.data as LocationResponse;
+    if (data && typeof data === "object") {
+      return data as LocationResponse;
     }
 
     console.error("Unexpected ListLocationByID response:", response.data);
@@ -420,9 +561,7 @@ export const ListLocationByID = async (
   }
 };
 
-// =======================
-// API: POST /create-locations
-// =======================
+// POST /create-locations
 export const CreateLocation = async (
   payload: CreateLocationInput
 ): Promise<LocationResponse | null> => {
@@ -431,12 +570,10 @@ export const CreateLocation = async (
 
     console.log("CreateLocation raw response:", response.data);
 
-    if (response.data?.data && typeof response.data.data === "object") {
-      return response.data.data as LocationResponse;
-    }
+    const data = response.data?.data ?? response.data;
 
-    if (response.data && typeof response.data === "object") {
-      return response.data as LocationResponse;
+    if (data && typeof data === "object") {
+      return data as LocationResponse;
     }
 
     console.error("Unexpected CreateLocation response:", response.data);
@@ -447,9 +584,7 @@ export const CreateLocation = async (
   }
 };
 
-// =======================
-// API: PATCH /update-locations/:id
-// =======================
+// PATCH /update-locations/:id
 export const UpdateLocationByID = async (
   id: number | string,
   payload: UpdateLocationInput
@@ -459,12 +594,10 @@ export const UpdateLocationByID = async (
 
     console.log("UpdateLocationByID raw response:", response.data);
 
-    if (response.data?.data && typeof response.data.data === "object") {
-      return response.data.data as LocationResponse;
-    }
+    const data = response.data?.data ?? response.data;
 
-    if (response.data && typeof response.data === "object") {
-      return response.data as LocationResponse;
+    if (data && typeof data === "object") {
+      return data as LocationResponse;
     }
 
     console.error("Unexpected UpdateLocationByID response:", response.data);
@@ -475,9 +608,7 @@ export const UpdateLocationByID = async (
   }
 };
 
-// =======================
-// API: DELETE /delete-locations/:id
-// =======================
+// DELETE /delete-locations/:id
 export const DeleteLocationByID = async (
   id: number | string
 ): Promise<DeleteLocationResponse | null> => {
@@ -494,43 +625,6 @@ export const DeleteLocationByID = async (
     return null;
   } catch (error) {
     console.error("DeleteLocationByID error:", error);
-    return null;
-  }
-};
-
-// =======================
-// Types
-// =======================
-export type AppTargetResponse = {
-  id: number;
-  name: string;
-  mac_address: string;
-  error?: string;
-};
-
-// =======================
-// API: GET /targets
-// =======================
-export const ListAppTarget = async (): Promise<AppTargetResponse[] | null> => {
-  try {
-    const response = await userApi.get("/targets");
-
-    console.log("ListAppTarget raw response:", response.data);
-
-    if (Array.isArray(response.data)) {
-      return response.data as AppTargetResponse[];
-    }
-
-    const data = response.data?.data ?? response.data;
-
-    if (Array.isArray(data)) {
-      return data as AppTargetResponse[];
-    }
-
-    console.error("Expected app target array but got:", response.data);
-    return null;
-  } catch (error) {
-    console.error("ListAppTarget error:", error);
     return null;
   }
 };

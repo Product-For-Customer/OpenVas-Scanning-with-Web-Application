@@ -5,7 +5,9 @@ import {
   RadialBar,
   PolarAngleAxis,
 } from "recharts";
-import { FiShield, FiTrendingUp } from "react-icons/fi";
+import { FiShield } from "react-icons/fi";
+import { ConfigProvider, Select } from "antd";
+import type { SelectProps } from "antd";
 import { ListAssetRisk, type AssetRiskDTO } from "../../../services";
 
 const clamp = (v: number, min: number, max: number) =>
@@ -84,16 +86,25 @@ const getRiskTone = (risk: number) => {
 const TopPerforming: React.FC = () => {
   const [data, setData] = useState<AssetRiskDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<string>("all");
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListAssetRisk();
-      if (!mounted) return;
-      setData(Array.isArray(res) ? res : []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await ListAssetRisk();
+        if (!mounted) return;
+        setData(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to load asset risk:", error);
+        if (!mounted) return;
+        setData([]);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
@@ -101,8 +112,48 @@ const TopPerforming: React.FC = () => {
     };
   }, []);
 
-  const summary = useMemo(() => {
+  const taskOptions = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
+
+    const names = list
+      .map((item) => ({
+        task_id: String((item as any).task_id ?? ""),
+        task_name: String((item as any).task_name ?? "").trim(),
+      }))
+      .filter((item) => item.task_name !== "");
+
+    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+
+    for (const item of names) {
+      if (!uniqueMap.has(item.task_name)) {
+        uniqueMap.set(item.task_name, item);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }, [data]);
+
+  const selectOptions: SelectProps["options"] = useMemo(() => {
+    return [
+      { value: "all", label: "All Tasks" },
+      ...taskOptions.map((task) => ({
+        value: task.task_name,
+        label: task.task_name,
+      })),
+    ];
+  }, [taskOptions]);
+
+  const filteredData = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    if (selectedTask === "all") return list;
+    return list.filter(
+      (item) => String((item as any).task_name ?? "") === selectedTask
+    );
+  }, [data, selectedTask]);
+
+
+  const summary = useMemo(() => {
+    const list = filteredData;
 
     const taskCount = list.length;
 
@@ -122,23 +173,9 @@ const TopPerforming: React.FC = () => {
       avgRisk,
       maxRisk,
     };
-  }, [data]);
+  }, [filteredData]);
 
   const tone = useMemo(() => getRiskTone(summary.avgRisk), [summary.avgRisk]);
-
-  const criticalCount = useMemo(() => {
-    const list = Array.isArray(data) ? data : [];
-    return list.filter((item) => (Number(item.risk_score) || 0) >= 8).length;
-  }, [data]);
-
-  const subtitle = useMemo(() => {
-    if (loading) return "Syncing average task risk posture...";
-    if (summary.taskCount === 0) return "No task risk data available";
-    if (criticalCount > 0) {
-      return `${criticalCount} critical tasks require immediate attention`;
-    }
-    return "Average exposure score across latest asset snapshots";
-  }, [loading, summary.taskCount, criticalCount]);
 
   const gaugeData = useMemo(() => {
     return [
@@ -188,28 +225,168 @@ const TopPerforming: React.FC = () => {
               >
                 <FiShield className="text-[14px]" />
                 <span className="text-[12px] font-semibold tracking-wide">
-                  Task Risk Monitor
+                  Average Risk Score
                 </span>
               </div>
             </div>
 
-            <h2 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2240] dark:text-white/90 tracking-tight">
-              Average Risk Score
-            </h2>
-            <p className="mt-1 text-[12.5px] text-gray-500 dark:text-white/55">
-              {subtitle}
-            </p>
+            
           </div>
 
-          <div
-            className={[
-              "shrink-0 rounded-2xl px-4 py-2.5 inline-flex items-center gap-2",
-              "border border-gray-200 bg-white text-gray-600",
-              "dark:border-white/10 dark:bg-white/5 dark:text-white/65",
-            ].join(" ")}
-          >
-            <FiTrendingUp className="text-cyan-500 text-[15px]" />
-            <span className="text-[13px] font-medium">Max 10.00</span>
+          <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-3">
+            <div className="w-full sm:w-auto">
+              <ConfigProvider
+                theme={{
+                  token: {
+                    colorPrimary: "#e2e8f0",
+                    borderRadius: 20,
+                    colorBgElevated: "#ffffff",
+                    colorBorder: "#e5e7eb",
+                    boxShadowSecondary:
+                      "0 16px 40px -20px rgba(15,23,42,0.12)",
+                    colorText: "#334155",
+                    colorTextPlaceholder: "#94a3b8",
+                  },
+                  components: {
+                    Select: {
+                      activeBorderColor: "#dbeafe",
+                      hoverBorderColor: "#cbd5e1",
+                      optionSelectedBg: "#f8fafc",
+                      optionActiveBg: "#f1f5f9",
+                      optionSelectedColor: "#0f172a",
+                    },
+                  },
+                }}
+              >
+                <div className="relative w-full sm:min-w-50">
+                  <Select
+                    value={selectedTask}
+                    onChange={(value) => setSelectedTask(value)}
+                    options={selectOptions}
+                    popupMatchSelectWidth
+                    showSearch={false}
+                    size="large"
+                    variant="outlined"
+                    suffixIcon={
+                      <span
+                        style={{
+                          color: "#94a3b8",
+                          fontSize: 13,
+                          lineHeight: 1,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        ▾
+                      </span>
+                    }
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                    }}
+                    styles={{
+                      root: {
+                        width: "100%",
+                      },
+                      popup: {
+                        root: {
+                          padding: 8,
+                          borderRadius: 22,
+                          border: "1px solid #e5e7eb",
+                          overflow: "hidden",
+                          boxShadow:
+                            "0 16px 40px -20px rgba(15,23,42,0.12)",
+                          background: "#ffffff",
+                        },
+                        list: {
+                          padding: 0,
+                          background: "#ffffff",
+                        },
+                        listItem: {
+                          minHeight: 42,
+                          borderRadius: 14,
+                          margin: "4px 0",
+                          paddingInline: 14,
+                          display: "flex",
+                          alignItems: "center",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: "#334155",
+                          transition: "all 0.18s ease",
+                        },
+                      },
+                    }}
+                    classNames={{
+                      root: "w-full",
+                    }}
+                    getPopupContainer={(triggerNode) =>
+                      triggerNode.parentElement || document.body
+                    }
+                    optionRender={(option) => {
+                      const isAll = option.data.value === "all";
+                      const isSelected = selectedTask === option.data.value;
+
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            width: "100%",
+                            padding: "2px 0",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 999,
+                              background: isSelected
+                                ? "#cbd5e1"
+                                : isAll
+                                ? "#cbd5e1"
+                                : "#6366f1",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontSize: 13,
+                              fontWeight: isSelected ? 600 : 500,
+                              color: "#334155",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {String(option.data.label)}
+                          </span>
+                        </div>
+                      );
+                    }}
+                    labelRender={(props) => (
+                      <span
+                        style={{
+                          color: "#334155",
+                          fontSize: 13,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {props.label}
+                      </span>
+                    )}
+                  />
+
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-[20px]"
+                    style={{
+                      border: "1px solid #dbeafe",
+                      boxShadow:
+                        "0 8px 24px -18px rgba(15,23,42,0.10)",
+                    }}
+                  />
+                </div>
+              </ConfigProvider>
+            </div>
           </div>
         </div>
 

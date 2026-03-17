@@ -1,8 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiShield,
   FiChevronRight,
   FiAlertTriangle,
+  FiChevronDown,
+  FiSearch,
+  FiCheck,
+  FiX,
 } from "react-icons/fi";
 import type { VulnerabilityLevelDTO } from "../../../services";
 import { ListVulnerability } from "../../../services";
@@ -12,6 +16,11 @@ type VulnRow = {
   severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
   title: string;
   count: number;
+};
+
+type FilterOption = {
+  key: VulnRow["severity"];
+  label: VulnRow["severity"];
 };
 
 const badgeClasses: Record<VulnRow["severity"], string> = {
@@ -71,6 +80,12 @@ const TopVulnerability: React.FC = () => {
   const [data, setData] = useState<VulnerabilityLevelDTO[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const [openLevelQuery, setOpenLevelQuery] = useState(false);
+  const [levelQuerySearch, setLevelQuerySearch] = useState("");
+  const [selectedLevels, setSelectedLevels] = useState<VulnRow["severity"][]>([]);
+
+  const levelRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     let mounted = true;
 
@@ -104,7 +119,19 @@ const TopVulnerability: React.FC = () => {
     };
   }, []);
 
-  const rows: VulnRow[] = useMemo(() => {
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (!levelRef.current) return;
+      if (!levelRef.current.contains(e.target as Node)) {
+        setOpenLevelQuery(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const mergedRows: VulnRow[] = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
 
     const map = new Map<
@@ -155,6 +182,35 @@ const TopVulnerability: React.FC = () => {
     return merged;
   }, [data]);
 
+  const levelOptions = useMemo<FilterOption[]>(() => {
+    const ordered: VulnRow["severity"][] = [
+      "CRITICAL",
+      "HIGH",
+      "MEDIUM",
+      "LOW",
+      "INFO",
+    ];
+
+    return ordered.map((level) => ({
+      key: level,
+      label: level,
+    }));
+  }, []);
+
+  const filteredLevelOptions = useMemo(() => {
+    const keyword = levelQuerySearch.trim().toLowerCase();
+    if (!keyword) return levelOptions;
+
+    return levelOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(keyword)
+    );
+  }, [levelOptions, levelQuerySearch]);
+
+  const rows = useMemo(() => {
+    if (selectedLevels.length === 0) return mergedRows;
+    return mergedRows.filter((row) => selectedLevels.includes(row.severity));
+  }, [mergedRows, selectedLevels]);
+
   const topCriticalCount = useMemo(() => {
     return rows.filter((row) => row.severity === "CRITICAL").length;
   }, [rows]);
@@ -168,6 +224,43 @@ const TopVulnerability: React.FC = () => {
     return "Latest vulnerability queue loaded";
   }, [loading, rows.length, topCriticalCount]);
 
+  const levelButtonLabel = useMemo(() => {
+    if (selectedLevels.length === 0) return "Level Query";
+    if (selectedLevels.length === 1) return selectedLevels[0];
+    return `${selectedLevels.length} levels selected`;
+  }, [selectedLevels]);
+
+  const toggleLevel = (key: VulnRow["severity"]) => {
+    setSelectedLevels((prev) =>
+      prev.includes(key)
+        ? prev.filter((item) => item !== key)
+        : [...prev, key]
+    );
+  };
+
+  const handleSelectAllVisibleLevels = () => {
+    const visibleKeys = filteredLevelOptions.map((x) => x.key);
+
+    setSelectedLevels((prev) => {
+      const prevSet = new Set(prev);
+      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
+
+      if (allVisibleSelected) {
+        return prev.filter((key) => !visibleKeys.includes(key));
+      }
+
+      return Array.from(new Set([...prev, ...visibleKeys]));
+    });
+  };
+
+  const clearAllLevels = () => {
+    setSelectedLevels([]);
+  };
+
+  const allVisibleLevelsSelected =
+    filteredLevelOptions.length > 0 &&
+    filteredLevelOptions.every((opt) => selectedLevels.includes(opt.key));
+
   return (
     <section
       className={[
@@ -176,7 +269,6 @@ const TopVulnerability: React.FC = () => {
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
-      {/* background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-16 -right-10 h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="absolute -bottom-16 -left-10 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
@@ -195,7 +287,6 @@ const TopVulnerability: React.FC = () => {
       </div>
 
       <div className="relative z-10 flex flex-col">
-        {/* Header */}
         <div className="mb-4 flex shrink-0 flex-col gap-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -212,6 +303,20 @@ const TopVulnerability: React.FC = () => {
                     Threat Feed
                   </span>
                 </div>
+
+                {selectedLevels.length > 0 && (
+                  <div
+                    className={[
+                      "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
+                      "bg-slate-50 text-slate-600 border border-slate-200/80",
+                      "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+                    ].join(" ")}
+                  >
+                    <span className="text-[12px] font-medium">
+                      {selectedLevels.length} level selected
+                    </span>
+                  </div>
+                )}
               </div>
 
               <h3 className="text-[18px] sm:text-[20px] font-semibold text-[#1f2240] dark:text-white/90">
@@ -222,24 +327,157 @@ const TopVulnerability: React.FC = () => {
               </p>
             </div>
 
-            {!loading && topCriticalCount > 0 ? (
-              <div
-                className={[
-                  "shrink-0 inline-flex items-center gap-2 rounded-2xl px-3 py-2",
-                  "bg-red-50 border border-red-200 text-red-600",
-                  "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300",
-                ].join(" ")}
-              >
-                <FiAlertTriangle className="text-[14px]" />
-                <span className="text-[12px] font-semibold">
-                  {topCriticalCount} Critical
-                </span>
+            <div className="flex items-start gap-2">
+              <div className="relative" ref={levelRef}>
+                <button
+                  type="button"
+                  onClick={() => setOpenLevelQuery((prev) => !prev)}
+                  className={[
+                    "h-10 px-4 rounded-2xl inline-flex items-center justify-between gap-3 transition min-w-42.5",
+                    "bg-white border border-gray-200/80 text-[13px] font-medium text-gray-600 hover:bg-gray-50",
+                    "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
+                  ].join(" ")}
+                >
+                  <span className="truncate">{levelButtonLabel}</span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedLevels.length > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-5.5 h-5.5 px-1.5 rounded-full text-[11px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
+                        {selectedLevels.length}
+                      </span>
+                    )}
+
+                    <FiChevronDown
+                      className={`text-gray-400 dark:text-white/45 transition-transform ${
+                        openLevelQuery ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {openLevelQuery && (
+                  <div
+                    className={[
+                      "absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-3xl overflow-hidden z-30",
+                      "border border-gray-200 bg-white shadow-xl",
+                      "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
+                    ].join(" ")}
+                  >
+                    <div className="p-3 border-b border-gray-100 dark:border-white/10">
+                      <div
+                        className={[
+                          "flex items-center gap-2 rounded-2xl px-3 h-11",
+                          "bg-slate-50 border border-slate-200/80",
+                          "dark:bg-white/5 dark:border-white/10",
+                        ].join(" ")}
+                      >
+                        <FiSearch className="text-gray-400 dark:text-white/40 shrink-0" />
+                        <input
+                          type="text"
+                          value={levelQuerySearch}
+                          onChange={(e) => setLevelQuerySearch(e.target.value)}
+                          placeholder="Search level..."
+                          className="w-full bg-transparent outline-none text-[13px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                        />
+                        {levelQuerySearch.trim() !== "" && (
+                          <button
+                            type="button"
+                            onClick={() => setLevelQuerySearch("")}
+                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                            aria-label="Clear level query"
+                          >
+                            <FiX />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllVisibleLevels}
+                          className="text-[12px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        >
+                          {allVisibleLevelsSelected
+                            ? "Unselect visible"
+                            : "Select visible"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={clearAllLevels}
+                          className="text-[12px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {filteredLevelOptions.length === 0 ? (
+                        <div className="px-3 py-8 text-center text-[13px] text-gray-500 dark:text-white/50">
+                          No matching level
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {filteredLevelOptions.map((opt) => {
+                            const checked = selectedLevels.includes(opt.key);
+
+                            return (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => toggleLevel(opt.key)}
+                                className={[
+                                  "w-full flex items-start gap-3 rounded-2xl px-3 py-3 text-left transition",
+                                  checked
+                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                    : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <span
+                                  className={[
+                                    "mt-0.5 h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition",
+                                    checked
+                                      ? "bg-cyan-500 border-cyan-500 text-white"
+                                      : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                  ].join(" ")}
+                                >
+                                  <FiCheck className="text-[12px]" />
+                                </span>
+
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-[13px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                                    {opt.label}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : null}
+
+              {!loading && topCriticalCount > 0 ? (
+                <div
+                  className={[
+                    "shrink-0 inline-flex items-center gap-2 rounded-2xl px-3 py-2",
+                    "bg-red-50 border border-red-200 text-red-600",
+                    "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300",
+                  ].join(" ")}
+                >
+                  <FiAlertTriangle className="text-[14px]" />
+                  <span className="text-[12px] font-semibold">
+                    {topCriticalCount} Critical
+                  </span>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 
-        {/* Content */}
         {loading ? (
           <div
             className={[
@@ -308,7 +546,6 @@ const TopVulnerability: React.FC = () => {
                     ].join(" ")}
                   >
                     <div className="flex items-center gap-3">
-                      {/* left */}
                       <div className="flex shrink-0 items-center gap-3">
                         <span
                           className={`h-2.5 w-2.5 rounded-full ${dotClasses[row.severity]}`}
@@ -323,7 +560,6 @@ const TopVulnerability: React.FC = () => {
                         </span>
                       </div>
 
-                      {/* title */}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[13px] sm:text-[14px] font-medium text-[#1f2240] dark:text-white/85">
                           {row.title}
@@ -335,7 +571,6 @@ const TopVulnerability: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* count */}
                       <div className="shrink-0 flex items-center gap-2">
                         <span
                           className={[

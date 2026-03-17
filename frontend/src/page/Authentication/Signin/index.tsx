@@ -17,8 +17,6 @@ const Index: React.FC = () => {
   const { refreshMe } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
-
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
 
@@ -26,8 +24,8 @@ const Index: React.FC = () => {
   const [error, setError] = useState<string>("");
 
   const inputClass = [
-    "w-full h-12 rounded-2xl border pl-11 pr-12 text-[14px] outline-none transition-all duration-200",
-    "border-slate-200 bg-white text-slate-800 placeholder:text-slate-400",
+    "w-full h-10.5 sm:h-11 rounded-xl border pl-9.5 pr-10.5 text-[13px] outline-none transition-all duration-200",
+    "border-slate-200 bg-[#f5f8ff] text-slate-800 placeholder:text-slate-400",
     "focus:border-cyan-300 focus:ring-4 focus:ring-cyan-100/80",
     "dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-white/30",
     "dark:focus:border-cyan-400/30 dark:focus:ring-cyan-500/10",
@@ -46,14 +44,13 @@ const Index: React.FC = () => {
       setSubmitting(true);
 
       const res = await Login({ email, password });
-
       await refreshMe();
 
       const role = (res?.user?.role ?? "").toLowerCase();
 
       if (role === "admin") {
         message.success("login success");
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1200));
         navigate("/admin", { replace: true });
       } else {
         setError("บัญชีนี้ไม่มีสิทธิ์ Admin");
@@ -70,46 +67,45 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-[#f7f8fc] dark:bg-[#07101b]">
-      <div className="w-full min-h-screen p-0 sm:p-3 md:p-4 lg:p-6 xl:p-8 2xl:p-10">
+    <div className="min-h-screen w-full bg-[#f5f7fc] dark:bg-[#07101b]">
+      <div className="mx-auto min-h-screen w-full px-0 py-0 sm:px-2 sm:py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 xl:px-5 xl:py-5 2xl:px-6 2xl:py-6">
         <div
           className={[
-            "w-full min-h-screen sm:min-h-[calc(100vh-24px)] md:min-h-[calc(100vh-32px)] lg:min-h-[calc(100vh-48px)] xl:min-h-[calc(100vh-64px)] 2xl:min-h-[calc(100vh-80px)]",
-            "overflow-hidden",
-            "rounded-none sm:rounded-3xl sm:border border-slate-200/80 bg-[#fbfbfd]",
-            "shadow-none sm:shadow-[0_18px_60px_rgba(15,23,42,0.06)]",
-            "dark:bg-[#08111f] dark:border-white/10 dark:shadow-none",
+            "w-full overflow-hidden",
+            "min-h-screen sm:min-h-[calc(100vh-16px)] md:min-h-[calc(100vh-24px)] lg:min-h-[calc(100vh-32px)] xl:min-h-[calc(100vh-40px)] 2xl:min-h-[calc(100vh-48px)]",
+            "rounded-none sm:rounded-3xl",
+            "border border-slate-200/80 bg-[#fbfcff]",
+            "shadow-none sm:shadow-[0_14px_40px_rgba(15,23,42,0.055)]",
+            "dark:border-white/10 dark:bg-[#08111f] dark:shadow-none",
           ].join(" ")}
         >
-          <div className="grid w-full min-h-full grid-cols-1 xl:grid-cols-[1.25fr_0.95fr] 2xl:grid-cols-[1.35fr_0.95fr]">
-            {/* LEFT SIDE : ทำให้เหมือนตัวอย่าง (มี SVG) และแสดงเฉพาะ xl+ */}
-            <section className="relative hidden xl:flex min-h-full w-full items-center justify-center px-5 py-10 sm:px-8 md:px-10 lg:px-14 xl:px-16 2xl:px-24">
-              {/* soft glow only */}
+          <div className="grid min-h-full w-full grid-cols-1 xl:grid-cols-[minmax(0,1.02fr)_minmax(370px,455px)] 2xl:grid-cols-[minmax(0,1.05fr)_minmax(390px,475px)]">
+            {/* LEFT SIDE */}
+            <section className="relative hidden xl:flex min-h-full items-center justify-center px-6 py-7 2xl:px-8 2xl:py-9">
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute left-[12%] top-[14%] h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl dark:bg-cyan-400/10 2xl:h-56 2xl:w-56" />
-                <div className="absolute right-[12%] top-[18%] h-52 w-52 rounded-full bg-violet-500/10 blur-3xl dark:bg-violet-500/10 2xl:h-64 2xl:w-64" />
-                <div className="absolute bottom-[10%] left-[28%] h-40 w-40 rounded-full bg-sky-500/10 blur-3xl dark:bg-sky-500/10 2xl:h-52 2xl:w-52" />
+                <div className="absolute left-[14%] top-[12%] h-30 w-30 rounded-full bg-cyan-400/10 blur-3xl 2xl:h-38 2xl:w-38" />
+                <div className="absolute right-[10%] top-[18%] h-34 w-34 rounded-full bg-violet-500/10 blur-3xl 2xl:h-42 2xl:w-42" />
+                <div className="absolute bottom-[10%] left-[25%] h-30 w-30 rounded-full bg-sky-500/10 blur-3xl 2xl:h-36 2xl:w-36" />
               </div>
 
-              <div className="relative z-10 flex w-full max-w-190 xl:max-w-205 2xl:max-w-230 flex-col items-center text-center">
+              <div className="relative z-10 flex w-full max-w-162.5 flex-col items-center text-center 2xl:max-w-182.5">
                 <div
                   className={[
-                    "mb-5 inline-flex items-center gap-2 rounded-full px-4 py-2",
-                    "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
-                    "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
+                    "mb-4 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5",
+                    "border border-cyan-200/80 bg-cyan-50 text-cyan-700",
+                    "dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300",
                   ].join(" ")}
                 >
-                  <FiShield className="text-[15px]" />
-                  <span className="text-[13px] sm:text-[14px] font-semibold tracking-wide">
+                  <FiShield className="text-[12px]" />
+                  <span className="text-[11.5px] font-semibold tracking-wide 2xl:text-[12.5px]">
                     Secure Network Access
                   </span>
                 </div>
 
-                {/* NETWORK ILLUSTRATION (ตามตัวอย่าง) */}
-                <div className="w-full max-w-155 xl:max-w-165 2xl:max-w-175">
+                <div className="w-full max-w-113.75 2xl:max-w-131.25">
                   <svg
                     viewBox="0 0 760 520"
-                    className="w-full h-auto"
+                    className="h-auto w-full"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
                     aria-label="network security illustration"
@@ -153,7 +149,6 @@ const Index: React.FC = () => {
                       </radialGradient>
                     </defs>
 
-                    {/* outer soft platform */}
                     <rect
                       x="180"
                       y="104"
@@ -166,7 +161,6 @@ const Index: React.FC = () => {
                       strokeWidth="1.6"
                     />
 
-                    {/* center hub */}
                     <circle cx="380" cy="228" r="92" fill="url(#centerGlow)" />
                     <circle
                       cx="380"
@@ -194,7 +188,6 @@ const Index: React.FC = () => {
                       strokeWidth="2"
                     />
 
-                    {/* shield inside */}
                     <path
                       d="M380 198L401 208V228C401 244 390 255 380 260C370 255 359 244 359 228V208L380 198Z"
                       fill="#0ea5e9"
@@ -210,7 +203,6 @@ const Index: React.FC = () => {
                       strokeLinejoin="round"
                     />
 
-                    {/* connection lines */}
                     <path
                       d="M380 156V102"
                       stroke="url(#mainLine)"
@@ -247,7 +239,6 @@ const Index: React.FC = () => {
                       strokeDasharray="8 8"
                     />
 
-                    {/* top server node */}
                     <g>
                       <rect
                         x="334"
@@ -257,7 +248,6 @@ const Index: React.FC = () => {
                         rx="16"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <rect
                         x="350"
@@ -285,7 +275,6 @@ const Index: React.FC = () => {
                       <circle cx="405" cy="67" r="3.2" fill="#8b5cf6" />
                     </g>
 
-                    {/* top-right monitor */}
                     <g>
                       <rect
                         x="520"
@@ -295,7 +284,6 @@ const Index: React.FC = () => {
                         rx="18"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <rect
                         x="538"
@@ -322,7 +310,6 @@ const Index: React.FC = () => {
                       />
                     </g>
 
-                    {/* bottom-right threat card */}
                     <g>
                       <rect
                         x="536"
@@ -332,7 +319,6 @@ const Index: React.FC = () => {
                         rx="18"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <circle
                         cx="562"
@@ -366,7 +352,6 @@ const Index: React.FC = () => {
                       />
                     </g>
 
-                    {/* bottom-left device card */}
                     <g>
                       <rect
                         x="116"
@@ -376,7 +361,6 @@ const Index: React.FC = () => {
                         rx="18"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <rect
                         x="136"
@@ -410,7 +394,6 @@ const Index: React.FC = () => {
                       />
                     </g>
 
-                    {/* top-left chat/info card */}
                     <g>
                       <rect
                         x="126"
@@ -420,7 +403,6 @@ const Index: React.FC = () => {
                         rx="18"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <rect
                         x="146"
@@ -448,7 +430,6 @@ const Index: React.FC = () => {
                       />
                     </g>
 
-                    {/* center bottom dashboard */}
                     <g>
                       <rect
                         x="292"
@@ -458,7 +439,6 @@ const Index: React.FC = () => {
                         rx="20"
                         fill="#ffffff"
                         stroke="#D6E4F0"
-                        className="dark:fill-[#0b1728] dark:stroke-white/10"
                       />
                       <rect
                         x="315"
@@ -500,34 +480,14 @@ const Index: React.FC = () => {
                       />
                     </g>
 
-                    {/* floating mini nodes */}
-                    <circle
-                      cx="95"
-                      cy="228"
-                      r="24"
-                      fill="#E0F2FE"
-                      className="dark:fill-cyan-500/10"
-                    />
-                    <circle
-                      cx="666"
-                      cy="228"
-                      r="24"
-                      fill="#EDE9FE"
-                      className="dark:fill-violet-500/10"
-                    />
-                    <circle
-                      cx="260"
-                      cy="436"
-                      r="20"
-                      fill="#DBEAFE"
-                      className="dark:fill-sky-500/10"
-                    />
+                    <circle cx="95" cy="228" r="24" fill="#E0F2FE" />
+                    <circle cx="666" cy="228" r="24" fill="#EDE9FE" />
+                    <circle cx="260" cy="436" r="20" fill="#DBEAFE" />
 
                     <circle cx="95" cy="228" r="7" fill="#22d3ee" />
                     <circle cx="666" cy="228" r="7" fill="#8b5cf6" />
                     <circle cx="260" cy="436" r="6" fill="#60a5fa" />
 
-                    {/* side decorative connections */}
                     <path
                       d="M119 228C148 228 176 228 206 228"
                       stroke="#22d3ee"
@@ -543,7 +503,6 @@ const Index: React.FC = () => {
                       strokeDasharray="6 7"
                     />
 
-                    {/* decorative dots */}
                     <circle
                       cx="286"
                       cy="82"
@@ -575,11 +534,11 @@ const Index: React.FC = () => {
                   </svg>
                 </div>
 
-                <h1 className="mt-4 text-[28px] sm:text-[36px] lg:text-[42px] 2xl:text-[48px] font-bold tracking-tight text-slate-900 dark:text-white">
+                <h1 className="mt-3.5 text-[24px] font-bold tracking-tight text-slate-900 dark:text-white 2xl:text-[29px]">
                   Welcome back!
                 </h1>
 
-                <p className="mt-4 max-w-140 xl:max-w-155 2xl:max-w-175 text-[14px] sm:text-[16px] 2xl:text-[17px] leading-7 2xl:leading-8 text-slate-600 dark:text-white/60">
+                <p className="mt-3 max-w-130 text-[13px] leading-6 text-slate-600 dark:text-white/60 2xl:max-w-145 2xl:text-[14px]">
                   Access your secured scanning environment, monitor network
                   activity, and continue investigating vulnerabilities from one
                   centralized dashboard.
@@ -587,47 +546,47 @@ const Index: React.FC = () => {
               </div>
             </section>
 
-            {/* RIGHT SIDE : mobile แสดงเต็มจอ */}
-            <section className="relative flex min-h-screen xl:min-h-full w-full items-center justify-center px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-10 xl:px-12 2xl:px-16">
+            {/* RIGHT SIDE */}
+            <section className="relative flex min-h-screen w-full items-center justify-center px-3 py-4 sm:px-4 sm:py-5 md:px-5 md:py-6 lg:px-6 lg:py-6 xl:min-h-full xl:px-5 xl:py-6 2xl:px-6 2xl:py-7">
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute right-[14%] top-[16%] h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl 2xl:h-52 2xl:w-52" />
-                <div className="absolute left-[8%] bottom-[10%] h-36 w-36 rounded-full bg-violet-500/10 blur-3xl 2xl:h-48 2xl:w-48" />
+                <div className="absolute right-[14%] top-[16%] h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl 2xl:h-36 2xl:w-36" />
+                <div className="absolute left-[8%] bottom-[10%] h-24 w-24 rounded-full bg-violet-500/10 blur-3xl 2xl:h-32 2xl:w-32" />
               </div>
 
-              <div className="relative z-10 w-full max-w-full sm:max-w-140 xl:max-w-135 2xl:max-w-155">
+              <div className="relative z-10 w-full max-w-93.75 sm:max-w-98.75 2xl:max-w-106.25">
                 <div
                   className={[
-                    "rounded-3xl sm:rounded-[28px] p-5 sm:p-6 md:p-8 2xl:p-9",
-                    "border border-slate-200/80 bg-white",
-                    "shadow-[0_18px_60px_rgba(15,23,42,0.07)]",
-                    "dark:bg-[#0b1320]/90 dark:border-white/10 dark:shadow-none",
+                    "rounded-[22px] border border-slate-200/80 bg-white",
+                    "p-4 sm:p-5 md:p-5.5 xl:p-5.5 2xl:p-6",
+                    "shadow-[0_14px_38px_rgba(15,23,42,0.06)]",
+                    "dark:border-white/10 dark:bg-[#0b1320]/90 dark:shadow-none",
                   ].join(" ")}
                 >
                   <div
                     className={[
-                      "mb-4 inline-flex items-center gap-2 rounded-full px-3.5 py-1.5",
-                      "bg-violet-50 text-violet-700 border border-violet-200/80",
-                      "dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-400/20",
+                      "mb-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5",
+                      "border border-violet-200/80 bg-violet-50 text-violet-700",
+                      "dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300",
                     ].join(" ")}
                   >
-                    <FiShield className="text-[13px]" />
-                    <span className="text-[12px] font-semibold tracking-wide">
+                    <FiShield className="text-[11px]" />
+                    <span className="text-[10.5px] font-semibold tracking-wide">
                       Protected Sign In
                     </span>
                   </div>
 
-                  <h2 className="text-[28px] sm:text-[34px] 2xl:text-[38px] font-bold tracking-tight text-slate-900 dark:text-white">
+                  <h2 className="text-[25px] font-bold tracking-tight text-slate-900 dark:text-white sm:text-[26px] xl:text-[28px]">
                     Sign In
                   </h2>
 
-                  <p className="mt-2 text-[14px] 2xl:text-[15px] text-slate-500 dark:text-white/55">
+                  <p className="mt-1.5 text-[12.5px] text-slate-500 dark:text-white/55">
                     Welcome Back! Log in to your account
                   </p>
 
                   {error ? (
                     <div
                       className={[
-                        "mt-4 rounded-2xl border px-4 py-3 text-[13px]",
+                        "mt-3 rounded-xl border px-3.5 py-2.5 text-[11.5px]",
                         "border-red-200 bg-red-50 text-red-700",
                         "dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200",
                       ].join(" ")}
@@ -636,14 +595,13 @@ const Index: React.FC = () => {
                     </div>
                   ) : null}
 
-                  <form className="mt-7 space-y-5" onSubmit={onSubmit}>
-                    {/* Email */}
+                  <form className="mt-4 space-y-3.5" onSubmit={onSubmit}>
                     <div>
-                      <label className="mb-2 block text-[14px] font-medium text-slate-700 dark:text-white/75">
+                      <label className="mb-1.5 block text-[12.5px] font-medium text-slate-700 dark:text-white/75">
                         Email
                       </label>
                       <div className="relative">
-                        <FiMail className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[17px] text-slate-400 dark:text-white/35" />
+                        <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-slate-400 dark:text-white/35" />
                         <input
                           type="email"
                           placeholder="admin@example.com"
@@ -655,13 +613,12 @@ const Index: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Password */}
                     <div>
-                      <label className="mb-2 block text-[14px] font-medium text-slate-700 dark:text-white/75">
+                      <label className="mb-1.5 block text-[12.5px] font-medium text-slate-700 dark:text-white/75">
                         Password
                       </label>
                       <div className="relative">
-                        <FiLock className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[17px] text-slate-400 dark:text-white/35" />
+                        <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-slate-400 dark:text-white/35" />
                         <input
                           type={showPassword ? "text" : "password"}
                           placeholder="Password"
@@ -673,70 +630,56 @@ const Index: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:text-white/35 dark:hover:text-white/70"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:text-white/35 dark:hover:text-white/70"
                           aria-label={
                             showPassword ? "Hide password" : "Show password"
                           }
                         >
                           {showPassword ? (
-                            <FiEyeOff className="text-[18px]" />
+                            <FiEyeOff className="text-[15px]" />
                           ) : (
-                            <FiEye className="text-[18px]" />
+                            <FiEye className="text-[15px]" />
                           )}
                         </button>
                       </div>
                     </div>
 
-                    {/* actions */}
-                    <div className="flex flex-col gap-3 text-[13px] sm:flex-row sm:items-center sm:justify-between">
-                      <label className="inline-flex cursor-pointer items-center gap-2 text-slate-500 dark:text-white/55">
-                        <input
-                          type="checkbox"
-                          checked={remember}
-                          onChange={(e) => setRemember(e.target.checked)}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-300 dark:border-white/10 dark:bg-white/5"
-                        />
-                        <span>Remember Me</span>
-                      </label>
-
+                    <div className="flex items-center justify-end text-[12px]">
                       <button
                         type="button"
                         onClick={() => navigate("/forgot-password")}
-                        className="text-left font-medium text-violet-600 transition hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200 sm:text-right"
+                        className="font-medium text-violet-600 transition hover:text-violet-700 dark:text-violet-300 dark:hover:text-violet-200"
                       >
                         Forgot password?
                       </button>
                     </div>
 
-                    {/* submit */}
                     <button
                       type="submit"
                       disabled={submitting}
                       className={[
-                        "group inline-flex w-full items-center justify-center gap-2 rounded-2xl h-12 sm:h-13 px-6",
+                        "group inline-flex h-10.5 sm:h-11 w-full items-center justify-center gap-2 rounded-xl px-5",
                         "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500",
-                        "text-white text-[15px] sm:text-[16px] font-semibold",
-                        "shadow-[0_12px_32px_rgba(14,165,233,0.24)]",
-                        "hover:scale-[1.01] active:scale-[0.99] transition-all duration-200",
+                        "text-[13.5px] font-semibold text-white sm:text-[14.5px]",
+                        "shadow-[0_10px_24px_rgba(14,165,233,0.2)]",
+                        "transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]",
                         "focus:outline-none focus:ring-4 focus:ring-cyan-200/60",
-                        submitting ? "opacity-70 cursor-not-allowed" : "",
+                        submitting ? "cursor-not-allowed opacity-70" : "",
                       ].join(" ")}
                     >
                       <span>{submitting ? "Signing In..." : "Sign In"}</span>
-                      <FiArrowRight className="text-[18px] transition-transform duration-200 group-hover:translate-x-0.5" />
+                      <FiArrowRight className="text-[15px] transition-transform duration-200 group-hover:translate-x-0.5" />
                     </button>
 
-                    {/* or */}
-                    <div className="flex items-center gap-4 py-1">
+                    <div className="flex items-center gap-3 py-0.5">
                       <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                      <span className="text-[13px] text-slate-400 dark:text-white/35">
+                      <span className="text-[11px] text-slate-400 dark:text-white/35">
                         OR
                       </span>
                       <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
                     </div>
 
-                    {/* footer */}
-                    <div className="pt-1 text-center text-[14px] text-slate-500 dark:text-white/55">
+                    <div className="pt-0.5 text-center text-[12.5px] text-slate-500 dark:text-white/55">
                       Don&apos;t have an account yet?{" "}
                       <button
                         type="button"
@@ -748,33 +691,24 @@ const Index: React.FC = () => {
                     </div>
                   </form>
 
-                  {/* bottom status */}
                   <div
                     className={[
-                      "mt-6 rounded-2xl px-4 py-3",
-                      "bg-slate-50 border border-slate-200",
-                      "dark:bg-white/4 dark:border-white/10",
+                      "mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5",
+                      "dark:border-white/10 dark:bg-white/4",
                     ].join(" ")}
                   >
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <div className="inline-flex items-center gap-2">
-                        <span className="relative flex h-2.5 w-2.5">
+                        <span className="relative flex h-2 w-2">
                           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-500" />
                         </span>
-                        <span className="text-[12px] font-medium text-slate-700 dark:text-white/75">
+                        <span className="text-[10.5px] font-medium text-slate-700 dark:text-white/75">
                           Secure authentication channel active
                         </span>
                       </div>
                     </div>
                   </div>
-
-                  {remember ? (
-                    <div className="mt-3 text-[12px] text-slate-400 dark:text-white/35">
-                      Remember Me ใช้ได้เพียง UI ตอนนี้ (ระบบ cookie จะจัดการ
-                      session เอง)
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </section>

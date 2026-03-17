@@ -9,11 +9,9 @@ import {
   Tooltip,
   Cell,
 } from "recharts";
-import {
-  FiShield,
-  FiRadio,
-  FiActivity,
-} from "react-icons/fi";
+import { FiShield, FiActivity } from "react-icons/fi";
+import { ConfigProvider, Select } from "antd";
+import type { SelectProps } from "antd";
 
 import {
   ListTaskVulnSummary,
@@ -59,7 +57,10 @@ const CustomTooltip = ({
       </p>
 
       {payload.map((item, index) => (
-        <div key={index} className="flex items-center justify-between gap-3 text-[12px]">
+        <div
+          key={index}
+          className="flex items-center justify-between gap-3 text-[12px]"
+        >
           <div className="flex items-center gap-2 min-w-0">
             <span
               className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
@@ -82,23 +83,67 @@ const CustomTooltip = ({
 const BarSeverityChart: React.FC = () => {
   const [rows, setRows] = useState<TaskVulnSummaryDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<string>("all");
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListTaskVulnSummary();
-      if (!alive) return;
-
-      setRows(res ?? []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await ListTaskVulnSummary();
+        if (!alive) return;
+        setRows(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to load severity summary:", error);
+        if (!alive) return;
+        setRows([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
       alive = false;
     };
   }, []);
+
+  const taskOptions = useMemo(() => {
+    const names = rows
+      .map((item) => ({
+        task_id: String((item as any).task_id ?? ""),
+        task_name: String((item as any).task_name ?? "").trim(),
+      }))
+      .filter((item) => item.task_name !== "");
+
+    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+
+    for (const item of names) {
+      if (!uniqueMap.has(item.task_name)) {
+        uniqueMap.set(item.task_name, item);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }, [rows]);
+
+  const selectOptions: SelectProps["options"] = useMemo(() => {
+    return [
+      { value: "all", label: "All Tasks" },
+      ...taskOptions.map((task) => ({
+        value: task.task_name,
+        label: task.task_name,
+      })),
+    ];
+  }, [taskOptions]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedTask === "all") return rows;
+    return rows.filter(
+      (item) => String((item as any).task_name ?? "").trim() === selectedTask
+    );
+  }, [rows, selectedTask]);
 
   const totals = useMemo(() => {
     let critical = 0;
@@ -107,16 +152,16 @@ const BarSeverityChart: React.FC = () => {
     let low = 0;
     let info = 0;
 
-    for (const r of rows) {
-      critical += Number(r.critical || 0);
-      high += Number(r.high || 0);
-      medium += Number(r.medium || 0);
-      low += Number(r.low || 0);
-      info += Number(r.info || 0);
+    for (const r of filteredRows) {
+      critical += Number((r as any).critical || 0);
+      high += Number((r as any).high || 0);
+      medium += Number((r as any).medium || 0);
+      low += Number((r as any).low || 0);
+      info += Number((r as any).info || 0);
     }
 
     return { critical, high, medium, low, info };
-  }, [rows]);
+  }, [filteredRows]);
 
   const data: SeverityRow[] = useMemo(
     () => [
@@ -134,24 +179,10 @@ const BarSeverityChart: React.FC = () => {
     [totals]
   );
 
-  const highestSeverity = useMemo<SeverityName>(() => {
-    if (totals.critical > 0) return "Critical";
-    if (totals.high > 0) return "High";
-    if (totals.medium > 0) return "Medium";
-    if (totals.low > 0) return "Low";
-    return "Info";
-  }, [totals]);
-
   const subtitle = useMemo(() => {
     if (loading) return "Syncing latest severity telemetry...";
     return `Latest scan snapshot • Total findings: ${totalAll.toLocaleString()}`;
   }, [loading, totalAll]);
-
-  const statusText = useMemo(() => {
-    if (loading) return "Scanner Syncing";
-    if (totalAll === 0) return "No Findings Detected";
-    return `${highestSeverity} Activity Detected`;
-  }, [loading, totalAll, highestSeverity]);
 
   return (
     <section
@@ -161,7 +192,6 @@ const BarSeverityChart: React.FC = () => {
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
-      {/* background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
@@ -180,9 +210,8 @@ const BarSeverityChart: React.FC = () => {
       </div>
 
       <div className="relative z-10 flex h-full flex-col">
-        {/* Header */}
         <div className="flex flex-col gap-4 mb-4 sm:mb-5">
-          <div className="flex items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <div
@@ -194,42 +223,175 @@ const BarSeverityChart: React.FC = () => {
                 >
                   <FiShield className="text-[14px]" />
                   <span className="text-[12px] font-semibold tracking-wide">
-                    Severity Monitor
+                    Vulnerability Monitor
                   </span>
-                </div>
-
-                <div
-                  className={[
-                    "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                    "bg-slate-50 text-slate-600 border border-slate-200/80",
-                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                  ].join(" ")}
-                >
-                  <FiRadio className="text-[13px] text-cyan-500" />
-                  <span className="text-[12px] font-medium">{statusText}</span>
-                </div>
+                </div>             
               </div>
 
               <h2 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2240] dark:text-white/90 tracking-tight">
-                Severity Activity
+                Vulnerability
               </h2>
               <p className="mt-1 text-[12.5px] text-gray-500 dark:text-white/55">
                 {subtitle}
               </p>
             </div>
 
-            <span
-              className={[
-                "shrink-0 rounded-full h-10 px-4 inline-flex items-center justify-center text-[13px] font-medium",
-                "border border-gray-200 bg-white text-gray-500",
-                "dark:border-white/10 dark:bg-white/5 dark:text-white/50",
-              ].join(" ")}
-            >
-              Latest
-            </span>
+            <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-3">
+              <div className="w-full sm:w-auto">
+                <ConfigProvider
+                  theme={{
+                    token: {
+                      colorPrimary: "#e2e8f0",
+                      borderRadius: 20,
+                      colorBgElevated: "#ffffff",
+                      colorBorder: "#e5e7eb",
+                      boxShadowSecondary:
+                        "0 16px 40px -20px rgba(15,23,42,0.12)",
+                      colorText: "#334155",
+                      colorTextPlaceholder: "#94a3b8",
+                    },
+                    components: {
+                      Select: {
+                        activeBorderColor: "#dbeafe",
+                        hoverBorderColor: "#cbd5e1",
+                        optionSelectedBg: "#f8fafc",
+                        optionActiveBg: "#f1f5f9",
+                        optionSelectedColor: "#0f172a",
+                      },
+                    },
+                  }}
+                >
+                  <div className="relative w-full sm:min-w-52">
+                    <Select
+                      value={selectedTask}
+                      onChange={(value) => setSelectedTask(value)}
+                      options={selectOptions}
+                      popupMatchSelectWidth
+                      showSearch={false}
+                      size="large"
+                      variant="outlined"
+                      suffixIcon={
+                        <span
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: 13,
+                            lineHeight: 1,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          ▾
+                        </span>
+                      }
+                      style={{
+                        width: "100%",
+                        background: "transparent",
+                      }}
+                      styles={{
+                        root: {
+                          width: "100%",
+                        },
+                        popup: {
+                          root: {
+                            padding: 8,
+                            borderRadius: 22,
+                            border: "1px solid #e5e7eb",
+                            overflow: "hidden",
+                            boxShadow:
+                              "0 16px 40px -20px rgba(15,23,42,0.12)",
+                            background: "#ffffff",
+                          },
+                          list: {
+                            padding: 0,
+                            background: "#ffffff",
+                          },
+                          listItem: {
+                            minHeight: 42,
+                            borderRadius: 14,
+                            margin: "4px 0",
+                            paddingInline: 14,
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: "#334155",
+                            transition: "all 0.18s ease",
+                          },
+                        },
+                      }}
+                      classNames={{
+                        root: "w-full",
+                      }}
+                      getPopupContainer={(triggerNode) =>
+                        triggerNode.parentElement || document.body
+                      }
+                      optionRender={(option) => {
+                        const isAll = option.data.value === "all";
+                        const isSelected = selectedTask === option.data.value;
+
+                        return (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              width: "100%",
+                              padding: "2px 0",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 999,
+                                background: isSelected
+                                  ? "#cbd5e1"
+                                  : isAll
+                                  ? "#cbd5e1"
+                                  : "#6366f1",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: isSelected ? 600 : 500,
+                                color: "#334155",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {String(option.data.label)}
+                            </span>
+                          </div>
+                        );
+                      }}
+                      labelRender={(props) => (
+                        <span
+                          style={{
+                            color: "#334155",
+                            fontSize: 13,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {props.label}
+                        </span>
+                      )}
+                    />
+
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-[20px]"
+                      style={{
+                        border: "1px solid #dbeafe",
+                        boxShadow: "0 8px 24px -18px rgba(15,23,42,0.10)",
+                      }}
+                    />
+                  </div>
+                </ConfigProvider>
+              </div>
+            </div>
           </div>
 
-          {/* scan bar */}
           <div
             className={[
               "rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3",
@@ -256,7 +418,6 @@ const BarSeverityChart: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart */}
         <div className="flex-1 min-h-65">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -289,7 +450,10 @@ const BarSeverityChart: React.FC = () => {
                 domain={[0, "dataMax + 6"]}
               />
 
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(148, 163, 184, 0.08)" }} />
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
+              />
 
               <Bar
                 dataKey="current"

@@ -13,8 +13,8 @@ type SidebarLink = {
   badge?: string;
 };
 
-const EXPANDED_WIDTH = 300;
-const COLLAPSED_WIDTH = 84;
+const EXPANDED_WIDTH = 272;
+const COLLAPSED_WIDTH = 76;
 const DESKTOP_BREAKPOINT = 900;
 
 const Sidebar: React.FC = () => {
@@ -34,7 +34,7 @@ const Sidebar: React.FC = () => {
   const isDesktop =
     typeof screenSize === "number" ? screenSize > DESKTOP_BREAKPOINT : true;
 
-  const isExpanded = isDesktop ? !!activeMenu : !!activeMenu;
+  const isExpanded = !!activeMenu;
 
   const handleCloseSideBar = () => {
     if (typeof screenSize === "number" && screenSize <= DESKTOP_BREAKPOINT) {
@@ -51,8 +51,8 @@ const Sidebar: React.FC = () => {
 
       const nextOpen: Record<string, boolean> = {};
       safeData.forEach((section: SidebarSection, index: number) => {
-        const hasActiveChild = section.links?.some((link) =>
-          location.pathname === `/admin/${link.name}`
+        const hasActiveChild = section.links?.some(
+          (link) => location.pathname === `/admin/${link.name}`
         );
         nextOpen[section.title] = hasActiveChild || index === 0;
       });
@@ -101,7 +101,8 @@ const Sidebar: React.FC = () => {
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
-  const isLinkActive = (linkName: string) => location.pathname === `/admin/${linkName}`;
+  const isLinkActive = (linkName: string) =>
+    location.pathname === `/admin/${linkName}`;
 
   const formatLabel = useMemo(
     () => (value: string) => {
@@ -152,45 +153,51 @@ const Sidebar: React.FC = () => {
               : `${COLLAPSED_WIDTH}px`
             : "88vw",
           maxWidth: isDesktop ? undefined : "320px",
-          padding: isDesktop ? "12px" : "16px",
-          paddingTop: "max(env(safe-area-inset-top), 16px)",
+          padding: isDesktop ? "10px" : "14px",
+          paddingTop: "max(env(safe-area-inset-top), 12px)",
         }}
       >
         <div
           className={[
-            "relative flex h-full flex-col overflow-visible rounded-3xl",
+            "relative flex h-full flex-col overflow-visible rounded-[28px]",
             "border border-gray-200/80 bg-white/92 shadow-[0_18px_44px_-24px_rgba(15,23,42,0.35)] backdrop-blur",
             "dark:border-white/10 dark:bg-[#08111f]/88 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
           ].join(" ")}
         >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-            <div className="absolute -top-12 right-0 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="absolute bottom-0 -left-10 h-36 w-36 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
+            <div className="absolute -top-12 right-0 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
+            <div className="absolute bottom-0 -left-10 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
 
           {/* Header */}
           <div
             className={`relative z-10 flex items-center ${
-              isExpanded ? "justify-between px-4 pb-4 pt-6" : "justify-center px-2 pb-4 pt-5"
+              isExpanded
+                ? "justify-between px-3.5 pb-3.5 pt-5"
+                : "justify-center px-2 pb-3.5 pt-4.5"
             }`}
           >
             <Link
               to="/admin"
               onClick={handleCloseSideBar}
-              className={`select-none ${isExpanded ? "flex items-center gap-3" : "flex justify-center items-center"}`}
+              className={`select-none ${
+                isExpanded
+                  ? "flex items-center gap-3"
+                  : "flex justify-center items-center"
+              }`}
               aria-label="Go to dashboard"
             >
-              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 shadow-sm">
-                <FiShield className="text-[20px] text-white" />
+              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 shadow-sm">
+                <FiShield className="text-[18px] text-white" />
                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-cyan-300 ring-2 ring-white dark:ring-[#08111f]" />
               </div>
 
               {isExpanded && (
                 <div className="min-w-0">
-                  <span className="block text-[17px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90">
+                  <span className="block text-[16px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90">
                     Scan Network
                   </span>
-                  <span className="block text-[11px] text-gray-500 dark:text-white/45">
+                  <span className="block text-[10.5px] text-gray-500 dark:text-white/45">
                     Network Security Panel
                   </span>
                 </div>
@@ -218,14 +225,18 @@ const Sidebar: React.FC = () => {
           {/* Menu Body */}
           <nav
             className={`relative z-10 flex-1 ${
-              isExpanded ? "overflow-y-auto px-3 pb-4" : "overflow-visible px-2 pb-3"
+              isExpanded
+                ? "overflow-y-auto px-2.5 pb-3.5"
+                : "overflow-visible px-2 pb-3"
             }`}
           >
-            <div className={isExpanded ? "space-y-2" : "space-y-3"}>
+            <div className={isExpanded ? "space-y-1.5" : "space-y-2.5"}>
               {menuLinks.map((section) => {
                 const isOpen = !!openSections[section.title];
                 const hasActiveChild =
-                  section.links?.some((link: SidebarLink) => isLinkActive(link.name)) ?? false;
+                  section.links?.some((link: SidebarLink) =>
+                    isLinkActive(link.name)
+                  ) ?? false;
 
                 const sectionIcon =
                   section.links?.[0]?.icon ?? (
@@ -239,7 +250,7 @@ const Sidebar: React.FC = () => {
                         type="button"
                         onClick={() => toggleSection(section.title)}
                         className={[
-                          "flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left transition-all duration-200",
+                          "flex w-full items-center justify-between rounded-2xl px-3.5 py-2.75 text-left transition-all duration-200",
                           hasActiveChild || isOpen
                             ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm"
                             : "bg-transparent text-[#4b4f63] hover:bg-gray-50",
@@ -252,7 +263,7 @@ const Sidebar: React.FC = () => {
                         <div className="min-w-0 flex items-center gap-3">
                           <span
                             className={[
-                              "inline-flex h-8 w-8 items-center justify-center rounded-xl text-[16px]",
+                              "inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl text-[15px]",
                               hasActiveChild || isOpen
                                 ? "bg-white/15 text-white"
                                 : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/55",
@@ -261,14 +272,14 @@ const Sidebar: React.FC = () => {
                             {sectionIcon}
                           </span>
 
-                          <span className="truncate text-[15px] font-medium">
+                          <span className="truncate text-[14px] font-medium">
                             {formatLabel(section.title)}
                           </span>
                         </div>
 
                         <MdKeyboardArrowDown
                           className={[
-                            "text-xl transition-transform",
+                            "text-[19px] transition-transform",
                             isOpen ? "rotate-0" : "-rotate-90",
                             hasActiveChild || isOpen
                               ? "text-white"
@@ -279,10 +290,10 @@ const Sidebar: React.FC = () => {
 
                       <div
                         className={`overflow-hidden transition-all duration-200 ${
-                          isOpen ? "max-h-150 pb-1 pt-2 opacity-100" : "max-h-0 opacity-0"
+                          isOpen ? "max-h-150 pb-1 pt-1.5 opacity-100" : "max-h-0 opacity-0"
                         }`}
                       >
-                        <div className="space-y-1 pl-7 pr-2">
+                        <div className="space-y-1 pl-6.5 pr-2">
                           {section.links?.map((link: SidebarLink) => {
                             const active = isLinkActive(link.name);
 
@@ -292,7 +303,7 @@ const Sidebar: React.FC = () => {
                                 key={`${section.title}-${link.name}`}
                                 onClick={handleCloseSideBar}
                                 className={[
-                                  "flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 transition-colors",
+                                  "flex items-center justify-between gap-2 rounded-xl px-3 py-2.25 transition-colors",
                                   active
                                     ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
                                     : "text-[#585b6b] hover:bg-gray-50 hover:text-[#2b2f45]",
@@ -310,13 +321,13 @@ const Sidebar: React.FC = () => {
                                         : "border-gray-400 bg-transparent dark:border-white/30",
                                     ].join(" ")}
                                   />
-                                  <span className="truncate text-[14px]">
+                                  <span className="truncate text-[13px]">
                                     {formatLabel(link.name)}
                                   </span>
                                 </div>
 
                                 {link.badge && (
-                                  <span className="ml-2 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                  <span className="ml-2 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                                     {link.badge}
                                   </span>
                                 )}
@@ -336,11 +347,14 @@ const Sidebar: React.FC = () => {
                     onMouseEnter={() => openHoverPopup(section.title)}
                     onMouseLeave={() => closeHoverPopupWithDelay(section.title)}
                   >
-                    <TooltipComponent content={formatLabel(section.title)} position="RightCenter">
+                    <TooltipComponent
+                      content={formatLabel(section.title)}
+                      position="RightCenter"
+                    >
                       <button
                         type="button"
                         className={[
-                          "flex h-12 w-full items-center justify-center rounded-2xl transition-all duration-200",
+                          "flex h-11 w-full items-center justify-center rounded-2xl transition-all duration-200",
                           hasActiveChild
                             ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm"
                             : "bg-[#eef3f8] text-gray-500 hover:bg-gray-50",
@@ -352,7 +366,7 @@ const Sidebar: React.FC = () => {
                       >
                         <span
                           className={[
-                            "inline-flex h-8 w-8 items-center justify-center rounded-xl text-[18px]",
+                            "inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl text-[17px]",
                             hasActiveChild
                               ? "bg-white/15 text-white"
                               : "text-gray-500 dark:text-white/60",
@@ -365,17 +379,17 @@ const Sidebar: React.FC = () => {
 
                     {hoveredSection === section.title && (
                       <div
-                        className="absolute left-[calc(100%+12px)] top-0 z-70 w-62.5"
+                        className="absolute left-[calc(100%+10px)] top-0 z-70 w-62.5"
                         onMouseEnter={() => openHoverPopup(section.title)}
                         onMouseLeave={() => closeHoverPopupWithDelay(section.title)}
                       >
                         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
                           <div className="bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 px-4 py-3 text-white">
                             <div className="flex items-center gap-3">
-                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-[16px]">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-[15px]">
                                 {sectionIcon}
                               </span>
-                              <span className="truncate text-[15px] font-medium">
+                              <span className="truncate text-[14px] font-medium">
                                 {formatLabel(section.title)}
                               </span>
                             </div>
@@ -394,16 +408,18 @@ const Sidebar: React.FC = () => {
                                     handleCloseSideBar();
                                   }}
                                   className={[
-                                    "flex items-center justify-between px-4 py-2.5 text-[14px] transition-colors",
+                                    "flex items-center justify-between px-4 py-2.5 text-[13px] transition-colors",
                                     active
                                       ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-white/8 dark:text-cyan-300"
                                       : "text-[#4f5366] hover:bg-gray-50 dark:text-white/65 dark:hover:bg-white/8",
                                   ].join(" ")}
                                 >
-                                  <span className="truncate">{formatLabel(link.name)}</span>
+                                  <span className="truncate">
+                                    {formatLabel(link.name)}
+                                  </span>
 
                                   {link.badge && (
-                                    <span className="ml-3 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                    <span className="ml-3 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                                       {link.badge}
                                     </span>
                                   )}
@@ -421,14 +437,20 @@ const Sidebar: React.FC = () => {
           </nav>
 
           {/* Footer - Logout */}
-          <div className={`${isExpanded ? "relative z-10 px-3 pb-4 pt-2" : "relative z-10 px-2 pb-4 pt-1"}`}>
+          <div
+            className={`${
+              isExpanded
+                ? "relative z-10 px-2.5 pb-3.5 pt-1.5"
+                : "relative z-10 px-2 pb-3.5 pt-1"
+            }`}
+          >
             {isExpanded ? (
               <button
                 type="button"
                 onClick={() => void handleLogout()}
                 disabled={loggingOut}
                 className={[
-                  "flex w-full items-center justify-between rounded-2xl px-5 py-4 transition-colors",
+                  "flex w-full items-center justify-between rounded-2xl px-4 py-3.5 transition-colors",
                   "bg-[#eef3f8] text-[#3a3d4f] hover:bg-[#e7edf5]",
                   "dark:bg-white/8 dark:text-white/75 dark:hover:bg-white/10",
                   loggingOut ? "cursor-not-allowed opacity-70" : "",
@@ -436,20 +458,20 @@ const Sidebar: React.FC = () => {
                 aria-label="Logout"
               >
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-600 dark:bg-white/10 dark:text-white/70">
+                  <span className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-white text-gray-600 dark:bg-white/10 dark:text-white/70">
                     <FiLogOut />
                   </span>
-                  <div className="text-left">
-                    <span className="block text-[15px] font-semibold">
+                  <div className="text-left leading-tight">
+                    <span className="block text-[14px] font-semibold">
                       {loggingOut ? "Logging out..." : "Logout"}
                     </span>
-                    <span className="block text-[11px] text-gray-500 dark:text-white/45">
+                    <span className="block text-[10.5px] text-gray-500 dark:text-white/45">
                       End current session
                     </span>
                   </div>
                 </div>
 
-                <FiLogOut className="text-[18px] text-gray-500 dark:text-white/60" />
+                <FiLogOut className="text-[17px] text-gray-500 dark:text-white/60" />
               </button>
             ) : (
               <TooltipComponent
@@ -461,14 +483,14 @@ const Sidebar: React.FC = () => {
                   onClick={() => void handleLogout()}
                   disabled={loggingOut}
                   className={[
-                    "flex h-12 w-full items-center justify-center rounded-2xl transition-colors",
+                    "flex h-11 w-full items-center justify-center rounded-2xl transition-colors",
                     "bg-[#eef3f8] text-gray-500 hover:bg-[#e7edf5]",
                     "dark:bg-white/8 dark:text-white/60 dark:hover:bg-white/10",
                     loggingOut ? "cursor-not-allowed opacity-70" : "",
                   ].join(" ")}
                   aria-label="Logout"
                 >
-                  <FiLogOut className="text-[20px]" />
+                  <FiLogOut className="text-[18px]" />
                 </button>
               </TooltipComponent>
             )}

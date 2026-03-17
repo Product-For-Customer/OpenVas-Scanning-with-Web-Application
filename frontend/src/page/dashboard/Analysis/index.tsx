@@ -1,23 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import {
-  FiChevronDown,
   FiShield,
-  FiActivity,
-  FiRadio,
 } from "react-icons/fi";
-import { ListTaskVulnSummary, type TaskVulnSummaryDTO } from "../../../services";
+import { ConfigProvider, Select } from "antd";
+import type { SelectProps } from "antd";
+import {
+  ListTaskVulnSummary,
+  type TaskVulnSummaryDTO,
+} from "../../../services";
 
 type SeverityKey = "Critical" | "High" | "Medium" | "Low" | "Info";
-type RangeKey = "This Week" | "This Month" | "This Year";
 
 type SeverityItem = {
   name: SeverityKey;
   value: number;
   color: string;
 };
-
-const RANGE_OPTIONS: RangeKey[] = ["This Week", "This Month", "This Year"];
 
 const COLORS: Record<SeverityKey, string> = {
   Critical: "#ef4444",
@@ -35,7 +34,11 @@ type CustomTooltipProps = {
   total: number;
 };
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, total }) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({
+  active,
+  payload,
+  total,
+}) => {
   if (!active || !payload || payload.length === 0) return null;
 
   const item = payload[0]?.payload as SeverityItem | undefined;
@@ -63,24 +66,29 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload, total })
 };
 
 const DeliveryAnalysis: React.FC = () => {
-  const [range, setRange] = useState<RangeKey>("This Week");
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
-
   const [rows, setRows] = useState<TaskVulnSummaryDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<string>("all");
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListTaskVulnSummary();
-      console.log("Fetched vulnerability summary:", res);
-      if (!alive) return;
+      try {
+        setLoading(true);
+        const res = await ListTaskVulnSummary();
+        console.log("Fetched vulnerability summary:", res);
+        if (!alive) return;
 
-      setRows(res ?? []);
-      setLoading(false);
+        setRows(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to load vulnerability summary:", error);
+        if (!alive) return;
+        setRows([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
@@ -88,26 +96,48 @@ const DeliveryAnalysis: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const onClickOutside = (e: MouseEvent) => {
-      if (!dropdownRef.current) return;
-      if (!dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
+  const taskOptions = useMemo(() => {
+    const names = rows
+      .map((r) => ({
+        task_id: String(r.task_id ?? ""),
+        task_name: String(r.task_name ?? "").trim(),
+      }))
+      .filter((r) => r.task_name !== "");
 
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
+    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+
+    for (const item of names) {
+      if (!uniqueMap.has(item.task_name)) {
+        uniqueMap.set(item.task_name, item);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }, [rows]);
+
+  const selectOptions: SelectProps["options"] = useMemo(() => {
+    return [
+      { value: "all", label: "All Tasks" },
+      ...taskOptions.map((task) => ({
+        value: task.task_name,
+        label: task.task_name,
+      })),
+    ];
+  }, [taskOptions]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedTask === "all") return rows;
+    return rows.filter((r) => String(r.task_name ?? "") === selectedTask);
+  }, [rows, selectedTask]);
 
   const totals = useMemo(() => {
-    let critical = 0,
-      high = 0,
-      medium = 0,
-      low = 0,
-      info = 0;
+    let critical = 0;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+    let info = 0;
 
-    for (const r of rows) {
+    for (const r of filteredRows) {
       critical += Number(r.critical || 0);
       high += Number(r.high || 0);
       medium += Number(r.medium || 0);
@@ -116,7 +146,7 @@ const DeliveryAnalysis: React.FC = () => {
     }
 
     return { critical, high, medium, low, info };
-  }, [rows]);
+  }, [filteredRows]);
 
   const data = useMemo<SeverityItem[]>(() => {
     const items: SeverityItem[] = [
@@ -135,26 +165,6 @@ const DeliveryAnalysis: React.FC = () => {
     return data.reduce((sum, d) => sum + d.value, 0);
   }, [data]);
 
-  const highestSeverity = useMemo<SeverityKey>(() => {
-    if (totals.critical > 0) return "Critical";
-    if (totals.high > 0) return "High";
-    if (totals.medium > 0) return "Medium";
-    if (totals.low > 0) return "Low";
-    return "Info";
-  }, [totals]);
-
-  const subtitle = useMemo(() => {
-    if (loading) return "Syncing latest vulnerability data...";
-    return "Live vulnerability posture from latest scan snapshot";
-  }, [loading]);
-
-  const scanStatusText = useMemo(() => {
-    if (loading) return "Scanner Syncing";
-    if (total === 0) return "No Findings Detected";
-    return `${highestSeverity} Risk Detected`;
-  }, [loading, total, highestSeverity]);
-
-
   return (
     <section
       className={[
@@ -163,7 +173,6 @@ const DeliveryAnalysis: React.FC = () => {
         "dark:bg-[#08111f]/95 dark:border-white/10 dark:shadow-none",
       ].join(" ")}
     >
-      {/* background glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-20 -right-16 h-52 w-52 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="absolute -bottom-20 -left-16 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl" />
@@ -182,10 +191,9 @@ const DeliveryAnalysis: React.FC = () => {
       </div>
 
       <div className="relative z-10">
-        {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-2 mb-3 mt-1">
               <div
                 className={[
                   "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
@@ -195,82 +203,165 @@ const DeliveryAnalysis: React.FC = () => {
               >
                 <FiShield className="text-[14px]" />
                 <span className="text-[12px] font-semibold tracking-wide">
-                  Vulnerability Scanner
+                  Total Vulnerability Scanner
                 </span>
               </div>
-
-              <div
-                className={[
-                  "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                  "bg-slate-50 text-slate-600 border border-slate-200/80",
-                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                ].join(" ")}
-              >
-                <FiRadio className="text-[13px] text-cyan-500" />
-                <span className="text-[12px] font-medium">{scanStatusText}</span>
-              </div>
             </div>
-
-            <h3 className="text-[19px] sm:text-[21px] font-semibold text-slate-900 dark:text-white/90">
-              Network Scan Analysis
-            </h3>
-            <p className="mt-1 text-[12.5px] text-slate-500 dark:text-white/55">
-              {subtitle}
-            </p>
           </div>
 
-          {/* Dropdown */}
-          <div className="relative self-start" ref={dropdownRef}>
-            <button
-              type="button"
-              onClick={() => setOpen((s) => !s)}
-              className={[
-                "h-11 px-4 rounded-2xl inline-flex items-center gap-2.5 transition-all duration-200",
-                "bg-white border border-slate-200/80 text-[13px] font-medium text-slate-700 hover:bg-slate-50",
-                "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
-              ].join(" ")}
-              aria-label="Select range"
-            >
-              <FiActivity className="text-[15px] text-cyan-500" />
-              {range}
-              <FiChevronDown
-                className={`text-[15px] text-slate-400 dark:text-white/45 transition-transform ${open ? "rotate-180" : ""
-                  }`}
-              />
-            </button>
+          <div className="w-full sm:w-auto">
 
-            {open && (
-              <div
-                className={[
-                  "absolute right-0 mt-2 w-44 rounded-2xl overflow-hidden z-20 backdrop-blur-xl",
-                  "border border-slate-200 bg-white shadow-xl",
-                  "dark:border-white/10 dark:bg-[#0B1220]/95 dark:shadow-none",
-                ].join(" ")}
-              >
-                {RANGE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => {
-                      setRange(opt);
-                      setOpen(false);
-                    }}
-                    className={[
-                      "w-full text-left px-4 py-3 text-[13px] transition",
-                      range === opt
-                        ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
-                        : "text-slate-700 hover:bg-slate-50 dark:text-white/75 dark:hover:bg-white/8",
-                    ].join(" ")}
-                  >
-                    {opt}
-                  </button>
-                ))}
+            <ConfigProvider
+              theme={{
+                token: {
+                  colorPrimary: "#e2e8f0",
+                  borderRadius: 20,
+                  colorBgElevated: "#ffffff",
+                  colorBorder: "#e5e7eb",
+                  boxShadowSecondary: "0 16px 40px -20px rgba(15,23,42,0.12)",
+                  colorText: "#334155",
+                  colorTextPlaceholder: "#94a3b8",
+                },
+                components: {
+                  Select: {
+                    activeBorderColor: "#dbeafe",
+                    hoverBorderColor: "#cbd5e1",
+                    optionSelectedBg: "#f8fafc",
+                    optionActiveBg: "#f1f5f9",
+                    optionSelectedColor: "#0f172a",
+                  },
+                },
+              }}
+            >
+              <div className="relative w-full sm:min-w-75">
+                <Select
+                  value={selectedTask}
+                  onChange={(value) => setSelectedTask(value)}
+                  options={selectOptions}
+                  popupMatchSelectWidth
+                  showSearch={false}
+                  size="large"
+                  variant="outlined"
+                  suffixIcon={
+                    <span
+                      style={{
+                        color: "#94a3b8",
+                        fontSize: 13,
+                        lineHeight: 1,
+                        pointerEvents: "none",
+                      }}
+                    >
+                      ▾
+                    </span>
+                  }
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                  }}
+                  styles={{
+                    root: {
+                      width: "100%",
+                    },
+                    popup: {
+                      root: {
+                        padding: 8,
+                        borderRadius: 22,
+                        border: "1px solid #e5e7eb",
+                        overflow: "hidden",
+                        boxShadow: "0 16px 40px -20px rgba(15,23,42,0.12)",
+                        background: "#ffffff",
+                      },
+                      list: {
+                        padding: 0,
+                        background: "#ffffff",
+                      },
+                      listItem: {
+                        minHeight: 42,
+                        borderRadius: 14,
+                        margin: "4px 0",
+                        paddingInline: 14,
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: "#334155",
+                        transition: "all 0.18s ease",
+                      },
+                    },
+                  }}
+                  classNames={{
+                    root: "w-full",
+                  }}
+                  getPopupContainer={(triggerNode) =>
+                    triggerNode.parentElement || document.body
+                  }
+                  optionRender={(option) => {
+                    const isAll = option.data.value === "all";
+                    const isSelected = selectedTask === option.data.value;
+
+                    return (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          width: "100%",
+                          padding: "2px 0",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 999,
+                            background: isSelected
+                              ? "#cbd5e1"
+                              : isAll
+                              ? "#cbd5e1"
+                              : "#6366f1",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: isSelected ? 600 : 500,
+                            color: "#334155",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {String(option.data.label)}
+                        </span>
+                      </div>
+                    );
+                  }}
+                  labelRender={(props) => (
+                    <span
+                      style={{
+                        color: "#334155",
+                        fontSize: 13,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {props.label}
+                    </span>
+                  )}
+                />
+
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-[20px]"
+                  style={{
+                    border: "1px solid #dbeafe",
+                    boxShadow: "0 8px 24px -18px rgba(15,23,42,0.10)",
+                  }}
+                />
               </div>
-            )}
+            </ConfigProvider>
           </div>
         </div>
 
-        {/* scan bar */}
         <div
           className={[
             "mt-5 rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3",
@@ -291,16 +382,15 @@ const DeliveryAnalysis: React.FC = () => {
           <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
 
           <div className="text-[12px] text-slate-500 dark:text-white/50">
-            Severity distribution across the latest imported scan results
+            {selectedTask === "all"
+              ? "Severity distribution across the latest imported scan results"
+              : `Severity distribution for ${selectedTask}`}
           </div>
         </div>
 
-        {/* Chart */}
         <div className="mt-5 sm:mt-6 h-72 sm:h-80 relative">
-          {/* center glow */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-2xl dark:bg-cyan-400/10" />
 
-          {/* center label */}
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div
               className={[
@@ -321,7 +411,9 @@ const DeliveryAnalysis: React.FC = () => {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Tooltip
-                content={(props: any) => <CustomTooltip {...props} total={total} />}
+                content={(props: any) => (
+                  <CustomTooltip {...props} total={total} />
+                )}
                 cursor={false}
               />
               <Pie
@@ -344,18 +436,14 @@ const DeliveryAnalysis: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Legend */}
         <div className="mt-4 sm:mt-5">
           <div
             className={[
               "rounded-2xl px-4 py-3",
-              // ✅ Light
               "bg-white border border-gray-200/80",
-              // ✅ Dark
               "dark:bg-white/5 dark:border-white/10",
             ].join(" ")}
           >
-            {/* แถวบน */}
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
               {(["Critical", "High", "Medium"] as SeverityKey[]).map((k) => {
                 const item = data.find((d) => d.name === k) || {
@@ -367,7 +455,10 @@ const DeliveryAnalysis: React.FC = () => {
 
                 return (
                   <div key={k} className="flex items-center gap-2">
-                    <span className="h-4 w-4 rounded-sm" style={{ background: COLORS[k] }} />
+                    <span
+                      className="h-4 w-4 rounded-sm"
+                      style={{ background: COLORS[k] }}
+                    />
                     <span className="text-[13px] font-medium text-[#1f2240] dark:text-white/85">
                       {k}
                     </span>
@@ -382,7 +473,6 @@ const DeliveryAnalysis: React.FC = () => {
               })}
             </div>
 
-            {/* แถวล่าง */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
               {(["Low", "Info"] as SeverityKey[]).map((k) => {
                 const item = data.find((d) => d.name === k) || {
@@ -394,7 +484,10 @@ const DeliveryAnalysis: React.FC = () => {
 
                 return (
                   <div key={k} className="flex items-center gap-2">
-                    <span className="h-4 w-4 rounded-sm" style={{ background: COLORS[k] }} />
+                    <span
+                      className="h-4 w-4 rounded-sm"
+                      style={{ background: COLORS[k] }}
+                    />
                     <span className="text-[13px] font-medium text-[#1f2240] dark:text-white/85">
                       {k}
                     </span>

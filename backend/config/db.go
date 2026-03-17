@@ -243,6 +243,7 @@ func SeedDatabase() {
 	// =========================
 	target1 := entity.AppTarget{
 		Name:       "Core Switch ITS",
+		IpHost:     "192.168.10.1",
 		MacAddress: "AA:BB:CC:DD:EE:01",
 	}
 
@@ -253,6 +254,7 @@ func SeedDatabase() {
 
 	target2 := entity.AppTarget{
 		Name:       "Access Point Building A",
+		IpHost:     "192.168.10.2",
 		MacAddress: "AA:BB:CC:DD:EE:02",
 	}
 
@@ -263,6 +265,7 @@ func SeedDatabase() {
 
 	target3 := entity.AppTarget{
 		Name:       "Server Rack 01",
+		IpHost:     "192.168.10.3",
 		MacAddress: "AA:BB:CC:DD:EE:03",
 	}
 
@@ -278,8 +281,8 @@ func SeedDatabase() {
 		Location:    "ห้อง Network Center",
 		Building:    "อาคารเทคโนโลยีสารสนเทศ",
 		Floor:       1,
-		Latitude:    14.881800,
-		Longtitude:  102.018500,
+		Latitude:    13.7563,
+		Longtitude:  100.5018,
 		AppTargetID: target1.ID,
 	}
 
@@ -296,8 +299,8 @@ func SeedDatabase() {
 		Location:    "โถงทางเดินชั้น 2",
 		Building:    "อาคาร A",
 		Floor:       2,
-		Latitude:    14.882100,
-		Longtitude:  102.018900,
+		Latitude:    13.7367,
+		Longtitude:  100.5231,
 		AppTargetID: target2.ID,
 	}
 
@@ -314,8 +317,8 @@ func SeedDatabase() {
 		Location:    "ห้อง Server ชั้น 3",
 		Building:    "อาคาร Data Center",
 		Floor:       3,
-		Latitude:    14.882500,
-		Longtitude:  102.019300,
+		Latitude:    13.7649,
+		Longtitude:  100.5383,
 		AppTargetID: target3.ID,
 	}
 

@@ -234,7 +234,7 @@ const Index: React.FC = () => {
         <img
           src={u.profile}
           alt={`${u.first_name} ${u.last_name}`}
-          className="h-12 w-12 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10"
+          className="h-10 w-10 rounded-2xl object-cover ring-1 ring-gray-200 dark:ring-white/10"
         />
       );
     }
@@ -244,7 +244,7 @@ const Index: React.FC = () => {
     return (
       <div
         className={[
-          "h-12 w-12 rounded-2xl grid place-items-center ring-1",
+          "h-10 w-10 rounded-2xl grid place-items-center ring-1",
           "bg-slate-50 ring-gray-200 text-slate-500",
           "dark:bg-white/5 dark:ring-white/10 dark:text-white/55",
         ].join(" ")}
@@ -252,9 +252,9 @@ const Index: React.FC = () => {
         title="No base64 profile image"
       >
         {isAdmin ? (
-          <FiShield className="text-[18px]" />
+          <FiShield className="text-[16px]" />
         ) : (
-          <FiUser className="text-[18px]" />
+          <FiUser className="text-[16px]" />
         )}
       </div>
     );
@@ -264,15 +264,15 @@ const Index: React.FC = () => {
     <>
       <section
         className={[
-          "relative overflow-hidden rounded-[26px] p-4 sm:p-5 md:p-6",
-          "bg-white border border-gray-200/80 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.25)]",
+          "relative overflow-hidden rounded-[22px] p-3 sm:p-4 md:p-4.5",
+          "bg-white border border-gray-200/80 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.25)]",
           "dark:bg-[#08111f]/90 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
         ].join(" ")}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-16 right-8 h-36 w-36 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]">
+          <div className="absolute -top-14 right-6 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
+          <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.055]">
             <div
               className="h-full w-full"
               style={{
@@ -280,39 +280,39 @@ const Index: React.FC = () => {
                   linear-gradient(to right, currentColor 1px, transparent 1px),
                   linear-gradient(to bottom, currentColor 1px, transparent 1px)
                 `,
-                backgroundSize: "28px 28px",
+                backgroundSize: "26px 26px",
               }}
             />
           </div>
         </div>
 
         <div className="relative z-10">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-[12px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
-                <FiShield className="text-[13px]" />
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1.5 text-[10.5px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
+                <FiShield className="text-[11px]" />
                 User Access Monitoring
               </div>
 
-              <h2 className="mt-3 text-[22px] sm:text-[26px] font-semibold tracking-tight text-slate-900 dark:text-white">
+              <h2 className="mt-2.5 text-[18px] sm:text-[20px] font-semibold tracking-tight text-slate-900 dark:text-white">
                 User Security Table
               </h2>
 
-              <p className="mt-1 text-[13px] sm:text-[14px] text-slate-500 dark:text-white/55">
+              <p className="mt-1 text-[11px] sm:text-[12px] text-slate-500 dark:text-white/55">
                 Monitor administrator access, analyst accounts, and operators.
               </p>
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-md">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35" />
+          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative w-full sm:max-w-sm">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 text-[13px]" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search firstname / lastname / email / phone / role..."
                 className={[
-                  "w-full h-11 rounded-2xl pl-10 pr-4 text-[13px] outline-none transition",
+                  "w-full h-9 rounded-2xl pl-9 pr-3.5 text-[12px] outline-none transition",
                   "border border-gray-200 bg-white text-slate-800 focus:ring-2 focus:ring-violet-200",
                   "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/35 dark:focus:ring-violet-400/10",
                 ].join(" ")}
@@ -324,8 +324,8 @@ const Index: React.FC = () => {
                 type="button"
                 onClick={() => setOpenSort((s) => !s)}
                 className={[
-                  "h-11 px-4 rounded-2xl inline-flex items-center gap-2 transition",
-                  "bg-white border border-gray-200/80 text-[13px] font-medium text-gray-700 hover:bg-gray-50",
+                  "h-9 px-3.5 rounded-2xl inline-flex items-center gap-2 transition",
+                  "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-700 hover:bg-gray-50",
                   "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
                 ].join(" ")}
               >
@@ -333,12 +333,12 @@ const Index: React.FC = () => {
                 <FiChevronDown
                   className={`transition ${
                     openSort ? "rotate-180" : ""
-                  } text-gray-400 dark:text-white/45`}
+                  } text-gray-400 dark:text-white/45 text-[13px]`}
                 />
               </button>
 
               {openSort && (
-                <div className="absolute right-0 mt-2 w-56 rounded-2xl overflow-hidden z-20 border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+                <div className="absolute right-0 mt-2 w-48 rounded-[18px] overflow-hidden z-20 border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
                   {(
                     [
                       "Newest",
@@ -355,7 +355,7 @@ const Index: React.FC = () => {
                         setOpenSort(false);
                       }}
                       className={[
-                        "w-full text-left px-4 py-3 text-[13px] transition",
+                        "w-full text-left px-3.5 py-2.5 text-[12px] transition",
                         sortBy === opt
                           ? "bg-violet-50 text-violet-700 font-semibold dark:bg-violet-500/10 dark:text-violet-200"
                           : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
@@ -369,7 +369,7 @@ const Index: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-1 text-[12px] text-slate-500 dark:text-white/50">
+          <div className="mt-2.5 flex flex-col gap-1 text-[11px] text-slate-500 dark:text-white/50">
             {loading ? (
               <span className="inline-flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-violet-500/70 animate-pulse" />
@@ -391,26 +391,26 @@ const Index: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-4 overflow-x-auto rounded-3xl border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/3">
+          <div className="mt-3.5 overflow-x-auto rounded-[22px] border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/3">
             <table className="min-w-275 w-full border-separate border-spacing-0">
               <thead>
                 <tr className="text-left">
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     User
                   </th>
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Contact
                   </th>
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Location
                   </th>
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Role
                   </th>
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Position
                   </th>
-                  <th className="px-4 py-4 text-[12px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-right">
+                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-right">
                     Action
                   </th>
                 </tr>
@@ -431,30 +431,30 @@ const Index: React.FC = () => {
                         ].join(" ")}
                       >
                         <td
-                          className={`px-4 py-4 ${
+                          className={`px-3.5 py-3 ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
                           }`}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <div className="relative shrink-0">
                               {renderAvatar(user)}
                             </div>
 
                             <div className="min-w-0">
-                              <p className="text-[14px] font-semibold text-slate-900 dark:text-white/85 truncate">
+                              <p className="text-[12.5px] font-semibold text-slate-900 dark:text-white/85 truncate">
                                 {user.first_name} {user.last_name}
                               </p>
 
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-500 dark:text-white/50">
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10.5px] text-slate-500 dark:text-white/50">
                                 <span className="inline-flex items-center gap-1">
-                                  <FiUser className="text-[12px]" />
+                                  <FiUser className="text-[11px]" />
                                   ID: {user.id}
                                 </span>
 
                                 {isCurrentUser && (
-                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-200">
+                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-200">
                                     Current Login
                                   </span>
                                 )}
@@ -464,39 +464,39 @@ const Index: React.FC = () => {
                         </td>
 
                         <td
-                          className={`px-4 py-4 ${
+                          className={`px-3.5 py-3 ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
                           }`}
                         >
                           <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-white/75">
-                              <FiMail className="text-[13px] text-cyan-600 dark:text-cyan-300" />
+                            <div className="flex items-center gap-2 text-[12px] text-slate-700 dark:text-white/75">
+                              <FiMail className="text-[12px] text-cyan-600 dark:text-cyan-300" />
                               <span className="truncate">{user.email}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-white/75">
-                              <FiPhone className="text-[13px] text-violet-600 dark:text-violet-300" />
+                            <div className="flex items-center gap-2 text-[12px] text-slate-700 dark:text-white/75">
+                              <FiPhone className="text-[12px] text-violet-600 dark:text-violet-300" />
                               <span>{user.phone_number || "-"}</span>
                             </div>
                           </div>
                         </td>
 
                         <td
-                          className={`px-4 py-4 ${
+                          className={`px-3.5 py-3 ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
                           }`}
                         >
-                          <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-white/75">
-                            <FiMapPin className="text-[13px] text-emerald-600 dark:text-emerald-300" />
+                          <div className="flex items-center gap-2 text-[12px] text-slate-700 dark:text-white/75">
+                            <FiMapPin className="text-[12px] text-emerald-600 dark:text-emerald-300" />
                             <span>{user.location || "-"}</span>
                           </div>
                         </td>
 
                         <td
-                          className={`px-4 py-4 ${
+                          className={`px-3.5 py-3 ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
@@ -504,21 +504,21 @@ const Index: React.FC = () => {
                         >
                           <span
                             className={[
-                              "inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold",
+                              "inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold",
                               roleBadgeClass(user.role),
                             ].join(" ")}
                           >
                             {user.role === "Admin" ? (
-                              <FiShield className="mr-1.5" />
+                              <FiShield className="mr-1.5 text-[11px]" />
                             ) : (
-                              <FiUser className="mr-1.5" />
+                              <FiUser className="mr-1.5 text-[11px]" />
                             )}
                             {user.role}
                           </span>
                         </td>
 
                         <td
-                          className={`px-4 py-4 ${
+                          className={`px-3.5 py-3 ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
@@ -526,17 +526,17 @@ const Index: React.FC = () => {
                         >
                           <span
                             className={[
-                              "inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold",
+                              "inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold",
                               positionBadgeClass(user.position),
                             ].join(" ")}
                           >
-                            <FiBriefcase className="mr-1.5" />
+                            <FiBriefcase className="mr-1.5 text-[11px]" />
                             {user.position || "-"}
                           </span>
                         </td>
 
                         <td
-                          className={`px-4 py-4 text-right ${
+                          className={`px-3.5 py-3 text-right ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
                               : ""
@@ -547,14 +547,14 @@ const Index: React.FC = () => {
                               type="button"
                               onClick={() => handleEdit(user)}
                               className={[
-                                "inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors",
+                                "inline-flex h-8.5 w-8.5 items-center justify-center rounded-[14px] transition-colors",
                                 "text-cyan-600 bg-cyan-50 hover:bg-cyan-100 active:bg-cyan-200",
                                 "dark:text-cyan-300 dark:bg-cyan-500/10 dark:hover:bg-cyan-500/15 dark:active:bg-cyan-500/20",
                               ].join(" ")}
                               title="Edit user"
                               aria-label="Edit user"
                             >
-                              <FiEdit2 />
+                              <FiEdit2 className="text-[13px]" />
                             </button>
 
                             {!isCurrentUser && (
@@ -562,14 +562,14 @@ const Index: React.FC = () => {
                                 type="button"
                                 onClick={() => openDeleteModal(user)}
                                 className={[
-                                  "inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors",
+                                  "inline-flex h-8.5 w-8.5 items-center justify-center rounded-[14px] transition-colors",
                                   "text-red-600 bg-red-50 hover:bg-red-100 active:bg-red-200",
                                   "dark:text-red-300 dark:bg-red-500/10 dark:hover:bg-red-500/15 dark:active:bg-red-500/20",
                                 ].join(" ")}
                                 title="Delete user"
                                 aria-label="Delete user"
                               >
-                                <FiTrash2 />
+                                <FiTrash2 className="text-[13px]" />
                               </button>
                             )}
                           </div>
@@ -582,7 +582,7 @@ const Index: React.FC = () => {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-4 py-10 text-center text-[14px] text-slate-500 dark:text-white/50"
+                      className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       No user data found
                     </td>
@@ -593,7 +593,7 @@ const Index: React.FC = () => {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-4 py-10 text-center text-[14px] text-slate-500 dark:text-white/50"
+                      className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       Loading...
                     </td>
@@ -625,7 +625,7 @@ const Index: React.FC = () => {
 
           <div
             className={[
-              "relative z-10 w-full max-w-135 rounded-[14px] border border-gray-200 bg-white px-5 py-5 shadow-[0_20px_70px_rgba(15,23,42,0.18)]",
+              "relative z-10 w-full max-w-130 rounded-[18px] border border-gray-200 bg-white px-4 py-4 shadow-[0_20px_70px_rgba(15,23,42,0.18)]",
               "dark:border-white/10 dark:bg-[#0d1524]",
             ].join(" ")}
           >
@@ -636,20 +636,20 @@ const Index: React.FC = () => {
               className="absolute right-4 top-4 text-gray-400 transition hover:text-gray-600 disabled:cursor-not-allowed dark:text-white/45 dark:hover:text-white/70"
               aria-label="Close"
             >
-              <FiX className="text-[20px]" />
+              <FiX className="text-[18px]" />
             </button>
 
-            <div className="flex justify-center pt-2">
-              <div className="grid h-14 w-14 place-items-center rounded-full bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300">
-                <FiTrash2 className="text-[28px]" />
+            <div className="flex justify-center pt-1">
+              <div className="grid h-11 w-11 place-items-center rounded-full bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300">
+                <FiTrash2 className="text-[22px]" />
               </div>
             </div>
 
-            <h3 className="mt-4 text-center text-[22px] font-semibold text-slate-800 dark:text-white">
+            <h3 className="mt-3 text-center text-[18px] font-semibold text-slate-800 dark:text-white">
               Delete Account
             </h3>
 
-            <p className="mx-auto mt-3 max-w-100 text-center text-[14px] leading-6 text-slate-500 dark:text-white/55">
+            <p className="mx-auto mt-2.5 max-w-95 text-center text-[12px] leading-5 text-slate-500 dark:text-white/55">
               Are you sure you want to delete{" "}
               <span className="font-semibold text-slate-700 dark:text-white/80">
                 {deleteTarget.first_name} {deleteTarget.last_name}
@@ -657,23 +657,23 @@ const Index: React.FC = () => {
               ? This action cannot be undone.
             </p>
 
-            <p className="mt-2 text-center text-[13px] text-slate-400 dark:text-white/40">
+            <p className="mt-2 text-center text-[11px] text-slate-400 dark:text-white/40">
               Email: {deleteTarget.email || "-"}
             </p>
 
             {deleteError && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[13px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+              <div className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-3.5 py-2.5 text-center text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
                 {deleteError}
               </div>
             )}
 
-            <div className="mt-6 flex items-center justify-center gap-3">
+            <div className="mt-5 flex items-center justify-center gap-2.5">
               <button
                 type="button"
                 onClick={confirmDelete}
                 disabled={deleting}
                 className={[
-                  "min-w-26 rounded-[10px] px-4 py-2.5 text-[15px] font-medium transition",
+                  "min-w-27.5 rounded-[10px] px-3.5 py-2 text-[12px] font-medium transition",
                   "bg-[#f8dedd] text-[#ff5a3c] hover:bg-[#f4d2d1]",
                   "disabled:cursor-not-allowed disabled:opacity-60",
                 ].join(" ")}
@@ -686,7 +686,7 @@ const Index: React.FC = () => {
                 onClick={closeDeleteModal}
                 disabled={deleting}
                 className={[
-                  "min-w-26 rounded-[10px] px-4 py-2.5 text-[15px] font-medium transition",
+                  "min-w-27.5 rounded-[10px] px-3.5 py-2 text-[12px] font-medium transition",
                   "bg-[#6d5efc] text-white hover:bg-[#5f51eb]",
                   "disabled:cursor-not-allowed disabled:opacity-60",
                 ].join(" ")}

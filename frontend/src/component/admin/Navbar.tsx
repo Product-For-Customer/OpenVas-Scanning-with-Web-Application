@@ -19,6 +19,8 @@ type NavBtnProps = {
   "aria-label"?: string;
 };
 
+const DESKTOP_BREAKPOINT = 900;
+
 const NavButton: React.FC<NavBtnProps> = ({
   title,
   onClick,
@@ -34,7 +36,7 @@ const NavButton: React.FC<NavBtnProps> = ({
       aria-label={ariaLabel ?? title}
       onClick={onClick}
       className={[
-        "relative inline-flex h-10 w-10 items-center justify-center rounded-2xl text-[19px] transition-all duration-200",
+        "relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-[18px] transition-all duration-200",
         "text-gray-600 hover:bg-gray-100 active:bg-gray-200",
         "dark:text-white/75 dark:hover:bg-white/10 dark:active:bg-white/15",
         className,
@@ -43,14 +45,14 @@ const NavButton: React.FC<NavBtnProps> = ({
       {dotColor && (
         <span
           style={{ background: dotColor }}
-          className="absolute right-2 top-2 inline-flex h-2 w-2 rounded-full"
+          className="absolute right-1.5 top-1.5 inline-flex h-2 w-2 rounded-full"
         />
       )}
 
       {typeof badgeCount === "number" && badgeCount > 0 && (
         <span
           className={[
-            "absolute -right-1 -top-1 min-w-4.5 h-4.5 px-1",
+            "absolute -right-1 -top-1 min-w-4 h-4 px-1",
             "inline-flex items-center justify-center rounded-full",
             "bg-linear-to-r from-cyan-500 to-violet-500 text-white text-[10px] font-bold leading-none shadow-sm",
           ].join(" ")}
@@ -89,7 +91,9 @@ const Navbar: React.FC = () => {
   }, [setScreenSize]);
 
   useEffect(() => {
-    if (typeof screenSize === "number") setActiveMenu(screenSize > 900);
+    if (typeof screenSize === "number") {
+      setActiveMenu(screenSize > DESKTOP_BREAKPOINT);
+    }
   }, [screenSize, setActiveMenu]);
 
   const handleActiveMenu = () => setActiveMenu(!activeMenu);
@@ -120,22 +124,22 @@ const Navbar: React.FC = () => {
       className={["sticky top-0 z-30 w-full", "bg-transparent", "dark:bg-transparent"].join(" ")}
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="px-3 sm:px-4 md:px-5 pt-3 pb-3">
+      <div className="px-2.5 sm:px-3.5 md:px-4.5 lg:px-5 pt-2.5 pb-2.5">
         <div
           className={[
-            "relative w-full min-h-21 rounded-[26px] flex items-center justify-between overflow-hidden",
-            "bg-white/92 border border-gray-200/80 shadow-[0_16px_40px_-24px_rgba(15,23,42,0.28)] backdrop-blur",
+            "relative w-full min-h-18.5 rounded-[22px] flex items-center justify-between overflow-hidden",
+            "bg-white/92 border border-gray-200/80 shadow-[0_14px_36px_-24px_rgba(15,23,42,0.28)] backdrop-blur",
             "dark:bg-[#08111f]/80 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
           ].join(" ")}
         >
           {/* glow background */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-12 right-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="absolute -bottom-12 left-16 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl" />
+            <div className="absolute -top-12 right-10 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
+            <div className="absolute -bottom-12 left-16 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
 
           {/* Left */}
-          <div className="relative z-10 flex items-center gap-3 sm:gap-4 pl-4 sm:pl-5 min-w-0 flex-1">
+          <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 pl-3 sm:pl-4 md:pl-5 min-w-0 flex-1">
             <TooltipComponent
               content={activeMenu ? "Hide menu" : "Open menu"}
               position="BottomCenter"
@@ -145,46 +149,46 @@ const Navbar: React.FC = () => {
                 aria-label="Toggle menu"
                 onClick={handleActiveMenu}
                 className={[
-                  "inline-flex h-11 w-11 items-center justify-center rounded-2xl transition-all duration-200",
+                  "inline-flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200",
                   "text-gray-600 hover:bg-gray-100 active:bg-gray-200",
                   "dark:text-white/75 dark:hover:bg-white/10 dark:active:bg-white/15",
                 ].join(" ")}
               >
-                <AiOutlineMenu className="text-[21px]" />
+                <AiOutlineMenu className="text-[20px]" />
               </button>
             </TooltipComponent>
 
-            {/* status chips */}
+            {/* status chip */}
             <div className="hidden lg:flex items-center gap-2 shrink-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[12px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-                <FiShield className="text-[13px]" />
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                <FiShield className="text-[12px]" />
                 Security Command
               </div>
             </div>
 
-            {/* Search desktop - แสดงเฉพาะ >= sm เท่านั้น */}
+            {/* Search desktop */}
             <div
               className={[
-                "hidden sm:flex items-center h-12 w-full max-w-90 lg:max-w-105 rounded-full px-4",
+                "hidden sm:flex items-center h-11 w-full max-w-85 lg:max-w-115 xl:max-w-130 rounded-full px-4",
                 "border border-gray-200 bg-[#f6f8fc]",
                 "shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
                 "dark:border-white/10 dark:bg-white/5 dark:shadow-none",
               ].join(" ")}
             >
-              <FiSearch className="text-gray-400 dark:text-white/40 text-[18px] mr-3 shrink-0" />
+              <FiSearch className="text-gray-400 dark:text-white/40 text-[17px] mr-3 shrink-0" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search assets, hosts, tasks, vulnerabilities..."
                 className={[
-                  "flex-1 bg-transparent outline-none border-none text-[14px]",
+                  "flex-1 bg-transparent outline-none border-none text-[13px]",
                   "text-gray-700 placeholder:text-gray-400",
                   "dark:text-white/80 dark:placeholder:text-white/35",
                 ].join(" ")}
                 aria-label="Search"
               />
-              <span className="ml-3 hidden md:inline-flex items-center text-[12px] font-medium text-gray-400 dark:text-white/35 whitespace-nowrap">
+              <span className="ml-3 hidden md:inline-flex items-center text-[11px] font-medium text-gray-400 dark:text-white/35 whitespace-nowrap">
                 ⌘ + k
               </span>
             </div>
@@ -192,7 +196,7 @@ const Navbar: React.FC = () => {
 
           {/* Right */}
           <div className="relative z-10 flex items-center h-full shrink-0">
-            <div className="flex items-center gap-1 px-2 sm:px-3 md:px-4">
+            <div className="flex items-center gap-1 px-2 sm:px-3">
               <NavButton
                 title={currentMode === "Dark" ? "Light mode" : "Dark mode"}
                 aria-label="Toggle theme"
@@ -209,15 +213,15 @@ const Navbar: React.FC = () => {
               />
             </div>
 
-            <div className="h-10 w-px bg-gray-200/90 dark:bg-white/10" />
+            <div className="h-8 w-px bg-gray-200/90 dark:bg-white/10" />
 
-            <div className="px-3 sm:px-4">
+            <div className="px-2.5 sm:px-3.5 md:px-4">
               <TooltipComponent content="Profile" position="BottomCenter">
                 <button
                   type="button"
                   onClick={() => handleClick("userProfile")}
                   className={[
-                    "group flex items-center gap-2 sm:gap-3 rounded-2xl px-2 sm:px-3 py-2 transition-colors max-w-[44vw] sm:max-w-none",
+                    "group flex items-center gap-2 sm:gap-2.5 rounded-xl px-2 sm:px-2.5 py-1.5 transition-colors max-w-[44vw] sm:max-w-none",
                     "hover:bg-gray-100 active:bg-gray-200",
                     "dark:hover:bg-white/10 dark:active:bg-white/15",
                   ].join(" ")}
@@ -227,22 +231,22 @@ const Navbar: React.FC = () => {
                     <img
                       src={avatarSrc}
                       alt="user"
-                      className="h-10 w-10 rounded-full object-cover ring-1 ring-gray-200 bg-white dark:ring-white/15 dark:bg-white/10"
+                      className="h-9 w-9 rounded-full object-cover ring-1 ring-gray-200 bg-white dark:ring-white/15 dark:bg-white/10"
                       onError={() => setProfileError(true)}
                     />
                     <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-[#08111f]" />
                   </div>
 
-                  <div className="hidden sm:block text-left">
-                    <span className="block text-[13px] text-gray-500 dark:text-white/45">
+                  <div className="hidden sm:block text-left leading-tight">
+                    <span className="block text-[12px] text-gray-500 dark:text-white/45">
                       Analyst
                     </span>
-                    <span className="block text-[14px] font-semibold text-gray-700 dark:text-white/80 truncate max-w-22.5 md:max-w-30">
+                    <span className="block text-[13px] font-semibold text-gray-700 dark:text-white/80 truncate max-w-22 md:max-w-30">
                       {firstnameUser}...
                     </span>
                   </div>
 
-                  <MdKeyboardArrowDown className="hidden sm:block text-gray-400 dark:text-white/45 group-hover:text-gray-600 dark:group-hover:text-white/70 text-[20px]" />
+                  <MdKeyboardArrowDown className="hidden sm:block text-gray-400 dark:text-white/45 group-hover:text-gray-600 dark:group-hover:text-white/70 text-[18px]" />
                 </button>
               </TooltipComponent>
             </div>

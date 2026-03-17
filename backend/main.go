@@ -61,13 +61,13 @@ func main() {
 		authorized.GET("/auth/me", auth.Me)
 
 		// ===== Protected Routes for Vulnerability Management Authorization =====
-		authorized.GET("/tasks/status", vulnerability.ListStatus) // complete
-		authorized.GET("/tasks/summary-vulnerability", vulnerability.ListTaskVulnSummary) // complete
-		authorized.GET("/vulnerabilities/list", vulnerability.ListVulnerability) // complete
-		authorized.GET("/assets/risk", vulnerability.ListAssetRisk) // complete
-		authorized.GET("/devices/risk", vulnerability.ListDeviceRisk) // complete
+		authorized.GET("/tasks/status", vulnerability.ListStatus)                                      // complete
+		authorized.GET("/tasks/summary-vulnerability", vulnerability.ListTaskVulnSummary)              // complete
+		authorized.GET("/vulnerabilities/list", vulnerability.ListVulnerability)                       // complete
+		authorized.GET("/assets/risk", vulnerability.ListAssetRisk)                                    // complete
+		authorized.GET("/devices/risk", vulnerability.ListDeviceRisk)                                  // complete
 		authorized.GET("/vulnerabilities/detail/by-name", vulnerability.ListVulnerabilityDetailByName) // complete
-		authorized.GET("/vulnerabilities/:task_id", vulnerability.ListVulnerabilityByTaskID) // complete
+		authorized.GET("/vulnerabilities/:task_id", vulnerability.ListVulnerabilityByTaskID)           // complete
 		authorized.GET("/target-differ", vulnerability.ListTargetDiffer)
 
 		// ===== Protected Routes for Line Notify History Authorization =====
@@ -106,7 +106,13 @@ func main() {
 		authorized.POST("/create-locations", location.CreateLocation)
 		authorized.PATCH("/update-locations/:id", location.UpdateLocationByID)
 		authorized.DELETE("/delete-locations/:id", location.DeleteLocationByID)
-		authorized.GET("/targets", location.ListAppTarget)
+
+		// ===== AppTarget =====
+		authorized.GET("/app-targets", location.ListAppTarget)
+		authorized.GET("/app-targets/:id", location.ListAppTargetByID)
+		authorized.POST("/create-app-targets", location.CreateTarget)
+		authorized.PATCH("/update-app-targets/:id", location.UpdateTargetByID)
+		authorized.DELETE("/delete-app-targets/:id", location.DeleteTargetByID)
 	}
 
 	log.Printf("✅ Server starting on port %s\n", PORT)

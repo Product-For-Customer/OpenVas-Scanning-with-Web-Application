@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import {
-  FiMoreHorizontal,
   FiShield,
-  FiRadio,
   FiCpu,
   FiAlertTriangle,
 } from "react-icons/fi";
+import { ConfigProvider, Select } from "antd";
+import type { SelectProps } from "antd";
 import { ListAssetRisk, type AssetRiskDTO } from "../../../services";
 
 type RowItem = {
@@ -15,7 +16,7 @@ type RowItem = {
   valueLeft: string;
   valueRight: string;
   percent?: number;
-  icon: React.ReactNode;
+  icon: ReactNode;
   rowType: "summary" | "task";
   riskValue?: number;
 };
@@ -91,16 +92,25 @@ const getRiskTone = (risk: number) => {
 const Social: React.FC = () => {
   const [data, setData] = useState<AssetRiskDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedTask, setSelectedTask] = useState<string>("all");
 
   useEffect(() => {
     let mounted = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListAssetRisk();
-      if (!mounted) return;
-      setData(Array.isArray(res) ? res : []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await ListAssetRisk();
+        if (!mounted) return;
+        setData(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to load asset risk:", error);
+        if (!mounted) return;
+        setData([]);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
@@ -108,8 +118,48 @@ const Social: React.FC = () => {
     };
   }, []);
 
-  const summary = useMemo(() => {
+  const taskOptions = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
+
+    const names = list
+      .map((item) => ({
+        task_id: String((item as any).task_id ?? ""),
+        task_name: String((item as any).task_name ?? "").trim(),
+      }))
+      .filter((item) => item.task_name !== "");
+
+    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+
+    for (const item of names) {
+      if (!uniqueMap.has(item.task_name)) {
+        uniqueMap.set(item.task_name, item);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }, [data]);
+
+  const selectOptions: SelectProps["options"] = useMemo(() => {
+    return [
+      { value: "all", label: "All Tasks" },
+      ...taskOptions.map((task) => ({
+        value: task.task_name,
+        label: task.task_name,
+      })),
+    ];
+  }, [taskOptions]);
+
+  const filteredData = useMemo(() => {
+    const list = Array.isArray(data) ? data : [];
+    if (selectedTask === "all") return list;
+
+    return list.filter(
+      (item) => String((item as any).task_name ?? "").trim() === selectedTask
+    );
+  }, [data, selectedTask]);
+
+  const summary = useMemo(() => {
+    const list = filteredData;
     const taskCount = list.length;
 
     const totalVuln = list.reduce(
@@ -129,15 +179,16 @@ const Social: React.FC = () => {
     );
 
     return { taskCount, totalVuln, avgRisk, maxRisk };
-  }, [data]);
+  }, [filteredData]);
 
   const rows: RowItem[] = useMemo(() => {
-    const list = Array.isArray(data) ? data : [];
+    const list = filteredData;
 
     const maxRisk = list.reduce(
       (m, x) => Math.max(m, Number(x.risk_score) || 0),
       0
     );
+
     const maxVuln = list.reduce(
       (m, x) => Math.max(m, Number(x.vulnerability_total) || 0),
       0
@@ -228,20 +279,20 @@ const Social: React.FC = () => {
     ];
 
     return [...summaryRows, ...taskRows];
-  }, [data, summary]);
+  }, [filteredData, summary]);
 
   const criticalAssets = useMemo(() => {
-    return (data ?? []).filter((x) => (Number(x.risk_score) || 0) >= 8).length;
-  }, [data]);
+    return filteredData.filter((x) => (Number(x.risk_score) || 0) >= 8).length;
+  }, [filteredData]);
 
   const subtitle = useMemo(() => {
     if (loading) return "Syncing latest asset risk posture...";
-    if ((data ?? []).length === 0) return "No asset risk data available";
+    if (filteredData.length === 0) return "No asset risk data available";
     if (criticalAssets > 0) {
       return `${criticalAssets} high-priority assets require immediate review`;
     }
     return "Live asset exposure summary from latest scan results";
-  }, [loading, data, criticalAssets]);
+  }, [loading, filteredData, criticalAssets]);
 
   return (
     <section
@@ -268,8 +319,8 @@ const Social: React.FC = () => {
         </div>
       </div>
 
-      <div className="relative z-10">
-        <div className="flex items-start justify-between gap-3">
+      <div className="relative z-10 h-full flex flex-col">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <div
@@ -281,20 +332,7 @@ const Social: React.FC = () => {
               >
                 <FiShield className="text-[14px]" />
                 <span className="text-[12px] font-semibold tracking-wide">
-                  Asset Risk Monitor
-                </span>
-              </div>
-
-              <div
-                className={[
-                  "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                  "bg-slate-50 text-slate-600 border border-slate-200/80",
-                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                ].join(" ")}
-              >
-                <FiRadio className="text-[13px] text-cyan-500" />
-                <span className="text-[12px] font-medium">
-                  {loading ? "Loading..." : `${summary.taskCount} Assets`}
+                  Asset Risk Overview
                 </span>
               </div>
             </div>
@@ -307,20 +345,165 @@ const Social: React.FC = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            className={[
-              "h-10 w-10 rounded-2xl inline-flex items-center justify-center transition-colors",
-              "text-gray-500 border border-gray-200/80 bg-white hover:bg-gray-100 active:bg-gray-200",
-              "dark:text-white/55 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:active:bg-white/15",
-            ].join(" ")}
-            aria-label="More"
-          >
-            <FiMoreHorizontal />
-          </button>
+          <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-full sm:w-auto">
+                <ConfigProvider
+                  theme={{
+                    token: {
+                      colorPrimary: "#e2e8f0",
+                      borderRadius: 20,
+                      colorBgElevated: "#ffffff",
+                      colorBorder: "#e5e7eb",
+                      boxShadowSecondary:
+                        "0 16px 40px -20px rgba(15,23,42,0.12)",
+                      colorText: "#334155",
+                      colorTextPlaceholder: "#94a3b8",
+                    },
+                    components: {
+                      Select: {
+                        activeBorderColor: "#dbeafe",
+                        hoverBorderColor: "#cbd5e1",
+                        optionSelectedBg: "#f8fafc",
+                        optionActiveBg: "#f1f5f9",
+                        optionSelectedColor: "#0f172a",
+                      },
+                    },
+                  }}
+                >
+                  <div className="relative w-full sm:min-w-52">
+                    <Select
+                      value={selectedTask}
+                      onChange={(value) => setSelectedTask(value)}
+                      options={selectOptions}
+                      popupMatchSelectWidth
+                      showSearch={false}
+                      size="large"
+                      variant="outlined"
+                      suffixIcon={
+                        <span
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: 13,
+                            lineHeight: 1,
+                            pointerEvents: "none",
+                          }}
+                        >
+                          ▾
+                        </span>
+                      }
+                      style={{
+                        width: "100%",
+                        background: "transparent",
+                      }}
+                      styles={{
+                        root: {
+                          width: "100%",
+                        },
+                        popup: {
+                          root: {
+                            padding: 8,
+                            borderRadius: 22,
+                            border: "1px solid #e5e7eb",
+                            overflow: "hidden",
+                            boxShadow:
+                              "0 16px 40px -20px rgba(15,23,42,0.12)",
+                            background: "#ffffff",
+                          },
+                          list: {
+                            padding: 0,
+                            background: "#ffffff",
+                          },
+                          listItem: {
+                            minHeight: 42,
+                            borderRadius: 14,
+                            margin: "4px 0",
+                            paddingInline: 14,
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: "#334155",
+                            transition: "all 0.18s ease",
+                          },
+                        },
+                      }}
+                      classNames={{
+                        root: "w-full",
+                      }}
+                      getPopupContainer={(triggerNode) =>
+                        triggerNode.parentElement || document.body
+                      }
+                      optionRender={(option) => {
+                        const isAll = option.data.value === "all";
+                        const isSelected = selectedTask === option.data.value;
+
+                        return (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              width: "100%",
+                              padding: "2px 0",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 999,
+                                background: isSelected
+                                  ? "#cbd5e1"
+                                  : isAll
+                                  ? "#cbd5e1"
+                                  : "#6366f1",
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: 13,
+                                fontWeight: isSelected ? 600 : 500,
+                                color: "#334155",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              {String(option.data.label)}
+                            </span>
+                          </div>
+                        );
+                      }}
+                      labelRender={(props) => (
+                        <span
+                          style={{
+                            color: "#334155",
+                            fontSize: 13,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {props.label}
+                        </span>
+                      )}
+                    />
+
+                    <div
+                      className="pointer-events-none absolute inset-0 rounded-[20px]"
+                      style={{
+                        border: "1px solid #dbeafe",
+                        boxShadow: "0 8px 24px -18px rgba(15,23,42,0.10)",
+                      }}
+                    />
+                  </div>
+                </ConfigProvider>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-3 flex-1">
           {loading ? (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (

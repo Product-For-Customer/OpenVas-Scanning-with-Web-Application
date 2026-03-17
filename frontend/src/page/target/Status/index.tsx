@@ -27,8 +27,10 @@ const normalizeStatus = (s: string): StatusKey => {
   if (v === "stopped") return "Stopped";
 
   if (v.includes("run")) return "Running";
-  if (v.includes("stop") || v.includes("pause") || v.includes("interrupt")) return "Stopped";
-  if (v.includes("new") || v.includes("request") || v.includes("queue")) return "New";
+  if (v.includes("stop") || v.includes("pause") || v.includes("interrupt"))
+    return "Stopped";
+  if (v.includes("new") || v.includes("request") || v.includes("queue"))
+    return "New";
   if (v.includes("done") || v.includes("finish")) return "Done";
   return "Done";
 };
@@ -41,13 +43,19 @@ const StatusTarget: React.FC = () => {
     let alive = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListTaskStatus();
-      console.log("Fetched task status:", res);
-      if (!alive) return;
-
-      setRows(res ?? []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await ListTaskStatus();
+        if (!alive) return;
+        setRows(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Fetched task status error:", error);
+        if (!alive) return;
+        setRows([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
@@ -118,12 +126,13 @@ const StatusTarget: React.FC = () => {
         iconWrap:
           "bg-gradient-to-br from-[#60a5fa] via-[#3b82f6] to-[#1d4ed8]",
         iconColor: "text-white",
-        progress: "bg-gradient-to-r from-[#93c5fd] via-[#3b82f6] to-[#1d4ed8]",
+        progress:
+          "bg-gradient-to-r from-[#93c5fd] via-[#3b82f6] to-[#1d4ed8]",
         panelLight: "bg-white",
         panelDark: "dark:bg-[#0d1526]",
         borderLight: "border-blue-100/80",
         borderDark: "dark:border-blue-400/10",
-        glow: "shadow-[0_14px_35px_-22px_rgba(59,130,246,0.45)]",
+        glow: "shadow-[0_10px_26px_-20px_rgba(59,130,246,0.42)]",
       },
       Running: {
         accent: "#10b981",
@@ -133,12 +142,13 @@ const StatusTarget: React.FC = () => {
         iconWrap:
           "bg-gradient-to-br from-[#34d399] via-[#10b981] to-[#047857]",
         iconColor: "text-white",
-        progress: "bg-gradient-to-r from-[#86efac] via-[#34d399] to-[#059669]",
+        progress:
+          "bg-gradient-to-r from-[#86efac] via-[#34d399] to-[#059669]",
         panelLight: "bg-white",
         panelDark: "dark:bg-[#0d161d]",
         borderLight: "border-emerald-100/80",
         borderDark: "dark:border-emerald-400/10",
-        glow: "shadow-[0_14px_35px_-22px_rgba(16,185,129,0.42)]",
+        glow: "shadow-[0_10px_26px_-20px_rgba(16,185,129,0.40)]",
       },
       New: {
         accent: "#f59e0b",
@@ -148,12 +158,13 @@ const StatusTarget: React.FC = () => {
         iconWrap:
           "bg-gradient-to-br from-[#fde68a] via-[#f59e0b] to-[#b45309]",
         iconColor: "text-white",
-        progress: "bg-gradient-to-r from-[#fde68a] via-[#f59e0b] to-[#b45309]",
+        progress:
+          "bg-gradient-to-r from-[#fde68a] via-[#f59e0b] to-[#b45309]",
         panelLight: "bg-white",
         panelDark: "dark:bg-[#171208]",
         borderLight: "border-amber-100/80",
         borderDark: "dark:border-amber-400/10",
-        glow: "shadow-[0_14px_35px_-22px_rgba(245,158,11,0.35)]",
+        glow: "shadow-[0_10px_26px_-20px_rgba(245,158,11,0.34)]",
       },
       Stopped: {
         accent: "#f43f5e",
@@ -163,12 +174,13 @@ const StatusTarget: React.FC = () => {
         iconWrap:
           "bg-gradient-to-br from-[#fda4af] via-[#fb7185] to-[#be123c]",
         iconColor: "text-white",
-        progress: "bg-gradient-to-r from-[#fda4af] via-[#fb7185] to-[#be123c]",
+        progress:
+          "bg-gradient-to-r from-[#fda4af] via-[#fb7185] to-[#be123c]",
         panelLight: "bg-white",
         panelDark: "dark:bg-[#180b12]",
         borderLight: "border-rose-100/80",
         borderDark: "dark:border-rose-400/10",
-        glow: "shadow-[0_14px_35px_-22px_rgba(244,63,94,0.38)]",
+        glow: "shadow-[0_10px_26px_-20px_rgba(244,63,94,0.36)]",
       },
     }),
     []
@@ -222,49 +234,51 @@ const StatusTarget: React.FC = () => {
       {/* HERO */}
       <div
         className={[
-          "relative overflow-hidden rounded-[28px] px-6 sm:px-8 pt-7 sm:pt-8 pb-24 sm:pb-26",
+          "relative overflow-hidden rounded-[22px] px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 pb-18 sm:pb-20",
           "bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.10),transparent_24%),linear-gradient(135deg,#1e1b4b_0%,#111827_50%,#0b1220_100%)]",
           "text-white border border-white/10",
         ].join(" ")}
       >
-        <div className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl" />
 
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            
-
-            <h2 className="mt-4 text-[28px] sm:text-[32px] font-semibold tracking-tight">
+            <h2 className="text-[22px] sm:text-[26px] font-semibold tracking-tight">
               Scanning Network Status
             </h2>
 
-            <p className="mt-2 text-[13px] sm:text-[14px] text-white/70">
+            <p className="mt-1.5 text-[11px] sm:text-[12px] text-white/70">
               OpenVAS task summary
             </p>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[12px] text-white/80 backdrop-blur-sm">
-                <FiShield className="text-cyan-300" />
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
+                <FiShield className="text-cyan-300 text-[12px]" />
                 Security Monitor
               </div>
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[12px] text-white/80 backdrop-blur-sm">
-                <FiRadio className="text-violet-300" />
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
+                <FiRadio className="text-violet-300 text-[12px]" />
                 {loading ? "Syncing..." : dominantStatus}
               </div>
             </div>
           </div>
 
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 backdrop-blur-sm">
-            <p className="text-[11px] uppercase tracking-[0.18em] text-white/50">Date</p>
-            <p className="mt-1 text-[13px] sm:text-[14px] text-white/85">{nowText}</p>
+          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/8 px-3 py-2.5 backdrop-blur-sm">
+            <p className="text-[9px] uppercase tracking-[0.16em] text-white/50">
+              Date
+            </p>
+            <p className="mt-1 text-[11px] sm:text-[12px] text-white/85">
+              {nowText}
+            </p>
           </div>
         </div>
       </div>
 
       {/* CARDS */}
-      <div className="px-4 sm:px-5 md:px-6 -mt-18 sm:-mt-20 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
+      <div className="px-3 sm:px-4 md:px-5 -mt-13 sm:-mt-15 relative z-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           {stats.map((s) => {
             const theme = themeByStatus[s.title];
             const count = statusCounts[s.title];
@@ -274,8 +288,8 @@ const StatusTarget: React.FC = () => {
               <div
                 key={s.id}
                 className={[
-                  "relative overflow-hidden rounded-3xl border p-4 sm:p-5 transition-all duration-300",
-                  "hover:-translate-y-1 hover:shadow-xl",
+                  "relative overflow-hidden rounded-[22px] border p-3 sm:p-3.5 transition-all duration-300",
+                  "hover:-translate-y-0.5 hover:shadow-lg",
                   theme.panelLight,
                   theme.panelDark,
                   theme.borderLight,
@@ -283,35 +297,32 @@ const StatusTarget: React.FC = () => {
                   theme.glow,
                 ].join(" ")}
               >
-                {/* top accent */}
                 <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1.5"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-1"
                   style={{
                     background: `linear-gradient(90deg, ${theme.soft}, ${theme.accent})`,
                   }}
                 />
 
-                {/* glow corner */}
                 <div
-                  className="pointer-events-none absolute -top-14 -right-14 h-32 w-32 rounded-full blur-3xl"
+                  className="pointer-events-none absolute -top-12 -right-12 h-24 w-24 rounded-full blur-3xl"
                   style={{ background: `${theme.accent}18` }}
                 />
 
                 <div className="relative">
-                  {/* header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[14px] font-semibold text-slate-900 dark:text-white/90">
+                      <p className="text-[12px] font-semibold text-slate-900 dark:text-white/90">
                         {s.title}
                       </p>
-                      <p className="mt-1 text-[12px] text-slate-600 dark:text-white/55">
+                      <p className="mt-0.5 text-[10.5px] text-slate-600 dark:text-white/55">
                         {s.subtitle}
                       </p>
                     </div>
 
                     <div
                       className={[
-                        "h-11 w-11 rounded-2xl flex items-center justify-center text-[19px] shrink-0 shadow-sm",
+                        "h-9 w-9 rounded-[14px] flex items-center justify-center text-[16px] shrink-0 shadow-sm",
                         theme.iconWrap,
                         theme.iconColor,
                       ].join(" ")}
@@ -320,20 +331,19 @@ const StatusTarget: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* value */}
-                  <div className="mt-5 flex items-end justify-between gap-3">
+                  <div className="mt-3.5 flex items-end justify-between gap-3">
                     <div>
-                      <p className="text-[30px] sm:text-[34px] font-semibold leading-none tracking-tight text-slate-900 dark:text-white tabular-nums">
+                      <p className="text-[22px] sm:text-[26px] font-semibold leading-none tracking-tight text-slate-900 dark:text-white tabular-nums">
                         {s.value}
                       </p>
-                      <p className="mt-2 text-[12px] text-slate-600 dark:text-white/55">
+                      <p className="mt-1.5 text-[10.5px] text-slate-600 dark:text-white/55">
                         {loading ? "Loading..." : `${count} tasks`}
                       </p>
                     </div>
 
                     <span
                       className={[
-                        "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold border backdrop-blur-sm",
+                        "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold border backdrop-blur-sm",
                         theme.chip,
                       ].join(" ")}
                     >
@@ -341,14 +351,13 @@ const StatusTarget: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* progress */}
-                  <div className="mt-5">
-                    <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-slate-600 dark:text-white/45">
+                  <div className="mt-3.5">
+                    <div className="mb-1.5 flex items-center justify-between text-[9.5px] text-slate-600 dark:text-white/45">
                       <span>Status</span>
                       <span>{loading ? "..." : `${count}/${totalTasks}`}</span>
                     </div>
 
-                    <div className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden border border-black/5 dark:border-white/10">
+                    <div className="h-2 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden border border-black/5 dark:border-white/10">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${theme.progress}`}
                         style={{ width: `${percent}%` }}

@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FiMoreHorizontal, FiActivity, FiChevronDown } from "react-icons/fi";
+import {
+  FiActivity,
+  FiChevronDown,
+  FiCheck,
+  FiSearch,
+  FiX,
+} from "react-icons/fi";
 import {
   MdRouter,
   MdDevices,
@@ -10,9 +16,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { ListDeviceRisk, type DeviceRiskDTO } from "../../../services";
 
-type RangeKey = "This Month" | "This Year";
-const RANGE_OPTIONS: RangeKey[] = ["This Month", "This Year"];
-
 type Row = {
   id: string;
   taskID: string;
@@ -22,6 +25,11 @@ type Row = {
   vulnTotal: number;
   risk: number;
   iconIndex: number;
+};
+
+type FilterOption = {
+  key: string;
+  label: string;
 };
 
 const DEVICE_ICONS = [
@@ -143,19 +151,19 @@ const DangerDots: React.FC<{ value: number }> = ({ value }) => {
     value >= 8
       ? "bg-[#ef4444]"
       : value >= 6
-      ? "bg-[#f97316]"
-      : value >= 4
-      ? "bg-[#eab308]"
-      : value > 0
-      ? "bg-[#22c55e]"
-      : "bg-[#38bdf8]";
+        ? "bg-[#f97316]"
+        : value >= 4
+          ? "bg-[#eab308]"
+          : value > 0
+            ? "bg-[#22c55e]"
+            : "bg-[#38bdf8]";
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1">
       {Array.from({ length: 5 }).map((_, i) => (
         <span
           key={i}
-          className={`h-2.5 w-2.5 rounded-full ${
+          className={`h-2 w-2 rounded-full ${
             i < level ? activeClass : "bg-gray-200 dark:bg-white/10"
           }`}
         />
@@ -167,8 +175,9 @@ const DangerDots: React.FC<{ value: number }> = ({ value }) => {
 const RiskScoreTable: React.FC = () => {
   const navigate = useNavigate();
 
-  const [range, setRange] = useState<RangeKey>("This Month");
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
   const [data, setData] = useState<DeviceRiskDTO[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -179,14 +188,20 @@ const RiskScoreTable: React.FC = () => {
     let mounted = true;
 
     const fetchData = async () => {
-      setLoading(true);
-      const res = await ListDeviceRisk();
-      console.log("ListDeviceRisk:", res);
+      try {
+        setLoading(true);
+        const res = await ListDeviceRisk();
 
-      if (!mounted) return;
-
-      setData(Array.isArray(res) ? res : []);
-      setLoading(false);
+        if (!mounted) return;
+        setData(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("ListDeviceRisk error:", error);
+        if (!mounted) return;
+        setData([]);
+      } finally {
+        if (!mounted) return;
+        setLoading(false);
+      }
     };
 
     fetchData();
@@ -208,13 +223,8 @@ const RiskScoreTable: React.FC = () => {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const { rows, maxRisk } = useMemo(() => {
+  const allRows = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
-
-    const max = list.reduce((m, x) => {
-      const risk = Number(x?.risk_score) || 0;
-      return Math.max(m, risk);
-    }, 0);
 
     const mapped: Row[] = list.map((x, idx) => {
       const taskID = String(x?.task_id ?? "").trim();
@@ -244,11 +254,85 @@ const RiskScoreTable: React.FC = () => {
       return a.taskName.localeCompare(b.taskName);
     });
 
-    return {
-      rows: mapped,
-      maxRisk: max,
-    };
-  }, [data, range]);
+    return mapped;
+  }, [data]);
+
+  const filterOptions = useMemo<FilterOption[]>(() => {
+    const seen = new Set<string>();
+    const options: FilterOption[] = [];
+
+    for (const row of allRows) {
+      const key = `${row.taskID}__${row.ipAddress}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      options.push({
+        key,
+        label: `${row.taskName} - ${row.ipAddress || "-"}`,
+      });
+    }
+
+    return options;
+  }, [allRows]);
+
+  const filteredOptions = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+    if (!keyword) return filterOptions;
+
+    return filterOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(keyword)
+    );
+  }, [filterOptions, searchQuery]);
+
+  const rows = useMemo(() => {
+    if (selectedKeys.length === 0) return allRows;
+
+    const selectedSet = new Set(selectedKeys);
+    return allRows.filter((row) =>
+      selectedSet.has(`${row.taskID}__${row.ipAddress}`)
+    );
+  }, [allRows, selectedKeys]);
+
+  const maxRisk = useMemo(() => {
+    return rows.reduce((m, x) => Math.max(m, Number(x?.risk) || 0), 0);
+  }, [rows]);
+
+  const selectedCount = selectedKeys.length;
+
+  const dropdownButtonLabel = useMemo(() => {
+    if (selectedCount === 0) return "Query Select";
+    if (selectedCount === 1) {
+      const found = filterOptions.find((x) => x.key === selectedKeys[0]);
+      return found?.label || "1 selected";
+    }
+    return `${selectedCount} selected`;
+  }, [selectedCount, filterOptions, selectedKeys]);
+
+  const toggleSelect = (key: string) => {
+    setSelectedKeys((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const handleSelectAllVisible = () => {
+    const visibleKeys = filteredOptions.map((x) => x.key);
+
+    setSelectedKeys((prev) => {
+      const prevSet = new Set(prev);
+      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
+
+      if (allVisibleSelected) {
+        return prev.filter((key) => !visibleKeys.includes(key));
+      }
+
+      const merged = new Set([...prev, ...visibleKeys]);
+      return Array.from(merged);
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedKeys([]);
+  };
 
   const goToDevice = (row: Row) => {
     if (!row.taskID.trim()) {
@@ -266,18 +350,22 @@ const RiskScoreTable: React.FC = () => {
     });
   };
 
+  const allVisibleSelected =
+    filteredOptions.length > 0 &&
+    filteredOptions.every((opt) => selectedKeys.includes(opt.key));
+
   return (
     <section
       className={[
-        "relative overflow-hidden h-full rounded-3xl p-4 sm:p-5 md:p-6 flex flex-col",
+        "relative overflow-hidden h-full rounded-[22px] p-3 sm:p-4 md:p-4.5 flex flex-col",
         "bg-white border border-gray-200/80 shadow-sm",
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]">
+        <div className="absolute -top-14 -right-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute -bottom-14 -left-10 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.055]">
           <div
             className="h-full w-full"
             style={{
@@ -292,77 +380,147 @@ const RiskScoreTable: React.FC = () => {
       </div>
 
       <div className="relative z-10 flex h-full flex-col">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <h2 className="text-[20px] sm:text-[22px] font-semibold text-[#1f2240] dark:text-white/90 tracking-tight">
+              <h2 className="text-[17px] sm:text-[19px] font-semibold text-[#1f2240] dark:text-white/90 tracking-tight">
                 Top Devices Risk
               </h2>
-              <p className="mt-1 text-[12.5px] text-gray-500 dark:text-white/55">
+              <p className="mt-1 text-[11px] sm:text-[12px] text-gray-500 dark:text-white/55">
                 Ranked device exposure from the latest security scan snapshot
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative" ref={dropdownRef}>
+            <div className="flex items-start sm:items-center gap-2 self-start lg:self-auto">
+              <div className="relative min-w-62.5 sm:min-w-72.5" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setOpen((prev) => !prev)}
                   className={[
-                    "h-10 px-4 rounded-2xl inline-flex items-center gap-2 transition",
-                    "bg-white border border-gray-200/80 text-[13px] font-medium text-gray-600 hover:bg-gray-50",
+                    "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
+                    "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
                     "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10",
                   ].join(" ")}
                 >
-                  {range}
-                  <FiChevronDown
-                    className={`text-[14px] text-gray-400 dark:text-white/45 transition-transform ${
-                      open ? "rotate-180" : ""
-                    }`}
-                  />
+                  <span className="truncate">{dropdownButtonLabel}</span>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedCount > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
+                        {selectedCount}
+                      </span>
+                    )}
+
+                    <FiChevronDown
+                      className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
+                        open ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
                 </button>
 
                 {open && (
-                  <div className="absolute right-0 mt-2 w-40 rounded-2xl border border-gray-200 bg-white shadow-lg overflow-hidden z-20 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                    {RANGE_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => {
-                          setRange(opt);
-                          setOpen(false);
-                        }}
+                  <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+                    <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
+                      <div
                         className={[
-                          "w-full text-left px-4 py-3 text-[13px] transition",
-                          range === opt
-                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
-                            : "text-gray-600 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
+                          "flex items-center gap-2 rounded-2xl px-3 h-9",
+                          "bg-slate-50 border border-slate-200/80",
+                          "dark:bg-white/5 dark:border-white/10",
                         ].join(" ")}
                       >
-                        {opt}
-                      </button>
-                    ))}
+                        <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search task name or ip..."
+                          className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                        />
+                        {searchQuery.trim() !== "" && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                            aria-label="Clear search"
+                          >
+                            <FiX className="text-[13px]" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-2.5 flex items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllVisible}
+                          className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        >
+                          {allVisibleSelected ? "Unselect visible" : "Select visible"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={clearAllSelections}
+                          className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-64 overflow-y-auto p-2">
+                      {filteredOptions.length === 0 ? (
+                        <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
+                          No matching device
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {filteredOptions.map((opt) => {
+                            const checked = selectedKeys.includes(opt.key);
+
+                            return (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => toggleSelect(opt.key)}
+                                className={[
+                                  "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
+                                  checked
+                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                    : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <span
+                                  className={[
+                                    "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
+                                    checked
+                                      ? "bg-cyan-500 border-cyan-500 text-white"
+                                      : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                  ].join(" ")}
+                                >
+                                  <FiCheck className="text-[10px]" />
+                                </span>
+
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                                    {opt.label}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-
-              <button
-                type="button"
-                className={[
-                  "h-10 w-10 rounded-2xl inline-flex items-center justify-center transition-colors",
-                  "text-gray-500 border border-gray-200/80 bg-white hover:bg-gray-100 active:bg-gray-200",
-                  "dark:text-white/55 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:active:bg-white/15",
-                ].join(" ")}
-                aria-label="More"
-              >
-                <FiMoreHorizontal />
-              </button>
             </div>
           </div>
 
           <div
             className={[
-              "rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3",
+              "rounded-[18px] px-3.5 py-2.5 flex flex-wrap items-center gap-2.5",
               "bg-slate-50 border border-slate-200/80",
               "dark:bg-white/4 dark:border-white/10",
             ].join(" ")}
@@ -372,51 +530,61 @@ const RiskScoreTable: React.FC = () => {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
               </span>
-              <span className="text-[12px] font-medium text-slate-700 dark:text-white/75">
+              <span className="text-[11px] font-medium text-slate-700 dark:text-white/75">
                 Risk telemetry active
               </span>
             </div>
 
             <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
 
-            <div className="inline-flex items-center gap-2 text-[12px] text-slate-500 dark:text-white/50">
-              <FiActivity className="text-cyan-500" />
+            <div className="inline-flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/50">
+              <FiActivity className="text-cyan-500 text-[12px]" />
               Risk score, vulnerability count, and device exposure ranking
             </div>
+
+            {selectedCount > 0 && (
+              <>
+                <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
+                <div className="inline-flex items-center gap-2 text-[11px] text-cyan-700 dark:text-cyan-300">
+                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+                  Filtered by {selectedCount} selected device{selectedCount > 1 ? "s" : ""}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="mt-4 flex-1">
+        <div className="mt-3.5 flex-1">
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
                   className={[
-                    "rounded-2xl px-4 py-4 border animate-pulse",
+                    "rounded-[18px] px-3.5 py-3 border animate-pulse",
                     "border-gray-200/80 bg-white",
                     "dark:border-white/10 dark:bg-white/5",
                   ].join(" ")}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="h-11 w-11 rounded-2xl bg-gray-200 dark:bg-white/10" />
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="h-9 w-9 rounded-2xl bg-gray-200 dark:bg-white/10" />
                       <div className="min-w-0 flex-1">
-                        <div className="h-4 w-44 rounded bg-gray-200 dark:bg-white/10" />
-                        <div className="mt-2 h-3 w-60 rounded bg-gray-200 dark:bg-white/10" />
+                        <div className="h-3.5 w-36 rounded bg-gray-200 dark:bg-white/10" />
+                        <div className="mt-2 h-3 w-48 rounded bg-gray-200 dark:bg-white/10" />
                       </div>
                     </div>
-                    <div className="h-8 w-24 rounded bg-gray-200 dark:bg-white/10" />
+                    <div className="h-7 w-20 rounded bg-gray-200 dark:bg-white/10" />
                   </div>
                 </div>
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className="py-8 text-[13px] text-gray-500 dark:text-white/55">
+            <div className="py-7 text-[12px] text-gray-500 dark:text-white/55">
               No Data
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {rows.map((p) => {
                 const { Icon, bg, fg, ring } = DEVICE_ICONS[p.iconIndex];
                 const riskMeta = getRiskMeta(p.risk);
@@ -435,7 +603,7 @@ const RiskScoreTable: React.FC = () => {
                       }
                     }}
                     className={[
-                      "rounded-2xl px-3.5 sm:px-4 py-3.5 border transition-all duration-200 cursor-pointer select-none",
+                      "rounded-[18px] px-3 sm:px-3.5 py-3 border transition-all duration-200 cursor-pointer select-none",
                       "border-gray-200/80 bg-white hover:shadow-sm hover:border-cyan-200/80",
                       "focus:outline-none focus:ring-2 focus:ring-cyan-400/40",
                       "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/[0.07] dark:hover:border-cyan-400/20 dark:focus:ring-cyan-300/30",
@@ -446,28 +614,28 @@ const RiskScoreTable: React.FC = () => {
                         : "No task_id"
                     }
                   >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div
                           className={[
-                            "h-11 w-11 rounded-2xl border flex items-center justify-center shrink-0",
+                            "h-9 w-9 rounded-2xl border flex items-center justify-center shrink-0",
                             bg,
                             ring,
                           ].join(" ")}
                           aria-hidden="true"
                         >
-                          <Icon className={`${fg} text-[22px]`} />
+                          <Icon className={`${fg} text-[18px]`} />
                         </div>
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="truncate text-[15px] sm:text-[16px] font-semibold text-[#1f2240] dark:text-white/85">
+                            <p className="truncate text-[13px] sm:text-[14px] font-semibold text-[#1f2240] dark:text-white/85">
                               {p.taskName}
                             </p>
 
                             <span
                               className={[
-                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold border",
+                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold border",
                                 riskMeta.chip,
                               ].join(" ")}
                             >
@@ -475,18 +643,18 @@ const RiskScoreTable: React.FC = () => {
                               {riskMeta.label}
                             </span>
 
-                            <span className="text-[11px] text-gray-400 dark:text-white/35">
+                            <span className="text-[10px] text-gray-400 dark:text-white/35">
                               • IP: {p.ipAddress || "-"}
                             </span>
                           </div>
 
-                          <p className="mt-1 text-[12.5px] sm:text-[13px] text-gray-500 dark:text-white/55 truncate">
+                          <p className="mt-1 text-[11px] sm:text-[12px] text-gray-500 dark:text-white/55 truncate">
                             {formatNumber(p.vulnTotal)} Vulns •{" "}
                             {p.firmwareVersion || "Unknown Device"}
                           </p>
 
                           <div className="mt-2">
-                            <div className="h-2.5 rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
+                            <div className="h-2 rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{
@@ -499,14 +667,14 @@ const RiskScoreTable: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0">
+                      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-3.5 shrink-0">
                         <div className="text-right">
                           <p
-                            className={`text-[15px] sm:text-[16px] font-semibold tabular-nums ${riskMeta.text}`}
+                            className={`text-[13px] sm:text-[14px] font-semibold tabular-nums ${riskMeta.text}`}
                           >
                             {formatRisk(p.risk)}
                           </p>
-                          <p className="text-[11.5px] text-gray-400 dark:text-white/45">
+                          <p className="text-[10px] text-gray-400 dark:text-white/45">
                             Risk Score
                           </p>
                         </div>

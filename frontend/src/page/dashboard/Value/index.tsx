@@ -7,9 +7,15 @@ import {
   FiInfo,
   FiRadio,
   FiActivity,
+  FiLayers,
 } from "react-icons/fi";
+import { ConfigProvider, Select } from "antd";
+import type { SelectProps } from "antd";
 
-import { ListTaskVulnSummary, type TaskVulnSummaryDTO } from "../../../services";
+import {
+  ListTaskVulnSummary,
+  type TaskVulnSummaryDTO,
+} from "../../../services";
 
 type SeverityKey = "Critical" | "High" | "Medium" | "Low" | "Info";
 
@@ -33,18 +39,26 @@ type StatCard = {
 
 const Value: React.FC = () => {
   const [rows, setRows] = useState<TaskVulnSummaryDTO[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedTask, setSelectedTask] = useState<string>("all");
 
   useEffect(() => {
     let alive = true;
 
     (async () => {
-      setLoading(true);
-      const res = await ListTaskVulnSummary();
-      if (!alive) return;
-
-      setRows(res ?? []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await ListTaskVulnSummary();
+        if (!alive) return;
+        setRows(Array.isArray(res) ? res : []);
+      } catch (error) {
+        console.error("Failed to load vulnerability summary:", error);
+        if (!alive) return;
+        setRows([]);
+      } finally {
+        if (!alive) return;
+        setLoading(false);
+      }
     })();
 
     return () => {
@@ -52,14 +66,48 @@ const Value: React.FC = () => {
     };
   }, []);
 
-  const totals = useMemo(() => {
-    let critical = 0,
-      high = 0,
-      medium = 0,
-      low = 0,
-      info = 0;
+  const taskOptions = useMemo(() => {
+    const names = rows
+      .map((r) => ({
+        task_id: String(r.task_id ?? ""),
+        task_name: String(r.task_name ?? "").trim(),
+      }))
+      .filter((r) => r.task_name !== "");
 
-    for (const r of rows) {
+    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+
+    for (const item of names) {
+      if (!uniqueMap.has(item.task_name)) {
+        uniqueMap.set(item.task_name, item);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }, [rows]);
+
+  const selectOptions: SelectProps["options"] = useMemo(() => {
+    return [
+      { value: "all", label: "All Tasks" },
+      ...taskOptions.map((task) => ({
+        value: task.task_name,
+        label: task.task_name,
+      })),
+    ];
+  }, [taskOptions]);
+
+  const filteredRows = useMemo(() => {
+    if (selectedTask === "all") return rows;
+    return rows.filter((r) => String(r.task_name ?? "") === selectedTask);
+  }, [rows, selectedTask]);
+
+  const totals = useMemo(() => {
+    let critical = 0;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+    let info = 0;
+
+    for (const r of filteredRows) {
       critical += Number(r.critical || 0);
       high += Number(r.high || 0);
       medium += Number(r.medium || 0);
@@ -70,15 +118,18 @@ const Value: React.FC = () => {
     const totalAll = critical + high + medium + low + info;
 
     return { totalAll, critical, high, medium, low, info };
-  }, [rows]);
+  }, [filteredRows]);
 
   const percent = (n: number) => {
     if (!totals.totalAll) return 0;
     return Math.round((n / totals.totalAll) * 100);
   };
 
-  const makeSubtitle = (n: number) =>
-    loading ? "Synchronizing scan telemetry..." : `${percent(n)}% of total findings`;
+  const makeSubtitle = (n: number) => {
+    if (loading) return "Synchronizing scan telemetry...";
+    if (!totals.totalAll) return "No findings in selected scope";
+    return `${percent(n)}% of total findings`;
+  };
 
   const barWidth = (n: number) => `${percent(n)}%`;
 
@@ -89,6 +140,12 @@ const Value: React.FC = () => {
     if (totals.low > 0) return "Low";
     return "Info";
   }, [totals]);
+
+  const selectedScopeLabel = useMemo(() => {
+    if (loading) return "Loading scope...";
+    if (selectedTask === "all") return "All Tasks";
+    return selectedTask;
+  }, [loading, selectedTask]);
 
   const stats: StatCard[] = useMemo(
     () => [
@@ -110,8 +167,8 @@ const Value: React.FC = () => {
           "dark:border-white/10 dark:ring-rose-400/20",
         ].join(" "),
         glow: [
-          "shadow-[0_16px_40px_-18px_rgba(239,68,68,0.25)]",
-          "dark:shadow-[0_16px_40px_-18px_rgba(239,68,68,0.55)]",
+          "shadow-[0_8px_20px_-16px_rgba(239,68,68,0.22)]",
+          "dark:shadow-[0_12px_28px_-16px_rgba(239,68,68,0.42)]",
         ].join(" "),
         pill: [
           "bg-white/75 text-rose-700 border border-rose-200/80",
@@ -145,8 +202,8 @@ const Value: React.FC = () => {
           "dark:border-white/10 dark:ring-orange-300/20",
         ].join(" "),
         glow: [
-          "shadow-[0_16px_40px_-18px_rgba(249,115,22,0.25)]",
-          "dark:shadow-[0_16px_40px_-18px_rgba(249,115,22,0.5)]",
+          "shadow-[0_8px_20px_-16px_rgba(249,115,22,0.22)]",
+          "dark:shadow-[0_12px_28px_-16px_rgba(249,115,22,0.42)]",
         ].join(" "),
         pill: [
           "bg-white/75 text-orange-700 border border-orange-200/80",
@@ -180,8 +237,8 @@ const Value: React.FC = () => {
           "dark:border-white/10 dark:ring-amber-300/20",
         ].join(" "),
         glow: [
-          "shadow-[0_16px_40px_-18px_rgba(234,179,8,0.22)]",
-          "dark:shadow-[0_16px_40px_-18px_rgba(250,204,21,0.42)]",
+          "shadow-[0_8px_20px_-16px_rgba(234,179,8,0.20)]",
+          "dark:shadow-[0_12px_28px_-16px_rgba(250,204,21,0.34)]",
         ].join(" "),
         pill: [
           "bg-white/75 text-amber-800 border border-amber-200/80",
@@ -215,8 +272,8 @@ const Value: React.FC = () => {
           "dark:border-white/10 dark:ring-emerald-300/20",
         ].join(" "),
         glow: [
-          "shadow-[0_16px_40px_-18px_rgba(34,197,94,0.22)]",
-          "dark:shadow-[0_16px_40px_-18px_rgba(34,197,94,0.42)]",
+          "shadow-[0_8px_20px_-16px_rgba(34,197,94,0.20)]",
+          "dark:shadow-[0_12px_28px_-16px_rgba(34,197,94,0.34)]",
         ].join(" "),
         pill: [
           "bg-white/75 text-emerald-800 border border-emerald-200/80",
@@ -250,8 +307,8 @@ const Value: React.FC = () => {
           "dark:border-white/10 dark:ring-sky-300/20",
         ].join(" "),
         glow: [
-          "shadow-[0_16px_40px_-18px_rgba(56,189,248,0.22)]",
-          "dark:shadow-[0_16px_40px_-18px_rgba(56,189,248,0.42)]",
+          "shadow-[0_8px_20px_-16px_rgba(56,189,248,0.20)]",
+          "dark:shadow-[0_12px_28px_-16px_rgba(56,189,248,0.34)]",
         ].join(" "),
         pill: [
           "bg-white/75 text-sky-800 border border-sky-200/80",
@@ -274,16 +331,15 @@ const Value: React.FC = () => {
   return (
     <section
       className={[
-        "relative overflow-hidden rounded-3xl p-3 sm:p-3.5",
+        "relative overflow-hidden rounded-[22px] p-1.5 sm:p-2",
         "bg-white border border-gray-200/80 shadow-sm",
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
-      {/* background */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-16 -right-12 h-44 w-44 rounded-full bg-cyan-400/8 blur-3xl" />
-        <div className="absolute -bottom-16 -left-12 h-44 w-44 rounded-full bg-violet-500/8 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.04] dark:opacity-[0.06]">
+        <div className="absolute -top-14 -right-12 h-28 w-28 rounded-full bg-cyan-400/8 blur-3xl" />
+        <div className="absolute -bottom-14 -left-12 h-28 w-28 rounded-full bg-violet-500/8 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.045]">
           <div
             className="h-full w-full"
             style={{
@@ -298,181 +354,375 @@ const Value: React.FC = () => {
       </div>
 
       <div className="relative z-10">
-        {/* top status */}
-        <div className="mb-3 flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div
-              className={[
-                "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
-                "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
-              ].join(" ")}
-            >
-              <FiShield className="text-[13px]" />
-              <span className="text-[12px] font-semibold tracking-wide">
-                Security Severity Matrix
-              </span>
+        <div className="mb-2 flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
+                  "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
+                  "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
+                ].join(" ")}
+              >
+                <FiShield className="text-[10px]" />
+                <span className="text-[10px] font-semibold tracking-wide">
+                  Security Severity Matrix
+                </span>
+              </div>
+
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
+                  "bg-slate-50 text-slate-600 border border-slate-200/80",
+                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+                ].join(" ")}
+              >
+                <FiRadio className="text-[10px] text-cyan-500" />
+                <span className="text-[10px] font-medium">
+                  {loading ? "Scanner Syncing" : `${highestSeverity} activity detected`}
+                </span>
+              </div>
+
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
+                  "bg-slate-50 text-slate-600 border border-slate-200/80",
+                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+                ].join(" ")}
+              >
+                <FiActivity className="text-[10px] text-violet-500" />
+                <span className="text-[10px] font-medium">
+                  {loading
+                    ? "Fetching telemetry..."
+                    : `${totals.totalAll.toLocaleString()} total findings`}
+                </span>
+              </div>
+
+              <div
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
+                  "bg-linear-to-r from-cyan-50 via-sky-50 to-violet-50",
+                  "text-slate-700 border border-cyan-200/70 shadow-[0_8px_20px_-16px_rgba(6,182,212,0.35)]",
+                  "dark:from-cyan-500/10 dark:via-sky-500/10 dark:to-violet-500/10",
+                  "dark:text-cyan-100 dark:border-cyan-400/20",
+                  "backdrop-blur-md",
+                ].join(" ")}
+              >
+                <div className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white/80 text-cyan-600 dark:bg-white/10 dark:text-cyan-300">
+                  <FiLayers className="text-[9px]" />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[8.5px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-white/50">
+                    Scope
+                  </span>
+                  <span className="h-1 w-1 rounded-full bg-cyan-500" />
+                  <span className="max-w-32 truncate text-[10px] font-semibold sm:max-w-36">
+                    {selectedScopeLabel}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div
-              className={[
-                "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                "bg-slate-50 text-slate-600 border border-slate-200/80",
-                "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-              ].join(" ")}
-            >
-              <FiRadio className="text-[12px] text-cyan-500" />
-              <span className="text-[12px] font-medium">
-                {loading ? "Scanner Syncing" : `${highestSeverity} activity detected`}
-              </span>
-            </div>
+            <div className="w-full xl:w-auto">
+              <ConfigProvider
+                theme={{
+                  token: {
+                    colorPrimary: "#e2e8f0",
+                    borderRadius: 14,
+                    colorBgElevated: "#ffffff",
+                    colorBorder: "#e5e7eb",
+                    boxShadowSecondary:
+                      "0 12px 28px -20px rgba(15,23,42,0.12)",
+                    colorText: "#334155",
+                    colorTextPlaceholder: "#94a3b8",
+                    controlHeightLG: 34,
+                    fontSize: 11,
+                  },
+                  components: {
+                    Select: {
+                      activeBorderColor: "#dbeafe",
+                      hoverBorderColor: "#cbd5e1",
+                      optionSelectedBg: "#f8fafc",
+                      optionActiveBg: "#f1f5f9",
+                      optionSelectedColor: "#0f172a",
+                    },
+                  },
+                }}
+              >
+                <div className="relative w-full xl:min-w-55">
+                  <Select
+                    value={selectedTask}
+                    onChange={(value) => setSelectedTask(value)}
+                    options={selectOptions}
+                    popupMatchSelectWidth
+                    showSearch={false}
+                    size="large"
+                    variant="outlined"
+                    suffixIcon={
+                      <span
+                        style={{
+                          color: "#94a3b8",
+                          fontSize: 10,
+                          lineHeight: 1,
+                          pointerEvents: "none",
+                        }}
+                      >
+                        ▾
+                      </span>
+                    }
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                    }}
+                    styles={{
+                      root: {
+                        width: "100%",
+                      },
+                      popup: {
+                        root: {
+                          padding: 6,
+                          borderRadius: 16,
+                          border: "1px solid #e5e7eb",
+                          overflow: "hidden",
+                          boxShadow: "0 12px 28px -20px rgba(15,23,42,0.12)",
+                          background: "#ffffff",
+                        },
+                        list: {
+                          padding: 0,
+                          background: "#ffffff",
+                        },
+                        listItem: {
+                          minHeight: 34,
+                          borderRadius: 10,
+                          margin: "3px 0",
+                          paddingInline: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: "#334155",
+                          transition: "all 0.18s ease",
+                        },
+                      },
+                    }}
+                    classNames={{
+                      root: "w-full",
+                    }}
+                    getPopupContainer={(triggerNode) =>
+                      triggerNode.parentElement || document.body
+                    }
+                    optionRender={(option) => {
+                      const isAll = option.data.value === "all";
+                      const isSelected = selectedTask === option.data.value;
 
-            <div
-              className={[
-                "inline-flex items-center gap-2 rounded-full px-3 py-1.5",
-                "bg-slate-50 text-slate-600 border border-slate-200/80",
-                "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-              ].join(" ")}
-            >
-              <FiActivity className="text-[12px] text-violet-500" />
-              <span className="text-[12px] font-medium">
-                {loading ? "Fetching telemetry..." : `${totals.totalAll.toLocaleString()} total findings`}
-              </span>
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            padding: "1px 0",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 999,
+                              background: isSelected
+                                ? "#cbd5e1"
+                                : isAll
+                                  ? "#cbd5e1"
+                                  : "#6366f1",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: isSelected ? 600 : 500,
+                              color: "#334155",
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {String(option.data.label)}
+                          </span>
+                        </div>
+                      );
+                    }}
+                    labelRender={(props) => (
+                      <span
+                        style={{
+                          color: "#334155",
+                          fontSize: 11,
+                          fontWeight: 500,
+                        }}
+                      >
+                        {props.label}
+                      </span>
+                    )}
+                  />
+
+                  <div
+                    className="pointer-events-none absolute inset-0 rounded-[14px]"
+                    style={{
+                      border: "1px solid #dbeafe",
+                      boxShadow: "0 8px 18px -18px rgba(15,23,42,0.10)",
+                    }}
+                  />
+                </div>
+              </ConfigProvider>
             </div>
           </div>
         </div>
 
-        {/* cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
-          {stats.map((item) => {
-            const rawNumber =
-              item.title === "Critical"
-                ? totals.critical
-                : item.title === "High"
-                ? totals.high
-                : item.title === "Medium"
-                ? totals.medium
-                : item.title === "Low"
-                ? totals.low
-                : totals.info;
+        {!loading && filteredRows.length === 0 ? (
+          <div
+            className={[
+              "rounded-[18px] border border-dashed p-5 text-center",
+              "border-slate-200 bg-slate-50/80 text-slate-500",
+              "dark:border-white/10 dark:bg-white/5 dark:text-white/60",
+            ].join(" ")}
+          >
+            <div className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-2xl bg-white shadow-sm dark:bg-white/10">
+              <FiShield className="text-[15px]" />
+            </div>
+            <h3 className="text-[13px] font-semibold text-slate-700 dark:text-white">
+              No vulnerability data found
+            </h3>
+            <p className="mt-1 text-[10px]">
+              ไม่มีข้อมูลสำหรับ task ที่เลือกในขณะนี้
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5 md:grid-cols-3 xl:grid-cols-5">
+            {stats.map((item) => {
+              const rawNumber =
+                item.title === "Critical"
+                  ? totals.critical
+                  : item.title === "High"
+                    ? totals.high
+                    : item.title === "Medium"
+                      ? totals.medium
+                      : item.title === "Low"
+                        ? totals.low
+                        : totals.info;
 
-            const w = loading ? "0%" : barWidth(rawNumber);
+              const w = loading ? "0%" : barWidth(rawNumber);
 
-            return (
-              <div
-                key={item.id}
-                className={[
-                  "min-w-0 rounded-[22px] p-3.5 sm:p-4 relative overflow-hidden",
-                  "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-xl",
-                  "text-slate-900 dark:text-white",
-                  item.bg,
-                  item.ring,
-                  item.glow,
-                ].join(" ")}
-              >
-                {/* overlay */}
+              return (
                 <div
+                  key={item.id}
                   className={[
-                    "pointer-events-none absolute inset-0 opacity-35",
-                    "dark:opacity-18",
-                    "[background:linear-gradient(to_right,rgba(15,23,42,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.08)_1px,transparent_1px)]",
-                    "dark:[background:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)]",
-                    "bg-size-[16px_16px]",
+                    "relative min-w-0 overflow-hidden rounded-2xl p-2 sm:p-2.5",
+                    "text-slate-900 dark:text-white",
+                    "transition-all duration-300 ease-out hover:-translate-y-0.5 hover:shadow-lg",
+                    item.bg,
+                    item.ring,
+                    item.glow,
                   ].join(" ")}
-                />
-                <div className="pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full bg-white/35 dark:bg-white/10 blur-3xl" />
-                <div
-                  className="pointer-events-none absolute top-0 left-0 h-1 w-full"
-                  style={{
-                    background: `linear-gradient(90deg, ${item.softAccent}, ${item.accent})`,
-                  }}
-                />
+                >
+                  <div
+                    className={[
+                      "pointer-events-none absolute inset-0 opacity-20",
+                      "dark:opacity-15",
+                      "[background:linear-gradient(to_right,rgba(15,23,42,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.08)_1px,transparent_1px)]",
+                      "dark:[background:linear-gradient(to_right,rgba(255,255,255,0.10)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.10)_1px,transparent_1px)]",
+                      "bg-size-[16px_16px]",
+                    ].join(" ")}
+                  />
+                  <div className="pointer-events-none absolute -top-10 -right-10 h-24 w-24 rounded-full bg-white/28 blur-3xl dark:bg-white/10" />
+                  <div
+                    className="pointer-events-none absolute left-0 top-0 h-1 w-full"
+                    style={{
+                      background: `linear-gradient(90deg, ${item.softAccent}, ${item.accent})`,
+                    }}
+                  />
 
-                <div className="relative flex flex-col justify-between min-h-43">
-                  {/* header */}
-                  <div className="flex items-start justify-between gap-2 min-w-0">
-                    <div className="min-w-0 flex items-start gap-2.5">
-                      <div
-                        className={[
-                          "h-10 w-10 rounded-2xl flex items-center justify-center text-[18px] shrink-0",
-                          item.iconBox,
-                        ].join(" ")}
-                      >
-                        {item.icon}
-                      </div>
-
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`h-2 w-2 rounded-full ${item.dot}`} />
-                          <h3 className="min-w-0 truncate text-[13px] sm:text-[13.5px] leading-[1.15] font-semibold tracking-wide">
-                            {item.title}
-                          </h3>
+                  <div className="relative flex min-h-31.5 flex-col justify-between sm:min-h-33">
+                    <div className="flex min-w-0 items-start justify-between gap-1">
+                      <div className="flex min-w-0 items-start gap-1.5">
+                        <div
+                          className={[
+                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-[14px] text-[13px]",
+                            item.iconBox,
+                          ].join(" ")}
+                        >
+                          {item.icon}
                         </div>
 
-                        <p className="mt-1 text-[11px] text-slate-700/80 dark:text-white/75 truncate">
-                          Network scan severity
-                        </p>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} />
+                            <h3 className="min-w-0 truncate text-[10px] font-semibold leading-[1.1] tracking-wide sm:text-[10.5px]">
+                              {item.title}
+                            </h3>
+                          </div>
+
+                          <p className="mt-0.5 truncate text-[8.5px] text-slate-700/80 dark:text-white/75">
+                            Network scan severity
+                          </p>
+                        </div>
                       </div>
-                    </div>
-
-                    <span
-                      className={[
-                        "shrink-0 rounded-full h-6 px-2.5 inline-flex items-center justify-center",
-                        "text-[10px] font-medium backdrop-blur border",
-                        item.pill,
-                      ].join(" ")}
-                    >
-                      {loading ? "Sync" : `${percent(rawNumber)}%`}
-                    </span>
-                  </div>
-
-                  {/* value */}
-                  <div className="mt-4">
-                    <div className="flex items-end justify-between gap-3">
-                      <p className="truncate text-[22px] sm:text-[24px] font-semibold tracking-tight leading-none">
-                        {item.value}
-                      </p>
 
                       <span
                         className={[
-                          "shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold border",
-                          item.chip,
+                          "inline-flex h-4.5 shrink-0 items-center justify-center rounded-full px-1.5",
+                          "border text-[8px] font-medium backdrop-blur",
+                          item.pill,
                         ].join(" ")}
                       >
-                        {loading
-                          ? "Loading"
-                          : rawNumber > 0
-                          ? "Detected"
-                          : "Clear"}
+                        {loading ? "Sync" : `${percent(rawNumber)}%`}
                       </span>
                     </div>
 
-                    <p className="mt-2 text-[11.5px] leading-5 text-slate-700/80 dark:text-white/80">
-                      {item.subtitle}
-                    </p>
-                  </div>
+                    <div className="mt-1.5">
+                      <div className="flex items-end justify-between gap-1.5">
+                        <p className="truncate text-[13px] font-semibold leading-none tracking-tight sm:text-[14px] xl:text-[15px]">
+                          {item.value}
+                        </p>
 
-                  {/* progress */}
-                  <div className="mt-4">
-                    <div className="mb-1.5 flex items-center justify-between text-[10.5px] text-slate-700/75 dark:text-white/65">
-                      <span>Scan intensity</span>
-                      <span>{loading ? "..." : `${percent(rawNumber)}%`}</span>
+                        <span
+                          className={[
+                            "shrink-0 rounded-full border px-1.5 py-0.5 text-[7.5px] font-semibold transition-all duration-300",
+                            item.chip,
+                          ].join(" ")}
+                        >
+                          {loading ? "Loading" : rawNumber > 0 ? "Detected" : "Clear"}
+                        </span>
+                      </div>
+
+                      <p className="mt-0.5 text-[8.5px] leading-3.5 text-slate-700/80 dark:text-white/80 sm:text-[9px]">
+                        {item.subtitle}
+                      </p>
                     </div>
 
-                    <div className="h-2.5 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden border border-black/10 dark:border-white/10">
-                      <div
-                        className={["h-full rounded-full transition-all duration-700", item.bar].join(
-                          " "
-                        )}
-                        style={{ width: w }}
-                      />
+                    <div className="mt-1.5">
+                      <div className="mb-1 flex items-center justify-between text-[8px] text-slate-700/75 dark:text-white/65">
+                        <span>Scan intensity</span>
+                        <span>{loading ? "..." : `${percent(rawNumber)}%`}</span>
+                      </div>
+
+                      <div className="h-1.5 w-full overflow-hidden rounded-full border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/10">
+                        <div
+                          className={[
+                            "h-full rounded-full transition-all duration-700 ease-out",
+                            item.bar,
+                          ].join(" ")}
+                          style={{ width: w }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );

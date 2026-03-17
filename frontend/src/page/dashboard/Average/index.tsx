@@ -59,8 +59,8 @@ const formatRisk = (value: number) => Number(value || 0).toFixed(2);
 
 const shortenTaskName = (taskName: string) => {
   if (!taskName) return "-";
-  if (taskName.length <= 18) return taskName;
-  return `${taskName.slice(0, 18)}...`;
+  if (taskName.length <= 16) return taskName;
+  return `${taskName.slice(0, 16)}...`;
 };
 
 const formatUnixThai = (unix?: number | null) => {
@@ -97,17 +97,17 @@ const CustomTooltip = ({
   const isDown = diff < 0;
 
   return (
-    <div className="min-w-70 max-w-90 rounded-2xl border border-gray-200/90 bg-white/96 px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#0B1220]/96 dark:shadow-[0_16px_34px_rgba(0,0,0,0.34)]">
+    <div className="min-w-62.5 max-w-[320px] rounded-[18px] border border-gray-200/90 bg-white/96 px-3 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#0B1220]/96 dark:shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
       <div className="mb-2">
-        <p className="text-sm font-semibold text-[#1f2240] dark:text-white/92">
+        <p className="text-[13px] font-semibold text-[#1f2240] dark:text-white/92">
           {item.task_name || "Unknown Task"}
         </p>
-        <p className="mt-0.5 text-[12px] text-gray-500 dark:text-white/45">
+        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45">
           Host: {item.host || "-"}
         </p>
       </div>
 
-      <div className="space-y-2 text-xs">
+      <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#8B7CFF]">Previous Risk</span>
           <span className="font-semibold text-[#1f2240] dark:text-white/92">
@@ -138,28 +138,28 @@ const CustomTooltip = ({
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Latest Total Vulnerability</span>
+            <span>Latest Total</span>
             <span className="font-semibold text-right text-[#1f2240] dark:text-white/90">
               {item.latest_total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Previous Total Vulnerability</span>
+            <span>Previous Total</span>
             <span className="font-semibold text-right text-[#1f2240] dark:text-white/90">
               {item.previous_total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Latest Detected Time</span>
+            <span>Latest Time</span>
             <span className="font-medium text-right">
               {formatUnixThai(item.latest_creation_time)}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Previous Detected Time</span>
+            <span>Previous Time</span>
             <span className="font-medium text-right">
               {formatUnixThai(item.previous_creation_time)}
             </span>
@@ -169,18 +169,18 @@ const CustomTooltip = ({
         <div className="pt-1">
           <span
             className={[
-              "inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-semibold",
+              "inline-flex items-center gap-1 rounded-xl px-2 py-1 text-[10px] font-semibold",
               isUp
                 ? "bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-300"
                 : isDown
-                ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300"
-                : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white/70",
+                  ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-300"
+                  : "bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-white/70",
             ].join(" ")}
           >
             {isUp ? (
-              <MdTrendingUp className="text-sm" />
+              <MdTrendingUp className="text-[13px]" />
             ) : isDown ? (
-              <MdTrendingDown className="text-sm" />
+              <MdTrendingDown className="text-[13px]" />
             ) : null}
             Risk Change: {diff > 0 ? "+" : ""}
             {formatRisk(diff)}
@@ -204,10 +204,10 @@ const CustomXAxisTick = (props: {
     <g transform={`translate(${x},${y})`}>
       <text
         x={0}
-        y={14}
+        y={12}
         textAnchor="middle"
         fill={dark ? COLORS.axisSubtleDark : COLORS.axisLight}
-        fontSize={12}
+        fontSize={11}
         fontWeight={600}
       >
         {value}
@@ -218,24 +218,24 @@ const CustomXAxisTick = (props: {
 
 const CustomLegend = () => {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-3 sm:gap-4">
-      <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/70 bg-violet-50 px-3 py-1.5 dark:border-violet-400/15 dark:bg-violet-400/10">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#8B7CFF]" />
-        <span className="text-[13px] font-medium text-violet-700 dark:text-violet-300">
+    <div className="mb-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
+      <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/70 bg-violet-50 px-2.5 py-1 dark:border-violet-400/15 dark:bg-violet-400/10">
+        <span className="inline-block h-2 w-2 rounded-full bg-[#8B7CFF]" />
+        <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300">
           Previous Risk
         </span>
       </div>
 
-      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50 px-3 py-1.5 dark:border-cyan-400/15 dark:bg-cyan-400/10">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#39C6F4]" />
-        <span className="text-[13px] font-medium text-cyan-700 dark:text-cyan-300">
+      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50 px-2.5 py-1 dark:border-cyan-400/15 dark:bg-cyan-400/10">
+        <span className="inline-block h-2 w-2 rounded-full bg-[#39C6F4]" />
+        <span className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
           Latest Risk
         </span>
       </div>
 
-      <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50 px-3 py-1.5 dark:border-rose-400/15 dark:bg-rose-400/10">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#FF6B88]" />
-        <span className="text-[13px] font-medium text-rose-700 dark:text-rose-300">
+      <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50 px-2.5 py-1 dark:border-rose-400/15 dark:bg-rose-400/10">
+        <span className="inline-block h-2 w-2 rounded-full bg-[#FF6B88]" />
+        <span className="text-[11px] font-medium text-rose-700 dark:text-rose-300">
           Latest Risk Increased
         </span>
       </div>
@@ -291,7 +291,8 @@ const AverageEnrollment: React.FC = () => {
       sorted.sort((a, b) => b.latest_risk_score - a.latest_risk_score);
     } else if (sortBy === "Biggest Change") {
       sorted.sort(
-        (a, b) => Math.abs(b.diff_risk_score || 0) - Math.abs(a.diff_risk_score || 0)
+        (a, b) =>
+          Math.abs(b.diff_risk_score || 0) - Math.abs(a.diff_risk_score || 0)
       );
     } else {
       sorted.sort(
@@ -306,8 +307,10 @@ const AverageEnrollment: React.FC = () => {
     const totalAssets = rows.length;
     const avgLatestRisk =
       totalAssets > 0
-        ? rows.reduce((sum, item) => sum + Number(item.latest_risk_score || 0), 0) /
-          totalAssets
+        ? rows.reduce(
+            (sum, item) => sum + Number(item.latest_risk_score || 0),
+            0
+          ) / totalAssets
         : 0;
 
     const increasedCount = rows.filter(
@@ -348,42 +351,42 @@ const AverageEnrollment: React.FC = () => {
   return (
     <section
       className={[
-        "relative overflow-hidden rounded-[26px] p-4 sm:p-5 md:p-6 h-full w-full flex flex-col",
-        "bg-white border border-gray-200/80 shadow-[0_10px_30px_rgba(15,23,42,0.06)]",
-        "dark:bg-[#081120] dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-[0_18px_60px_rgba(0,0,0,0.28)]",
+        "relative overflow-hidden rounded-[22px] p-3 sm:p-4 md:p-4.5 h-full w-full flex flex-col",
+        "bg-white border border-gray-200/80 shadow-[0_10px_24px_rgba(15,23,42,0.05)]",
+        "dark:bg-[#081120] dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-[0_14px_40px_rgba(0,0,0,0.24)]",
       ].join(" ")}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[26px]">
-        <div className="absolute -top-16 right-0 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-violet-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
+        <div className="absolute -top-14 right-0 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-400/10 blur-3xl" />
       </div>
 
       <div className="relative z-10">
-        <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
-                <FiBarChart2 className="text-[18px]" />
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
+                <FiBarChart2 className="text-[15px]" />
               </div>
 
-              <div>
-                <h2 className="text-[20px] font-semibold tracking-tight text-[#1f2240] dark:text-white/92 sm:text-[22px]">
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-semibold tracking-tight text-[#1f2240] dark:text-white/92 sm:text-[19px]">
                   Target Risk Comparison
                 </h2>
-                <p className="text-[13px] text-gray-500 dark:text-white/55 sm:text-[14px]">
+                <p className="text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
                   เปรียบเทียบ Previous Risk Score กับ Latest Risk Score ของแต่ละ target โดยใช้ Task Name เป็นแกนหลัก
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
             <div className="relative">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortType)}
                 className={[
-                  "appearance-none h-11 rounded-2xl px-4 pr-10 text-[14px] sm:text-[15px] outline-none transition w-full sm:w-auto",
+                  "appearance-none h-9 rounded-2xl px-3 pr-9 text-[12px] sm:text-[13px] outline-none transition w-full sm:w-auto",
                   "border border-gray-200 bg-white text-gray-700 hover:bg-[#fafcff]",
                   "dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
                 ].join(" ")}
@@ -393,7 +396,7 @@ const AverageEnrollment: React.FC = () => {
                 <option>Highest Latest Risk</option>
                 <option>Biggest Change</option>
               </select>
-              <MdKeyboardArrowDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-gray-400 dark:text-white/45" />
+              <MdKeyboardArrowDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[18px] text-gray-400 dark:text-white/45" />
             </div>
 
             <button
@@ -401,7 +404,7 @@ const AverageEnrollment: React.FC = () => {
               onClick={() => void fetchData("refresh")}
               disabled={refreshing}
               className={[
-                "inline-flex h-11 items-center justify-center gap-2 rounded-2xl px-4 text-[14px] font-semibold transition-all",
+                "inline-flex h-9 items-center justify-center gap-2 rounded-2xl px-3.5 text-[12px] font-semibold transition-all",
                 "border border-gray-200 bg-white text-[#3a3d4f] hover:bg-[#fafcff]",
                 "dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
                 refreshing ? "cursor-not-allowed opacity-70" : "",
@@ -413,39 +416,39 @@ const AverageEnrollment: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-gray-200/80 bg-linear-to-br from-white to-slate-50 p-4 dark:border-white/10 dark:bg-linear-to-br dark:from-white/8 dark:to-white/4">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
+        <div className="mb-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-slate-50 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-white/8 dark:to-white/4">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
               Targets
             </p>
-            <p className="mt-1 text-[22px] font-semibold text-[#1f2240] dark:text-white/92">
+            <p className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
               {summary.totalAssets}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/80 bg-linear-to-br from-white to-cyan-50/40 p-4 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-sky-500/5">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
+          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-cyan-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-sky-500/5">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
               Avg Latest Risk
             </p>
-            <p className="mt-1 text-[22px] font-semibold text-[#1f2240] dark:text-white/92">
+            <p className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
               {formatRisk(summary.avgLatestRisk)}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/80 bg-linear-to-br from-white to-rose-50/40 p-4 dark:border-white/10 dark:bg-linear-to-br dark:from-rose-400/10 dark:to-rose-500/5">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
+          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-rose-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-rose-400/10 dark:to-rose-500/5">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
               Risk Increased
             </p>
-            <p className="mt-1 text-[22px] font-semibold text-rose-600 dark:text-rose-300">
+            <p className="mt-1 text-[18px] font-semibold text-rose-600 dark:text-rose-300">
               {summary.increasedCount}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-gray-200/80 bg-linear-to-br from-white to-sky-50/40 p-4 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-cyan-500/5">
-            <p className="text-[11px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
+          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-sky-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-cyan-500/5">
+            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
               Risk Decreased
             </p>
-            <p className="mt-1 text-[22px] font-semibold text-cyan-600 dark:text-cyan-300">
+            <p className="mt-1 text-[18px] font-semibold text-cyan-600 dark:text-cyan-300">
               {summary.decreasedCount}
             </p>
           </div>
@@ -455,29 +458,31 @@ const AverageEnrollment: React.FC = () => {
 
         <div
           className={[
-            "rounded-3xl border p-3 sm:p-4",
+            "rounded-[22px] border p-2.5 sm:p-3",
             "border-gray-200/70 bg-linear-to-b from-[#fcfdff] to-[#f7faff]",
             "dark:border-white/10 dark:bg-linear-to-b dark:from-[#0B1220] dark:to-[#0E1830]",
           ].join(" ")}
         >
-          <div className="h-90 sm:h-105 lg:h-115">
+          <div className="h-80 sm:h-95 lg:h-105">
             {loading ? (
-              <div className="grid h-full w-full place-items-center rounded-2xl border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
-                <div className="flex items-center gap-3 text-gray-500 dark:text-white/60">
-                  <FiRefreshCw className="animate-spin text-lg" />
-                  <span className="text-sm font-medium">Loading target differ data...</span>
+              <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+                <div className="flex items-center gap-2.5 text-gray-500 dark:text-white/60">
+                  <FiRefreshCw className="animate-spin text-base" />
+                  <span className="text-[12px] font-medium">
+                    Loading target differ data...
+                  </span>
                 </div>
               </div>
             ) : chartData.length === 0 ? (
-              <div className="grid h-full w-full place-items-center rounded-2xl border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+              <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
                 <div className="text-center">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
-                    <FiAlertCircle className="text-[22px]" />
+                  <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
+                    <FiAlertCircle className="text-[18px]" />
                   </div>
-                  <p className="text-sm font-semibold text-[#1f2240] dark:text-white/92">
+                  <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
                     No target differ data
                   </p>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-white/50">
+                  <p className="mt-1 text-[10px] text-gray-500 dark:text-white/50">
                     ยังไม่มีข้อมูลเปรียบเทียบ latest / previous
                   </p>
                 </div>
@@ -486,9 +491,9 @@ const AverageEnrollment: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
-                  margin={{ top: 18, right: 12, left: -10, bottom: 10 }}
-                  barCategoryGap="16%"
-                  barGap={4}
+                  margin={{ top: 14, right: 8, left: -16, bottom: 6 }}
+                  barCategoryGap="14%"
+                  barGap={3}
                 >
                   <CartesianGrid
                     stroke={isDarkMode() ? COLORS.gridDark : COLORS.gridLight}
@@ -502,17 +507,17 @@ const AverageEnrollment: React.FC = () => {
                     axisLine={false}
                     tickLine={false}
                     interval={0}
-                    height={50}
+                    height={42}
                   />
 
                   <YAxis
                     tick={{
                       fill: isDarkMode() ? COLORS.axisDark : COLORS.axisLight,
-                      fontSize: 13,
+                      fontSize: 11,
                     }}
                     axisLine={false}
                     tickLine={false}
-                    width={44}
+                    width={38}
                     domain={[0, maxRisk]}
                     ticks={yTicks}
                   />
@@ -536,16 +541,16 @@ const AverageEnrollment: React.FC = () => {
                   <Bar
                     dataKey="previous_risk_score"
                     name="Previous Risk Score"
-                    radius={[10, 10, 0, 0]}
-                    maxBarSize={36}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={26}
                   >
                     <LabelList
                       dataKey="previous_risk_score"
                       position="top"
                       formatter={(value) => formatRisk(Number(value ?? 0))}
                       style={{
-                        fill: isDarkMode() ? "rgba(255,255,255,0.70)" : "#6B7280",
-                        fontSize: 11,
+                        fill: isDarkMode() ? "rgba(255,255,255,0.68)" : "#6B7280",
+                        fontSize: 10,
                         fontWeight: 600,
                       }}
                     />
@@ -557,16 +562,16 @@ const AverageEnrollment: React.FC = () => {
                   <Bar
                     dataKey="latest_risk_score"
                     name="Latest Risk Score"
-                    radius={[10, 10, 0, 0]}
-                    maxBarSize={36}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={26}
                   >
                     <LabelList
                       dataKey="latest_risk_score"
                       position="top"
                       formatter={(value) => formatRisk(Number(value ?? 0))}
                       style={{
-                        fill: isDarkMode() ? "rgba(255,255,255,0.88)" : "#475467",
-                        fontSize: 11,
+                        fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
+                        fontSize: 10,
                         fontWeight: 700,
                       }}
                     />
@@ -582,13 +587,13 @@ const AverageEnrollment: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-[12px] text-gray-500 dark:text-white/50">
-          <div className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-white/6">
-            <FiActivity />
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[10.5px] text-gray-500 dark:text-white/50">
+          <div className="inline-flex items-center gap-1.5 rounded-xl bg-gray-50 px-2.5 py-1.5 dark:bg-white/6">
+            <FiActivity className="text-[12px]" />
             X = Task Name
           </div>
-          <div className="inline-flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 dark:bg-white/6">
-            <FiShield />
+          <div className="inline-flex items-center gap-1.5 rounded-xl bg-gray-50 px-2.5 py-1.5 dark:bg-white/6">
+            <FiShield className="text-[12px]" />
             Y = Average Severity (Risk Score)
           </div>
         </div>
