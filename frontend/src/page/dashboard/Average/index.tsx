@@ -11,10 +11,7 @@ import {
   ReferenceLine,
   LabelList,
 } from "recharts";
-import {
-  MdTrendingUp,
-  MdTrendingDown,
-} from "react-icons/md";
+import { MdTrendingUp, MdTrendingDown } from "react-icons/md";
 import {
   FiActivity,
   FiAlertCircle,
@@ -34,6 +31,7 @@ type ChartRow = {
   host: string;
   task_name: string;
   asset_label: string;
+  axis_key: string;
   latest_task_id: string;
   latest_risk_score: number;
   previous_risk_score: number;
@@ -113,10 +111,10 @@ const CustomTooltip = ({
   return (
     <div className="min-w-62.5 max-w-[320px] rounded-[18px] border border-gray-200/90 bg-white/96 px-3 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#0B1220]/96 dark:shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
       <div className="mb-2">
-        <p className="text-[13px] font-semibold text-[#1f2240] dark:text-white/92">
+        <p className="text-[13px] font-semibold text-[#1f2240] dark:text-white/92 wrap-break-word">
           {item.task_name || "Unknown Task"}
         </p>
-        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45">
+        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45 break-all">
           Host: {item.host || "-"}
         </p>
       </div>
@@ -143,12 +141,16 @@ const CustomTooltip = ({
         <div className="grid grid-cols-1 gap-1.5">
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Task Name</span>
-            <span className="font-medium text-right">{item.task_name || "-"}</span>
+            <span className="font-medium text-right wrap-break-word">
+              {item.task_name || "-"}
+            </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Host</span>
-            <span className="font-medium text-right">{item.host || "-"}</span>
+            <span className="font-medium text-right break-all">
+              {item.host || "-"}
+            </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
@@ -211,8 +213,12 @@ const CustomXAxisTick = (props: {
   payload?: { value?: string };
 }) => {
   const { x = 0, y = 0, payload } = props;
-  const value = String(payload?.value || "");
+  const rawValue = String(payload?.value || "");
   const dark = isDarkMode();
+
+  const label = rawValue.includes("__AXIS__")
+    ? rawValue.split("__AXIS__")[0]
+    : rawValue;
 
   return (
     <g transform={`translate(${x},${y})`}>
@@ -224,7 +230,7 @@ const CustomXAxisTick = (props: {
         fontSize={11}
         fontWeight={600}
       >
-        {value}
+        {label}
       </text>
     </g>
   );
@@ -277,6 +283,7 @@ const AverageEnrollment: React.FC = () => {
       if (mode === "refresh") setRefreshing(true);
 
       const res = await ListTargetDiffer();
+      console.log(res);
       setRows(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("fetch target differ error:", error);
@@ -310,20 +317,29 @@ const AverageEnrollment: React.FC = () => {
   }, []);
 
   const mappedRows = useMemo<ChartRow[]>(() => {
-    return rows.map((item) => ({
-      host: item.host || "-",
-      task_name: item.task_name || "-",
-      asset_label: shortenTaskName(item.task_name || "-"),
-      latest_task_id: item.latest_task_id || "-",
-      latest_risk_score: Number(item.latest_risk_score ?? 0),
-      previous_risk_score: Number(item.previous_risk_score ?? 0),
-      diff_risk_score: Number(item.diff_risk_score ?? 0),
-      latest_total: Number(item.latest_total ?? 0),
-      previous_total: Number(item.previous_total ?? 0),
-      previous_version_status: item.previous_version_status || "-",
-      latest_creation_time: item.latest_creation_time ?? null,
-      previous_creation_time: item.previous_creation_time ?? null,
-    }));
+    return rows.map((item, index) => {
+      const taskName = item.task_name || "-";
+      const host = item.host || "-";
+
+      return {
+        host,
+        task_name: taskName,
+        asset_label: shortenTaskName(taskName),
+        axis_key: `${shortenTaskName(taskName)}__AXIS__${host}__${index}`,
+        latest_task_id:
+          item.latest_task_id !== null && item.latest_task_id !== undefined
+            ? String(item.latest_task_id)
+            : "-",
+        latest_risk_score: Number(item.latest_risk_score ?? 0),
+        previous_risk_score: Number(item.previous_risk_score ?? 0),
+        diff_risk_score: Number(item.diff_risk_score ?? 0),
+        latest_total: Number(item.latest_total ?? 0),
+        previous_total: Number(item.previous_total ?? 0),
+        previous_version_status: item.previous_version_status || "-",
+        latest_creation_time: item.latest_creation_time ?? null,
+        previous_creation_time: item.previous_creation_time ?? null,
+      };
+    });
   }, [rows]);
 
   const filterOptions = useMemo<FilterOption[]>(() => {
@@ -713,7 +729,6 @@ const AverageEnrollment: React.FC = () => {
                   </div>
                 )}
               </div>
-
             </div>
           </div>
 
@@ -846,7 +861,7 @@ const AverageEnrollment: React.FC = () => {
                   />
 
                   <XAxis
-                    dataKey="asset_label"
+                    dataKey="axis_key"
                     tick={<CustomXAxisTick />}
                     axisLine={false}
                     tickLine={false}

@@ -31,6 +31,7 @@ type RangeKey =
 
 type Row = {
   label: string;
+  axisKey: string;
   date: string;
   host: string;
   taskName: string;
@@ -113,17 +114,17 @@ const shortenTaskName = (taskName: string) => {
   return `${taskName.slice(0, 16)}...`;
 };
 
+const isDarkMode = () => {
+  if (typeof document === "undefined") return false;
+  return document.documentElement.classList.contains("dark");
+};
+
 type CustomTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload: Row }>;
-  label?: string;
 };
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({
-  active,
-  payload,
-  label,
-}) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
 
   const row = payload?.[0]?.payload;
@@ -136,11 +137,11 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
         "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
       ].join(" ")}
     >
-      <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/90 mb-1">
-        {label}
+      <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/90 mb-1 wrap-break-word">
+        {row.taskName || "-"}
       </p>
 
-      <p className="mb-2 text-[10.5px] text-gray-500 dark:text-white/50">
+      <p className="mb-2 text-[10.5px] text-gray-500 dark:text-white/50 break-all">
         Host: {row.host}
       </p>
 
@@ -163,14 +164,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-500 dark:text-white/55">Task Name:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
+          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right wrap-break-word">
             {row.taskName || "-"}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-500 dark:text-white/55">Host:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
+          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right break-all">
             {row.host || "-"}
           </span>
         </div>
@@ -229,6 +230,35 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
   );
 };
 
+const CustomXAxisTick = (props: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+}) => {
+  const { x = 0, y = 0, payload } = props;
+  const rawValue = String(payload?.value || "");
+  const dark = isDarkMode();
+
+  const label = rawValue.includes("__AXIS__")
+    ? rawValue.split("__AXIS__")[0]
+    : rawValue;
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={14}
+        textAnchor="middle"
+        fill={dark ? "rgba(255,255,255,0.48)" : "#5b6170"}
+        fontSize={11}
+        fontWeight={600}
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
 const useIsSmall = () => {
   const [isSmall, setIsSmall] = useState(false);
 
@@ -249,10 +279,10 @@ const useIsSmall = () => {
   return isSmall;
 };
 
-const RiskScoreGraph: React.FC = () => { //@ts-ignore
-  const [range, setRange] = useState<RangeKey>("This Year");
+const RiskScoreGraph: React.FC = () => {
+  const [range] = useState<RangeKey>("This Year");
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(true);//@ts-ignore
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [rawData, setRawData] = useState<TargetDifferDTO[]>([]);
   const isSmall = useIsSmall();
@@ -316,24 +346,37 @@ const RiskScoreGraph: React.FC = () => { //@ts-ignore
 
   const mappedRows = useMemo<Row[]>(() => {
     return rawData
-      .map((item) => ({
-        label: shortenTaskName(item.task_name || "-"),
-        date: formatUnixToYMD(item.latest_creation_time),
-        host: item.host || "-",
-        taskName: item.task_name || "-",
+      .map((item, index) => {
+        const taskName = item.task_name || "-";
+        const host = item.host || "-";
+        const shortLabel = shortenTaskName(taskName);
 
-        latestTaskID: item.latest_task_id || "-",
-        previousTaskID: item.previous_task_id || "-",
+        return {
+          label: shortLabel,
+          axisKey: `${shortLabel}__AXIS__${host}__${index}`,
+          date: formatUnixToYMD(item.latest_creation_time),
+          host,
+          taskName,
 
-        latestDetectedTime: item.latest_creation_time ?? null,
-        previousDetectedTime: item.previous_creation_time ?? null,
+          latestTaskID:
+            item.latest_task_id !== null && item.latest_task_id !== undefined
+              ? String(item.latest_task_id)
+              : "-",
+          previousTaskID:
+            item.previous_task_id !== null && item.previous_task_id !== undefined
+              ? String(item.previous_task_id)
+              : "-",
 
-        latestTotal: Number(item.latest_total ?? 0),
-        previousTotal: Number(item.previous_total ?? 0),
+          latestDetectedTime: item.latest_creation_time ?? null,
+          previousDetectedTime: item.previous_creation_time ?? null,
 
-        riskScore: clamp(Number(item.latest_risk_score ?? 0), 0, 10),
-        threatLevel: clamp(Number(item.previous_risk_score ?? 0), 0, 10),
-      }))
+          latestTotal: Number(item.latest_total ?? 0),
+          previousTotal: Number(item.previous_total ?? 0),
+
+          riskScore: clamp(Number(item.latest_risk_score ?? 0), 0, 10),
+          threatLevel: clamp(Number(item.previous_risk_score ?? 0), 0, 10),
+        };
+      })
       .sort((a, b) => (b.latestDetectedTime || 0) - (a.latestDetectedTime || 0));
   }, [rawData]);
 
@@ -696,7 +739,20 @@ const RiskScoreGraph: React.FC = () => { //@ts-ignore
                   )}
                 </div>
 
-                
+                <button
+                  type="button"
+                  onClick={() => void fetchData("refresh")}
+                  disabled={refreshing}
+                  className={[
+                    "min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-center gap-2 transition",
+                    "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
+                    "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10",
+                    refreshing ? "opacity-70 cursor-not-allowed" : "",
+                  ].join(" ")}
+                >
+                  <FiRefreshCw className={refreshing ? "animate-spin text-[13px]" : "text-[13px]"} />
+                  Refresh
+                </button>
               </div>
 
               {range === "Custom Range" && (
@@ -870,10 +926,10 @@ const RiskScoreGraph: React.FC = () => { //@ts-ignore
                 />
 
                 <XAxis
-                  dataKey="label"
+                  dataKey="axisKey"
                   interval={xInterval}
                   minTickGap={8}
-                  tick={{ fill: "#5b6170", fontSize: 11 }}
+                  tick={<CustomXAxisTick />}
                   axisLine={false}
                   tickLine={false}
                 />
