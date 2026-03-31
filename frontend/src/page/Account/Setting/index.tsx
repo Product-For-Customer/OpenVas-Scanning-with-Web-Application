@@ -182,7 +182,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   };
 
   const inputClass = [
-    "w-full h-11 rounded-xl border px-4 text-[14px] outline-none",
+    "w-full h-10 rounded-[10px] border px-3.5 text-[13px] outline-none",
     "border-gray-300 bg-white text-gray-700",
     "focus:ring-2 focus:ring-[#7a67ea]/25 focus:border-[#7a67ea]",
     "dark:border-white/10 dark:bg-white/5 dark:text-white/80",
@@ -190,7 +190,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   ].join(" ");
 
   const disabledInputClass = [
-    "w-full h-11 rounded-xl border px-4 text-[14px] outline-none cursor-not-allowed",
+    "w-full h-10 rounded-[10px] border px-3.5 text-[13px] outline-none cursor-not-allowed",
     "border-gray-200 bg-gray-100 text-gray-500",
     "dark:border-white/10 dark:bg-white/10 dark:text-white/45",
   ].join(" ");
@@ -198,32 +198,31 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   return (
     <section
       className={[
-        "h-full rounded-[22px] border shadow-sm overflow-hidden flex flex-col",
+        "h-full rounded-[18px] border shadow-sm overflow-hidden flex flex-col",
         "border-gray-200/80 bg-[#f7f7f8]",
         "dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:ring-1 dark:ring-white/10",
       ].join(" ")}
     >
       <div
         className={[
-          "px-5 sm:px-6 py-4 border-b",
+          "px-4 sm:px-5 py-3.5 border-b",
           "border-gray-200/80",
           "dark:border-white/10",
         ].join(" ")}
       >
-        <h2 className="text-[18px] sm:text-[20px] font-semibold text-[#1f2240] dark:text-white/85">
+        <h2 className="text-[16px] sm:text-[18px] font-semibold text-[#1f2240] dark:text-white/85">
           Account Settings
         </h2>
       </div>
 
-      <form onSubmit={onSave} className="p-5 sm:p-6 flex-1 flex flex-col">
+      <form onSubmit={onSave} className="p-4 sm:p-5 flex-1 flex flex-col">
         <div>
-          {/* Upload Profile */}
-          <div className="mb-6 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-3">
+          <div className="mb-5 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2.5">
               <label
                 htmlFor="profile-upload-input"
                 className={[
-                  "relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed transition",
+                  "relative flex h-22 w-22 cursor-pointer items-center justify-center overflow-hidden rounded-full border-2 border-dashed transition",
                   "border-gray-300 bg-white hover:border-[#7a67ea]",
                   "dark:border-white/15 dark:bg-white/5 dark:hover:border-[#7a67ea]",
                 ].join(" ")}
@@ -235,7 +234,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <CameraOutlined className="text-[24px] text-[#7a67ea]" />
+                  <CameraOutlined className="text-[20px] text-[#7a67ea]" />
                 )}
 
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors" />
@@ -249,17 +248,15 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
                 onChange={(e) => handleFileChange(e.target.files?.[0])}
               />
 
-              <p className="text-[12px] text-gray-500 dark:text-white/45">
+              <p className="text-[11px] text-gray-500 dark:text-white/45">
                 คลิกเพื่ออัปโหลดรูปโปรไฟล์
               </p>
             </div>
           </div>
 
-          {/* Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* First Name */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 First Name
               </label>
               <input
@@ -271,9 +268,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
               />
             </div>
 
-            {/* Last Name */}
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 Last Name
               </label>
               <input
@@ -285,9 +281,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
               />
             </div>
 
-            {/* Email - Locked */}
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 Email Address
               </label>
               <input
@@ -300,9 +295,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
               />
             </div>
 
-            {/* Phone */}
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 Phone No
               </label>
               <input
@@ -315,14 +309,13 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
                 placeholder="0XXXXXXXXX"
                 className={inputClass}
               />
-              <p className="mt-1 text-[12px] text-gray-500 dark:text-white/40">
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40">
                 ต้องเป็นตัวเลข 10 หลัก และขึ้นต้นด้วย 0
               </p>
             </div>
 
-            {/* Location */}
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 Location
               </label>
               <input
@@ -334,9 +327,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
               />
             </div>
 
-            {/* Position */}
             <div>
-              <label className="block mb-2 text-[13px] font-medium text-[#374151] dark:text-white/65">
+              <label className="block mb-1.5 text-[12px] font-medium text-[#374151] dark:text-white/65">
                 Position
               </label>
               <input
@@ -351,18 +343,17 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2.5">
           <button
             type="submit"
             disabled={submitting}
             className={[
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 transition-colors",
-              "bg-[#6f5be8] hover:bg-[#624de0] text-white font-semibold text-[14px]",
+              "inline-flex items-center gap-2 rounded-[10px] px-3.5 py-2 transition-colors",
+              "bg-[#6f5be8] hover:bg-[#624de0] text-white font-semibold text-[13px]",
               submitting ? "opacity-70 cursor-not-allowed" : "",
             ].join(" ")}
           >
-            <FiCheckCircle className="text-[16px]" />
+            <FiCheckCircle className="text-[14px]" />
             {submitting ? "Saving..." : "Save Changes"}
           </button>
         </div>

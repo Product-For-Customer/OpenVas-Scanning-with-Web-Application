@@ -28,7 +28,7 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
         { name: "dashboard", icon: <FiShoppingBag /> },
         { name: "vulnerability", icon: <FiEdit /> },
         { name: "target", icon: <FiEdit /> },
-        { name: "P.THOR", icon: <FiEdit /> },
+        //{ name: "P.THOR", icon: <FiEdit /> },
       ],
     },
   ];

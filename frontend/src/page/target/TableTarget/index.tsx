@@ -5,8 +5,6 @@ import {
   FiShield,
   FiRadio,
   FiActivity,
-  FiCheck,
-  FiX,
 } from "react-icons/fi";
 import {
   MdRouter,
@@ -32,11 +30,6 @@ type Row = {
   iconIndex: number;
 };
 
-type FilterOption = {
-  key: string;
-  label: string;
-};
-
 const clamp = (v: number, min: number, max: number) =>
   Math.max(min, Math.min(max, v));
 
@@ -45,6 +38,11 @@ const formatNumber = (n: number) =>
 
 const formatRisk = (n: number) =>
   !Number.isFinite(n) ? "0.00" : n.toFixed(2);
+
+const clampRiskToTen = (risk: number) => clamp(risk || 0, 0, 10);
+
+const getProgressPercentFromRisk = (risk: number) =>
+  (clampRiskToTen(risk) / 10) * 100;
 
 const DEVICE_ICONS = [
   {
@@ -143,12 +141,7 @@ const TableTarget: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [openSort, setOpenSort] = useState(false);
 
-  const [openQuery, setOpenQuery] = useState(false);
-  const [querySearch, setQuerySearch] = useState("");
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
-
   const sortRef = useRef<HTMLDivElement | null>(null);
-  const queryRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -179,10 +172,6 @@ const TableTarget: React.FC = () => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
         setOpenSort(false);
       }
-
-      if (queryRef.current && !queryRef.current.contains(e.target as Node)) {
-        setOpenQuery(false);
-      }
     };
 
     document.addEventListener("mousedown", onClickOutside);
@@ -191,15 +180,11 @@ const TableTarget: React.FC = () => {
 
   const baseRows = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
-    const maxRisk = list.reduce(
-      (m, x) => Math.max(m, Number(x?.risk_score) || 0),
-      0
-    );
 
     const mapped: Row[] = list.map((x, idx) => {
       const risk = Number(x?.risk_score) || 0;
       const vuln = Number(x?.vulnerability_total) || 0;
-      const progressPercent = maxRisk > 0 ? (risk / maxRisk) * 100 : 0;
+      const progressPercent = getProgressPercentFromRisk(risk);
 
       const taskID = String(x?.task_id ?? "").trim();
       const name = String(x?.task_name ?? "").trim() || "-";
@@ -226,40 +211,8 @@ const TableTarget: React.FC = () => {
     return mapped;
   }, [data]);
 
-  const filterOptions = useMemo<FilterOption[]>(() => {
-    const seen = new Set<string>();
-    const options: FilterOption[] = [];
-
-    for (const row of baseRows) {
-      const key = `${row.taskID}__${row.ip}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      options.push({
-        key,
-        label: `${row.name} - ${row.ip || "-"}`,
-      });
-    }
-
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [baseRows]);
-
-  const filteredQueryOptions = useMemo(() => {
-    const keyword = querySearch.trim().toLowerCase();
-    if (!keyword) return filterOptions;
-
-    return filterOptions.filter((opt) =>
-      opt.label.toLowerCase().includes(keyword)
-    );
-  }, [filterOptions, querySearch]);
-
   const rows: Row[] = useMemo(() => {
     let filtered = [...baseRows];
-
-    if (selectedKeys.length > 0) {
-      const selectedSet = new Set(selectedKeys);
-      filtered = filtered.filter((r) => selectedSet.has(`${r.taskID}__${r.ip}`));
-    }
 
     const q = search.trim().toLowerCase();
     if (q.length > 0) {
@@ -278,7 +231,7 @@ const TableTarget: React.FC = () => {
     });
 
     return filtered.map((r, i) => ({ ...r, no: i + 1 }));
-  }, [baseRows, selectedKeys, search, sortOrder]);
+  }, [baseRows, search, sortOrder]);
 
   const stats = useMemo(() => {
     const list = data ?? [];
@@ -295,60 +248,18 @@ const TableTarget: React.FC = () => {
     return { totalTargets, totalVulns, highestRisk };
   }, [data]);
 
-  const selectedCount = selectedKeys.length;
-
-  const queryButtonLabel = useMemo(() => {
-    if (selectedCount === 0) return "Query Select";
-    if (selectedCount === 1) {
-      const found = filterOptions.find((x) => x.key === selectedKeys[0]);
-      return found?.label || "1 selected";
-    }
-    return `${selectedCount} selected`;
-  }, [selectedCount, filterOptions, selectedKeys]);
-
-  const toggleSelect = (key: string) => {
-    setSelectedKeys((prev) =>
-      prev.includes(key)
-        ? prev.filter((item) => item !== key)
-        : [...prev, key]
-    );
-  };
-
-  const handleSelectAllVisible = () => {
-    const visibleKeys = filteredQueryOptions.map((x) => x.key);
-
-    setSelectedKeys((prev) => {
-      const prevSet = new Set(prev);
-      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
-
-      if (allVisibleSelected) {
-        return prev.filter((key) => !visibleKeys.includes(key));
-      }
-
-      return Array.from(new Set([...prev, ...visibleKeys]));
-    });
-  };
-
-  const clearAllSelections = () => {
-    setSelectedKeys([]);
-  };
-
-  const allVisibleSelected =
-    filteredQueryOptions.length > 0 &&
-    filteredQueryOptions.every((opt) => selectedKeys.includes(opt.key));
-
   return (
     <section
       className={[
-        "relative overflow-hidden rounded-[22px] p-3 sm:p-4 md:p-4.5",
+        "relative overflow-hidden rounded-[20px] p-3 sm:p-4",
         "bg-white border border-gray-200/80 shadow-sm",
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-14 -right-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -bottom-14 -left-10 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.055]">
+        <div className="absolute -top-12 -right-8 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
           <div
             className="h-full w-full"
             style={{
@@ -363,53 +274,65 @@ const TableTarget: React.FC = () => {
       </div>
 
       <div className="relative z-10">
-        <div className="flex flex-col gap-3 mb-3.5">
+        <div className="flex flex-col gap-3 mb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+              <div className="mb-2.5 flex flex-wrap items-center gap-2">
                 <div
                   className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
                     "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
                     "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
                   ].join(" ")}
                 >
                   <FiShield className="text-[11px]" />
-                  <span className="text-[10.5px] font-semibold tracking-wide">
+                  <span className="text-[10px] font-semibold tracking-wide">
                     Target Scan Console
                   </span>
                 </div>
 
                 <div
                   className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
                     "bg-slate-50 text-slate-600 border border-slate-200/80",
                     "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
                   ].join(" ")}
                 >
                   <FiRadio className="text-[11px] text-cyan-500" />
-                  <span className="text-[10.5px] font-medium">
+                  <span className="text-[10px] font-medium">
                     {loading ? "Scanner Syncing" : `${stats.totalTargets} targets loaded`}
                   </span>
                 </div>
 
                 <div
                   className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
                     "bg-slate-50 text-slate-600 border border-slate-200/80",
                     "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
                   ].join(" ")}
                 >
                   <FiActivity className="text-[11px] text-violet-500" />
-                  <span className="text-[10.5px] font-medium">
+                  <span className="text-[10px] font-medium">
                     {loading
                       ? "Loading telemetry..."
                       : `${stats.totalVulns.toLocaleString()} total vulns`}
                   </span>
                 </div>
+
+                <div
+                  className={[
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                    "bg-slate-50 text-slate-600 border border-slate-200/80",
+                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+                  ].join(" ")}
+                >
+                  <span className="text-[10px] font-medium">
+                    Peak risk {formatRisk(stats.highestRisk)}/10
+                  </span>
+                </div>
               </div>
 
-              <h2 className="text-[16px] sm:text-[18px] font-semibold text-[#1f2240] dark:text-white/90">
+              <h2 className="text-[16px] sm:text-[17px] font-semibold text-[#1f2240] dark:text-white/90">
                 Device Vulnerability Table
               </h2>
               <p className="text-[11px] sm:text-[12px] text-gray-500 dark:text-white/55 mt-1">
@@ -417,444 +340,239 @@ const TableTarget: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-              <div className="relative" ref={queryRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpenQuery((prev) => !prev)}
-                  className={[
-                    "h-9 w-full sm:w-70 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
-                    "border border-gray-200/80 bg-white text-[12px] font-semibold text-[#1f2240] hover:bg-gray-50 active:bg-gray-100",
-                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10 dark:active:bg-white/15",
-                  ].join(" ")}
-                >
-                  <span className="truncate">{queryButtonLabel}</span>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selectedCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                        {selectedCount}
-                      </span>
-                    )}
-
-                    <FiChevronDown
-                      className={`transition ${
-                        openQuery ? "rotate-180" : ""
-                      } text-gray-500 dark:text-white/55 text-[15px]`}
-                    />
-                  </div>
-                </button>
-
-                {openQuery && (
-                  <div className="absolute right-0 mt-2 w-full sm:w-85 rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                    <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
-                      <div
-                        className={[
-                          "flex items-center gap-2 rounded-2xl px-3 h-9",
-                          "bg-slate-50 border border-slate-200/80",
-                          "dark:bg-white/5 dark:border-white/10",
-                        ].join(" ")}
-                      >
-                        <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
-                        <input
-                          type="text"
-                          value={querySearch}
-                          onChange={(e) => setQuerySearch(e.target.value)}
-                          placeholder="Search task name or ip..."
-                          className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
-                        />
-                        {querySearch.trim() !== "" && (
-                          <button
-                            type="button"
-                            onClick={() => setQuerySearch("")}
-                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                            aria-label="Clear query search"
-                          >
-                            <FiX className="text-[13px]" />
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="mt-2.5 flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllVisible}
-                          className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-                        >
-                          {allVisibleSelected ? "Unselect visible" : "Select visible"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={clearAllSelections}
-                          className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-                        >
-                          Clear all
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="max-h-64 overflow-y-auto p-2">
-                      {filteredQueryOptions.length === 0 ? (
-                        <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
-                          No matching device
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {filteredQueryOptions.map((opt) => {
-                            const checked = selectedKeys.includes(opt.key);
-
-                            return (
-                              <button
-                                key={opt.key}
-                                type="button"
-                                onClick={() => toggleSelect(opt.key)}
-                                className={[
-                                  "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
-                                  checked
-                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                                    : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <span
-                                  className={[
-                                    "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
-                                    checked
-                                      ? "bg-cyan-500 border-cyan-500 text-white"
-                                      : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                                  ].join(" ")}
-                                >
-                                  <FiCheck className="text-[10px]" />
-                                </span>
-
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                                    {opt.label}
-                                  </span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="relative">
-                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/45 text-[13px]" />
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+              <div
+                className={[
+                  "flex items-center gap-2 rounded-[14px] h-9 px-3 min-w-60",
+                  "border border-gray-200/80 bg-white",
+                  "dark:border-white/10 dark:bg-white/5",
+                ].join(" ")}
+              >
+                <FiSearch className="text-[13px] text-gray-400 dark:text-white/35 shrink-0" />
                 <input
+                  type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search target / ip / firmware..."
-                  className={[
-                    "h-9 w-full sm:w-64 pl-9 pr-3 rounded-2xl text-[12px] transition",
-                    "border border-gray-200/80 bg-white text-[#1f2240]",
-                    "focus:outline-none focus:ring-2 focus:ring-cyan-500/20",
-                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/35",
-                  ].join(" ")}
+                  placeholder="Search target, ip, firmware..."
+                  className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
                 />
               </div>
 
               <div className="relative" ref={sortRef}>
                 <button
                   type="button"
-                  onClick={() => setOpenSort((v) => !v)}
+                  onClick={() => setOpenSort((prev) => !prev)}
                   className={[
-                    "h-9 px-3.5 rounded-2xl inline-flex items-center gap-2 transition",
-                    "border border-gray-200/80 bg-white text-[12px] font-semibold text-[#1f2240] hover:bg-gray-50 active:bg-gray-100",
-                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10 dark:active:bg-white/15",
+                    "h-9 px-3.5 rounded-[14px] inline-flex items-center justify-between gap-2 transition text-left min-w-35",
+                    "border border-gray-200/80 bg-white text-[12px] font-medium text-[#1f2240] hover:bg-gray-50",
+                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10",
                   ].join(" ")}
-                  title="Sort by Vulnerability Total"
                 >
-                  Sort: Vuln {sortOrder === "desc" ? "High → Low" : "Low → High"}
+                  <span>
+                    {sortOrder === "desc" ? "Highest Vulns" : "Lowest Vulns"}
+                  </span>
                   <FiChevronDown
                     className={`transition ${
                       openSort ? "rotate-180" : ""
-                    } text-gray-500 dark:text-white/55 text-[15px]`}
+                    } text-[14px] text-gray-500 dark:text-white/55`}
                   />
                 </button>
 
                 {openSort && (
-                  <div className="absolute right-0 mt-2 w-46 rounded-[18px] border border-gray-200/80 bg-white shadow-sm p-2 z-20 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+                  <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
                     <button
                       type="button"
                       onClick={() => {
                         setSortOrder("desc");
                         setOpenSort(false);
                       }}
-                      className={[
-                        "w-full text-left px-3 py-2 rounded-xl text-[12px] transition",
-                        "hover:bg-gray-50 dark:hover:bg-white/8",
-                        sortOrder === "desc"
-                          ? "font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10"
-                          : "text-gray-700 dark:text-white/70",
-                      ].join(" ")}
+                      className="w-full px-3 py-2.5 text-left text-[12px] text-gray-700 hover:bg-gray-50 dark:text-white/80 dark:hover:bg-white/5"
                     >
-                      Vuln High → Low
+                      Highest Vulnerability
                     </button>
-
                     <button
                       type="button"
                       onClick={() => {
                         setSortOrder("asc");
                         setOpenSort(false);
                       }}
-                      className={[
-                        "w-full text-left px-3 py-2 rounded-xl text-[12px] transition",
-                        "hover:bg-gray-50 dark:hover:bg-white/8",
-                        sortOrder === "asc"
-                          ? "font-semibold text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-500/10"
-                          : "text-gray-700 dark:text-white/70",
-                      ].join(" ")}
+                      className="w-full px-3 py-2.5 text-left text-[12px] text-gray-700 hover:bg-gray-50 dark:text-white/80 dark:hover:bg-white/5"
                     >
-                      Vuln Low → High
+                      Lowest Vulnerability
                     </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
-
-          <div
-            className={[
-              "rounded-[18px] px-3.5 py-2.5 flex flex-wrap items-center gap-2.5",
-              "bg-slate-50 border border-slate-200/80",
-              "dark:bg-white/4 dark:border-white/10",
-            ].join(" ")}
-          >
-            <div className="inline-flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
-              </span>
-              <span className="text-[11px] font-medium text-slate-700 dark:text-white/75">
-                Target telemetry active
-              </span>
-            </div>
-
-            <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-
-            <div className="text-[11px] text-slate-500 dark:text-white/50">
-              Highest risk score:{" "}
-              <span className="font-semibold text-slate-700 dark:text-white/80">
-                {loading ? "..." : formatRisk(stats.highestRisk)}
-              </span>
-            </div>
-
-            {selectedCount > 0 && (
-              <>
-                <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-                <div className="inline-flex items-center gap-2 text-[11px] text-cyan-700 dark:text-cyan-300">
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                  Filtered by {selectedCount} selected device{selectedCount > 1 ? "s" : ""}
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
-        <div className="hidden xl:block rounded-[18px] overflow-hidden border border-gray-200/80 bg-white/80 backdrop-blur-sm dark:border-white/10 dark:bg-white/4">
-          <div className="grid grid-cols-12 gap-5 px-3.5 py-2.5 bg-[#eef6ff] text-[12px] font-semibold text-[#1f2240] dark:bg-white/8 dark:text-white/80">
-            <div className="col-span-1">No</div>
-            <div className="col-span-3">Target</div>
-            <div className="col-span-4">Firmware Version</div>
-            <div className="col-span-1 text-right">Vulns</div>
-            <div className="col-span-2">Scan Intensity</div>
-            <div className="col-span-1 text-right">Risk</div>
-          </div>
+        <div
+          className={[
+            "overflow-hidden rounded-[18px] border",
+            "border-gray-200/80 bg-white/80",
+            "dark:border-white/10 dark:bg-white/3",
+          ].join(" ")}
+        >
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200/80 dark:border-white/10">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    No
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    Target
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    IP Address
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    Firmware
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    Vulnerability
+                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap min-w-52.5">
+                    Risk Progress
+                  </th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                    Risk Score
+                  </th>
+                </tr>
+              </thead>
 
-          <div>
-            {loading ? (
-              <div className="px-3.5 py-5 text-[12px] text-gray-500 dark:text-white/55">
-                Loading...
-              </div>
-            ) : rows.length === 0 ? (
-              <div className="px-3.5 py-5 text-[12px] text-gray-500 dark:text-white/55">
-                No Data
-              </div>
-            ) : (
-              rows.map((r, idx) => {
-                const { Icon, bg, fg, ring } = DEVICE_ICONS[r.iconIndex];
-                const riskMeta = getRiskMeta(r.riskScore);
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-gray-100 dark:border-white/5"
+                    >
+                      <td className="px-4 py-3.5">
+                        <div className="h-3 w-5 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="h-3 w-28 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="h-3 w-20 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="h-3 w-36 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="h-3 w-14 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="h-2 w-full rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="ml-auto h-3 w-12 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-7 text-center text-[12px] text-gray-500 dark:text-white/55"
+                    >
+                      No Data
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((row) => {
+                    const { Icon, bg, fg, ring } = DEVICE_ICONS[row.iconIndex];
+                    const riskMeta = getRiskMeta(row.riskScore);
 
-                return (
-                  <div
-                    key={r.id}
-                    className={[
-                      "grid grid-cols-12 gap-5 px-3.5 py-3 items-start transition-colors",
-                      idx !== 0 ? "border-t border-gray-200/70 dark:border-white/10" : "",
-                      "hover:bg-cyan-50/40 dark:hover:bg-white/3",
-                    ].join(" ")}
-                  >
-                    <div className="col-span-1 text-[12px] font-semibold text-[#1f2240] dark:text-white/85">
-                      {r.no}
-                    </div>
-
-                    <div className="col-span-3 flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={[
-                          "h-9 w-9 rounded-2xl border flex items-center justify-center shrink-0",
-                          bg,
-                          ring,
-                        ].join(" ")}
-                        aria-hidden="true"
+                    return (
+                      <tr
+                        key={row.id}
+                        className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/70 dark:hover:bg-white/3 transition-colors"
                       >
-                        <Icon className={`${fg} text-[17px]`} />
-                      </div>
+                        <td className="px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/70 whitespace-nowrap">
+                          {row.no}
+                        </td>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="truncate text-[12.5px] font-semibold text-[#1f2240] dark:text-white/85">
-                            {r.name}
-                          </p>
-                          <span
-                            className={[
-                              "inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold border",
-                              riskMeta.chip,
-                            ].join(" ")}
+                        <td className="px-4 py-3.5 min-w-52.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={[
+                                "h-8 w-8 rounded-xl border flex items-center justify-center shrink-0",
+                                bg,
+                                ring,
+                              ].join(" ")}
+                            >
+                              <Icon className={`${fg} text-[15px]`} />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="truncate text-[12px] font-semibold text-[#1f2240] dark:text-white/85">
+                                {row.name}
+                              </div>
+                              <div className="mt-1">
+                                <span
+                                  className={[
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-[8.5px] font-semibold border",
+                                    riskMeta.chip,
+                                  ].join(" ")}
+                                >
+                                  {riskMeta.label}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/65 whitespace-nowrap">
+                          {row.ip}
+                        </td>
+
+                        <td className="px-4 py-3.5 min-w-65">
+                          <div className="truncate text-[12px] text-gray-600 dark:text-white/65">
+                            {row.firmwareVersion}
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-[12px] font-medium text-gray-700 dark:text-white/75 whitespace-nowrap">
+                          {formatNumber(row.vulnerabilityTotal)}
+                        </td>
+
+                        <td className="px-4 py-3.5 min-w-52.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex-1 h-2 rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${Math.max(
+                                    row.progressPercent,
+                                    row.riskScore > 0 ? 3 : 0
+                                  )}%`,
+                                  background: riskMeta.bar,
+                                }}
+                              />
+                            </div>
+                            <span className="text-[10px] text-gray-400 dark:text-white/40 whitespace-nowrap">
+                              {formatRisk(row.riskScore)}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                          <div
+                            className={`text-[12px] font-semibold ${riskMeta.text}`}
                           >
-                            {riskMeta.label}
-                          </span>
-                        </div>
-
-                        <p className="text-[10.5px] text-gray-500 dark:text-white/55 truncate">
-                          {r.ip}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="col-span-4 text-[12px] text-gray-700 dark:text-white/70 wrap-break-word">
-                      {r.firmwareVersion}
-                    </div>
-
-                    <div className="col-span-1 text-right text-[12px] font-semibold text-[#1f2240] dark:text-white/85 tabular-nums">
-                      {formatNumber(r.vulnerabilityTotal)}
-                    </div>
-
-                    <div className="col-span-2">
-                      <div className="mb-1 flex items-center justify-between text-[10px] text-gray-500 dark:text-white/45">
-                        <span>Scan level</span>
-                        <span>{Math.round(r.progressPercent)}%</span>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${r.progressPercent}%`,
-                            background: riskMeta.bar,
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div
-                      className={`col-span-1 text-right text-[12px] font-semibold tabular-nums ${riskMeta.text}`}
-                    >
-                      {formatRisk(r.riskScore)}
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                            {formatRisk(row.riskScore)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-
-        <div className="xl:hidden space-y-2.5">
-          {loading ? (
-            <div className="rounded-[18px] border border-gray-200/80 bg-white px-3.5 py-5 text-[12px] text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
-              Loading...
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="rounded-[18px] border border-gray-200/80 bg-white px-3.5 py-5 text-[12px] text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
-              No Data
-            </div>
-          ) : (
-            rows.map((r) => {
-              const { Icon, bg, fg, ring } = DEVICE_ICONS[r.iconIndex];
-              const riskMeta = getRiskMeta(r.riskScore);
-
-              return (
-                <div
-                  key={r.id}
-                  className="rounded-[18px] border border-gray-200/80 bg-white px-3.5 py-3 dark:border-white/10 dark:bg-white/5"
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div
-                      className={[
-                        "h-9 w-9 rounded-2xl border flex items-center justify-center shrink-0",
-                        bg,
-                        ring,
-                      ].join(" ")}
-                    >
-                      <Icon className={`${fg} text-[17px]`} />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="truncate text-[12.5px] font-semibold text-[#1f2240] dark:text-white/85">
-                          {r.name}
-                        </p>
-                        <span className="text-[10.5px] font-semibold text-gray-400 dark:text-white/40">
-                          #{r.no}
-                        </span>
-                      </div>
-
-                      <p className="mt-1 truncate text-[10.5px] text-gray-500 dark:text-white/55">
-                        {r.ip}
-                      </p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <span
-                          className={[
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold border",
-                            riskMeta.chip,
-                          ].join(" ")}
-                        >
-                          {riskMeta.label}
-                        </span>
-                        <span className="text-[10px] text-gray-500 dark:text-white/45">
-                          {formatNumber(r.vulnerabilityTotal)} Vulns
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5 text-[11.5px] text-gray-700 dark:text-white/70 wrap-break-word">
-                    {r.firmwareVersion}
-                  </div>
-
-                  <div className="mt-2.5">
-                    <div className="mb-1 flex items-center justify-between text-[10px] text-gray-500 dark:text-white/45">
-                      <span>Scan intensity</span>
-                      <span>{Math.round(r.progressPercent)}%</span>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{
-                          width: `${r.progressPercent}%`,
-                          background: riskMeta.bar,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-2.5 flex items-center justify-between">
-                    <span className="text-[10.5px] text-gray-500 dark:text-white/45">
-                      Risk Score
-                    </span>
-                    <span
-                      className={`text-[12px] font-semibold tabular-nums ${riskMeta.text}`}
-                    >
-                      {formatRisk(r.riskScore)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          )}
         </div>
       </div>
     </section>

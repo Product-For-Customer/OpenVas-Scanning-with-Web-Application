@@ -315,7 +315,7 @@ const MultiTargetSelector: React.FC<MultiTargetSelectorProps> = ({
 
   const label = useMemo(() => {
     if (loading) return "Loading targets...";
-    if (selectedTargets.length === 0) return "Query by Target";
+    if (selectedTargets.length === 0) return "Filter by Targets";
     if (selectedTargets.length === 1) {
       const target = selectedTargets[0];
       return `${target.hostname}${target.ip ? ` (${target.ip})` : ""}`;

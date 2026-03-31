@@ -509,7 +509,7 @@ const RiskScoreGraph: React.FC = () => {
   const selectedCount = selectedKeys.length;
 
   const queryButtonLabel = useMemo(() => {
-    if (selectedCount === 0) return "Query Select";
+    if (selectedCount === 0) return "Filter by Targets";
     if (selectedCount === 1) {
       const found = filterOptions.find((x) => x.key === selectedKeys[0]);
       return found?.label || "1 selected";

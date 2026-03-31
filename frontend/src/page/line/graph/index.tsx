@@ -52,14 +52,14 @@ const normalizeStatus = (status?: string | null): StatusKey => {
 };
 
 const cardClass = [
-  "relative h-full overflow-hidden rounded-[22px] p-3 sm:p-4 md:p-4.5",
-  "bg-white border border-gray-200/80 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.20)]",
+  "relative h-full overflow-hidden rounded-[18px] p-3 sm:p-3.5",
+  "bg-white border border-gray-200/80 shadow-[0_12px_28px_-22px_rgba(15,23,42,0.18)]",
   "dark:bg-[#08111f]/95 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
   "flex flex-col",
 ].join(" ");
 
 const panelClass = [
-  "overflow-hidden rounded-[22px] border border-gray-200/80 bg-white/90",
+  "overflow-hidden rounded-[18px] border border-gray-200/80 bg-white/90",
   "dark:border-white/10 dark:bg-white/[0.03]",
   "flex-1 flex flex-col",
 ].join(" ");
@@ -67,49 +67,49 @@ const panelClass = [
 const STATUS_META = {
   completed: {
     label: "Completed",
-    icon: <FiCheckCircle className="text-[11px]" />,
+    icon: <FiCheckCircle className="text-[10px]" />,
     badge:
       "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-200",
   },
   noUpdate: {
     label: "No Update",
-    icon: <FiSlash className="text-[11px]" />,
+    icon: <FiSlash className="text-[10px]" />,
     badge:
       "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-400/20 dark:bg-slate-500/10 dark:text-slate-200",
   },
   running: {
     label: "Running",
-    icon: <FiRotateCw className="text-[11px]" />,
+    icon: <FiRotateCw className="text-[10px]" />,
     badge:
       "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200",
   },
   failed: {
     label: "Failed",
-    icon: <FiAlertTriangle className="text-[11px]" />,
+    icon: <FiAlertTriangle className="text-[10px]" />,
     badge:
       "border-red-200 bg-red-50 text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-200",
   },
   notification: {
     label: "Notification",
-    icon: <FiBell className="text-[11px]" />,
+    icon: <FiBell className="text-[10px]" />,
     badge:
       "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200",
   },
   unauthorized: {
     label: "Unauthorized",
-    icon: <FiLock className="text-[11px]" />,
+    icon: <FiLock className="text-[10px]" />,
     badge:
       "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-200",
   },
   serverError: {
     label: "Server Error",
-    icon: <FiServer className="text-[11px]" />,
+    icon: <FiServer className="text-[10px]" />,
     badge:
       "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-400/20 dark:bg-fuchsia-500/10 dark:text-fuchsia-200",
   },
   timeout: {
     label: "Timeout",
-    icon: <FiAlertCircle className="text-[11px]" />,
+    icon: <FiAlertCircle className="text-[10px]" />,
     badge:
       "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-400/20 dark:bg-orange-500/10 dark:text-orange-200",
   },
@@ -242,7 +242,7 @@ const Index: React.FC = () => {
         text: "Status Distribution Radar",
         align: "left",
         style: {
-          fontSize: "13px",
+          fontSize: "12px",
           fontWeight: 700,
           color: "#0f172a",
         },
@@ -270,7 +270,7 @@ const Index: React.FC = () => {
               "#475569",
               "#475569",
             ],
-            fontSize: "10px",
+            fontSize: "9px",
             fontWeight: 500,
           },
         },
@@ -288,12 +288,12 @@ const Index: React.FC = () => {
           },
           style: {
             colors: ["#64748b"],
-            fontSize: "10px",
+            fontSize: "9px",
           },
         },
       },
       stroke: {
-        width: 2.25,
+        width: 2,
         curve: "smooth",
       },
       fill: {
@@ -301,12 +301,12 @@ const Index: React.FC = () => {
       },
       colors: ["#fb7185"],
       markers: {
-        size: 4,
+        size: 3.5,
         colors: ["#ffffff"],
         strokeColor: "#fb4d67",
-        strokeWidth: 2.25,
+        strokeWidth: 2,
         hover: {
-          size: 5,
+          size: 4.5,
         },
       },
       dataLabels: {
@@ -314,13 +314,13 @@ const Index: React.FC = () => {
         background: {
           enabled: true,
           borderRadius: 4,
-          padding: 3,
+          padding: 2,
           foreColor: "#ffffff",
           borderWidth: 0,
           opacity: 0.95,
         },
         style: {
-          fontSize: "10px",
+          fontSize: "9px",
           fontWeight: 700,
           colors: ["#ffffff"],
         },
@@ -353,9 +353,9 @@ const Index: React.FC = () => {
   return (
     <section className={cardClass}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-14 right-6 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.05]">
+        <div className="absolute -top-12 right-5 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
           <div
             className="h-full w-full"
             style={{
@@ -363,25 +363,25 @@ const Index: React.FC = () => {
                 linear-gradient(to right, currentColor 1px, transparent 1px),
                 linear-gradient(to bottom, currentColor 1px, transparent 1px)
               `,
-              backgroundSize: "26px 26px",
+              backgroundSize: "24px 24px",
             }}
           />
         </div>
       </div>
 
       <div className="relative z-10 flex h-full flex-col">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-[10.5px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-              <FiActivity className="text-[11px]" />
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[9.5px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+              <FiActivity className="text-[10px]" />
               History Notify Radar
             </div>
 
-            <h2 className="mt-2.5 text-[18px] font-semibold tracking-tight text-slate-900 sm:text-[20px] dark:text-white">
+            <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
               Status Distribution
             </h2>
 
-            <p className="mt-1 text-[11px] text-slate-500 sm:text-[12px] dark:text-white/55">
+            <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 dark:text-white/55">
               Radar chart showing total counts by notification status.
             </p>
           </div>
@@ -391,7 +391,7 @@ const Index: React.FC = () => {
             onClick={() => loadHistoryNotify(true)}
             disabled={refreshing}
             className={[
-              "inline-flex h-9 w-9 items-center justify-center rounded-2xl transition",
+              "inline-flex h-8 w-8 items-center justify-center rounded-xl transition",
               "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
               "disabled:cursor-not-allowed disabled:opacity-60",
               "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
@@ -399,14 +399,14 @@ const Index: React.FC = () => {
             title="Refresh"
           >
             <FiRefreshCw
-              className={`text-[13px] ${refreshing ? "animate-spin" : ""}`}
+              className={`text-[12px] ${refreshing ? "animate-spin" : ""}`}
             />
           </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.completed.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.completed.badge}`}
           >
             {STATUS_META.completed.icon}
             {STATUS_META.completed.label}:
@@ -414,7 +414,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.noUpdate.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.noUpdate.badge}`}
           >
             {STATUS_META.noUpdate.icon}
             {STATUS_META.noUpdate.label}:
@@ -422,7 +422,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.running.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.running.badge}`}
           >
             {STATUS_META.running.icon}
             {STATUS_META.running.label}:
@@ -430,7 +430,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.failed.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.failed.badge}`}
           >
             {STATUS_META.failed.icon}
             {STATUS_META.failed.label}:
@@ -438,7 +438,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.notification.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.notification.badge}`}
           >
             {STATUS_META.notification.icon}
             {STATUS_META.notification.label}:
@@ -446,7 +446,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.unauthorized.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.unauthorized.badge}`}
           >
             {STATUS_META.unauthorized.icon}
             {STATUS_META.unauthorized.label}:
@@ -454,7 +454,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.serverError.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.serverError.badge}`}
           >
             {STATUS_META.serverError.icon}
             {STATUS_META.serverError.label}:
@@ -462,7 +462,7 @@ const Index: React.FC = () => {
           </div>
 
           <div
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10.5px] font-medium ${STATUS_META.timeout.badge}`}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[9.5px] font-medium ${STATUS_META.timeout.badge}`}
           >
             {STATUS_META.timeout.icon}
             {STATUS_META.timeout.label}:
@@ -471,30 +471,30 @@ const Index: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-[12px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
             {error}
           </div>
         )}
 
-        <div className={`mt-4 ${panelClass}`}>
+        <div className={`mt-3 ${panelClass}`}>
           {loading ? (
-            <div className="flex h-full items-center justify-center px-5 py-10 text-center">
+            <div className="flex h-full items-center justify-center px-5 py-8 text-center">
               <div>
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
-                  <FiRefreshCw className="animate-spin text-[18px]" />
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
+                  <FiRefreshCw className="animate-spin text-[16px]" />
                 </div>
-                <h3 className="mt-3 text-[14px] font-semibold text-slate-900 dark:text-white/85">
+                <h3 className="mt-3 text-[13px] font-semibold text-slate-900 dark:text-white/85">
                   Loading radar chart...
                 </h3>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55">
+                <p className="mt-1 text-[10px] text-slate-500 dark:text-white/55">
                   Please wait while we analyze the status distribution.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col p-3.5 sm:p-4 md:p-4.5">
+            <div className="flex h-full flex-col p-3 sm:p-3.5">
               <div className="flex-1">
-                <div className="mx-auto flex h-full w-full max-w-3xl flex-col">
+                <div className="mx-auto flex h-full w-full max-w-175 flex-col">
                   <div className="min-h-0 flex-1">
                     <Chart
                       options={chartOptions}
@@ -506,7 +506,7 @@ const Index: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[11px] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-[10px] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
                 กราฟนี้นับจำนวนจากข้อมูลทั้งหมดที่ได้จาก ListHistoryNotify
                 แล้วกระจายตามแต่ละสถานะ เพื่อให้เห็นภาพรวมได้ง่ายขึ้น
               </div>

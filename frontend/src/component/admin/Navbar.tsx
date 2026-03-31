@@ -9,6 +9,9 @@ import { useStateContext } from "../../contexts/ContextProvider";
 import { FiSearch } from "react-icons/fi";
 import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
 
+// import png greenbone icon
+import greenboneIcon from "../../assets/logo-light.svg";
+
 type NavBtnProps = {
   title: string;
   onClick?: () => void;
@@ -36,7 +39,7 @@ const NavButton: React.FC<NavBtnProps> = ({
       aria-label={ariaLabel ?? title}
       onClick={onClick}
       className={[
-        "relative inline-flex h-9 w-9 items-center justify-center rounded-xl text-[18px] transition-all duration-200",
+        "relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[18px] transition-all duration-200",
         "text-gray-600 hover:bg-gray-100 active:bg-gray-200",
         "dark:text-white/75 dark:hover:bg-white/10 dark:active:bg-white/15",
         className,
@@ -97,6 +100,10 @@ const Navbar: React.FC = () => {
   }, [screenSize, setActiveMenu]);
 
   const handleActiveMenu = () => setActiveMenu(!activeMenu);
+
+  const openGreenbone = () => {
+    window.open("http://localhost:9392", "_blank", "noopener,noreferrer");
+  };
 
   const fallbackAvatar = useMemo(
     () =>
@@ -190,11 +197,25 @@ const Navbar: React.FC = () => {
           <div className="relative z-10 flex items-center h-full shrink-0">
             <div className="flex items-center gap-1 px-2 sm:px-3">
               <NavButton
+                title="Open Greenbone"
+                aria-label="Open Greenbone"
+                onClick={openGreenbone}
+                icon={
+                  <img
+                    src={greenboneIcon}
+                    alt="Greenbone"
+                    className="h-7 w-7 object-contain"
+                  />
+                }
+              />
+
+              <NavButton
                 title={currentMode === "Dark" ? "Light mode" : "Dark mode"}
                 aria-label="Toggle theme"
                 onClick={toggleMode}
                 icon={currentMode === "Dark" ? <HiOutlineSun /> : <HiOutlineMoon />}
               />
+
               <NavButton
                 title="Notifications"
                 aria-label="Open notifications"

@@ -75,7 +75,7 @@ const Account: React.FC = () => {
     return (
       <div
         className={[
-          "rounded-[22px] border p-6 text-sm",
+          "rounded-[18px] border p-4 text-[13px]",
           "border-gray-200/80 bg-[#f7f7f8] text-gray-600",
           "dark:border-white/10 dark:bg-white/5 dark:text-white/70",
         ].join(" ")}
@@ -89,7 +89,7 @@ const Account: React.FC = () => {
     return (
       <div
         className={[
-          "rounded-[22px] border p-6 text-sm",
+          "rounded-[18px] border p-4 text-[13px]",
           "border-red-200 bg-red-50 text-red-600",
           "dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300",
         ].join(" ")}
@@ -101,7 +101,7 @@ const Account: React.FC = () => {
 
   return (
     <div className="w-full">
-      <div className="grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-12 items-stretch">
+      <div className="grid grid-cols-1 gap-3.5 sm:gap-4 xl:grid-cols-12 items-stretch">
         <div className="xl:col-span-8 h-full">
           <Setting user={user} onUpdated={handleProfileUpdated} />
         </div>

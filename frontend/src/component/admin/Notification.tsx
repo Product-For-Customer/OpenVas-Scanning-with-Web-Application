@@ -35,7 +35,6 @@ const normalizeStatus = (status?: string | null): StatusKey => {
   if (normalized === "Update Failed") return "Update Failed";
   if (normalized === "Status Notification") return "Status Notification";
 
-  // fallback สำหรับข้อมูลเก่า
   if (normalized === "Update") return "Update Completed";
   if (normalized === "Alert") return "Status Notification";
 
@@ -66,7 +65,7 @@ const statusMeta: Record<
     iconSmallWrap:
       "bg-white ring-1 ring-emerald-200 dark:bg-[#08111f] dark:ring-emerald-400/20",
     icon: (
-      <FiCheckCircle className="text-[12px] text-emerald-600 dark:text-emerald-300" />
+      <FiCheckCircle className="text-[10px] text-emerald-600 dark:text-emerald-300" />
     ),
     sideIcon: <FiCheckCircle />,
     sideIconClass:
@@ -81,7 +80,7 @@ const statusMeta: Record<
       "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300",
     iconSmallWrap:
       "bg-white ring-1 ring-slate-200 dark:bg-[#08111f] dark:ring-slate-400/20",
-    icon: <FiSlash className="text-[12px] text-slate-600 dark:text-slate-300" />,
+    icon: <FiSlash className="text-[10px] text-slate-600 dark:text-slate-300" />,
     sideIcon: <FiSlash />,
     sideIconClass:
       "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300",
@@ -96,7 +95,7 @@ const statusMeta: Record<
     iconSmallWrap:
       "bg-white ring-1 ring-amber-200 dark:bg-[#08111f] dark:ring-amber-400/20",
     icon: (
-      <FiRotateCw className="text-[12px] text-amber-600 dark:text-amber-300" />
+      <FiRotateCw className="text-[10px] text-amber-600 dark:text-amber-300" />
     ),
     sideIcon: <FiRotateCw />,
     sideIconClass:
@@ -112,7 +111,7 @@ const statusMeta: Record<
     iconSmallWrap:
       "bg-white ring-1 ring-red-200 dark:bg-[#08111f] dark:ring-red-400/20",
     icon: (
-      <FiAlertTriangle className="text-[12px] text-red-600 dark:text-red-300" />
+      <FiAlertTriangle className="text-[10px] text-red-600 dark:text-red-300" />
     ),
     sideIcon: <FiAlertTriangle />,
     sideIconClass:
@@ -127,7 +126,7 @@ const statusMeta: Record<
       "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300",
     iconSmallWrap:
       "bg-white ring-1 ring-cyan-200 dark:bg-[#08111f] dark:ring-cyan-400/20",
-    icon: <FiBell className="text-[12px] text-cyan-600 dark:text-cyan-300" />,
+    icon: <FiBell className="text-[10px] text-cyan-600 dark:text-cyan-300" />,
     sideIcon: <FiWifi />,
     sideIconClass:
       "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300",
@@ -241,35 +240,35 @@ const Notification: React.FC = () => {
     <div
       className={[
         "fixed right-3 top-16 z-50",
-        "w-[calc(100vw-24px)] max-w-97.5",
-        "rounded-[26px] overflow-hidden",
-        "bg-white/95 border border-gray-200/80 shadow-[0_18px_40px_-22px_rgba(15,23,42,0.32)] backdrop-blur",
+        "w-[calc(100vw-24px)] max-w-90",
+        "rounded-[22px] overflow-hidden",
+        "bg-white/95 border border-gray-200/80 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.32)] backdrop-blur",
         "dark:bg-[#08111f]/95 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
       ].join(" ")}
       style={{ paddingTop: "max(0px, env(safe-area-inset-top))" }}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-12 right-4 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
+        <div className="absolute -top-12 right-4 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex items-center justify-between px-4 py-4 border-b border-gray-200/80 dark:border-white/10">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
-            <FiBell className="text-[18px]" />
+      <div className="relative z-10 flex items-center justify-between px-3.5 py-3.5 border-b border-gray-200/80 dark:border-white/10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
+            <FiBell className="text-[16px]" />
           </span>
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-[14px] font-semibold text-gray-800 dark:text-white/90 truncate">
+              <p className="text-[13px] font-semibold text-gray-800 dark:text-white/90 truncate">
                 Scan Notifications
               </p>
-              <span className="inline-flex items-center h-5 px-2 rounded-full text-[10px] font-bold bg-linear-to-r from-cyan-500 to-violet-500 text-white">
+              <span className="inline-flex items-center h-4.5 px-1.5 rounded-full text-[9px] font-bold bg-linear-to-r from-cyan-500 to-violet-500 text-white">
                 {visibleReports.length > 99 ? "99+" : visibleReports.length}
               </span>
             </div>
 
-            <p className="text-[12px] text-gray-500 dark:text-white/50 truncate">
+            <p className="text-[11px] text-gray-500 dark:text-white/50 truncate">
               findings / status / alerts
             </p>
           </div>
@@ -279,28 +278,28 @@ const Notification: React.FC = () => {
           type="button"
           onClick={close}
           aria-label="Close notifications"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-2xl transition-colors text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
         >
-          <MdOutlineCancel className="text-[20px]" />
+          <MdOutlineCancel className="text-[18px]" />
         </button>
       </div>
 
       {error && (
-        <div className="relative z-10 mx-4 mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+        <div className="relative z-10 mx-3.5 mt-3.5 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-[12px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
           {error}
         </div>
       )}
 
       <div
-        className="relative z-10 p-4 space-y-3"
-        style={{ maxHeight: 430, overflowY: "auto" }}
+        className="relative z-10 p-3.5 space-y-2.5"
+        style={{ maxHeight: 390, overflowY: "auto" }}
       >
         {loading ? (
-          <div className="text-center text-gray-500 dark:text-white/55 text-sm py-10">
+          <div className="text-center text-gray-500 dark:text-white/55 text-[13px] py-8">
             Loading notifications...
           </div>
         ) : visibleReports.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-white/55 text-sm py-10">
+          <div className="text-center text-gray-500 dark:text-white/55 text-[13px] py-8">
             ยังไม่มีการแจ้งเตือนใหม่
           </div>
         ) : (
@@ -313,7 +312,7 @@ const Notification: React.FC = () => {
               <div
                 key={item.id}
                 className={[
-                  "relative overflow-hidden rounded-2xl p-3.5 border transition-all duration-200",
+                  "relative overflow-hidden rounded-[18px] p-3 border transition-all duration-200",
                   "border-gray-200/80 bg-white hover:bg-gray-50",
                   "dark:border-white/10 dark:bg-white/4 dark:hover:bg-white/6",
                 ].join(" ")}
@@ -325,12 +324,12 @@ const Notification: React.FC = () => {
                   ].join(" ")}
                 />
 
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2.5">
                   <div className="relative shrink-0">
                     <img
                       src={avatarFallback}
                       alt="Notification"
-                      className="h-11 w-11 rounded-2xl object-cover ring-1 ring-gray-200 bg-white dark:ring-white/10 dark:bg-white/10"
+                      className="h-10 w-10 rounded-2xl object-cover ring-1 ring-gray-200 bg-white dark:ring-white/10 dark:bg-white/10"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = avatarFallback;
                       }}
@@ -338,7 +337,7 @@ const Notification: React.FC = () => {
 
                     <span
                       className={[
-                        "absolute -right-1 -bottom-1 inline-flex h-5 w-5 items-center justify-center rounded-full",
+                        "absolute -right-1 -bottom-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full",
                         meta.iconSmallWrap,
                       ].join(" ")}
                     >
@@ -347,16 +346,16 @@ const Notification: React.FC = () => {
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-2.5">
                       <div className="min-w-0">
-                        <p className="text-[13px] font-semibold text-gray-900 dark:text-white/85 truncate">
+                        <p className="text-[12px] font-semibold text-gray-900 dark:text-white/85 truncate">
                           {item.subject || "Notification"}
                         </p>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
                           <span
                             className={[
-                              "inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold border",
+                              "inline-flex items-center h-5.5 px-2 rounded-full text-[10px] font-semibold border",
                               meta.badge,
                             ].join(" ")}
                           >
@@ -364,14 +363,14 @@ const Notification: React.FC = () => {
                           </span>
 
                           {meta.activeText && (
-                            <span className="inline-flex items-center gap-1 text-[11px] text-cyan-600 dark:text-cyan-300">
-                              <FiActivity className="text-[10px]" />
+                            <span className="inline-flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-300">
+                              <FiActivity className="text-[9px]" />
                               {meta.activeText}
                             </span>
                           )}
 
-                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-white/50">
-                            <FiClock className="text-[11px]" />
+                          <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-white/50">
+                            <FiClock className="text-[10px]" />
                             {formatDateTime(item.created_at)}
                           </span>
                         </div>
@@ -379,7 +378,7 @@ const Notification: React.FC = () => {
 
                       <span
                         className={[
-                          "inline-flex h-8 w-8 items-center justify-center rounded-xl shrink-0",
+                          "inline-flex h-7 w-7 items-center justify-center rounded-xl shrink-0 text-[13px]",
                           meta.sideIconClass,
                         ].join(" ")}
                       >
@@ -387,18 +386,18 @@ const Notification: React.FC = () => {
                       </span>
                     </div>
 
-                    <p className="mt-3 text-[13px] leading-6 text-gray-600 dark:text-white/70 whitespace-pre-line">
+                    <p className="mt-2.5 text-[12px] leading-5 text-gray-600 dark:text-white/70 whitespace-pre-line">
                       {item.description || "-"}
                     </p>
 
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-2.5 flex items-center gap-2">
                       <div
                         className={[
-                          "inline-flex items-center h-8 px-3 rounded-xl text-[12px] font-semibold border",
+                          "inline-flex items-center h-7 px-2.5 rounded-[10px] text-[11px] font-semibold border",
                           meta.badge,
                         ].join(" ")}
                       >
-                        <FiShield className="mr-1.5 text-[12px]" />
+                        <FiShield className="mr-1.5 text-[11px]" />
                         {meta.label}
                       </div>
 
@@ -406,9 +405,9 @@ const Notification: React.FC = () => {
                         onClick={() => item.id && handleDelete(item.id)}
                         disabled={isDeleting}
                         title="Delete Notification"
-                        className="ml-auto inline-flex items-center h-8 px-3 rounded-xl text-[12px] font-semibold border transition-colors border-red-200 text-red-600 bg-white hover:bg-red-50 active:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+                        className="ml-auto inline-flex items-center h-7 px-2.5 rounded-[10px] text-[11px] font-semibold border transition-colors border-red-200 text-red-600 bg-white hover:bg-red-50 active:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
                       >
-                        <FaTrash className="mr-1.5" size={12} />
+                        <FaTrash className="mr-1.5" size={10} />
                         {isDeleting ? "Deleting..." : "Delete"}
                       </button>
                     </div>

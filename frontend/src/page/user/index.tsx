@@ -6,18 +6,13 @@ import {
   FiMail,
   FiPhone,
   FiMapPin,
-  FiBriefcase,
   FiChevronDown,
   FiEdit2,
   FiTrash2,
   FiX,
   FiLink2,
 } from "react-icons/fi";
-import {
-  ListUser,
-  DeleteUserByID,
-  type UserResponse,
-} from "../../services";
+import { ListUser, DeleteUserByID, type UserResponse } from "../../services";
 import { useAuth } from "../../contexts/AuthContext";
 import ModalCreateUser from "../../Model/ModalCreateUser";
 import OwnManageModal from "./OwnManageModal";
@@ -34,28 +29,6 @@ type UiUser = {
   location: string;
   position: string;
   role: "Admin" | "User" | string;
-};
-
-const roleBadgeClass = (role: string) => {
-  if (role === "Admin") {
-    return "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-200 dark:border-violet-400/20";
-  }
-  return "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-200 dark:border-cyan-400/20";
-};
-
-const positionBadgeClass = (position: string) => {
-  const p = (position || "").toLowerCase();
-
-  if (p.includes("security")) {
-    return "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-500/10 dark:text-violet-200 dark:border-violet-400/20";
-  }
-  if (p.includes("analyst")) {
-    return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:border-amber-400/20";
-  }
-  if (p.includes("engineer")) {
-    return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-500/10 dark:text-sky-200 dark:border-sky-400/20";
-  }
-  return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:border-emerald-400/20";
 };
 
 const isBase64DataImage = (v: string) => {
@@ -402,7 +375,7 @@ const Index: React.FC = () => {
           </div>
 
           <div className="mt-3.5 overflow-x-auto rounded-[22px] border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/3">
-            <table className="min-w-330 w-full border-separate border-spacing-0">
+            <table className="min-w-280 w-full border-separate border-spacing-0">
               <thead>
                 <tr className="text-left">
                   <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
@@ -413,12 +386,6 @@ const Index: React.FC = () => {
                   </th>
                   <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Location
-                  </th>
-                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
-                    Role
-                  </th>
-                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
-                    Position
                   </th>
                   <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-center">
                     Own
@@ -451,26 +418,20 @@ const Index: React.FC = () => {
                           }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="relative shrink-0">
-                              {renderAvatar(user)}
-                            </div>
+                            <div className="relative shrink-0">{renderAvatar(user)}</div>
 
                             <div className="min-w-0">
                               <p className="text-[12.5px] font-semibold text-slate-900 dark:text-white/85 truncate">
                                 {user.first_name} {user.last_name}
                               </p>
 
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10.5px] text-slate-500 dark:text-white/50">
-                                <span className="inline-flex items-center gap-1">
-                                  <FiUser className="text-[11px]" />
-                                  ID: {user.id}
-                                </span>
-
-                                {isCurrentUser && (
-                                  <span className="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-200">
-                                    Current Login
-                                  </span>
-                                )}
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-[11px] text-slate-500 dark:text-white/50 truncate">
+                                  Role : {user.role || "-"}
+                                </p>
+                                <p className="text-[11px] text-slate-500 dark:text-white/50 truncate">
+                                  Position : {user.position || "-"}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -506,46 +467,6 @@ const Index: React.FC = () => {
                             <FiMapPin className="text-[12px] text-emerald-600 dark:text-emerald-300" />
                             <span>{user.location || "-"}</span>
                           </div>
-                        </td>
-
-                        <td
-                          className={`px-3.5 py-3 ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <span
-                            className={[
-                              "inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold",
-                              roleBadgeClass(user.role),
-                            ].join(" ")}
-                          >
-                            {user.role === "Admin" ? (
-                              <FiShield className="mr-1.5 text-[11px]" />
-                            ) : (
-                              <FiUser className="mr-1.5 text-[11px]" />
-                            )}
-                            {user.role}
-                          </span>
-                        </td>
-
-                        <td
-                          className={`px-3.5 py-3 ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <span
-                            className={[
-                              "inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold",
-                              positionBadgeClass(user.position),
-                            ].join(" ")}
-                          >
-                            <FiBriefcase className="mr-1.5 text-[11px]" />
-                            {user.position || "-"}
-                          </span>
                         </td>
 
                         <td
@@ -615,7 +536,7 @@ const Index: React.FC = () => {
                 {!loading && users.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={5}
                       className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       No user data found
@@ -626,7 +547,7 @@ const Index: React.FC = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={5}
                       className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       Loading...
