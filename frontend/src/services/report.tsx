@@ -287,6 +287,13 @@ export type SendPDFToLineResponse = {
   message: string;
   file_path?: string;
   public_url?: string;
+
+  sent_notification_ids?: number[];
+  sent_targets?: string[];
+
+  failed_notification_ids?: number[];
+  failed_targets?: string[];
+
   error?: string;
 };
 
@@ -340,15 +347,27 @@ export const UpdateAppReportByID = async (
 // =======================
 // API: GET /send-pdf-to-line
 // public route
+// รองรับ pdf และ app_notification_id หลายตัว
 // =======================
 export const SendPDFToLine = async (
-  pdf?: string
+  pdf?: string,
+  appNotificationIDs?: number[]
 ): Promise<SendPDFToLineResponse | null> => {
   try {
     const params: Record<string, string> = {};
 
     if (pdf && pdf.trim() !== "") {
-      params.pdf = pdf;
+      params.pdf = pdf.trim();
+    }
+
+    if (appNotificationIDs && appNotificationIDs.length > 0) {
+      const normalizedIDs = appNotificationIDs
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+      if (normalizedIDs.length > 0) {
+        params.app_notification_id = normalizedIDs.join(",");
+      }
     }
 
     const response = await publicReportApi.get("/send-pdf-to-line", {

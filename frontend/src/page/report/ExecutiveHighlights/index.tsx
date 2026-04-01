@@ -62,7 +62,7 @@ type SectionBlock = {
 
 const toneStyle: Record<HighlightTone, string> = {
   good: "bg-emerald-700 text-white border-emerald-700",
-  warning: "bg-amber-600 text-white border-amber-600",
+  warning: "bg-amber-600 text-white border-amber-400",
   critical: "bg-rose-700 text-white border-rose-700",
   neutral: "bg-slate-700 text-white border-slate-700",
 };
@@ -229,7 +229,8 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
             </div>
 
             <div className="text-right">
-              <span className="inline-flex items-center rounded-sm border-l-[3px] border-orange-600 bg-rose-50 px-3 py-1.5 text-[9px] font-semibold leading-none text-orange-700">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400 bg-amber-500 px-3.5 py-2 text-[10.5px] font-extrabold leading-none text-white shadow-sm">
+                <FiAlertTriangle className="text-[12px]" />
                 Remediate within 48 hours
               </span>
             </div>
@@ -267,7 +268,8 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
             </div>
 
             <div className="text-right">
-              <span className="inline-flex items-center rounded-sm border-l-[3px] border-orange-600 bg-rose-50 px-3 py-1.5 text-[9px] font-semibold leading-none text-orange-700">
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400 bg-amber-500 px-3.5 py-2 text-[10.5px] font-extrabold leading-none text-white shadow-sm">
+                <FiAlertTriangle className="text-[12px]" />
                 Remediate within 48 hours
               </span>
             </div>
@@ -300,7 +302,8 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
           </div>
 
           <div className="text-right">
-            <span className="inline-flex items-center rounded-sm border-l-[3px] border-orange-600 bg-rose-50 px-3 py-1.5 text-[9px] font-semibold leading-none text-orange-700">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400 bg-amber-500 px-3.5 py-2 text-[10.5px] font-extrabold leading-none text-white shadow-sm">
+              <FiAlertTriangle className="text-[12px]" />
               Remediate within 48 hours
             </span>
           </div>
@@ -420,7 +423,7 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
                         <FiCpu className="text-[12px] text-slate-500" />
                         <span>
                           <span className="font-semibold text-slate-900">
-                            Target:
+                            Device:
                           </span>{" "}
                           {item.target}
                         </span>

@@ -295,7 +295,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
 
     return raw.map((item) => ({
       ...item,
-      share: total > 0 ? Number(((item.value / total) * 100).toFixed(1)) : 0,
+      share: total > 0 ? Number(((item.value / total) * 100).toFixed(2)) : 0,
     }));
   }, [summaryRows]);
 
@@ -323,7 +323,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
   const targetListData = useMemo<DeviceTrendRow[]>(() => {
     return [...topThreeLineData]
       .sort((a, b) => a.rankNumber - b.rankNumber)
-      .slice(1, 3);
+      .slice(0, 3);
   }, [topThreeLineData]);
 
   const totalTargets = useMemo(() => {
@@ -354,10 +354,6 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
       .sort((a, b) => Number(b.severity || 0) - Number(a.severity || 0))
       .find((item) => normalizeText(item.vulnerability_name));
   }, [criticalRows]);
-
-  const topTargetName = highestRiskTarget?.target || "-";
-  const topTargetIp = highestRiskTarget?.ip || "-";
-  const topTargetVulnTotal = Number(highestRiskTarget?.vulnerabilities || 0);
 
   const priorityTone = getRiskTone(highestRiskScore);
 
@@ -683,6 +679,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                       paddingAngle={2}
                       stroke="#ffffff"
                       strokeWidth={2}
+                      isAnimationActive={false}
                     >
                       {severityData.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
@@ -708,7 +705,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5 text-slate-600">
                       <span>{formatNumber(item.value)}</span>
-                      <span>({item.share.toFixed(1)}%)</span>
+                      <span>({item.share.toFixed(2)}%)</span>
                     </div>
                   </div>
                 ))}
@@ -736,45 +733,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
             </div>
 
             <div className="flex flex-1 flex-col p-3">
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-                  <p className="text-[7px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Top 1 Device
-                  </p>
-                  <p className="mt-1 truncate text-[10px] font-semibold text-slate-900">
-                    {topTargetName}
-                  </p>
-                  <p className="mt-0.5 truncate text-[7.5px] text-slate-500">
-                    {topTargetIp}
-                  </p>
-                </div>
-
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-                  <p className="text-[7px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Top 1 Risk
-                  </p>
-                  <p className="mt-1 text-[10px] font-semibold text-slate-900">
-                    {formatRiskScore(highestRiskScore)}
-                  </p>
-                  <p className="mt-0.5 text-[7.5px] text-slate-500">
-                    Highest score
-                  </p>
-                </div>
-
-                <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-                  <p className="text-[7px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Top 1 Vulns
-                  </p>
-                  <p className="mt-1 text-[10px] font-semibold text-slate-900">
-                    {formatNumber(topTargetVulnTotal)}
-                  </p>
-                  <p className="mt-0.5 text-[7.5px] text-slate-500">
-                    Findings count
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-2 h-38 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
+              <div className="h-38 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
                     data={topThreeLineData}
@@ -824,6 +783,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                         stroke: "#8b5cf6",
                       }}
                       activeDot={{ r: 4.5 }}
+                      isAnimationActive={false}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -855,7 +815,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                         </div>
 
                         <div className="text-right">
-                          <p className="text-[7px] uppercase tracking-[0.08em] text-slate-400">
+                          <p className="text-[7px] uppercase tracking-[0.12em] text-slate-400">
                             Risk
                           </p>
                           <p className="text-[8.5px] font-semibold text-slate-900">
@@ -864,7 +824,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                         </div>
 
                         <div className="text-right">
-                          <p className="text-[7px] uppercase tracking-[0.08em] text-slate-400">
+                          <p className="text-[7px] uppercase tracking-[0.12em] text-slate-400">
                             Vulns
                           </p>
                           <p className="text-[8.5px] font-semibold text-slate-900">
@@ -875,7 +835,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                     ))
                   ) : (
                     <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-[8px] text-slate-500">
-                      No additional devices available.
+                      No top device data available.
                     </div>
                   )}
                 </div>
@@ -883,49 +843,45 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-12 gap-3 border-t border-slate-200 px-4 py-3">
         <div className="col-span-8">
-          <div className="h-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-            <div className="flex items-start gap-2.5">
-              <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                <FiCheckCircle className="text-[13px]" />
-              </span>
+          <div className="h-full rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+            <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+              Final interpretation
+            </p>
 
-              <div className="min-w-0">
-                <p className="text-[8.5px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Final interpretation
-                </p>
+            <div className="mt-2 space-y-2 text-[8px] leading-[1.6] text-slate-600">
+              <p>
+                ภาพรวมของการประเมินรอบนี้สะท้อนให้เห็นว่าโครงสร้างความเสี่ยงหลักยังคงกระจุกตัวอยู่ใน
+                device กลุ่มบนสุด โดยเฉพาะรายการที่อยู่ใน Top 3 ซึ่งมีค่า Risk Score สูงกว่าอุปกรณ์อื่นอย่างชัดเจน
+                และควรถูกใช้เป็นกลุ่มเป้าหมายแรกของแผน remediation
+              </p>
 
-                <div className="mt-2 space-y-2 text-[10px] leading-[1.62] text-slate-700">
-                  <p>
-                    ภาพรวมความเสี่ยงของรอบการประเมินนี้ยังคงกระจุกตัวอยู่ในกลุ่ม
-                    <span className="font-semibold text-slate-900"> High และ Critical</span>
-                    {" "}ซึ่งหมายความว่าการจัดลำดับการแก้ไขควรเริ่มจากรายการที่มีผลกระทบสูงก่อน
-                    เพื่อควบคุมความเสี่ยงในภาพรวมของระบบให้ลดลงได้อย่างชัดเจน
-                  </p>
+              <p>
+                ในด้าน severity distribution พบว่ากลุ่ม Info และ Medium ยังมีสัดส่วนค่อนข้างมาก
+                ขณะที่กลุ่ม Critical และ High แม้มีจำนวนน้อยกว่า แต่มีความสำคัญเชิงปฏิบัติการสูงกว่า
+                ดังนั้นการจัดลำดับการแก้ไขควรอิงทั้ง “ความรุนแรง” และ “ผลกระทบต่อภาพรวมของความเสี่ยง”
+                ไปพร้อมกัน
+              </p>
 
-                  <p>
-                    ในมุมมองเชิงแนวโน้ม กราฟรายเดือนด้านบนสะท้อนให้เห็นว่า Risk Score
-                    ลดลงต่อเนื่องจากช่วงต้นปีไปจนถึงปลายปี
-                    จึงเหมาะสำหรับใช้เป็นภาพสรุปเชิงผู้บริหารว่าความเสี่ยงโดยรวมมีทิศทางที่ดีขึ้น
-                    แต่ยังต้องคงการติดตามรายการสำคัญต่อเนื่อง
-                  </p>
+              <p>
+                จากกราฟ Top 3 Device Risk Curve จะเห็นว่าระดับความเสี่ยงของอุปกรณ์กลุ่มบนสุดยังอยู่ในระดับใกล้เคียงกัน
+                หมายความว่าการแก้ไขเฉพาะรายการเดียวอาจยังไม่เพียงพอ หากต้องการลดแรงกดดันของความเสี่ยงรวมในรอบถัดไป
+                ควรวางแผน remediation แบบเป็นชุดสำหรับกลุ่ม Top 3 พร้อมกัน
+              </p>
 
-                  <p>
-                    สำหรับมุมมองรายเป้าหมาย
-                    <span className="font-semibold text-slate-900"> {topTargetName}</span>
-                    {" "}ยังคงเป็นเป้าหมายที่ควรได้รับความสำคัญลำดับแรก
-                    เนื่องจากมีทั้งคะแนนความเสี่ยงสูง จำนวนช่องโหว่สะสมมาก
-                    และเป็นตัวแทนของความเสี่ยงหลักในรอบการประเมินนี้
-                  </p>
-
-                  <p>
-                    ขณะเดียวกัน Top 2 และ Top 3 ที่แสดงใน Device List
-                    ยังควรถูกติดตามควบคู่กันไป เพราะเป็นกลุ่มที่มีความเสี่ยงรองลงมาโดยตรงจาก Top 1
-                    และหากได้รับการแก้ไขพร้อมกัน จะช่วยลดแรงกดดันของความเสี่ยงรวมในระบบได้ดีกว่าการแก้เฉพาะรายการเดียว
-                  </p>
+              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
+                <div className="flex items-start gap-2">
+                  <FiCpu className="mt-0.5 text-[11px] text-slate-600" />
+                  <div>
+                    <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      Operational note
+                    </p>
+                    <p className="mt-1 text-[8px] leading-[1.45] text-slate-600">
+                      ควรวางแผน remediation เป็นกลุ่มเป้าหมาย ไม่ใช่เฉพาะ Top 1 เท่านั้น
+                      เพื่อให้ภาพรวมความเสี่ยงลดลงได้เร็วขึ้นในรอบถัดไป
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -953,7 +909,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                           {normalizeText(latestCritical.task_name) || "-"}
                         </span>
                       </p>
-                      <p className="mt-1 text-[7.5px] leading-[1.4] text-slate-700">
+                      <p className="mt-0.5 text-[7.5px] leading-[1.4] text-slate-700">
                         Severity:{" "}
                         <span className="font-medium text-slate-900">
                           {formatRiskScore(Number(latestCritical.severity || 0))}
@@ -994,16 +950,17 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                 No critical observation available for this section.
               </div>
             )}
+
             <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
               <div className="flex items-start gap-2">
-                <FiCpu className="mt-0.5 text-[11px] text-slate-600" />
+                <FiCheckCircle className="mt-0.5 text-[11px] text-emerald-700" />
                 <div>
                   <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Operational note
+                    Recommendation
                   </p>
                   <p className="mt-1 text-[8px] leading-[1.45] text-slate-600">
-                    ควรวางแผน remediation เป็นกลุ่มเป้าหมาย ไม่ใช่เฉพาะ Top 1 เท่านั้น
-                    เพื่อให้ภาพรวมความเสี่ยงลดลงได้เร็วขึ้นในรอบถัดไป
+                    เริ่มจาก Top 3 device ที่มี risk score สูงสุด พร้อมติดตาม critical finding
+                    ล่าสุดควบคู่กัน เพื่อให้การลดความเสี่ยงเห็นผลได้เร็วและชัดเจนมากขึ้น
                   </p>
                 </div>
               </div>

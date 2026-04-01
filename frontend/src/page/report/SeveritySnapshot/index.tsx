@@ -185,6 +185,7 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
                     paddingAngle={2}
                     stroke="#ffffff"
                     strokeWidth={2}
+                    isAnimationActive={false}
                   >
                     {chartData.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />

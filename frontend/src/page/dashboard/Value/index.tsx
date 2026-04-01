@@ -138,7 +138,7 @@ const Value: React.FC = () => {
 
   const percent = (n: number) => {
     if (!totals.totalAll) return 0;
-    return Math.round((n / totals.totalAll) * 100);
+    return ((n / totals.totalAll) * 100).toFixed(2);
   };
 
   const makeSubtitle = (n: number) => {

@@ -199,13 +199,13 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
 
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                  Total Targets
+                  Total Devices
                 </p>
                 <p className="mt-1 text-[17px] font-bold text-slate-900">
                   {formatNumber(totalTargets)}
                 </p>
                 <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                  Number of assessed targets included in the latest scan cycle.
+                  Number of assessed devices included in the latest scan cycle.
                 </p>
               </div>
             </div>
@@ -229,7 +229,7 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
                   {formatRiskScore(averageRiskScore)}
                 </p>
                 <p className={`mt-1 text-[11px] leading-5 ${averageTone.desc}`}>
-                  Average risk level across all targets in this assessment.
+                  Average risk level across all Devices in this assessment.
                 </p>
               </div>
             </div>

@@ -122,7 +122,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
         id: 1,
         label: "Total Findings",
         value: loading ? "..." : summary.total.toLocaleString(),
-        hint: "Total findings identified across all scanned targets",
+        hint: "Total findings identified across all scanned devices",
         icon: <MdOutlineReportProblem className="text-[13px]" />,
         iconWrapClass: "bg-slate-100 text-slate-700",
         labelClass: "text-slate-700",
@@ -228,7 +228,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
 
                   <span
                     className={[
-                      "inline-flex shrink-0 items-center border px-2 py-0.75 text-[8px] font-bold uppercase tracking-[0.12em] leading-none",
+                      "inline-flex shrink-0 items-center border px-2 py-0.75 text-[10px] font-extrabold uppercase tracking-[0.12em] leading-none",
                       levelBadgeClassMap[item.level],
                     ].join(" ")}
                   >

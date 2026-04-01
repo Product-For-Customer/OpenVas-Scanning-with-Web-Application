@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	fixedCaptureURL  = "http://localhost:5173/capture"
+	fixedCaptureURL = "http://frontend/capture" // เปลี่ยนด้วยใน docker-compose.yml ถ้าจำเป็น
 	fixedPublicBase  = "https://postdiphtherial-unperishable-carolyn.ngrok-free.dev"
 	fixedReportsDir  = "./tmp/reports"
 	defaultPDFPrefix = "report_capture"
@@ -31,9 +31,10 @@ const (
 	defaultWindowW = int64(1440)
 	defaultWindowH = int64(2600)
 
-	defaultWaitBefore  = 1200 * time.Millisecond
+	defaultWaitBefore   = 1200 * time.Millisecond
 	defaultReadyTimeout = 45 * time.Second
 
+	// fallback เดิม: ยังใช้ได้กรณีไม่ส่ง app_notification_id มา
 	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
 	fixedLineUserID             = "U3af93a2f92b1048757172584d47571c8"
 )
@@ -49,9 +50,13 @@ type lineMessage struct {
 }
 
 type sendPDFToLineResponse struct {
-	Message   string `json:"message"`
-	FilePath  string `json:"file_path,omitempty"`
-	PublicURL string `json:"public_url,omitempty"`
+	Message               string   `json:"message"`
+	FilePath              string   `json:"file_path,omitempty"`
+	PublicURL             string   `json:"public_url,omitempty"`
+	SentNotificationIDs   []uint   `json:"sent_notification_ids,omitempty"`
+	SentTargets           []string `json:"sent_targets,omitempty"`
+	FailedNotificationIDs []uint   `json:"failed_notification_ids,omitempty"`
+	FailedTargets         []string `json:"failed_targets,omitempty"`
 }
 
 func ensureReportsDir() error {
@@ -215,13 +220,48 @@ func resolvePDFPathFromQuery(pdfQuery string) (string, error) {
 	return "", fmt.Errorf("pdf file not found")
 }
 
-func pushLineTextMessage(text string) error {
-	if strings.TrimSpace(fixedLineChannelAccessToken) == "" {
-		return fmt.Errorf("fixedLineChannelAccessToken is empty")
+func parseAppNotificationIDs(raw string) ([]uint, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []uint{}, nil
 	}
 
-	if strings.TrimSpace(fixedLineUserID) == "" {
-		return fmt.Errorf("fixedLineUserID is empty")
+	parts := strings.Split(raw, ",")
+	seen := make(map[uint]bool)
+	ids := make([]uint, 0, len(parts))
+
+	for _, part := range parts {
+		s := strings.TrimSpace(part)
+		if s == "" {
+			continue
+		}
+
+		n, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid app_notification_id: %s", s)
+		}
+		if n == 0 {
+			return nil, fmt.Errorf("invalid app_notification_id: %s", s)
+		}
+
+		id := uint(n)
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
+	}
+
+	return ids, nil
+}
+
+func pushLineTextMessageToTarget(token string, to string, text string) error {
+	if strings.TrimSpace(token) == "" {
+		return fmt.Errorf("line token is empty")
+	}
+
+	if strings.TrimSpace(to) == "" {
+		return fmt.Errorf("line send target is empty")
 	}
 
 	if strings.TrimSpace(text) == "" {
@@ -229,7 +269,7 @@ func pushLineTextMessage(text string) error {
 	}
 
 	payload := linePushRequest{
-		To: fixedLineUserID,
+		To: to,
 		Messages: []lineMessage{
 			{
 				Type: "text",
@@ -249,7 +289,7 @@ func pushLineTextMessage(text string) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+fixedLineChannelAccessToken)
+	req.Header.Set("Authorization", "Bearer "+token)
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -267,18 +307,96 @@ func pushLineTextMessage(text string) error {
 	return nil
 }
 
+// fallback เดิม: ใช้กรณีไม่ได้ส่ง app_notification_id มา
+func pushLineTextMessage(text string) error {
+	if strings.TrimSpace(fixedLineChannelAccessToken) == "" {
+		return fmt.Errorf("fixedLineChannelAccessToken is empty")
+	}
+
+	if strings.TrimSpace(fixedLineUserID) == "" {
+		return fmt.Errorf("fixedLineUserID is empty")
+	}
+
+	return pushLineTextMessageToTarget(fixedLineChannelAccessToken, fixedLineUserID, text)
+}
+
+func listAppNotificationsByIDs(ids []uint) ([]entity.AppNotification, error) {
+	if len(ids) == 0 {
+		return []entity.AppNotification{}, nil
+	}
+
+	db := config.DB()
+
+	var notifications []entity.AppNotification
+	if err := db.
+		Preload("AppLineMaster").
+		Where("id IN ?", ids).
+		Find(&notifications).Error; err != nil {
+		return nil, err
+	}
+
+	return notifications, nil
+}
+
+func sortNotificationsByRequestedIDs(items []entity.AppNotification, requestedIDs []uint) []entity.AppNotification {
+	if len(items) == 0 || len(requestedIDs) == 0 {
+		return items
+	}
+
+	indexMap := make(map[uint]int, len(requestedIDs))
+	for i, id := range requestedIDs {
+		indexMap[id] = i
+	}
+
+	result := make([]entity.AppNotification, 0, len(items))
+	for _, reqID := range requestedIDs {
+		for _, item := range items {
+			if item.ID == reqID {
+				result = append(result, item)
+				break
+			}
+		}
+	}
+
+	return result
+}
+
 // ========================================================
 // GET /report/send-pdf-to-line
+//
+// รองรับ:
+// - /report/send-pdf-to-line
+// - /report/send-pdf-to-line?pdf=report_capture_20260401_123000.pdf
+// - /report/send-pdf-to-line?app_notification_id=1,2,3
+// - /report/send-pdf-to-line?pdf=report_capture_xxx.pdf&app_notification_id=1,2,3
+// - /report/send-pdf-to-line?app_notification_ids=1,2,3
+//
+// สำคัญ:
+// - PDF จะถูก generate/resolve "เพียง 1 ครั้ง"
+// - แล้วใช้ filePath/publicURL เดิม ส่งให้ทุก AppNotificationID
 // ========================================================
 func SendPDFToLine(c *gin.Context) {
 	pdfQuery := strings.TrimSpace(c.Query("pdf"))
 
+	rawIDs := strings.TrimSpace(c.Query("app_notification_id"))
+	if rawIDs == "" {
+		rawIDs = strings.TrimSpace(c.Query("app_notification_ids"))
+	}
+
+	requestedIDs, err := parseAppNotificationIDs(rawIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("parse app_notification_id failed: %v", err),
+		})
+		return
+	}
+
 	var (
 		filePath  string
 		publicURL string
-		err       error
 	)
 
+	// ===== สร้าง/resolve PDF แค่ครั้งเดียว =====
 	if pdfQuery != "" {
 		filePath, err = resolvePDFPathFromQuery(pdfQuery)
 		if err != nil {
@@ -287,7 +405,6 @@ func SendPDFToLine(c *gin.Context) {
 			})
 			return
 		}
-		publicURL = buildPublicPDFURL(filePath)
 	} else {
 		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
 		if err != nil {
@@ -296,8 +413,9 @@ func SendPDFToLine(c *gin.Context) {
 			})
 			return
 		}
-		publicURL = buildPublicPDFURL(filePath)
 	}
+
+	publicURL = buildPublicPDFURL(filePath)
 
 	msg := fmt.Sprintf(
 		"รายงาน PDF พร้อมแล้ว\n\nไฟล์: %s\nลิงก์: %s",
@@ -305,17 +423,127 @@ func SendPDFToLine(c *gin.Context) {
 		publicURL,
 	)
 
-	if err := pushLineTextMessage(msg); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("send line message failed: %v", err),
+	// ===== กรณีเดิม: ไม่ส่ง app_notification_id มา =====
+	if len(requestedIDs) == 0 {
+		if err := pushLineTextMessage(msg); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("send line message failed: %v", err),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, sendPDFToLineResponse{
+			Message:   "PDF generated/sent to LINE successfully",
+			FilePath:  filePath,
+			PublicURL: publicURL,
 		})
 		return
 	}
 
+	// ===== กรณีส่งหลาย AppNotificationID มา =====
+	notifications, err := listAppNotificationsByIDs(requestedIDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("load app notifications failed: %v", err),
+		})
+		return
+	}
+
+	if len(notifications) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "no app notifications found for provided IDs",
+		})
+		return
+	}
+
+	notifications = sortNotificationsByRequestedIDs(notifications, requestedIDs)
+
+	foundMap := make(map[uint]bool, len(notifications))
+	for _, item := range notifications {
+		foundMap[item.ID] = true
+	}
+
+	var notFoundIDs []uint
+	for _, id := range requestedIDs {
+		if !foundMap[id] {
+			notFoundIDs = append(notFoundIDs, id)
+		}
+	}
+
+	sentIDs := make([]uint, 0, len(notifications))
+	sentTargets := make([]string, 0, len(notifications))
+	failedIDs := make([]uint, 0)
+	failedTargets := make([]string, 0)
+
+	for _, item := range notifications {
+		if !item.Alert {
+			failedIDs = append(failedIDs, item.ID)
+			failedTargets = append(
+				failedTargets,
+				fmt.Sprintf("id=%d: alert is off", item.ID),
+			)
+			continue
+		}
+
+		sendID := strings.TrimSpace(item.SendID)
+		if sendID == "" {
+			failedIDs = append(failedIDs, item.ID)
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: empty SendID", item.ID))
+			continue
+		}
+
+		if item.AppLineMaster == nil {
+			failedIDs = append(failedIDs, item.ID)
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: AppLineMaster not found", item.ID))
+			continue
+		}
+
+		token := strings.TrimSpace(item.AppLineMaster.Token)
+		if token == "" {
+			failedIDs = append(failedIDs, item.ID)
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: empty AppLineMaster.Token", item.ID))
+			continue
+		}
+
+		if err := pushLineTextMessageToTarget(token, sendID, msg); err != nil {
+			failedIDs = append(failedIDs, item.ID)
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d send_id=%s error=%v", item.ID, sendID, err))
+			continue
+		}
+
+		sentIDs = append(sentIDs, item.ID)
+		sentTargets = append(sentTargets, sendID)
+	}
+
+	for _, id := range notFoundIDs {
+		failedIDs = append(failedIDs, id)
+		failedTargets = append(failedTargets, fmt.Sprintf("id=%d: not found", id))
+	}
+
+	if len(sentIDs) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":                   "send line message failed for all requested app notifications",
+			"file_path":               filePath,
+			"public_url":              publicURL,
+			"failed_notification_ids": failedIDs,
+			"failed_targets":          failedTargets,
+		})
+		return
+	}
+
+	message := "PDF generated/sent to LINE successfully"
+	if len(failedIDs) > 0 {
+		message = "PDF generated and sent to some LINE targets successfully"
+	}
+
 	c.JSON(http.StatusOK, sendPDFToLineResponse{
-		Message:   "PDF generated/sent to LINE successfully",
-		FilePath:  filePath,
-		PublicURL: publicURL,
+		Message:               message,
+		FilePath:              filePath,
+		PublicURL:             publicURL,
+		SentNotificationIDs:   sentIDs,
+		SentTargets:           sentTargets,
+		FailedNotificationIDs: failedIDs,
+		FailedTargets:         failedTargets,
 	})
 }
 

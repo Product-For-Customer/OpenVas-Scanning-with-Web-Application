@@ -102,12 +102,6 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({
                   {info.classification}
                 </span>
               ) : null}
-
-              {info.version ? (
-                <span className="inline-flex items-center border border-slate-300 bg-white px-2.5 py-1 text-[9px] font-medium text-slate-600">
-                  {info.version}
-                </span>
-              ) : null}
             </div>
 
             <h1 className="mt-3 text-[22px] font-bold leading-[1.2] text-slate-950">
