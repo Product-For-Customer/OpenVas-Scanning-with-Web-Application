@@ -8,8 +8,6 @@ import { useStateContext } from "../../contexts/ContextProvider";
 
 import { FiSearch } from "react-icons/fi";
 import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
-
-// import png greenbone icon
 import greenboneIcon from "../../assets/logo-light.svg";
 
 type NavBtnProps = {
@@ -53,13 +51,7 @@ const NavButton: React.FC<NavBtnProps> = ({
       )}
 
       {typeof badgeCount === "number" && badgeCount > 0 && (
-        <span
-          className={[
-            "absolute -right-1 -top-1 min-w-4 h-4 px-1",
-            "inline-flex items-center justify-center rounded-full",
-            "bg-linear-to-r from-cyan-500 to-violet-500 text-white text-[10px] font-bold leading-none shadow-sm",
-          ].join(" ")}
-        >
+        <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-violet-500 px-1 text-[10px] font-bold leading-none text-white shadow-sm">
           {badgeCount > 99 ? "99+" : badgeCount}
         </span>
       )}
@@ -128,25 +120,23 @@ const Navbar: React.FC = () => {
 
   return (
     <header
-      className={["sticky top-0 z-30 w-full", "bg-transparent", "dark:bg-transparent"].join(" ")}
+      className="sticky top-0 z-40 w-full bg-transparent dark:bg-transparent"
       style={{ paddingTop: "env(safe-area-inset-top)" }}
     >
-      <div className="px-2.5 sm:px-3.5 md:px-4.5 lg:px-5 pt-2.5 pb-2.5">
+      <div className="px-2.5 pb-2.5 pt-2.5 sm:px-3.5 md:px-4.5 lg:px-5">
         <div
           className={[
-            "relative w-full min-h-18.5 rounded-[22px] flex items-center justify-between overflow-hidden",
-            "bg-white/92 border border-gray-200/80 shadow-[0_14px_36px_-24px_rgba(15,23,42,0.28)] backdrop-blur",
-            "dark:bg-[#08111f]/80 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
+            "relative flex min-h-18.5 w-full items-center justify-between overflow-hidden rounded-[22px]",
+            "border border-gray-200/80 bg-white/92 shadow-[0_14px_36px_-24px_rgba(15,23,42,0.28)] backdrop-blur",
+            "dark:border-white/10 dark:bg-[#08111f]/80 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
           ].join(" ")}
         >
-          {/* glow background */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div className="absolute -top-12 right-10 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
             <div className="absolute -bottom-12 left-16 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
 
-          {/* Left */}
-          <div className="relative z-10 flex items-center gap-2.5 sm:gap-3 pl-3 sm:pl-4 md:pl-5 min-w-0 flex-1">
+          <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2.5 pl-3 sm:gap-3 sm:pl-4 md:pl-5">
             <TooltipComponent
               content={activeMenu ? "Hide menu" : "Open menu"}
               position="BottomCenter"
@@ -165,36 +155,32 @@ const Navbar: React.FC = () => {
               </button>
             </TooltipComponent>
 
-            {/* Search desktop */}
             <div
               className={[
-                "hidden sm:flex items-center h-11 w-full max-w-85 lg:max-w-115 xl:max-w-130 rounded-full px-4",
-                "border border-gray-200 bg-[#f6f8fc]",
-                "shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]",
+                "hidden h-11 w-full max-w-85 items-center rounded-full border border-gray-200 bg-[#f6f8fc] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:flex lg:max-w-115 xl:max-w-130",
                 "dark:border-white/10 dark:bg-white/5 dark:shadow-none",
               ].join(" ")}
             >
-              <FiSearch className="text-gray-400 dark:text-white/40 text-[17px] mr-3 shrink-0" />
+              <FiSearch className="mr-3 shrink-0 text-[17px] text-gray-400 dark:text-white/40" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search assets, hosts, tasks, vulnerabilities..."
                 className={[
-                  "flex-1 bg-transparent outline-none border-none text-[13px]",
+                  "flex-1 border-none bg-transparent text-[13px] outline-none",
                   "text-gray-700 placeholder:text-gray-400",
                   "dark:text-white/80 dark:placeholder:text-white/35",
                 ].join(" ")}
                 aria-label="Search"
               />
-              <span className="ml-3 hidden md:inline-flex items-center text-[11px] font-medium text-gray-400 dark:text-white/35 whitespace-nowrap">
+              <span className="ml-3 hidden whitespace-nowrap text-[11px] font-medium text-gray-400 dark:text-white/35 md:inline-flex">
                 ⌘ + k
               </span>
             </div>
           </div>
 
-          {/* Right */}
-          <div className="relative z-10 flex items-center h-full shrink-0">
+          <div className="relative z-10 flex h-full shrink-0 items-center">
             <div className="flex items-center gap-1 px-2 sm:px-3">
               <NavButton
                 title="Open Greenbone"
@@ -213,7 +199,9 @@ const Navbar: React.FC = () => {
                 title={currentMode === "Dark" ? "Light mode" : "Dark mode"}
                 aria-label="Toggle theme"
                 onClick={toggleMode}
-                icon={currentMode === "Dark" ? <HiOutlineSun /> : <HiOutlineMoon />}
+                icon={
+                  currentMode === "Dark" ? <HiOutlineSun /> : <HiOutlineMoon />
+                }
               />
 
               <NavButton
@@ -234,7 +222,7 @@ const Navbar: React.FC = () => {
                   type="button"
                   onClick={() => handleClick("userProfile")}
                   className={[
-                    "group flex items-center gap-2 sm:gap-2.5 rounded-xl px-2 sm:px-2.5 py-1.5 transition-colors max-w-[44vw] sm:max-w-none",
+                    "group flex max-w-[44vw] items-center gap-2 rounded-xl px-2 py-1.5 transition-colors sm:max-w-none sm:gap-2.5 sm:px-2.5",
                     "hover:bg-gray-100 active:bg-gray-200",
                     "dark:hover:bg-white/10 dark:active:bg-white/15",
                   ].join(" ")}
@@ -244,22 +232,22 @@ const Navbar: React.FC = () => {
                     <img
                       src={avatarSrc}
                       alt="user"
-                      className="h-9 w-9 rounded-full object-cover ring-1 ring-gray-200 bg-white dark:ring-white/15 dark:bg-white/10"
+                      className="h-9 w-9 rounded-full bg-white object-cover ring-1 ring-gray-200 dark:bg-white/10 dark:ring-white/15"
                       onError={() => setProfileError(true)}
                     />
-                    <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-[#08111f]" />
+                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-[#08111f]" />
                   </div>
 
-                  <div className="hidden sm:block text-left leading-tight">
+                  <div className="hidden text-left leading-tight sm:block">
                     <span className="block text-[12px] text-gray-500 dark:text-white/45">
                       Analyst
                     </span>
-                    <span className="block text-[13px] font-semibold text-gray-700 dark:text-white/80 truncate max-w-22 md:max-w-30">
-                      {firstnameUser}...
+                    <span className="block max-w-22 truncate text-[13px] font-semibold text-gray-700 dark:text-white/80 md:max-w-30">
+                      {firstnameUser}.
                     </span>
                   </div>
 
-                  <MdKeyboardArrowDown className="hidden sm:block text-gray-400 dark:text-white/45 group-hover:text-gray-600 dark:group-hover:text-white/70 text-[18px]" />
+                  <MdKeyboardArrowDown className="hidden text-[18px] text-gray-400 group-hover:text-gray-600 dark:text-white/45 dark:group-hover:text-white/70 sm:block" />
                 </button>
               </TooltipComponent>
             </div>

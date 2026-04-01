@@ -4,6 +4,7 @@ import {
   FiCalendar,
   FiRefreshCw,
   FiAlertCircle,
+  FiChevronDown,
 } from "react-icons/fi";
 import {
   ListHistoryNotify,
@@ -88,6 +89,7 @@ const Index: React.FC = () => {
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [openYearSelect, setOpenYearSelect] = useState(false);
 
   const fetchHistoryNotify = async (showRefresh = false) => {
     try {
@@ -185,7 +187,7 @@ const Index: React.FC = () => {
             </div>
 
             <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
-              Monthly Notifications
+              Monthly Notifications Massage
             </h2>
 
             <p className="mt-1 text-[10.5px] text-slate-500 sm:text-[11px] dark:text-white/55">
@@ -194,25 +196,47 @@ const Index: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div
-              className={[
-                "inline-flex h-8.5 items-center gap-1.5 rounded-xl border px-3",
-                "border-gray-200 bg-white text-slate-700",
-                "dark:border-white/10 dark:bg-white/5 dark:text-white/80",
-              ].join(" ")}
-            >
-              <FiCalendar className="text-[12px]" />
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-transparent text-[11px] outline-none"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenYearSelect((prev) => !prev)}
+                className={[
+                  "h-8.5 px-3.5 rounded-2xl inline-flex items-center gap-2 transition",
+                  "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-700 hover:bg-gray-50",
+                  "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
+                ].join(" ")}
               >
-                {availableYears.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+                <FiCalendar className="text-[12px]" />
+                {selectedYear}
+                <FiChevronDown
+                  className={`text-[12px] text-gray-400 transition dark:text-white/45 ${
+                    openYearSelect ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+
+              {openYearSelect && (
+                <div className="absolute right-0 z-20 mt-2 w-32 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+                  {availableYears.map((year) => (
+                    <button
+                      key={year}
+                      type="button"
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setOpenYearSelect(false);
+                      }}
+                      className={[
+                        "w-full px-3 py-2 text-left text-[11.5px] transition",
+                        selectedYear === year
+                          ? "bg-violet-50 text-violet-700 font-semibold dark:bg-violet-500/10 dark:text-violet-200"
+                          : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
+                      ].join(" ")}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <button
@@ -261,88 +285,129 @@ const Index: React.FC = () => {
 
         <div className={`mt-3.5 ${panelClass}`}>
           {loading ? (
-            <div className="flex h-full items-center justify-center px-5 py-9 text-center">
-              <div>
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
-                  <FiRefreshCw className="animate-spin text-[16px]" />
-                </div>
-                <h3 className="mt-3 text-[13px] font-semibold text-slate-900 dark:text-white/85">
-                  Loading chart data...
-                </h3>
-                <p className="mt-1 text-[10.5px] text-slate-500 dark:text-white/55">
-                  Please wait while we build the monthly chart.
-                </p>
+            <div className="flex flex-1 items-center justify-center px-4 py-12">
+              <div className="inline-flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/50">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-500/70" />
+                Loading monthly notifications...
+              </div>
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center px-4 py-12">
+              <div className="inline-flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/50">
+                <FiAlertCircle className="text-[13px]" />
+                No monthly notification data
               </div>
             </div>
           ) : (
-            <div className="flex h-full flex-col p-3 sm:p-3.5">
-              <div className="flex-1 space-y-2">
-                {chartData.map((row) => {
-                  const width = getBarWidthPercent(row.count, maxCount);
+            <>
+              <div className="flex-1 overflow-x-auto overflow-y-auto">
+                <table className="min-w-full border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur dark:bg-[#0f172a]/95">
+                    <tr className="text-left">
+                      <th className="px-3.5 py-3 text-[10.5px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                        Month
+                      </th>
+                      <th className="px-3.5 py-3 text-[10.5px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
+                        Monthly Overview
+                      </th>
+                      <th className="px-3.5 py-3 text-[10.5px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-right">
+                        Count
+                      </th>
+                    </tr>
+                  </thead>
 
-                  return (
-                    <div
-                      key={row.key}
-                      className="grid grid-cols-[42px_minmax(0,1fr)_38px] items-center gap-2 sm:grid-cols-[52px_minmax(0,1fr)_42px]"
-                    >
-                      <div className="flex items-center justify-start">
-                        <span className="text-[11px] font-medium text-slate-700 dark:text-white/75">
-                          {row.monthShort}
-                        </span>
-                      </div>
-
-                      <div className="relative">
-                        <div
-                          className={[
-                            "h-7.5 w-full overflow-hidden rounded-xl",
-                            "bg-slate-100/90 ring-1 ring-slate-200/80",
-                            "dark:bg-white/5 dark:ring-white/10",
-                          ].join(" ")}
+                  <tbody>
+                    {chartData.map((row, index) => (
+                      <tr
+                        key={row.key}
+                        className="transition-colors hover:bg-cyan-50/30 dark:hover:bg-white/3"
+                      >
+                        <td
+                          className={`px-3.5 py-3 ${
+                            index !== chartData.length - 1
+                              ? "border-b border-gray-100 dark:border-white/10"
+                              : ""
+                          }`}
                         >
-                          <div
-                            className={[
-                              "flex h-full items-center justify-end rounded-xl px-2 transition-all duration-500",
-                              "bg-[linear-gradient(90deg,#6aa0e8_0%,#5b97e5_100%)]",
-                              row.count === 0 ? "opacity-0" : "opacity-100",
-                            ].join(" ")}
-                            style={{
-                              width: `${width}%`,
-                              minWidth: row.count > 0 ? "34px" : "0px",
-                            }}
-                          />
-                        </div>
-                      </div>
+                          <div className="min-w-0">
+                            <p className="text-[11.5px] font-semibold text-slate-800 dark:text-white/85">
+                              {row.monthShort}
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-slate-500 dark:text-white/45">
+                              {row.monthFull}
+                            </p>
+                          </div>
+                        </td>
 
-                      <div className="flex items-center justify-end">
-                        <span
-                          className={[
-                            "inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-[10px] font-semibold",
-                            row.count > 0
-                              ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-200"
-                              : "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-white/45",
-                          ].join(" ")}
+                        <td
+                          className={`px-3.5 py-3 ${
+                            index !== chartData.length - 1
+                              ? "border-b border-gray-100 dark:border-white/10"
+                              : ""
+                          }`}
                         >
-                          {row.count}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                          <div className="flex items-center gap-3">
+                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+                              <div
+                                className="h-full rounded-full bg-linear-to-r from-cyan-500 to-violet-500 transition-all duration-300"
+                                style={{
+                                  width: `${getBarWidthPercent(
+                                    row.count,
+                                    maxCount
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </td>
+
+                        <td
+                          className={`px-3.5 py-3 text-right ${
+                            index !== chartData.length - 1
+                              ? "border-b border-gray-100 dark:border-white/10"
+                              : ""
+                          }`}
+                        >
+                          <span className="inline-flex min-w-10.5 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10.5px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
+                            {row.count}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
-              <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-[10.5px] text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-                <div className="flex items-start gap-2">
-                  <FiAlertCircle className="mt-0.5 shrink-0 text-[12px]" />
+              <div className="border-t border-gray-200/80 px-3.5 py-3 dark:border-white/10">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[10.5px] text-slate-500 dark:text-white/50">
                   <span>
-                    กราฟนี้จะแสดงครบ 12 เดือนตั้งแต่ Jan ถึง Dec เสมอ
-                    แม้บางเดือนจะไม่มีข้อมูลก็ยังแสดงเป็น 0
+                    Monthly summary for year{" "}
+                    <span className="font-semibold text-slate-700 dark:text-white/80">
+                      {selectedYear}
+                    </span>
+                  </span>
+
+                  <span>
+                    Highest month count:{" "}
+                    <span className="font-semibold text-slate-700 dark:text-white/80">
+                      {maxCount}
+                    </span>
                   </span>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
+
+      {openYearSelect && (
+        <button
+          type="button"
+          onClick={() => setOpenYearSelect(false)}
+          className="fixed inset-0 z-5 cursor-default"
+          aria-label="Close year select overlay"
+        />
+      )}
     </section>
   );
 };

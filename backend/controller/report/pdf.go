@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/entity"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/gin-gonic/gin"
@@ -22,21 +25,15 @@ const (
 	fixedReportsDir  = "./tmp/reports"
 	defaultPDFPrefix = "report_capture"
 
-	defaultPaperW  = 8.27  // A4 width in inches
-	defaultPaperH  = 11.69 // A4 height in inches
+	defaultPaperW  = 8.27
+	defaultPaperH  = 11.69
 	defaultMargin  = 0.2
 	defaultWindowW = int64(1440)
 	defaultWindowH = int64(2600)
 
-	// ใช้เป็น fallback เฉย ๆ ไม่ใช่ตัวหลัก
-	defaultWaitBefore = 1200 * time.Millisecond
-
-	// รอให้ frontend โหลดข้อมูลเสร็จจริง
+	defaultWaitBefore  = 1200 * time.Millisecond
 	defaultReadyTimeout = 45 * time.Second
 
-	// =========================================================
-	// FIX VALUE IN CODE
-	// =========================================================
 	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
 	fixedLineUserID             = "U3af93a2f92b1048757172584d47571c8"
 )
@@ -154,10 +151,7 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 		chromedp.WaitReady("body", chromedp.ByQuery),
 		chromedp.WaitVisible("#capture-root", chromedp.ByQuery),
 
-		// รอให้ React โหลด section async เสร็จจริง
 		waitForFrontendReady(),
-
-		// เผื่อ layout settle อีกนิด
 		chromedp.Sleep(defaultWaitBefore),
 
 		chromedp.ActionFunc(func(ctx context.Context) error {
@@ -222,13 +216,11 @@ func resolvePDFPathFromQuery(pdfQuery string) (string, error) {
 }
 
 func pushLineTextMessage(text string) error {
-	if strings.TrimSpace(fixedLineChannelAccessToken) == "" ||
-		fixedLineChannelAccessToken == "PUT_YOUR_LINE_CHANNEL_ACCESS_TOKEN_HERE" {
+	if strings.TrimSpace(fixedLineChannelAccessToken) == "" {
 		return fmt.Errorf("fixedLineChannelAccessToken is empty")
 	}
 
-	if strings.TrimSpace(fixedLineUserID) == "" ||
-		fixedLineUserID == "PUT_YOUR_LINE_USER_ID_HERE" {
+	if strings.TrimSpace(fixedLineUserID) == "" {
 		return fmt.Errorf("fixedLineUserID is empty")
 	}
 
@@ -325,4 +317,133 @@ func SendPDFToLine(c *gin.Context) {
 		FilePath:  filePath,
 		PublicURL: publicURL,
 	})
+}
+
+// ========================================================
+// GET /report/download-pdf
+// ใช้การ capture แบบเดียวกับ SendPDFToLine
+// แต่ response กลับเป็นไฟล์ PDF ให้ browser โหลดลงเครื่อง
+// ========================================================
+func DownloadPDF(c *gin.Context) {
+	pdfQuery := strings.TrimSpace(c.Query("pdf"))
+
+	var (
+		filePath string
+		err      error
+	)
+
+	if pdfQuery != "" {
+		filePath, err = resolvePDFPathFromQuery(pdfQuery)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("resolve pdf path failed: %v", err),
+			})
+			return
+		}
+	} else {
+		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": fmt.Sprintf("generate pdf failed: %v", err),
+			})
+			return
+		}
+	}
+
+	fileName := filepath.Base(filePath)
+
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
+	c.Header("Content-Transfer-Encoding", "binary")
+	c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+
+	c.File(filePath)
+}
+
+// ========================================================
+// report PDF Change
+// ========================================================
+
+type AppReportResponse struct {
+	ID          uint   `json:"id"`
+	CompanyName string `json:"company_name"`
+	Logo        string `json:"logo"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+}
+
+type UpdateAppReportInput struct {
+	CompanyName *string `json:"company_name"`
+	Logo        *string `json:"logo"` // รองรับ base64
+}
+
+func mapAppReportResponse(report entity.AppReport) AppReportResponse {
+	return AppReportResponse{
+		ID:          report.ID,
+		CompanyName: report.CompanyName,
+		Logo:        report.Logo,
+		CreatedAt:   report.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdatedAt:   report.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+}
+
+// GET /app-report
+// ดึงแค่ตัวแรกตัวเดียว
+func ListAppReport(c *gin.Context) {
+	var report entity.AppReport
+
+	db := config.DB()
+	result := db.First(&report)
+
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "app report not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, mapAppReportResponse(report))
+}
+
+// PUT /app-report/:id
+func UpdateAppReportByID(c *gin.Context) {
+	id := c.Param("id")
+
+	rid, err := strconv.ParseUint(id, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid app report id"})
+		return
+	}
+
+	var input UpdateAppReportInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	db := config.DB()
+
+	var report entity.AppReport
+	if err := db.First(&report, uint(rid)).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "app report not found"})
+		return
+	}
+
+	if input.CompanyName != nil {
+		report.CompanyName = *input.CompanyName
+	}
+
+	if input.Logo != nil {
+		report.Logo = *input.Logo
+	}
+
+	if err := db.Save(&report).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	db.First(&report, report.ID)
+
+	c.JSON(http.StatusOK, mapAppReportResponse(report))
 }

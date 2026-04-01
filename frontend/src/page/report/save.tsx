@@ -66,9 +66,10 @@ const CaptureTest: React.FC = () => {
       data-section6-ready={section6Ready ? "true" : "false"}
       data-conclusion-ready={conclusionReady ? "true" : "false"}
       style={{
-        width: "1120px",
-        margin: "0 auto",
+        width: "1060px",
+        margin: "0 auto 0 18px",
         position: "relative",
+        boxSizing: "border-box",
       }}
     >
       {!reportReady && (

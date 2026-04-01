@@ -38,6 +38,7 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
       title: "Mangement",
       links: [
         { name: "line notification", icon: <AiOutlineShoppingCart /> },
+        { name: "report", icon: <FaCarSide /> },
         { name: "user", icon: <FaCarSide /> },
       ],
     });

@@ -1,18 +1,24 @@
-import React, { useMemo } from "react";
-import logo from "../../../assets/getonlogo.jpg";
+import React, { useEffect, useMemo, useState } from "react";
+import fallbackLogo from "../../../assets/getonlogo.jpg";
+import {
+  ListAppReport,
+  type AppReportResponse,
+} from "../../../services/report";
 
 type ReportInfo = {
   title: string;
   subtitle?: string;
-  dateRange: string;
-  generatedAt: string;
+  dateRange?: string;
+  generatedAt?: string;
   classification?: string;
   version?: string;
   companyName?: string;
+  logo?: string;
 };
 
 type ReportHeaderProps = {
-  info: ReportInfo;
+  info?: ReportInfo;
+  refreshToken?: number;
 };
 
 const metaLabelClass =
@@ -28,8 +34,58 @@ const formatEnglishDate = (date: Date): string => {
   }).format(date);
 };
 
-const ReportHeader: React.FC<ReportHeaderProps> = ({ info }) => {
+const defaultInfo: ReportInfo = {
+  title: "Network Vulnerability Assessment Report",
+  subtitle:
+    "Executive summary of scan coverage, severity distribution, and priority findings from the latest assessment.",
+  classification: "Internal Report",
+  version: "Version 1.0",
+};
+
+const ReportHeader: React.FC<ReportHeaderProps> = ({
+  info = defaultInfo,
+  refreshToken = 0,
+}) => {
+  const [appReport, setAppReport] = useState<AppReportResponse | null>(null);
+
   const generatedDate = useMemo(() => formatEnglishDate(new Date()), []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchAppReport = async () => {
+      try {
+        const data = await ListAppReport();
+
+        if (!mounted) return;
+
+        if (data && !data.error) {
+          setAppReport(data);
+        } else {
+          setAppReport(null);
+        }
+      } catch (error) {
+        console.error("ListAppReport in ReportHeader error:", error);
+        if (mounted) {
+          setAppReport(null);
+        }
+      }
+    };
+
+    fetchAppReport();
+
+    return () => {
+      mounted = false;
+    };
+  }, [refreshToken]);
+
+  const companyName =
+    appReport?.company_name?.trim() ||
+    info.companyName?.trim() ||
+    "Get on Technology";
+
+  const logoSrc =
+    appReport?.logo?.trim() || info.logo?.trim() || fallbackLogo;
 
   return (
     <header className="w-full border-b-[3px] border-slate-900 bg-white">
@@ -55,7 +111,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({ info }) => {
             </div>
 
             <h1 className="mt-3 text-[22px] font-bold leading-[1.2] text-slate-950">
-              {info.title}
+              {info.title || defaultInfo.title}
             </h1>
 
             {info.subtitle ? (
@@ -67,9 +123,15 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({ info }) => {
 
           <div className="flex w-45 shrink-0 items-start justify-end pt-1">
             <img
-              src={logo}
+              src={logoSrc}
               alt="Security Report Logo"
               className="h-26 w-auto object-contain"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (target.src !== fallbackLogo) {
+                  target.src = fallbackLogo;
+                }
+              }}
             />
           </div>
         </div>
@@ -82,7 +144,7 @@ const ReportHeader: React.FC<ReportHeaderProps> = ({ info }) => {
 
           <div className="text-right">
             <p className={metaLabelClass}>Prepared By</p>
-            <p className={metaValueClass}>Get on Technology</p>
+            <p className={metaValueClass}>{companyName}</p>
           </div>
         </div>
       </div>

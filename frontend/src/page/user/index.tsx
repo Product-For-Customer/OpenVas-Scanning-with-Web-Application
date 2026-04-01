@@ -278,7 +278,7 @@ const Index: React.FC = () => {
               </div>
 
               <h2 className="mt-2.5 text-[18px] sm:text-[20px] font-semibold tracking-tight text-slate-900 dark:text-white">
-                User Security Table
+                User Management
               </h2>
 
               <p className="mt-1 text-[11px] sm:text-[12px] text-slate-500 dark:text-white/55">
@@ -387,9 +387,6 @@ const Index: React.FC = () => {
                   <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10">
                     Location
                   </th>
-                  <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-center">
-                    Own
-                  </th>
                   <th className="px-3.5 py-3 text-[11px] font-semibold text-slate-600 dark:text-white/60 border-b border-gray-200/80 dark:border-white/10 text-right">
                     Action
                   </th>
@@ -470,27 +467,6 @@ const Index: React.FC = () => {
                         </td>
 
                         <td
-                          className={`px-3.5 py-3 text-center ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleOpenOwn(user)}
-                            className={[
-                              "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold transition",
-                              "bg-violet-50 text-violet-700 hover:bg-violet-100",
-                              "dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/15",
-                            ].join(" ")}
-                          >
-                            <FiLink2 className="text-[12px]" />
-                            Own
-                          </button>
-                        </td>
-
-                        <td
                           className={`px-3.5 py-3 text-right ${
                             idx !== users.length - 1
                               ? "border-b border-gray-100 dark:border-white/10"
@@ -527,6 +503,21 @@ const Index: React.FC = () => {
                                 <FiTrash2 className="text-[13px]" />
                               </button>
                             )}
+
+                            {false && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenOwn(user)}
+                                className={[
+                                  "inline-flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold transition",
+                                  "bg-violet-50 text-violet-700 hover:bg-violet-100",
+                                  "dark:bg-violet-500/10 dark:text-violet-200 dark:hover:bg-violet-500/15",
+                                ].join(" ")}
+                              >
+                                <FiLink2 className="text-[12px]" />
+                                Own
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -536,7 +527,7 @@ const Index: React.FC = () => {
                 {!loading && users.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       No user data found
@@ -547,7 +538,7 @@ const Index: React.FC = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={4}
                       className="px-4 py-8 text-center text-[12px] text-slate-500 dark:text-white/50"
                     >
                       Loading...

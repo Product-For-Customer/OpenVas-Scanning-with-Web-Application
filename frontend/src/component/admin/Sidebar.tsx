@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MdOutlineCancel, MdKeyboardArrowDown } from "react-icons/md";
 import { TooltipComponent } from "@syncfusion/ej2-react-popups";
-import { FiLogOut, FiShield } from "react-icons/fi";
+import { FiLogOut } from "react-icons/fi";
 import { getLinks, type SidebarSection } from "./dummy";
 import { useStateContext } from "../../contexts/ContextProvider";
 import { useAuth } from "../../contexts/AuthContext";
+import logo from "../../assets/Logo_Sidebar_GetOn-Photoroom.png";
 
 type SidebarLink = {
   name: string;
@@ -134,9 +135,8 @@ const Sidebar: React.FC = () => {
   return (
     <>
       <div
-        className={`fixed inset-0 z-30 transition-opacity md:hidden ${
-          activeMenu ? "opacity-100" : "pointer-events-none opacity-0"
-        } bg-[#020817]/35 dark:bg-black/45`}
+        className={`fixed inset-0 z-30 transition-opacity md:hidden ${activeMenu ? "opacity-100" : "pointer-events-none opacity-0"
+          } bg-[#020817]/35 dark:bg-black/45`}
         onClick={handleCloseSideBar}
       />
 
@@ -171,25 +171,26 @@ const Sidebar: React.FC = () => {
 
           {/* Header */}
           <div
-            className={`relative z-10 flex items-center ${
-              isExpanded
+            className={`relative z-10 flex items-center ${isExpanded
                 ? "justify-between px-3.5 pb-3.5 pt-5"
                 : "justify-center px-2 pb-3.5 pt-4.5"
-            }`}
+              }`}
           >
             <Link
               to="/admin"
               onClick={handleCloseSideBar}
-              className={`select-none ${
-                isExpanded
+              className={`select-none ${isExpanded
                   ? "flex items-center gap-3"
                   : "flex justify-center items-center"
-              }`}
+                }`}
               aria-label="Go to dashboard"
             >
-              <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 shadow-sm">
-                <FiShield className="text-[18px] text-white" />
-                <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-cyan-300 ring-2 ring-white dark:ring-[#08111f]" />
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden">
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className="h-20 w-20 object-contain"
+                />
               </div>
 
               {isExpanded && (
@@ -224,11 +225,10 @@ const Sidebar: React.FC = () => {
 
           {/* Menu Body */}
           <nav
-            className={`relative z-10 flex-1 ${
-              isExpanded
+            className={`relative z-10 flex-1 ${isExpanded
                 ? "overflow-y-auto px-2.5 pb-3.5"
                 : "overflow-visible px-2 pb-3"
-            }`}
+              }`}
           >
             <div className={isExpanded ? "space-y-1.5" : "space-y-2.5"}>
               {menuLinks.map((section) => {
@@ -289,9 +289,10 @@ const Sidebar: React.FC = () => {
                       </button>
 
                       <div
-                        className={`overflow-hidden transition-all duration-200 ${
-                          isOpen ? "max-h-150 pb-1 pt-1.5 opacity-100" : "max-h-0 opacity-0"
-                        }`}
+                        className={`overflow-hidden transition-all duration-200 ${isOpen
+                            ? "max-h-150 pb-1 pt-1.5 opacity-100"
+                            : "max-h-0 opacity-0"
+                          }`}
                       >
                         <div className="space-y-1 pl-6.5 pr-2">
                           {section.links?.map((link: SidebarLink) => {
@@ -381,7 +382,9 @@ const Sidebar: React.FC = () => {
                       <div
                         className="absolute left-[calc(100%+10px)] top-0 z-70 w-62.5"
                         onMouseEnter={() => openHoverPopup(section.title)}
-                        onMouseLeave={() => closeHoverPopupWithDelay(section.title)}
+                        onMouseLeave={() =>
+                          closeHoverPopupWithDelay(section.title)
+                        }
                       >
                         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
                           <div className="bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 px-4 py-3 text-white">
@@ -438,11 +441,10 @@ const Sidebar: React.FC = () => {
 
           {/* Footer - Logout */}
           <div
-            className={`${
-              isExpanded
+            className={`${isExpanded
                 ? "relative z-10 px-2.5 pb-3.5 pt-1.5"
                 : "relative z-10 px-2 pb-3.5 pt-1"
-            }`}
+              }`}
           >
             {isExpanded ? (
               <button

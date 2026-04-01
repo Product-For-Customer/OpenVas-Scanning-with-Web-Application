@@ -511,7 +511,7 @@ const Index: React.FC = () => {
               </div>
 
               <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
-                All Notifications
+                Summary Notifications
               </h2>
 
               <p className="mt-0.5 text-[10px] sm:text-[11px] text-slate-500 dark:text-white/55">

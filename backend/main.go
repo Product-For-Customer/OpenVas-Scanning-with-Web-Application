@@ -60,7 +60,9 @@ func main() {
 	r.GET("/critical-report", report.ListCriticalForReport)
 	r.GET("/devices/risk-report", vulnerability.ListDeviceRisk)
 	r.GET("/target-differ-report", vulnerability.ListTargetDiffer)
+	r.GET("/download-pdf", report.DownloadPDF)
 	r.GET("/send-pdf-to-line", report.SendPDFToLine)
+	r.GET("/app-report", report.ListAppReport)
 
 	// ===== Protected Routes =====
 	authorized := r.Group("")
@@ -123,6 +125,8 @@ func main() {
 		authorized.DELETE("/delete-owns/:id", own.DeleteOwnByID)
 		authorized.GET("/owns/task/:task_id", own.ListTaskByTaskID)
 
+		// ===== Report Management =====
+		authorized.PUT("/app-report/:id", report.UpdateAppReportByID)
 	}
 
 	log.Printf("✅ Server starting on port %s\n", PORT)

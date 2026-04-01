@@ -474,9 +474,9 @@ const Master: React.FC = () => {
               </div>
 
               <h2 className="mt-2.5 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white/90">
-                All Integrations
+                Bot Sent Massage
               </h2>
-
+              
               <p className="mt-1 max-w-md text-[11px] leading-5 text-slate-500 dark:text-white/55">
                 Manage connected apps in one place.
               </p>

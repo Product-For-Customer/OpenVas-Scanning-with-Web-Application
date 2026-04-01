@@ -3,7 +3,6 @@ import { MdOutlineCancel } from "react-icons/md";
 import { FaTrash } from "react-icons/fa";
 import {
   FiBell,
-  FiShield,
   FiWifi,
   FiActivity,
   FiAlertTriangle,
@@ -80,7 +79,9 @@ const statusMeta: Record<
       "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300",
     iconSmallWrap:
       "bg-white ring-1 ring-slate-200 dark:bg-[#08111f] dark:ring-slate-400/20",
-    icon: <FiSlash className="text-[10px] text-slate-600 dark:text-slate-300" />,
+    icon: (
+      <FiSlash className="text-[10px] text-slate-600 dark:text-slate-300" />
+    ),
     sideIcon: <FiSlash />,
     sideIconClass:
       "bg-slate-50 text-slate-700 dark:bg-slate-500/10 dark:text-slate-300",
@@ -167,7 +168,6 @@ const Notification: React.FC = () => {
     try {
       setLoading(true);
       setError("");
-
       const res = await ListHistoryNotify();
       setReports(Array.isArray(res) ? res : []);
     } catch (err) {
@@ -180,7 +180,7 @@ const Notification: React.FC = () => {
   };
 
   useEffect(() => {
-    loadHistory();
+    void loadHistory();
   }, []);
 
   const handleDelete = async (id: number) => {
@@ -239,11 +239,11 @@ const Notification: React.FC = () => {
   return (
     <div
       className={[
-        "fixed right-3 top-16 z-50",
+        "fixed right-5 top-16 z-120",
         "w-[calc(100vw-24px)] max-w-90",
-        "rounded-[22px] overflow-hidden",
-        "bg-white/95 border border-gray-200/80 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.32)] backdrop-blur",
-        "dark:bg-[#08111f]/95 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
+        "overflow-hidden rounded-[22px]",
+        "border border-gray-200/80 bg-white/95 shadow-[0_16px_34px_-22px_rgba(15,23,42,0.32)] backdrop-blur",
+        "dark:border-cyan-400/12 dark:bg-[#08111f]/95 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]",
       ].join(" ")}
       style={{ paddingTop: "max(0px, env(safe-area-inset-top))" }}
     >
@@ -252,23 +252,23 @@ const Notification: React.FC = () => {
         <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
       </div>
 
-      <div className="relative z-10 flex items-center justify-between px-3.5 py-3.5 border-b border-gray-200/80 dark:border-white/10">
-        <div className="flex items-center gap-2.5 min-w-0">
+      <div className="relative z-10 flex items-center justify-between border-b border-gray-200/80 px-3.5 py-3.5 dark:border-white/10">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
             <FiBell className="text-[16px]" />
           </span>
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-[13px] font-semibold text-gray-800 dark:text-white/90 truncate">
+              <p className="truncate text-[13px] font-semibold text-gray-800 dark:text-white/90">
                 Scan Notifications
               </p>
-              <span className="inline-flex items-center h-4.5 px-1.5 rounded-full text-[9px] font-bold bg-linear-to-r from-cyan-500 to-violet-500 text-white">
+              <span className="inline-flex h-4.5 items-center rounded-full bg-linear-to-r from-cyan-500 to-violet-500 px-1.5 text-[9px] font-bold text-white">
                 {visibleReports.length > 99 ? "99+" : visibleReports.length}
               </span>
             </div>
 
-            <p className="text-[11px] text-gray-500 dark:text-white/50 truncate">
+            <p className="truncate text-[11px] text-gray-500 dark:text-white/50">
               findings / status / alerts
             </p>
           </div>
@@ -278,7 +278,7 @@ const Notification: React.FC = () => {
           type="button"
           onClick={close}
           aria-label="Close notifications"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-2xl transition-colors text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-gray-600 transition-colors hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
         >
           <MdOutlineCancel className="text-[18px]" />
         </button>
@@ -291,16 +291,16 @@ const Notification: React.FC = () => {
       )}
 
       <div
-        className="relative z-10 p-3.5 space-y-2.5"
+        className="relative z-10 space-y-2.5 p-3.5"
         style={{ maxHeight: 390, overflowY: "auto" }}
       >
         {loading ? (
-          <div className="text-center text-gray-500 dark:text-white/55 text-[13px] py-8">
+          <div className="py-8 text-center text-[13px] text-gray-500 dark:text-white/55">
             Loading notifications...
           </div>
         ) : visibleReports.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-white/55 text-[13px] py-8">
-            ยังไม่มีการแจ้งเตือนใหม่
+          <div className="py-8 text-center text-[13px] text-gray-500 dark:text-white/55">
+            No new notifications
           </div>
         ) : (
           visibleReports.map((item) => {
@@ -311,103 +311,93 @@ const Notification: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className={[
-                  "relative overflow-hidden rounded-[18px] p-3 border transition-all duration-200",
-                  "border-gray-200/80 bg-white hover:bg-gray-50",
-                  "dark:border-white/10 dark:bg-white/4 dark:hover:bg-white/6",
-                ].join(" ")}
+                className="overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/5 dark:shadow-none"
               >
-                <div
-                  className={[
-                    "pointer-events-none absolute inset-x-0 top-0 h-1",
-                    meta.topBar,
-                  ].join(" ")}
-                />
+                <div className={`h-1 w-full ${meta.topBar}`} />
 
-                <div className="flex items-start gap-2.5">
+                <div className="flex items-start gap-3 p-3.5">
                   <div className="relative shrink-0">
                     <img
                       src={avatarFallback}
-                      alt="Notification"
-                      className="h-10 w-10 rounded-2xl object-cover ring-1 ring-gray-200 bg-white dark:ring-white/10 dark:bg-white/10"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = avatarFallback;
-                      }}
+                      alt="notification"
+                      className="h-12 w-12 rounded-2xl object-cover"
                     />
-
                     <span
-                      className={[
-                        "absolute -right-1 -bottom-1 inline-flex h-4.5 w-4.5 items-center justify-center rounded-full",
-                        meta.iconSmallWrap,
-                      ].join(" ")}
+                      className={`absolute -bottom-1 -right-1 inline-flex h-5 w-5 items-center justify-center rounded-full ${meta.iconSmallWrap}`}
                     >
                       {meta.icon}
                     </span>
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[12px] font-semibold text-gray-900 dark:text-white/85 truncate">
+                        <p className="truncate text-[14px] font-semibold text-gray-800 dark:text-white/90">
                           {item.subject || "Notification"}
                         </p>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span
-                            className={[
-                              "inline-flex items-center h-5.5 px-2 rounded-full text-[10px] font-semibold border",
-                              meta.badge,
-                            ].join(" ")}
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta.badge}`}
                           >
                             {meta.label}
                           </span>
 
-                          {meta.activeText && (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-cyan-600 dark:text-cyan-300">
-                              <FiActivity className="text-[9px]" />
-                              {meta.activeText}
-                            </span>
-                          )}
-
-                          <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-white/50">
-                            <FiClock className="text-[10px]" />
-                            {formatDateTime(item.created_at)}
+                          <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-white/50">
+                            <FiClock className="text-[11px]" />
+                            {formatDateTime(item.datetime)}
                           </span>
                         </div>
                       </div>
 
                       <span
-                        className={[
-                          "inline-flex h-7 w-7 items-center justify-center rounded-xl shrink-0 text-[13px]",
-                          meta.sideIconClass,
-                        ].join(" ")}
+                        className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${meta.sideIconClass}`}
                       >
                         {meta.sideIcon}
                       </span>
                     </div>
 
-                    <p className="mt-2.5 text-[12px] leading-5 text-gray-600 dark:text-white/70 whitespace-pre-line">
-                      {item.description || "-"}
-                    </p>
-
-                    <div className="mt-2.5 flex items-center gap-2">
-                      <div
-                        className={[
-                          "inline-flex items-center h-7 px-2.5 rounded-[10px] text-[11px] font-semibold border",
-                          meta.badge,
-                        ].join(" ")}
-                      >
-                        <FiShield className="mr-1.5 text-[11px]" />
+                    <div className="mt-3 space-y-1.5 text-[12px] leading-6 text-gray-600 dark:text-white/68">
+                      <p>
+                        <span className="font-medium text-gray-700 dark:text-white/82">
+                          Event:
+                        </span>{" "}
+                        {item.subject || "-"}
+                      </p>
+                      <p>
+                        <span className="font-medium text-gray-700 dark:text-white/82">
+                          Status:
+                        </span>{" "}
                         {meta.label}
-                      </div>
+                      </p>
+                      <p>
+                        <span className="font-medium text-gray-700 dark:text-white/82">
+                          Description:
+                        </span>{" "}
+                        {item.description || "-"}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-xl border px-3 py-1.5 text-[12px] font-medium ${meta.badge}`}
+                      >
+                        <FiActivity className="text-[12px]" />
+                        {meta.activeText || meta.label}
+                      </span>
 
                       <button
-                        onClick={() => item.id && handleDelete(item.id)}
+                        type="button"
+                        onClick={() => handleDelete(item.id)}
                         disabled={isDeleting}
-                        title="Delete Notification"
-                        className="ml-auto inline-flex items-center h-7 px-2.5 rounded-[10px] text-[11px] font-semibold border transition-colors border-red-200 text-red-600 bg-white hover:bg-red-50 active:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+                        className={[
+                          "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[12px] font-medium transition",
+                          "border-red-200 bg-white text-red-600 hover:bg-red-50",
+                          "dark:border-red-400/20 dark:bg-transparent dark:text-red-300 dark:hover:bg-red-500/10",
+                          isDeleting ? "cursor-not-allowed opacity-60" : "",
+                        ].join(" ")}
                       >
-                        <FaTrash className="mr-1.5" size={10} />
+                        <FaTrash className="text-[11px]" />
                         {isDeleting ? "Deleting..." : "Delete"}
                       </button>
                     </div>

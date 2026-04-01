@@ -118,7 +118,6 @@ services:
 
   gsa:
     image: registry.community.greenbone.net/community/gsa:stable
-    user: "0:0"
     restart: on-failure
     ports:
       - "127.0.0.1:9392:9392"
@@ -127,6 +126,11 @@ services:
     depends_on:
       gvmd:
         condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - exec gsad --foreground --http-only --no-redirect --listen=0.0.0.0 --port=9392 --munix-socket=/run/gvmd/gvmd.sock
 
   configure-openvas:
     image: registry.community.greenbone.net/community/openvas-scanner:stable

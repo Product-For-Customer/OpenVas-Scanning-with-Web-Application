@@ -5,9 +5,23 @@ import { apiUrl } from "./api";
 // Axios instance for PUBLIC report endpoints
 // ไม่ส่ง cookie / credential
 // =======================
-const publicReportApi = axios.create({
+export const publicReportApi = axios.create({
   baseURL: apiUrl,
   withCredentials: false,
+  timeout: 15000,
+  headers: {
+    "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "true",
+  },
+});
+
+// =======================
+// Axios instance for PROTECTED report endpoints
+// ส่ง cookie / credential
+// =======================
+export const protectedReportApi = axios.create({
+  baseURL: apiUrl,
+  withCredentials: true,
   timeout: 15000,
   headers: {
     "Content-Type": "application/json",
@@ -30,7 +44,7 @@ export type TaskVulnSummaryForReportResponse = {
 };
 
 // =======================
-// API: GET /tasks/summary-vulnerability
+// API: GET /summary-vulnerability-report
 // Public route: no login required
 // =======================
 export const ListTaskVulnSummaryForReport = async (): Promise<
@@ -131,7 +145,7 @@ export const ListCriticalForReport = async (
 };
 
 // =======================
-// Types: GET /devices/risk
+// Types: GET /devices/risk-report
 // =======================
 export type DeviceRiskForReportDTO = {
   task_id: string;
@@ -143,7 +157,7 @@ export type DeviceRiskForReportDTO = {
 };
 
 // =======================
-// API: GET /devices/risk
+// API: GET /devices/risk-report
 // Public route: no login required
 // =======================
 export const ListDeviceRiskForReport = async (): Promise<
@@ -248,4 +262,166 @@ export const ListTargetDifferForReport = async (): Promise<
   }
 };
 
-export default publicReportApi;
+// =======================
+// Types: AppReport
+// =======================
+export type AppReportResponse = {
+  id: number;
+  company_name: string;
+  logo: string;
+  created_at: string;
+  updated_at: string;
+  message?: string;
+  error?: string;
+};
+
+export type UpdateAppReportInput = {
+  company_name?: string;
+  logo?: string;
+};
+
+// =======================
+// Types: Send PDF To LINE
+// =======================
+export type SendPDFToLineResponse = {
+  message: string;
+  file_path?: string;
+  public_url?: string;
+  error?: string;
+};
+
+// =======================
+// API: GET /app-report
+// ใช้ publicReportApi
+// =======================
+export const ListAppReport = async (): Promise<AppReportResponse | null> => {
+  try {
+    const response = await publicReportApi.get("/app-report");
+
+    console.log("ListAppReport raw response:", response.data);
+
+    if (response.data && typeof response.data === "object") {
+      return response.data as AppReportResponse;
+    }
+
+    console.error("Unexpected ListAppReport response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("ListAppReport error:", error);
+    return null;
+  }
+};
+
+// =======================
+// API: PUT /app-report/:id
+// ใช้ credential
+// =======================
+export const UpdateAppReportByID = async (
+  id: number | string,
+  payload: UpdateAppReportInput
+): Promise<AppReportResponse | null> => {
+  try {
+    const response = await protectedReportApi.put(`/app-report/${id}`, payload);
+
+    console.log("UpdateAppReportByID raw response:", response.data);
+
+    if (response.data && typeof response.data === "object") {
+      return response.data as AppReportResponse;
+    }
+
+    console.error("Unexpected UpdateAppReportByID response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("UpdateAppReportByID error:", error);
+    return null;
+  }
+};
+
+// =======================
+// API: GET /send-pdf-to-line
+// public route
+// =======================
+export const SendPDFToLine = async (
+  pdf?: string
+): Promise<SendPDFToLineResponse | null> => {
+  try {
+    const params: Record<string, string> = {};
+
+    if (pdf && pdf.trim() !== "") {
+      params.pdf = pdf;
+    }
+
+    const response = await publicReportApi.get("/send-pdf-to-line", {
+      params,
+    });
+
+    console.log("SendPDFToLine raw response:", response.data);
+
+    if (response.data && typeof response.data === "object") {
+      return response.data as SendPDFToLineResponse;
+    }
+
+    console.error("Unexpected SendPDFToLine response:", response.data);
+    return null;
+  } catch (error) {
+    console.error("SendPDFToLine error:", error);
+    return null;
+  }
+};
+
+// =======================
+// API: GET /download-pdf
+// public route
+// ใช้โหลดไฟล์ PDF ลงเครื่อง
+// =======================
+export const DownloadPDFFile = async (pdf?: string): Promise<void> => {
+  const params: Record<string, string> = {};
+
+  if (pdf && pdf.trim() !== "") {
+    params.pdf = pdf;
+  }
+
+  const response = await publicReportApi.get("/download-pdf", {
+    params,
+    responseType: "blob",
+  });
+
+  const contentType = response.headers["content-type"] || "application/pdf";
+  const blob = new Blob([response.data], { type: contentType });
+
+  let fileName = "report_capture.pdf";
+  const disposition = response.headers["content-disposition"];
+
+  if (disposition) {
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    const asciiMatch = disposition.match(/filename="?([^"]+)"?/i);
+
+    if (utf8Match?.[1]) {
+      fileName = decodeURIComponent(utf8Match[1]);
+    } else if (asciiMatch?.[1]) {
+      fileName = asciiMatch[1];
+    }
+  }
+
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+const reportService = {
+  ListTaskVulnSummaryForReport,
+  ListCriticalForReport,
+  ListDeviceRiskForReport,
+  ListTargetDifferForReport,
+  ListAppReport,
+  UpdateAppReportByID,
+  SendPDFToLine,
+  DownloadPDFFile,
+};
+
+export default reportService;

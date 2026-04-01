@@ -15,6 +15,7 @@ const VulnerabilityByDevice = Loadable(lazy(() => import("../page/target/RiskSco
 const VulnerabilityByLevel = Loadable(lazy(() => import("../page/dashboard/only/vulnerability")));
 const Vulnerability = Loadable(lazy(() => import("../page/vulnerability/index")));
 const VulnerabilityDetail = Loadable(lazy(() => import("../page/vulnerability/List/Detail/index")));
+const Report = Loadable(lazy(() => import("../page/report/index")));
 
 //===== THOR =======
 const THOR = Loadable(lazy(() => import("../page/thor/index")));
@@ -29,7 +30,7 @@ const Loader = Loadable(lazy(() => import("../component/third-patry/Loader")));
 
 //====== Test Captuer ======
 const CaptureTest = Loadable(lazy(() => import("../page/report/CaptureTest")));
-
+const Save = Loadable(lazy(() => import("../page/report/save")));
 // ======================= ROUTES =======================
 
 // Admin เห็นทุกหน้า
@@ -54,10 +55,11 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "vulnerability-detail", element: <VulnerabilityDetail /> },
       { path: "service", element: <Service /> },
       { path: "p.thor", element: <THOR /> },
+      { path: "report", element: <Report /> }
     ],
   },
   { path: "*", element: <Navigate to="/admin" replace /> },
-  { path: "capture", element: <CaptureTest /> },
+  { path: "capture", element: <Save /> },
 ];
 
 // User เห็นเฉพาะบางหน้า
@@ -79,7 +81,6 @@ const UserRoutes = (): RouteObject[] => [
       { path: "vulnerability-detail", element: <VulnerabilityDetail /> },
       { path: "vulnerability-by-level", element: <VulnerabilityByLevel /> },
       { path: "service", element: <Service /> },
-      { path: "capture-test", element: <CaptureTest /> },
       { path: "p.thor", element: <THOR /> },
 
       // กัน user เข้าหน้าที่ไม่อนุญาต

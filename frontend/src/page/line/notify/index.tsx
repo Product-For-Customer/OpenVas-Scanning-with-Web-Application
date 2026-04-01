@@ -29,8 +29,6 @@ import {
 
 type SortKey =
   | "Newest"
-  | "Oldest"
-  | "Name A-Z"
   | "Alert: On First"
   | "Alert: Off First";
 
@@ -460,11 +458,6 @@ const Index: React.FC = () => {
 
     filtered = [...filtered].sort((a, b) => {
       if (sortBy === "Newest") return b.id - a.id;
-      if (sortBy === "Oldest") return a.id - b.id;
-
-      if (sortBy === "Name A-Z") {
-        return a.name.localeCompare(b.name);
-      }
 
       if (sortBy === "Alert: On First") {
         if (a.alert === b.alert) return b.id - a.id;
@@ -782,7 +775,7 @@ const Index: React.FC = () => {
               </div>
 
               <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
-                App Notification Table
+                Line Notification
               </h2>
 
               <p className="mt-1 text-[10.5px] sm:text-[11px] text-slate-500 dark:text-white/55">
@@ -844,8 +837,6 @@ const Index: React.FC = () => {
                   {(
                     [
                       "Newest",
-                      "Oldest",
-                      "Name A-Z",
                       "Alert: On First",
                       "Alert: Off First",
                     ] as SortKey[]
