@@ -48,12 +48,6 @@ type FilterOption = {
   label: string;
 };
 
-const SORT_OPTIONS: SortType[] = [
-  "Latest Updated",
-  "Highest Latest Risk",
-  "Biggest Change",
-];
-
 const COLORS = {
   previous: "#8B7CFF",
   latestStable: "#39C6F4",
@@ -66,6 +60,12 @@ const COLORS = {
   avgLineLight: "#94A3B8",
   avgLineDark: "rgba(255,255,255,0.30)",
 };
+
+const SORT_OPTIONS: SortType[] = [
+  "Latest Updated",
+  "Highest Latest Risk",
+  "Biggest Change",
+];
 
 const formatRisk = (value: number) => Number(value || 0).toFixed(2);
 
@@ -111,10 +111,10 @@ const CustomTooltip = ({
   return (
     <div className="min-w-62.5 max-w-[320px] rounded-[18px] border border-gray-200/90 bg-white/96 px-3 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#0B1220]/96 dark:shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
       <div className="mb-2">
-        <p className="text-[13px] font-semibold text-[#1f2240] dark:text-white/92 wrap-break-word">
+        <p className="wrap-break-word text-[13px] font-semibold text-[#1f2240] dark:text-white/92">
           {item.task_name || "Unknown Task"}
         </p>
-        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45 break-all">
+        <p className="mt-0.5 break-all text-[11px] text-gray-500 dark:text-white/45">
           Host: {item.host || "-"}
         </p>
       </div>
@@ -141,42 +141,42 @@ const CustomTooltip = ({
         <div className="grid grid-cols-1 gap-1.5">
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Task Name</span>
-            <span className="font-medium text-right wrap-break-word">
+            <span className="wrap-break-word text-right font-medium">
               {item.task_name || "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Host</span>
-            <span className="font-medium text-right break-all">
+            <span className="break-all text-right font-medium">
               {item.host || "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Latest Total</span>
-            <span className="font-semibold text-right text-[#1f2240] dark:text-white/90">
+            <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.latest_total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Previous Total</span>
-            <span className="font-semibold text-right text-[#1f2240] dark:text-white/90">
+            <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.previous_total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Latest Time</span>
-            <span className="font-medium text-right">
+            <span className="text-right font-medium">
               {formatUnixThai(item.latest_creation_time)}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
             <span>Previous Time</span>
-            <span className="font-medium text-right">
+            <span className="text-right font-medium">
               {formatUnixThai(item.previous_creation_time)}
             </span>
           </div>
@@ -265,7 +265,7 @@ const CustomLegend = () => {
 
 const AverageEnrollment: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortType>("Latest Updated");
-  const [loading, setLoading] = useState<boolean>(true); //@ts-ignore
+  const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [rows, setRows] = useState<TargetDifferDTO[]>([]);
 
@@ -283,7 +283,6 @@ const AverageEnrollment: React.FC = () => {
       if (mode === "refresh") setRefreshing(true);
 
       const res = await ListTargetDiffer();
-      console.log(res);
       setRows(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("fetch target differ error:", error);
@@ -400,6 +399,7 @@ const AverageEnrollment: React.FC = () => {
 
   const summary = useMemo(() => {
     const totalAssets = filteredMappedRows.length;
+
     const avgLatestRisk =
       totalAssets > 0
         ? filteredMappedRows.reduce(
@@ -436,9 +436,11 @@ const AverageEnrollment: React.FC = () => {
   const yTicks = useMemo(() => {
     const step = maxRisk <= 6 ? 1 : Math.ceil(maxRisk / 5);
     const ticks: number[] = [];
+
     for (let i = 0; i <= maxRisk; i += step) {
       ticks.push(i);
     }
+
     if (ticks[ticks.length - 1] !== maxRisk) ticks.push(maxRisk);
     return ticks;
   }, [maxRisk]);
@@ -446,12 +448,12 @@ const AverageEnrollment: React.FC = () => {
   const selectedCount = selectedKeys.length;
 
   const dropdownButtonLabel = useMemo(() => {
-    if (selectedCount === 0) return "Filter Device";
+    if (selectedCount === 0) return "Target Query";
     if (selectedCount === 1) {
       const found = filterOptions.find((x) => x.key === selectedKeys[0]);
       return found?.label || "1 selected";
     }
-    return `${selectedCount} selected`;
+    return `${selectedCount} targets selected`;
   }, [selectedCount, filterOptions, selectedKeys]);
 
   const toggleSelect = (key: string) => {
@@ -471,8 +473,7 @@ const AverageEnrollment: React.FC = () => {
         return prev.filter((key) => !visibleKeys.includes(key));
       }
 
-      const merged = new Set([...prev, ...visibleKeys]);
-      return Array.from(merged);
+      return Array.from(new Set([...prev, ...visibleKeys]));
     });
   };
 
@@ -499,7 +500,7 @@ const AverageEnrollment: React.FC = () => {
         <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-400/10 blur-3xl" />
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex h-full flex-col">
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
@@ -520,127 +521,148 @@ const AverageEnrollment: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start xl:items-center">
-              <div className="relative min-w-full sm:min-w-72.5" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpen((prev) => !prev)}
-                  className={[
-                    "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
-                    "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
-                    "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
-                  ].join(" ")}
-                >
-                  <span className="truncate">{dropdownButtonLabel}</span>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selectedCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                        {selectedCount}
-                      </span>
-                    )}
-
+              <div className="flex items-start gap-1 shrink-0">
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setOpen((prev) => !prev)}
+                    className={[
+                      "h-9 rounded-xl px-3 flex items-center gap-2 border transition min-w-27.5 sm:min-w-32.5",
+                      "bg-white border-gray-200 text-slate-700 hover:border-cyan-200 hover:bg-cyan-50/60",
+                      "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    <FiShield className="text-[12px]" />
+                    <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                      {dropdownButtonLabel}
+                    </span>
                     <FiChevronDown
-                      className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
+                      className={`ml-auto text-[12px] transition-transform ${
                         open ? "rotate-180" : ""
                       }`}
                     />
-                  </div>
-                </button>
+                  </button>
 
-                {open && (
-                  <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                    <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
-                      <div
-                        className={[
-                          "flex items-center gap-2 rounded-2xl px-3 h-9",
-                          "bg-slate-50 border border-slate-200/80",
-                          "dark:bg-white/5 dark:border-white/10",
-                        ].join(" ")}
-                      >
-                        <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search task name or host..."
-                          className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
-                        />
-                        {searchQuery.trim() !== "" && (
+                  {open && (
+                    <div
+                      className={[
+                        "absolute right-0 z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
+                        "border border-gray-200 bg-white shadow-xl",
+                        "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
+                      ].join(" ")}
+                    >
+                      <div className="border-b border-gray-100 p-2.5 dark:border-white/10">
+                        <div
+                          className={[
+                            "flex items-center gap-2 rounded-xl border px-2.5",
+                            "border-gray-200/80 bg-gray-50",
+                            "dark:border-white/10 dark:bg-white/5",
+                          ].join(" ")}
+                        >
+                          <FiSearch className="shrink-0 text-[11px] text-gray-400 dark:text-white/40" />
+                          <input
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search target"
+                            className="h-8 w-full bg-transparent text-[11px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/35"
+                          />
+                          {searchQuery.trim() !== "" && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery("")}
+                              className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                              aria-label="Clear search"
+                            >
+                              <FiX className="text-[11px]" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between gap-2">
                           <button
                             type="button"
-                            onClick={() => setSearchQuery("")}
-                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                            aria-label="Clear search"
+                            onClick={handleSelectAllVisible}
+                            className="text-[10.5px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
                           >
-                            <FiX className="text-[13px]" />
+                            {allVisibleSelected
+                              ? "Unselect visible"
+                              : "Select visible"}
                           </button>
-                        )}
-                      </div>
 
-                      <div className="mt-2.5 flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllVisible}
-                          className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-                        >
-                          {allVisibleSelected ? "Unselect visible" : "Select visible"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={clearAllSelections}
-                          className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-                        >
-                          Clear all
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="max-h-62 overflow-y-auto overscroll-contain p-2 pr-1">
-                      {filteredOptions.length === 0 ? (
-                        <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
-                          No matching task / host
+                          <button
+                            type="button"
+                            onClick={clearAllSelections}
+                            className="text-[10.5px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                          >
+                            Clear all
+                          </button>
                         </div>
-                      ) : (
-                        <div className="space-y-1">
-                          {filteredOptions.map((opt) => {
-                            const checked = selectedKeys.includes(opt.key);
+                      </div>
 
-                            return (
-                              <button
-                                key={opt.key}
-                                type="button"
-                                onClick={() => toggleSelect(opt.key)}
-                                className={[
-                                  "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
-                                  checked
-                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                                    : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <span
+                      <div className="max-h-56 overflow-y-auto p-2">
+                        {filteredOptions.length === 0 ? (
+                          <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
+                            No matching target
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {filteredOptions.map((opt) => {
+                              const checked = selectedKeys.includes(opt.key);
+
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => toggleSelect(opt.key)}
                                   className={[
-                                    "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
+                                    "w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
                                     checked
-                                      ? "bg-cyan-500 border-cyan-500 text-white"
-                                      : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                      ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                      : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
                                   ].join(" ")}
                                 >
-                                  <FiCheck className="text-[10px]" />
-                                </span>
-
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                                    {opt.label}
+                                  <span
+                                    className={[
+                                      "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                                      checked
+                                        ? "bg-cyan-500 border-cyan-500 text-white"
+                                        : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                    ].join(" ")}
+                                  >
+                                    <FiCheck className="text-[10px]" />
                                   </span>
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+                                      <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
+                                        {opt.label}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                {selectedKeys.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAllSelections}
+                    className={[
+                      "h-9 w-9 rounded-xl border flex items-center justify-center transition",
+                      "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
+                      "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
+                    ].join(" ")}
+                    aria-label="Clear filters"
+                  >
+                    <FiX className="text-[12px]" />
+                  </button>
                 )}
               </div>
 
@@ -711,7 +733,7 @@ const AverageEnrollment: React.FC = () => {
                             </span>
 
                             <span className="min-w-0 flex-1">
-                              <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                              <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80">
                                 {option}
                               </span>
                               <span className="mt-0.5 block text-[10px] text-gray-400 dark:text-white/35">
@@ -729,6 +751,23 @@ const AverageEnrollment: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={() => void fetchData("refresh")}
+                disabled={refreshing}
+                className={[
+                  "inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border px-3.5 transition",
+                  "bg-white border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                  "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                ].join(" ")}
+              >
+                <FiRefreshCw
+                  className={`text-[13px] ${refreshing ? "animate-spin" : ""}`}
+                />
+                Refresh
+              </button>
             </div>
           </div>
 
@@ -761,7 +800,8 @@ const AverageEnrollment: React.FC = () => {
                 <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
                 <div className="inline-flex items-center gap-2 text-[11px] text-cyan-700 dark:text-cyan-300">
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                  Filtered by {selectedCount} selected target{selectedCount > 1 ? "s" : ""}
+                  Filtered by {selectedCount} selected target
+                  {selectedCount > 1 ? "s" : ""}
                 </div>
               </>
             )}
@@ -775,7 +815,7 @@ const AverageEnrollment: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-4 mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+        <div className="mb-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
           <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-slate-50 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-white/8 dark:to-white/4">
             <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
               Targets
@@ -817,19 +857,24 @@ const AverageEnrollment: React.FC = () => {
 
         <div
           className={[
-            "rounded-[22px] border p-2.5 sm:p-3",
+            "flex-1 rounded-[22px] border p-2.5 sm:p-3",
             "border-gray-200/70 bg-linear-to-b from-[#fcfdff] to-[#f7faff]",
             "dark:border-white/10 dark:bg-linear-to-b dark:from-[#0B1220] dark:to-[#0E1830]",
           ].join(" ")}
         >
-          <div className="h-80 sm:h-95 lg:h-105">
+          <div className="h-full min-h-90 sm:min-h-97.5 md:min-h-105">
             {loading ? (
               <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
-                <div className="flex items-center gap-2.5 text-gray-500 dark:text-white/60">
-                  <FiRefreshCw className="animate-spin text-base" />
-                  <span className="text-[12px] font-medium">
-                    Loading target differ data...
-                  </span>
+                <div className="text-center">
+                  <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300">
+                    <FiRefreshCw className="animate-spin text-[18px]" />
+                  </div>
+                  <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
+                    Loading target differ data
+                  </p>
+                  <p className="mt-1 text-[10px] text-gray-500 dark:text-white/50">
+                    กำลังโหลดข้อมูลเปรียบเทียบ latest / previous
+                  </p>
                 </div>
               </div>
             ) : chartData.length === 0 ? (

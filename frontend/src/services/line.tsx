@@ -45,8 +45,6 @@ export const ListHistoryNotify = async (): Promise<HistoryNotifyResponse[] | nul
   try {
     const response = await historyNotifyApi.get("/history-notifies");
 
-    console.log("ListHistoryNotify raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as HistoryNotifyResponse[];
     }
@@ -76,8 +74,6 @@ export const DeleteHistoryNotifyByIDs = async (
     const response = await historyNotifyApi.delete("/delete-history-notifies", {
       data: payload,
     });
-
-    console.log("DeleteHistoryNotifyByIDs raw response:", response.data);
 
     if (
       response.data &&
@@ -144,8 +140,6 @@ export const ListAppNotification = async (): Promise<AppNotificationResponse[] |
   try {
     const response = await historyNotifyApi.get("/app-notifications");
 
-    console.log("ListAppNotification raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as AppNotificationResponse[];
     }
@@ -172,8 +166,6 @@ export const CreateAppNotification = async (
 ): Promise<CreateAppNotificationResponse | null> => {
   try {
     const response = await historyNotifyApi.post("/create-app-notifications", payload);
-
-    console.log("CreateAppNotification raw response:", response.data);
 
     if (
       response.data &&
@@ -205,8 +197,6 @@ export const UpdateAppNotificationByID = async (
       payload
     );
 
-    console.log("UpdateAppNotificationByID raw response:", response.data);
-
     if (
       response.data &&
       typeof response.data === "object" &&
@@ -234,8 +224,6 @@ export const DeleteAppNotificationByID = async (
     const response = await historyNotifyApi.delete(
       `/delete-app-notifications/${id}`
     );
-
-    console.log("DeleteAppNotificationByID raw response:", response.data);
 
     if (
       response.data &&
@@ -293,8 +281,6 @@ export const ListAppLineMaster = async (): Promise<AppLineMasterResponse[] | nul
   try {
     const response = await historyNotifyApi.get("/app-line-masters");
 
-    console.log("ListAppLineMaster raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as AppLineMasterResponse[];
     }
@@ -321,8 +307,6 @@ export const CreateAppLineMaster = async (
 ): Promise<CreateAppLineMasterResponse | null> => {
   try {
     const response = await historyNotifyApi.post("/create-app-line-masters", payload);
-
-    console.log("CreateAppLineMaster raw response:", response.data);
 
     if (
       response.data &&
@@ -354,8 +338,6 @@ export const UpdateAppLineMasterByID = async (
       payload
     );
 
-    console.log("UpdateAppLineMasterByID raw response:", response.data);
-
     if (
       response.data &&
       typeof response.data === "object" &&
@@ -381,8 +363,6 @@ export const DeleteAppLineMasterByID = async (
 ): Promise<DeleteAppLineMasterResponse | null> => {
   try {
     const response = await historyNotifyApi.delete(`/delete-app-line-masters/${id}`);
-
-    console.log("DeleteAppLineMasterByID raw response:", response.data);
 
     if (
       response.data &&
@@ -434,8 +414,6 @@ export const TestLineNotifyByAppNotificationID = async (
 ): Promise<TestLineNotifyByAppNotificationIDResponse | null> => {
   try {
     const response = await historyNotifyApi.post("/line/test-notify", payload);
-
-    console.log("TestLineNotifyByAppNotificationID raw response:", response.data);
 
     if (
       response.data &&

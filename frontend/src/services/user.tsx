@@ -66,8 +66,6 @@ export const ListUser = async (): Promise<UserResponse[] | null> => {
   try {
     const response = await userApi.get("/users");
 
-    console.log("ListUser raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as UserResponse[];
     }
@@ -93,8 +91,6 @@ export const ListUserByID = async (id: number | string): Promise<UserResponse | 
   try {
     const response = await userApi.get(`/users/${id}`);
 
-    console.log("ListUserByID raw response:", response.data);
-
     if (response.data && typeof response.data === "object") {
       return response.data as UserResponse;
     }
@@ -115,8 +111,6 @@ export const CreateUser = async (
 ): Promise<UserResponse | null> => {
   try {
     const response = await userApi.post("/create-users", payload);
-
-    console.log("CreateUser raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as UserResponse;
@@ -140,8 +134,6 @@ export const UpdateUserByID = async (
   try {
     const response = await userApi.patch(`/update-users/${id}`, payload);
 
-    console.log("UpdateUserByID raw response:", response.data);
-
     if (response.data && typeof response.data === "object") {
       return response.data as UserResponse;
     }
@@ -162,8 +154,6 @@ export const DeleteUserByID = async (
 ): Promise<DeleteUserResponse | null> => {
   try {
     const response = await userApi.delete(`/delete-users/${id}`);
-
-    console.log("DeleteUserByID raw response:", response.data);
 
     if (response.data && response.data.message) {
       return response.data as DeleteUserResponse;
@@ -210,8 +200,6 @@ export const ListRoles = async (): Promise<RoleResponse[] | null> => {
   try {
     const response = await userApi.get("/roles");
 
-    console.log("ListRoles raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as RoleResponse[];
     }
@@ -239,8 +227,6 @@ export const UpdateUserIDByAdmin = async (
 ): Promise<UpdateUserByAdminResponse> => {
   try {
     const response = await userApi.patch(`/admin/users/${id}`, payload);
-
-    console.log("UpdateUserIDByAdmin raw response:", response.data);
 
     return response.data as UpdateUserByAdminResponse;
   } catch (error: any) {
@@ -272,8 +258,6 @@ export const ListSendEmails = async (): Promise<SendEmailResponse[] | null> => {
   try {
     const response = await userApi.get("/send-emails");
 
-    console.log("ListSendEmails raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as SendEmailResponse[];
     }
@@ -301,8 +285,6 @@ export const UpdateSendEmailByID = async (
 ): Promise<SendEmailResponse | null> => {
   try {
     const response = await userApi.put(`/send-email/${id}`, payload);
-
-    console.log("UpdateSendEmailByID raw response:", response.data);
 
     if (response.data?.data) {
       return response.data.data as SendEmailResponse;
@@ -435,8 +417,6 @@ export const ListLocation = async (): Promise<LocationResponse[] | null> => {
   try {
     const response = await userApi.get("/locations");
 
-    console.log("ListLocation raw response:", response.data);
-
     const data = response.data?.data ?? response.data;
 
     if (Array.isArray(data)) {
@@ -458,8 +438,6 @@ export const ListLocationByID = async (
   try {
     const response = await userApi.get(`/locations/${id}`);
 
-    console.log("ListLocationByID raw response:", response.data);
-
     const data = response.data?.data ?? response.data;
 
     if (data && typeof data === "object") {
@@ -480,8 +458,6 @@ export const CreateLocation = async (
 ): Promise<LocationResponse | null> => {
   try {
     const response = await userApi.post("/create-locations", payload);
-
-    console.log("CreateLocation raw response:", response.data);
 
     const data = response.data?.data ?? response.data;
 
@@ -505,8 +481,6 @@ export const UpdateLocationByID = async (
   try {
     const response = await userApi.patch(`/update-locations/${id}`, payload);
 
-    console.log("UpdateLocationByID raw response:", response.data);
-
     const data = response.data?.data ?? response.data;
 
     if (data && typeof data === "object") {
@@ -527,8 +501,6 @@ export const DeleteLocationByID = async (
 ): Promise<DeleteLocationResponse | null> => {
   try {
     const response = await userApi.delete(`/delete-locations/${id}`);
-
-    console.log("DeleteLocationByID raw response:", response.data);
 
     if (response.data && response.data.message) {
       return {
@@ -593,8 +565,6 @@ export const ListOwnByUserID = async (
   try {
     const response = await userApi.get(`/owns/user/${userId}`);
 
-    console.log("ListOwnByUserID raw response:", response.data);
-
     const data = response.data?.data ?? response.data;
 
     if (
@@ -629,8 +599,6 @@ export const ListTaskIDForOwn = async (): Promise<ListTaskIDForOwnResponse> => {
   try {
     const response = await userApi.get("/owns/tasks");
 
-    console.log("ListTaskIDForOwn raw response:", response.data);
-
     const data = response.data?.data ?? response.data;
 
     if (Array.isArray(data)) {
@@ -658,9 +626,6 @@ export const CreateOwn = async (
     };
 
     const response = await userApi.post("/create-owns", requestBody);
-
-    console.log("CreateOwn raw response:", response.data);
-
     if (
       response.data &&
       typeof response.data === "object" &&
@@ -685,8 +650,6 @@ export const DeleteOwnByID = async (
 ): Promise<DeleteOwnResponse | null> => {
   try {
     const response = await userApi.delete(`/delete-owns/${id}`);
-
-    console.log("DeleteOwnByID raw response:", response.data);
 
     if (response.data && response.data.message) {
       return response.data as DeleteOwnResponse;
@@ -716,8 +679,6 @@ export const ListTaskByTaskID = async (
 ): Promise<ListTaskByTaskIDResponse> => {
   try {
     const response = await userApi.get(`/owns/task/${taskId}`);
-
-    console.log("ListTaskByTaskID raw response:", response.data);
 
     const data = response.data?.data ?? response.data;
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiAlertOctagon,
   FiAlertTriangle,
@@ -8,9 +8,11 @@ import {
   FiRadio,
   FiActivity,
   FiLayers,
+  FiChevronDown,
+  FiSearch,
+  FiCheck,
+  FiX,
 } from "react-icons/fi";
-import { ConfigProvider, Select } from "antd";
-import type { SelectProps } from "antd";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -38,14 +40,22 @@ type StatCard = {
   chip: string;
 };
 
+type TargetOption = {
+  key: string;
+  label: string;
+};
+
 const Value: React.FC = () => {
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<TaskVulnSummaryDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [selectedTask, setSelectedTask] = useState<string>("all");
-  const [searchValue, setSearchValue] = useState<string>("");
-  const [open, setOpen] = useState<boolean>(false);
+
+  const [openTargetQuery, setOpenTargetQuery] = useState(false);
+  const [targetQuerySearch, setTargetQuerySearch] = useState("");
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+
+  const targetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -54,7 +64,6 @@ const Value: React.FC = () => {
       try {
         setLoading(true);
         const res = await ListTaskVulnSummary();
-        console.log(res);
         if (!alive) return;
         setRows(Array.isArray(res) ? res : []);
       } catch (error) {
@@ -72,49 +81,52 @@ const Value: React.FC = () => {
     };
   }, []);
 
-  const taskOptions = useMemo(() => {
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (!targetRef.current) return;
+      if (!targetRef.current.contains(e.target as Node)) {
+        setOpenTargetQuery(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const targetOptions = useMemo<TargetOption[]>(() => {
     const names = rows
       .map((r) => ({
-        task_id: String(r.task_id ?? ""),
-        task_name: String(r.task_name ?? "").trim(),
+        key: String(r.task_name ?? "").trim(),
+        label: String(r.task_name ?? "").trim(),
       }))
-      .filter((r) => r.task_name !== "");
+      .filter((r) => r.key !== "");
 
-    const uniqueMap = new Map<string, { task_id: string; task_name: string }>();
+    const uniqueMap = new Map<string, TargetOption>();
 
     for (const item of names) {
-      if (!uniqueMap.has(item.task_name)) {
-        uniqueMap.set(item.task_name, item);
+      if (!uniqueMap.has(item.key)) {
+        uniqueMap.set(item.key, item);
       }
     }
 
     return Array.from(uniqueMap.values());
   }, [rows]);
 
-  const selectOptions: SelectProps["options"] = useMemo(() => {
-    const deviceOptions = taskOptions.map((task) => ({
-      value: task.task_name,
-      label: task.task_name,
-    }));
+  const filteredTargetOptions = useMemo(() => {
+    const keyword = targetQuerySearch.trim().toLowerCase();
+    if (!keyword) return targetOptions;
 
-    if (searchValue.trim() !== "") {
-      return deviceOptions;
-    }
-
-    return [{ value: "all", label: "All" }, ...deviceOptions];
-  }, [taskOptions, searchValue]);
-
-  const displayedValue = useMemo(() => {
-    if (open && searchValue.trim() !== "") {
-      return undefined;
-    }
-    return selectedTask;
-  }, [open, searchValue, selectedTask]);
+    return targetOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(keyword)
+    );
+  }, [targetOptions, targetQuerySearch]);
 
   const filteredRows = useMemo(() => {
-    if (selectedTask === "all") return rows;
-    return rows.filter((r) => String(r.task_name ?? "") === selectedTask);
-  }, [rows, selectedTask]);
+    if (selectedTargets.length === 0) return rows;
+    return rows.filter((r) =>
+      selectedTargets.includes(String(r.task_name ?? "").trim())
+    );
+  }, [rows, selectedTargets]);
 
   const totals = useMemo(() => {
     let critical = 0;
@@ -159,9 +171,45 @@ const Value: React.FC = () => {
 
   const selectedScopeLabel = useMemo(() => {
     if (loading) return "Loading scope...";
-    if (selectedTask === "all") return "All Tasks";
-    return selectedTask;
-  }, [loading, selectedTask]);
+    if (selectedTargets.length === 0) return "All Targets";
+    if (selectedTargets.length === 1) return selectedTargets[0];
+    return `${selectedTargets.length} Targets Selected`;
+  }, [loading, selectedTargets]);
+
+  const toggleTarget = (key: string) => {
+    setSelectedTargets((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const handleSelectAllVisibleTargets = () => {
+    const visibleKeys = filteredTargetOptions.map((x) => x.key);
+
+    setSelectedTargets((prev) => {
+      const prevSet = new Set(prev);
+      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
+
+      if (allVisibleSelected) {
+        return prev.filter((key) => !visibleKeys.includes(key));
+      }
+
+      return Array.from(new Set([...prev, ...visibleKeys]));
+    });
+  };
+
+  const clearAllTargets = () => {
+    setSelectedTargets([]);
+  };
+
+  const allVisibleTargetsSelected =
+    filteredTargetOptions.length > 0 &&
+    filteredTargetOptions.every((opt) => selectedTargets.includes(opt.key));
+
+  const targetButtonLabel = useMemo(() => {
+    if (selectedTargets.length === 0) return "Target Query";
+    if (selectedTargets.length === 1) return selectedTargets[0];
+    return `${selectedTargets.length} selected`;
+  }, [selectedTargets]);
 
   const stats: StatCard[] = useMemo(
     () => [
@@ -348,7 +396,7 @@ const Value: React.FC = () => {
     navigate("/admin/vulnerability-by-level", {
       state: {
         level,
-        scopeTask: selectedTask,
+        scopeTask: selectedTargets,
       },
     });
   };
@@ -356,12 +404,12 @@ const Value: React.FC = () => {
   return (
     <section
       className={[
-        "relative overflow-hidden rounded-[22px] p-1.5 sm:p-2",
+        "relative overflow-visible rounded-[22px] p-1.5 sm:p-2",
         "bg-white border border-gray-200/80 shadow-sm",
         "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
         <div className="absolute -top-14 -right-12 h-28 w-28 rounded-full bg-cyan-400/8 blur-3xl" />
         <div className="absolute -bottom-14 -left-12 h-28 w-28 rounded-full bg-violet-500/8 blur-3xl" />
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.045]">
@@ -450,184 +498,150 @@ const Value: React.FC = () => {
             </div>
 
             <div className="w-full xl:w-auto">
-              <ConfigProvider
-                theme={{
-                  token: {
-                    colorPrimary: "#e2e8f0",
-                    borderRadius: 14,
-                    colorBgElevated: "#ffffff",
-                    colorBorder: "#e5e7eb",
-                    boxShadowSecondary:
-                      "0 12px 28px -20px rgba(15,23,42,0.12)",
-                    colorText: "#334155",
-                    colorTextPlaceholder: "#94a3b8",
-                    controlHeightLG: 34,
-                    fontSize: 11,
-                  },
-                  components: {
-                    Select: {
-                      activeBorderColor: "#dbeafe",
-                      hoverBorderColor: "#cbd5e1",
-                      optionSelectedBg: "#f8fafc",
-                      optionActiveBg: "#f1f5f9",
-                      optionSelectedColor: "#0f172a",
-                    },
-                  },
-                }}
-              >
-                <div className="relative w-full xl:min-w-55">
-                  <Select
-                    value={displayedValue}
-                    open={open}
-                    onOpenChange={(nextOpen) => {
-                      setOpen(nextOpen);
-                      if (!nextOpen) {
-                        setSearchValue("");
-                      }
-                    }}
-                    onChange={(value) => {
-                      setSelectedTask(value);
-                      setSearchValue("");
-                      setOpen(false);
-                    }}
-                    options={selectOptions}
-                    popupMatchSelectWidth
-                    showSearch
-                    searchValue={searchValue}
-                    onSearch={(value) => setSearchValue(value)}
-                    optionFilterProp="label"
-                    filterOption={(input, option) => {
-                      const label = String(option?.label ?? "").toLowerCase();
-                      return label.includes(input.toLowerCase());
-                    }}
-                    size="large"
-                    variant="outlined"
-                    listHeight={132}
-                    notFoundContent="No device found"
-                    placeholder="Filter Device"
-                    suffixIcon={
-                      <span
-                        style={{
-                          color: "#94a3b8",
-                          fontSize: 10,
-                          lineHeight: 1,
-                          pointerEvents: "none",
-                        }}
-                      >
-                        ▾
-                      </span>
-                    }
-                    style={{
-                      width: "100%",
-                      background: "transparent",
-                    }}
-                    styles={{
-                      root: {
-                        width: "100%",
-                      },
-                      popup: {
-                        root: {
-                          padding: 6,
-                          borderRadius: 16,
-                          border: "1px solid #e5e7eb",
-                          overflow: "hidden",
-                          boxShadow: "0 12px 28px -20px rgba(15,23,42,0.12)",
-                          background: "#ffffff",
-                        },
-                        list: {
-                          padding: 0,
-                          background: "#ffffff",
-                        },
-                        listItem: {
-                          minHeight: 34,
-                          borderRadius: 10,
-                          margin: "3px 0",
-                          paddingInline: 12,
-                          display: "flex",
-                          alignItems: "center",
-                          fontSize: 11,
-                          fontWeight: 500,
-                          color: "#334155",
-                          transition: "all 0.18s ease",
-                        },
-                      },
-                    }}
-                    classNames={{
-                      root: "w-full",
-                    }}
-                    getPopupContainer={(triggerNode) =>
-                      triggerNode.parentElement || document.body
-                    }
-                    optionRender={(option) => {
-                      const isAll = option.data.value === "all";
-                      const isSelected = selectedTask === option.data.value;
+              <div className="flex items-start gap-1 shrink-0">
+                <div className="relative z-80" ref={targetRef}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenTargetQuery((prev) => !prev)}
+                    className={[
+                      "h-9 rounded-2xl px-3 flex items-center gap-2 border transition min-w-36.25",
+                      "bg-[#f7f7f8] border-[#d9d9de] text-slate-700 hover:border-slate-300 hover:bg-[#f3f4f6]",
+                      "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    <FiShield className="text-[12px] text-slate-500 dark:text-white/55" />
+                    <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                      {targetButtonLabel}
+                    </span>
+                    <FiChevronDown
+                      className={`ml-auto text-[12px] text-slate-500 dark:text-white/55 transition-transform ${
+                        openTargetQuery ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
 
-                      return (
+                  {openTargetQuery && (
+                    <div
+                      className={[
+                        "absolute right-0 top-full z-90 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
+                        "border border-gray-200 bg-white shadow-xl",
+                        "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
+                      ].join(" ")}
+                    >
+                      <div className="border-b border-gray-100 p-2.5 dark:border-white/10">
                         <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            width: "100%",
-                            padding: "1px 0",
-                          }}
+                          className={[
+                            "flex items-center gap-2 rounded-xl border px-2.5",
+                            "border-gray-200/80 bg-gray-50",
+                            "dark:border-white/10 dark:bg-white/5",
+                          ].join(" ")}
                         >
-                          <div
-                            style={{
-                              width: 6,
-                              height: 6,
-                              borderRadius: 999,
-                              background: isSelected
-                                ? "#cbd5e1"
-                                : isAll
-                                ? "#cbd5e1"
-                                : "#6366f1",
-                              flexShrink: 0,
-                            }}
+                          <FiSearch className="shrink-0 text-[11px] text-gray-400 dark:text-white/40" />
+                          <input
+                            value={targetQuerySearch}
+                            onChange={(e) => setTargetQuerySearch(e.target.value)}
+                            placeholder="Search target"
+                            className="h-8 w-full bg-transparent text-[11px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/35"
                           />
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: isSelected ? 600 : 500,
-                              color: "#334155",
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                            }}
-                          >
-                            {String(option.data.label)}
-                          </span>
+                          {targetQuerySearch.trim() !== "" && (
+                            <button
+                              type="button"
+                              onClick={() => setTargetQuerySearch("")}
+                              className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                              aria-label="Clear search"
+                            >
+                              <FiX className="text-[11px]" />
+                            </button>
+                          )}
                         </div>
-                      );
-                    }}
-                    labelRender={(props) => {
-                      if (open && searchValue.trim() !== "") {
-                        return <span />;
-                      }
 
-                      return (
-                        <span
-                          style={{
-                            color: "#334155",
-                            fontSize: 11,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {props.value === "all" ? "All" : props.label}
-                        </span>
-                      );
-                    }}
-                  />
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={handleSelectAllVisibleTargets}
+                            className="text-[10.5px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                          >
+                            {allVisibleTargetsSelected
+                              ? "Unselect visible"
+                              : "Select visible"}
+                          </button>
 
-                  <div
-                    className="pointer-events-none absolute inset-0 rounded-[14px]"
-                    style={{
-                      border: "1px solid #dbeafe",
-                      boxShadow: "0 8px 18px -18px rgba(15,23,42,0.10)",
-                    }}
-                  />
+                          <button
+                            type="button"
+                            onClick={clearAllTargets}
+                            className="text-[10.5px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto p-2">
+                        {filteredTargetOptions.length === 0 ? (
+                          <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
+                            No matching target
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {filteredTargetOptions.map((opt) => {
+                              const checked = selectedTargets.includes(opt.key);
+
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => toggleTarget(opt.key)}
+                                  className={[
+                                    "w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+                                    checked
+                                      ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                      : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                  ].join(" ")}
+                                >
+                                  <span
+                                    className={[
+                                      "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                                      checked
+                                        ? "bg-cyan-500 border-cyan-500 text-white"
+                                        : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                    ].join(" ")}
+                                  >
+                                    <FiCheck className="text-[10px]" />
+                                  </span>
+
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="h-2 w-2 rounded-full bg-cyan-500" />
+                                      <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
+                                        {opt.label}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </ConfigProvider>
+
+                {selectedTargets.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAllTargets}
+                    className={[
+                      "h-9 w-9 rounded-xl border flex items-center justify-center transition",
+                      "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
+                      "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
+                    ].join(" ")}
+                    aria-label="Clear filters"
+                  >
+                    <FiX className="text-[12px]" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

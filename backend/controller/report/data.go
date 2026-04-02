@@ -10,6 +10,7 @@ import (
 )
 
 type CriticalForReportDTO struct {
+	TaskID            string    `json:"task_id"`
 	TaskName          string    `json:"task_name"`
 	IP                string    `json:"ip"`
 	VulnerabilityID   string    `json:"vulnerability_id"`
@@ -156,6 +157,7 @@ CVEListPerNVT AS (
 )
 
 SELECT
+    tp.task_id,
     tp.task_name,
     tp.ip,
     tp.nvt_oid::text AS vulnerability_id,

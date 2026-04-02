@@ -53,8 +53,6 @@ export const ListTaskVulnSummaryForReport = async (): Promise<
   try {
     const response = await publicReportApi.get("/summary-vulnerability-report");
 
-    console.log("ListTaskVulnSummaryForReport raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as TaskVulnSummaryForReportResponse[];
     }
@@ -121,8 +119,6 @@ export const ListCriticalForReport = async (
       params,
     });
 
-    console.log("ListCriticalForReport raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as CriticalForReportResponse[];
     }
@@ -165,8 +161,6 @@ export const ListDeviceRiskForReport = async (): Promise<
 > => {
   try {
     const response = await publicReportApi.get("/devices/risk-report");
-
-    console.log("ListDeviceRiskForReport raw response:", response.data);
 
     if (Array.isArray(response.data)) {
       return response.data as DeviceRiskForReportDTO[];
@@ -239,8 +233,6 @@ export const ListTargetDifferForReport = async (): Promise<
   try {
     const response = await publicReportApi.get("/target-differ-report");
 
-    console.log("ListTargetDifferForReport raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as TargetDifferForReportDTO[];
     }
@@ -305,8 +297,6 @@ export const ListAppReport = async (): Promise<AppReportResponse | null> => {
   try {
     const response = await publicReportApi.get("/app-report");
 
-    console.log("ListAppReport raw response:", response.data);
-
     if (response.data && typeof response.data === "object") {
       return response.data as AppReportResponse;
     }
@@ -329,8 +319,6 @@ export const UpdateAppReportByID = async (
 ): Promise<AppReportResponse | null> => {
   try {
     const response = await protectedReportApi.put(`/app-report/${id}`, payload);
-
-    console.log("UpdateAppReportByID raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as AppReportResponse;
@@ -373,8 +361,6 @@ export const SendPDFToLine = async (
     const response = await publicReportApi.get("/send-pdf-to-line", {
       params,
     });
-
-    console.log("SendPDFToLine raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as SendPDFToLineResponse;

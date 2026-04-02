@@ -32,8 +32,6 @@ export const ListTaskStatus = async (): Promise<TaskStatusDTO[] | null> => {
   try {
     const response = await vulnerabilityApi.get("/tasks/status");
 
-    console.log("Task status raw response:", response.data);
-
     if (Array.isArray(response.data)) {
       return response.data as TaskStatusDTO[];
     }
@@ -70,7 +68,6 @@ export const ListTaskVulnSummary = async (): Promise<TaskVulnSummaryDTO[] | null
   try {
     const response = await vulnerabilityApi.get("/tasks/summary-vulnerability");
 
-    console.log("TaskVulnSummary raw response:", response.data);
 
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
@@ -105,7 +102,6 @@ export const ListVulnerability = async (): Promise<VulnerabilityLevelDTO[] | nul
   try {
     const response = await vulnerabilityApi.get("/vulnerabilities/list");
 
-    console.log("ListVulnerability raw response:", response.data);
 
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
@@ -137,8 +133,6 @@ export const ListAssetRisk = async (): Promise<AssetRiskDTO[] | null> => {
   try {
     const response = await vulnerabilityApi.get("/assets/risk");
 
-    console.log("ListAssetRisk raw response:", response.data);
-
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
       return Array.isArray(data) ? (data as AssetRiskDTO[]) : [];
@@ -167,8 +161,6 @@ export type DeviceRiskDTO = {
 export const ListDeviceRisk = async (): Promise<DeviceRiskDTO[] | null> => {
   try {
     const response = await vulnerabilityApi.get("/devices/risk");
-
-    console.log("ListDeviceRisk raw response:", response.data);
 
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
@@ -209,8 +201,6 @@ export const ListVulnerabilityDetailByName = async (
     const response = await vulnerabilityApi.get("/vulnerabilities/detail/by-name", {
       params: { task_id, name },
     });
-
-    console.log("ListVulnerabilityDetailByName raw response:", response.data);
 
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
@@ -255,8 +245,6 @@ export const ListVulnerabilityByTaskID = async (
     const response = await vulnerabilityApi.get(
       `/vulnerabilities/${encodeURIComponent(taskID.trim())}`
     );
-
-    console.log("ListVulnerabilityByTaskID raw response:", response.data);
 
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
@@ -315,8 +303,6 @@ export const ListTargetDiffer = async (): Promise<TargetDifferDTO[] | null> => {
   try {
     const response = await vulnerabilityApi.get("/target-differ");
 
-    console.log("ListTargetDiffer raw response:", response.data);
-
     if (response.status === 200) {
       const data = response.data?.data ?? response.data;
       return Array.isArray(data) ? (data as TargetDifferDTO[]) : [];
@@ -350,8 +336,6 @@ export const ListVulnerabilityByLevel = async (
 ): Promise<VulnerabilityByLevelDTO[] | null> => {
   try {
     const response = await vulnerabilityApi.get(`/vulnerabilities/level/${level}`);
-
-    console.log("ListVulnerabilityByLevel raw response:", response.data);
 
     if (Array.isArray(response.data)) {
       return response.data as VulnerabilityByLevelDTO[];

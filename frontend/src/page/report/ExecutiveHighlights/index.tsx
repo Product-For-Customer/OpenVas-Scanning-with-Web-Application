@@ -154,7 +154,7 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
         setLoading(true);
 
         const response = await ListCriticalForReport();
-        console.log("Critical for report response:", response);
+
 
         if (!alive) return;
 

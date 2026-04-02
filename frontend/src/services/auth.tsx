@@ -93,8 +93,6 @@ export const Login = async (
   try {
     const response = await authApi.post("/auth/login", payload);
 
-    console.log("Login raw response:", response.data);
-
     if (response.data && response.data.user) {
       return response.data as LoginResponse;
     }
@@ -114,8 +112,6 @@ export const GetMe = async (): Promise<MeResponse | null> => {
   try {
     const response = await authApi.get("/auth/me");
 
-    console.log("GetMe raw response:", response.data);
-
     if (response.data && typeof response.data === "object") {
       return response.data as MeResponse;
     }
@@ -134,8 +130,6 @@ export const GetMe = async (): Promise<MeResponse | null> => {
 export const Logout = async (): Promise<LogoutResponse | null> => {
   try {
     const response = await authApi.post("/auth/logout");
-
-    console.log("Logout raw response:", response.data);
 
     if (response.data && response.data.message) {
       return response.data as LogoutResponse;
@@ -157,8 +151,6 @@ export const CheckUserEmail = async (
 ): Promise<CheckUserEmailResponse | null> => {
   try {
     const response = await authApi.post("/check-user-email", payload);
-
-    console.log("CheckUserEmail raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as CheckUserEmailResponse;
@@ -186,8 +178,6 @@ export const SendOTP = async (
   try {
     const response = await authApi.post("/send-otp", payload);
 
-    console.log("SendOTP raw response:", response.data);
-
     if (response.data && typeof response.data === "object") {
       return response.data as SendOTPResponse;
     }
@@ -213,8 +203,6 @@ export const VerifyOTPAddUpdatePassword = async (
 ): Promise<VerifyOTPResponse | null> => {
   try {
     const response = await authApi.post("/verify-otp-password", payload);
-
-    console.log("VerifyOTP raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as VerifyOTPResponse;
@@ -276,8 +264,6 @@ export const SendOTPForSignUp = async (
 ): Promise<SendOTPForSignUpResponse | null> => {
   try {
     const response = await authApi.post("/send-otp-signup", payload);
-
-    console.log("SendOTPForSignUp raw response:", response.data);
 
     if (response.data && typeof response.data === "object") {
       return response.data as SendOTPForSignUpResponse;

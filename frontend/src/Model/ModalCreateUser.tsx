@@ -215,7 +215,6 @@ const ModalCreateUser: React.FC<ModalCreateUserProps> = ({
         app_role_id: Number(formData.app_role_id),
       };
 
-      console.log("Update user payload:", payload);
       const res: any = await UpdateUserIDByAdmin(user.id, payload);
 
       if (!res) {
