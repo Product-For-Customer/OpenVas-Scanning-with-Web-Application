@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	fixedCaptureURL = "http://frontend/capture" // เปลี่ยนด้วยใน docker-compose.yml ถ้าจำเป็น
+	fixedCaptureURL = "http://localhost:5173/capture" // เปลี่ยนด้วยใน docker-compose.yml ถ้าจำเป็น
 	fixedPublicBase  = "https://postdiphtherial-unperishable-carolyn.ngrok-free.dev"
 	fixedReportsDir  = "./tmp/reports"
 	defaultPDFPrefix = "report_capture"
