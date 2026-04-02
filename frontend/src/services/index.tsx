@@ -10,7 +10,7 @@ import { apiUrl } from "./api";
 const vulnerabilityApi = axios.create({
   baseURL: apiUrl,
   withCredentials: true,
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",

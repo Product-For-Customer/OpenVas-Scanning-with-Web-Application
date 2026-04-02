@@ -8,7 +8,7 @@ import { apiUrl } from "./api";
 export const publicReportApi = axios.create({
   baseURL: apiUrl,
   withCredentials: false,
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
@@ -22,7 +22,7 @@ export const publicReportApi = axios.create({
 export const protectedReportApi = axios.create({
   baseURL: apiUrl,
   withCredentials: true,
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
