@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
@@ -20,10 +21,10 @@ import (
 )
 
 const (
-	fixedCaptureURL = "http://frontend/capture" // เปลี่ยนด้วยใน docker-compose.yml ถ้าจำเป็น
-	fixedPublicBase  = "https://postdiphtherial-unperishable-carolyn.ngrok-free.dev"
-	fixedReportsDir  = "./tmp/reports"
-	defaultPDFPrefix = "report_capture"
+	defaultCaptureURL = "http://frontend/capture"
+	defaultPublicBase = "https://postdiphtherial-unperishable-carolyn.ngrok-free.dev"
+	defaultReportsDir = "./tmp/reports"
+	defaultPDFPrefix  = "report_capture"
 
 	defaultPaperW  = 8.27
 	defaultPaperH  = 11.69
@@ -34,10 +35,129 @@ const (
 	defaultWaitBefore   = 1200 * time.Millisecond
 	defaultReadyTimeout = 90 * time.Second
 
+	warmupRetryCount = 30
+	warmupRetryDelay = 3 * time.Second
+	warmupHTTPTimeout = 10 * time.Second
+
 	// fallback เดิม: ยังใช้ได้กรณีไม่ส่ง app_notification_id มา
-	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
-	fixedLineUserID             = "U3af93a2f92b1048757172584d47571c8"
+	fixedLineChannelAccessToken = ""
+	fixedLineUserID             = ""
 )
+
+var warmupOnce sync.Once
+
+func init() {
+	StartReportWarmup()
+}
+
+func StartReportWarmup() {
+	warmupOnce.Do(func() {
+		go warmupReportCapture()
+	})
+}
+
+func getCaptureURL() string {
+	if v := strings.TrimSpace(os.Getenv("FRONTEND_CAPTURE_URL")); v != "" {
+		return v
+	}
+	return defaultCaptureURL
+}
+
+func getPublicBase() string {
+	v := strings.TrimSpace(os.Getenv("REPORT_PUBLIC_BASE_URL"))
+	if v == "" {
+		return defaultPublicBase
+	}
+
+	// รองรับทั้งกรณีส่งมาเป็น base domain หรือส่งมาเป็น /public/reports ไปแล้ว
+	v = strings.TrimRight(v, "/")
+	if strings.HasSuffix(v, "/public/reports") {
+		return strings.TrimSuffix(v, "/public/reports")
+	}
+	return v
+}
+
+func getReportsDir() string {
+	if v := strings.TrimSpace(os.Getenv("REPORT_OUTPUT_DIR")); v != "" {
+		return v
+	}
+	return defaultReportsDir
+}
+
+func getLineChannelAccessToken() string {
+	if v := strings.TrimSpace(os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")); v != "" {
+		return v
+	}
+	return fixedLineChannelAccessToken
+}
+
+func getLineUserID() string {
+	if v := strings.TrimSpace(os.Getenv("LINE_USER_ID")); v != "" {
+		return v
+	}
+	return fixedLineUserID
+}
+
+func waitForCaptureURLReady(captureURL string) error {
+	client := &http.Client{Timeout: warmupHTTPTimeout}
+
+	var lastErr error
+
+	for i := 1; i <= warmupRetryCount; i++ {
+		req, err := http.NewRequest(http.MethodGet, captureURL, nil)
+		if err != nil {
+			lastErr = err
+			time.Sleep(warmupRetryDelay)
+			continue
+		}
+
+		resp, err := client.Do(req)
+		if err == nil && resp != nil {
+			_ = resp.Body.Close()
+
+			// ถ้า frontend ตอบแล้ว ถือว่า container พร้อมในระดับหนึ่ง
+			// ไม่บังคับต้องเป็น 200 เท่านั้น
+			if resp.StatusCode >= 200 && resp.StatusCode < 500 {
+				return nil
+			}
+
+			lastErr = fmt.Errorf("capture url returned status %d", resp.StatusCode)
+		} else {
+			lastErr = err
+		}
+
+		time.Sleep(warmupRetryDelay)
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("capture url not ready")
+	}
+
+	return lastErr
+}
+
+func warmupReportCapture() {
+	captureURL := getCaptureURL()
+
+	if err := waitForCaptureURLReady(captureURL); err != nil {
+		fmt.Printf("[report warmup] capture url not ready: %v\n", err)
+		return
+	}
+
+	filePath, err := generatePDFFromCapturePage(captureURL)
+	if err != nil {
+		fmt.Printf("[report warmup] generate pdf failed: %v\n", err)
+		return
+	}
+
+	// warm อย่างเดียว ไม่ต้องเก็บไฟล์ไว้
+	if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
+		fmt.Printf("[report warmup] remove warmup pdf failed: %v\n", err)
+		return
+	}
+
+	fmt.Printf("[report warmup] warmup success\n")
+}
 
 type linePushRequest struct {
 	To       string        `json:"to"`
@@ -60,7 +180,7 @@ type sendPDFToLineResponse struct {
 }
 
 func ensureReportsDir() error {
-	return os.MkdirAll(fixedReportsDir, 0755)
+	return os.MkdirAll(getReportsDir(), 0755)
 }
 
 func sanitizeBaseName(name string) string {
@@ -74,7 +194,7 @@ func sanitizeBaseName(name string) string {
 }
 
 func buildPublicPDFURL(filePath string) string {
-	base := strings.TrimRight(fixedPublicBase, "/")
+	base := strings.TrimRight(getPublicBase(), "/")
 	fileName := filepath.Base(filePath)
 	return fmt.Sprintf("%s/public/reports/%s", base, fileName)
 }
@@ -139,7 +259,7 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	}
 
 	fileName := fmt.Sprintf("%s_%s.pdf", defaultPDFPrefix, time.Now().Format("20060102_150405"))
-	filePath := filepath.Join(fixedReportsDir, fileName)
+	filePath := filepath.Join(getReportsDir(), fileName)
 
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
@@ -212,7 +332,7 @@ func resolvePDFPathFromQuery(pdfQuery string) (string, error) {
 		return "", fmt.Errorf("invalid pdf path")
 	}
 
-	candidate := filepath.Join(fixedReportsDir, baseName)
+	candidate := filepath.Join(getReportsDir(), baseName)
 	if fileExists(candidate) {
 		return candidate, nil
 	}
@@ -309,15 +429,18 @@ func pushLineTextMessageToTarget(token string, to string, text string) error {
 
 // fallback เดิม: ใช้กรณีไม่ได้ส่ง app_notification_id มา
 func pushLineTextMessage(text string) error {
-	if strings.TrimSpace(fixedLineChannelAccessToken) == "" {
-		return fmt.Errorf("fixedLineChannelAccessToken is empty")
+	token := getLineChannelAccessToken()
+	userID := getLineUserID()
+
+	if strings.TrimSpace(token) == "" {
+		return fmt.Errorf("line channel access token is empty")
 	}
 
-	if strings.TrimSpace(fixedLineUserID) == "" {
-		return fmt.Errorf("fixedLineUserID is empty")
+	if strings.TrimSpace(userID) == "" {
+		return fmt.Errorf("line user id is empty")
 	}
 
-	return pushLineTextMessageToTarget(fixedLineChannelAccessToken, fixedLineUserID, text)
+	return pushLineTextMessageToTarget(token, userID, text)
 }
 
 func listAppNotificationsByIDs(ids []uint) ([]entity.AppNotification, error) {
@@ -341,11 +464,6 @@ func listAppNotificationsByIDs(ids []uint) ([]entity.AppNotification, error) {
 func sortNotificationsByRequestedIDs(items []entity.AppNotification, requestedIDs []uint) []entity.AppNotification {
 	if len(items) == 0 || len(requestedIDs) == 0 {
 		return items
-	}
-
-	indexMap := make(map[uint]int, len(requestedIDs))
-	for i, id := range requestedIDs {
-		indexMap[id] = i
 	}
 
 	result := make([]entity.AppNotification, 0, len(items))
@@ -396,7 +514,6 @@ func SendPDFToLine(c *gin.Context) {
 		publicURL string
 	)
 
-	// ===== สร้าง/resolve PDF แค่ครั้งเดียว =====
 	if pdfQuery != "" {
 		filePath, err = resolvePDFPathFromQuery(pdfQuery)
 		if err != nil {
@@ -406,7 +523,7 @@ func SendPDFToLine(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
+		filePath, err = generatePDFFromCapturePage(getCaptureURL())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),
@@ -423,7 +540,6 @@ func SendPDFToLine(c *gin.Context) {
 		publicURL,
 	)
 
-	// ===== กรณีเดิม: ไม่ส่ง app_notification_id มา =====
 	if len(requestedIDs) == 0 {
 		if err := pushLineTextMessage(msg); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -440,7 +556,6 @@ func SendPDFToLine(c *gin.Context) {
 		return
 	}
 
-	// ===== กรณีส่งหลาย AppNotificationID มา =====
 	notifications, err := listAppNotificationsByIDs(requestedIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -569,7 +684,7 @@ func DownloadPDF(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
+		filePath, err = generatePDFFromCapturePage(getCaptureURL())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),
@@ -605,7 +720,7 @@ type AppReportResponse struct {
 
 type UpdateAppReportInput struct {
 	CompanyName *string `json:"company_name"`
-	Logo        *string `json:"logo"` // รองรับ base64
+	Logo        *string `json:"logo"`
 }
 
 func mapAppReportResponse(report entity.AppReport) AppReportResponse {
