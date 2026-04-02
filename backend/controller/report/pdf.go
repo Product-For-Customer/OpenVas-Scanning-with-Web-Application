@@ -32,7 +32,7 @@ const (
 	defaultWindowH = int64(2600)
 
 	defaultWaitBefore   = 1200 * time.Millisecond
-	defaultReadyTimeout = 45 * time.Second
+	defaultReadyTimeout = 90 * time.Second
 
 	// fallback เดิม: ยังใช้ได้กรณีไม่ส่ง app_notification_id มา
 	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
@@ -144,7 +144,7 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
-	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, 90*time.Second)
+	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, 180*time.Second)
 	defer timeoutCancel()
 
 	var pdfBuf []byte
