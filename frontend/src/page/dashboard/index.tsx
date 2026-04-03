@@ -7,11 +7,13 @@ import TopVulnerability from "./Vulnerbility/index";
 
 const DashboardIndex: React.FC = () => {
   return (
-    <div className="relative z-0 w-full overflow-visible">
-      <div className="relative z-0 mb-4 sm:mb-5">
+    <div className="relative isolate z-0 w-full overflow-visible">
+      {/* ให้ Value อยู่สูงกว่า section ใน dashboard เท่านั้น */}
+      <div className="relative z-20 mb-4 sm:mb-5">
         <Value />
       </div>
 
+      {/* section อื่นอยู่ต่ำกว่า Value ภายใน dashboard */}
       <div className="relative z-0 mb-4 sm:mb-5">
         <AverageEnrollment />
       </div>

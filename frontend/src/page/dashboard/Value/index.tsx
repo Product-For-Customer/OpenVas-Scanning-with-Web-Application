@@ -396,7 +396,7 @@ const Value: React.FC = () => {
     navigate("/admin/vulnerability-by-level", {
       state: {
         level,
-        scopeTask: selectedTargets,
+        scopeTask: selectedTargets.length > 0 ? selectedTargets : "all",
       },
     });
   };
@@ -412,237 +412,184 @@ const Value: React.FC = () => {
       <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]">
         <div className="absolute -top-14 -right-12 h-28 w-28 rounded-full bg-cyan-400/8 blur-3xl" />
         <div className="absolute -bottom-14 -left-12 h-28 w-28 rounded-full bg-violet-500/8 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.045]">
+        <div className="absolute inset-0 opacity-[0.028] dark:opacity-[0.04]">
           <div
             className="h-full w-full"
             style={{
               backgroundImage: `
-                linear-gradient(to right, currentColor 1px, transparent 1px),
-                linear-gradient(to bottom, currentColor 1px, transparent 1px)
+                linear-gradient(to right, rgba(15,23,42,0.06) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(15,23,42,0.06) 1px, transparent 1px)
               `,
-              backgroundSize: "24px 24px",
+              backgroundSize: "32px 32px",
             }}
           />
         </div>
       </div>
 
-      <div className="relative z-10">
-        <div className="mb-2 flex flex-col gap-1.5">
-          <div className="flex flex-col gap-1.5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <div
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                  "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
-                  "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
-                ].join(" ")}
-              >
-                <FiShield className="text-[10px]" />
-                <span className="text-[10px] font-semibold tracking-wide">
-                  Security Severity Matrix
+      <div className="relative z-10 flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[10px] font-medium text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+              <FiRadio className="text-[12px]" />
+              Security Severity Matrix
+            </span>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
+              <FiActivity className="text-[12px]" />
+              {highestSeverity === "Critical"
+                ? "Critical activity detected"
+                : `${highestSeverity} activity detected`}
+            </span>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-[10px] font-medium text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
+              <FiActivity className="text-[12px]" />
+              {loading
+                ? "Loading findings..."
+                : `${totals.totalAll.toLocaleString()} total findings`}
+            </span>
+
+            <span className="inline-flex items-center gap-2 rounded-full border border-sky-200/80 bg-sky-50 px-3 py-1 text-[10px] font-medium text-slate-700 dark:border-sky-400/20 dark:bg-sky-500/10 dark:text-white/75">
+              <FiLayers className="text-[12px]" />
+              <span className="uppercase tracking-[0.16em] text-[9px] text-slate-500 dark:text-white/45">
+                Scope
+              </span>
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+              <span className="truncate max-w-35 sm:max-w-55">
+                {selectedScopeLabel}
+              </span>
+            </span>
+          </div>
+
+          <div className="relative w-full sm:w-52.5" ref={targetRef}>
+            <button
+              type="button"
+              onClick={() => setOpenTargetQuery((prev) => !prev)}
+              className={[
+                "w-full h-11 rounded-[18px] px-4 inline-flex items-center justify-between gap-3 transition text-left",
+                "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-700 hover:bg-gray-50",
+                "shadow-[0_8px_20px_-18px_rgba(15,23,42,0.18)]",
+                "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8 dark:shadow-none",
+              ].join(" ")}
+            >
+              <span className="inline-flex min-w-0 items-center gap-2">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 dark:border-white/10 dark:bg-white/8 dark:text-white/55">
+                  <FiShield className="text-[12px]" />
                 </span>
-              </div>
+                <span className="truncate">{targetButtonLabel}</span>
+              </span>
 
-              <div
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                  "bg-slate-50 text-slate-600 border border-slate-200/80",
-                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                ].join(" ")}
-              >
-                <FiRadio className="text-[10px] text-cyan-500" />
-                <span className="text-[10px] font-medium">
-                  {loading ? "Scanner Syncing" : `${highestSeverity} activity detected`}
-                </span>
-              </div>
-
-              <div
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                  "bg-slate-50 text-slate-600 border border-slate-200/80",
-                  "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                ].join(" ")}
-              >
-                <FiActivity className="text-[10px] text-violet-500" />
-                <span className="text-[10px] font-medium">
-                  {loading
-                    ? "Fetching telemetry..."
-                    : `${totals.totalAll.toLocaleString()} total findings`}
-                </span>
-              </div>
-
-              <div
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                  "bg-linear-to-r from-cyan-50 via-sky-50 to-violet-50",
-                  "text-slate-700 border border-cyan-200/70 shadow-[0_8px_20px_-16px_rgba(6,182,212,0.35)]",
-                  "dark:from-cyan-500/10 dark:via-sky-500/10 dark:to-violet-500/10",
-                  "dark:text-cyan-100 dark:border-cyan-400/20",
-                  "backdrop-blur-md",
-                ].join(" ")}
-              >
-                <div className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-white/80 text-cyan-600 dark:bg-white/10 dark:text-cyan-300">
-                  <FiLayers className="text-[9px]" />
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[8.5px] font-semibold uppercase tracking-[0.08em] text-slate-500 dark:text-white/50">
-                    Scope
+              <div className="flex items-center gap-2 shrink-0">
+                {selectedTargets.length > 0 && (
+                  <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[9px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-400/20">
+                    {selectedTargets.length}
                   </span>
-                  <span className="h-1 w-1 rounded-full bg-cyan-500" />
-                  <span className="max-w-32 truncate text-[10px] font-semibold sm:max-w-36">
-                    {selectedScopeLabel}
-                  </span>
-                </div>
-              </div>
-            </div>
+                )}
 
-            <div className="w-full xl:w-auto">
-              <div className="flex items-start gap-1 shrink-0">
-                <div className="relative z-80" ref={targetRef}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenTargetQuery((prev) => !prev)}
-                    className={[
-                      "h-9 rounded-2xl px-3 flex items-center gap-2 border transition min-w-36.25",
-                      "bg-[#f7f7f8] border-[#d9d9de] text-slate-700 hover:border-slate-300 hover:bg-[#f3f4f6]",
-                      "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
-                    ].join(" ")}
-                  >
-                    <FiShield className="text-[12px] text-slate-500 dark:text-white/55" />
-                    <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                      {targetButtonLabel}
-                    </span>
-                    <FiChevronDown
-                      className={`ml-auto text-[12px] text-slate-500 dark:text-white/55 transition-transform ${
-                        openTargetQuery ? "rotate-180" : ""
-                      }`}
+                <FiChevronDown
+                  className={`pointer-events-none text-[14px] text-gray-400 dark:text-white/45 transition-transform ${
+                    openTargetQuery ? "rotate-180" : ""
+                  }`}
+                />
+              </div>
+            </button>
+
+            {openTargetQuery && (
+              <div
+                className={[
+                  "absolute right-0 top-full z-120 mt-2 w-full overflow-hidden rounded-[18px]",
+                  "border border-gray-200/80 bg-white/98 shadow-[0_18px_40px_-22px_rgba(15,23,42,0.26)] backdrop-blur",
+                  "dark:border-white/10 dark:bg-[#0b1220]/95 dark:ring-1 dark:ring-white/10 dark:shadow-none",
+                ].join(" ")}
+              >
+                <div className="border-b border-gray-200/80 p-3 dark:border-white/10">
+                  <div className="relative">
+                    <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-white/40" />
+                    <input
+                      value={targetQuerySearch}
+                      onChange={(e) => setTargetQuerySearch(e.target.value)}
+                      placeholder="Search target..."
+                      className="h-10 w-full rounded-2xl border border-gray-200/80 bg-slate-50 pl-9 pr-9 text-[12px] text-slate-700 outline-none transition focus:border-cyan-300 focus:bg-white dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:focus:border-cyan-400/30"
                     />
-                  </button>
+                    {targetQuerySearch.trim() !== "" && (
+                      <button
+                        type="button"
+                        onClick={() => setTargetQuerySearch("")}
+                        className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-white/35 dark:hover:bg-white/10 dark:hover:text-white/70"
+                      >
+                        <FiX className="text-[12px]" />
+                      </button>
+                    )}
+                  </div>
 
-                  {openTargetQuery && (
-                    <div
-                      className={[
-                        "absolute right-0 top-full z-90 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
-                        "border border-gray-200 bg-white shadow-xl",
-                        "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
-                      ].join(" ")}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllVisibleTargets}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10px] font-medium text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15"
                     >
-                      <div className="border-b border-gray-100 p-2.5 dark:border-white/10">
-                        <div
-                          className={[
-                            "flex items-center gap-2 rounded-xl border px-2.5",
-                            "border-gray-200/80 bg-gray-50",
-                            "dark:border-white/10 dark:bg-white/5",
-                          ].join(" ")}
-                        >
-                          <FiSearch className="shrink-0 text-[11px] text-gray-400 dark:text-white/40" />
-                          <input
-                            value={targetQuerySearch}
-                            onChange={(e) => setTargetQuerySearch(e.target.value)}
-                            placeholder="Search target"
-                            className="h-8 w-full bg-transparent text-[11px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/35"
-                          />
-                          {targetQuerySearch.trim() !== "" && (
-                            <button
-                              type="button"
-                              onClick={() => setTargetQuerySearch("")}
-                              className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                              aria-label="Clear search"
-                            >
-                              <FiX className="text-[11px]" />
-                            </button>
-                          )}
-                        </div>
+                      <FiCheck className="text-[11px]" />
+                      {allVisibleTargetsSelected
+                        ? "Unselect visible"
+                        : "Select visible"}
+                    </button>
 
-                        <div className="mt-2 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={clearAllTargets}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[10px] font-medium text-rose-700 transition hover:bg-rose-100 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/15"
+                    >
+                      <FiX className="text-[11px]" />
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto p-2">
+                  {filteredTargetOptions.length === 0 ? (
+                    <div className="px-3 py-8 text-center text-[12px] text-gray-500 dark:text-white/45">
+                      No target found
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {filteredTargetOptions.map((opt) => {
+                        const checked = selectedTargets.includes(opt.key);
+
+                        return (
                           <button
+                            key={opt.key}
                             type="button"
-                            onClick={handleSelectAllVisibleTargets}
-                            className="text-[10.5px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                            onClick={() => toggleTarget(opt.key)}
+                            className={[
+                              "flex w-full items-center justify-between gap-2 rounded-2xl border px-3 py-2.5 text-left transition",
+                              checked
+                                ? "border-cyan-200 bg-cyan-50 dark:border-cyan-400/20 dark:bg-cyan-500/10"
+                                : "border-transparent bg-transparent hover:border-gray-200 hover:bg-gray-50 dark:hover:border-white/10 dark:hover:bg-white/5",
+                            ].join(" ")}
                           >
-                            {allVisibleTargetsSelected
-                              ? "Unselect visible"
-                              : "Select visible"}
+                            <span className="flex min-w-0 items-center gap-2">
+                              <span
+                                className={[
+                                  "inline-flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded border",
+                                  checked
+                                    ? "border-cyan-500 bg-cyan-500 text-white"
+                                    : "border-gray-300 bg-white text-transparent dark:border-white/15 dark:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <FiCheck className="text-[10px]" />
+                              </span>
+
+                              <span className="truncate text-[12px] font-medium text-gray-700 dark:text-white/80">
+                                {opt.label}
+                              </span>
+                            </span>
                           </button>
-
-                          <button
-                            type="button"
-                            onClick={clearAllTargets}
-                            className="text-[10.5px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-                          >
-                            Clear all
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="max-h-56 overflow-y-auto p-2">
-                        {filteredTargetOptions.length === 0 ? (
-                          <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
-                            No matching target
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            {filteredTargetOptions.map((opt) => {
-                              const checked = selectedTargets.includes(opt.key);
-
-                              return (
-                                <button
-                                  key={opt.key}
-                                  type="button"
-                                  onClick={() => toggleTarget(opt.key)}
-                                  className={[
-                                    "w-full flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                                    checked
-                                      ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                                      : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                                  ].join(" ")}
-                                >
-                                  <span
-                                    className={[
-                                      "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                                      checked
-                                        ? "bg-cyan-500 border-cyan-500 text-white"
-                                        : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                                    ].join(" ")}
-                                  >
-                                    <FiCheck className="text-[10px]" />
-                                  </span>
-
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <span className="h-2 w-2 rounded-full bg-cyan-500" />
-                                      <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
-                                        {opt.label}
-                                      </span>
-                                    </div>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
-
-                {selectedTargets.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={clearAllTargets}
-                    className={[
-                      "h-9 w-9 rounded-xl border flex items-center justify-center transition",
-                      "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
-                      "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
-                    ].join(" ")}
-                    aria-label="Clear filters"
-                  >
-                    <FiX className="text-[12px]" />
-                  </button>
-                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -712,7 +659,7 @@ const Value: React.FC = () => {
                     }}
                   />
 
-                  <div className="relative flex min-h-31.5 flex-col justify-between sm:min-h-33">
+                  <div className="relative flex min-h-24.5 flex-col justify-between sm:min-h-30.5">
                     <div className="flex min-w-0 items-start justify-between gap-1">
                       <div className="flex min-w-0 items-start gap-1.5">
                         <div
@@ -745,43 +692,43 @@ const Value: React.FC = () => {
                           item.pill,
                         ].join(" ")}
                       >
-                        {loading ? "Sync" : `${percent(rawNumber)}%`}
+                        {loading ? "..." : `${percent(rawNumber)}%`}
                       </span>
                     </div>
 
-                    <div className="mt-1.5">
-                      <div className="flex items-end justify-between gap-1.5">
-                        <p className="truncate text-[13px] font-semibold leading-none tracking-tight sm:text-[14px] xl:text-[15px]">
-                          {item.value}
-                        </p>
+                    <div className="mt-4">
+                      <div className="flex items-end justify-between gap-2">
+                        <div>
+                          <div className="text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">
+                            {item.value}
+                          </div>
+                          <p className="mt-1 text-[10px] text-slate-600 dark:text-white/60">
+                            {item.subtitle}
+                          </p>
+                        </div>
 
                         <span
                           className={[
-                            "shrink-0 rounded-full border px-1.5 py-0.5 text-[7.5px] font-semibold transition-all duration-300",
-                            item.chip,
+                            "inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-medium",
+                            rawNumber === 0
+                              ? "bg-white/70 text-slate-500 border-slate-200/80 dark:bg-white/8 dark:border-white/10 dark:text-white/45"
+                              : item.chip,
                           ].join(" ")}
                         >
-                          {loading ? "Loading" : rawNumber > 0 ? "Detected" : "Clear"}
+                          {rawNumber === 0 ? "No finding" : "Detected"}
                         </span>
                       </div>
-
-                      <p className="mt-0.5 text-[8.5px] leading-3.5 text-slate-700/80 dark:text-white/80 sm:text-[9px]">
-                        {item.subtitle}
-                      </p>
                     </div>
 
-                    <div className="mt-1.5">
-                      <div className="mb-1 flex items-center justify-between text-[8px] text-slate-700/75 dark:text-white/65">
+                    <div className="mt-5">
+                      <div className="mb-1.5 flex items-center justify-between text-[9px] text-slate-600 dark:text-white/55">
                         <span>Scan intensity</span>
                         <span>{loading ? "..." : `${percent(rawNumber)}%`}</span>
                       </div>
 
-                      <div className="h-1.5 w-full overflow-hidden rounded-full border border-black/10 bg-black/5 dark:border-white/10 dark:bg-white/10">
+                      <div className="h-2 rounded-full bg-white/55 ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/8">
                         <div
-                          className={[
-                            "h-full rounded-full transition-all duration-700 ease-out",
-                            item.bar,
-                          ].join(" ")}
+                          className={`h-2 rounded-full ${item.bar}`}
                           style={{ width: w }}
                         />
                       </div>
