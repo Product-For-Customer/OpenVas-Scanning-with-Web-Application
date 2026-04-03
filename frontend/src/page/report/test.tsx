@@ -1,11 +1,9 @@
+const Test = () => {
+  return (
+    <div id="capture-root" data-report-ready="true">
+      test
+    </div>
+  );
+};
 
-
-const test = () => {
-    return (
-        <div id="capture-root">
-            test
-        </div>
-    )
-}
-
-export default test
+export default Test;
