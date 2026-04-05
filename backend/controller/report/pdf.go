@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,7 +21,6 @@ import (
 )
 
 const (
-	fixedCaptureURL = "https://openvaswebv1.vercel.app/test" // เปลี่ยนด้วยใน docker-compose.yml ถ้าจำเป็น
 	fixedPublicBase  = "https://postdiphtherial-unperishable-carolyn.ngrok-free.dev"
 	fixedReportsDir  = "./tmp/reports"
 	defaultPDFPrefix = "report_capture"
@@ -33,6 +33,7 @@ const (
 
 	defaultWaitBefore   = 1200 * time.Millisecond
 	defaultReadyTimeout = 45 * time.Second
+	defaultPDFTimeout   = 120 * time.Second
 
 	// fallback เดิม: ยังใช้ได้กรณีไม่ส่ง app_notification_id มา
 	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
@@ -77,6 +78,22 @@ func buildPublicPDFURL(filePath string) string {
 	base := strings.TrimRight(fixedPublicBase, "/")
 	fileName := filepath.Base(filePath)
 	return fmt.Sprintf("%s/public/reports/%s", base, fileName)
+}
+
+func getCaptureURL() string {
+	url := strings.TrimSpace(os.Getenv("FRONTEND_CAPTURE_URL"))
+	if url != "" {
+		return url
+	}
+	return "http://frontend/capture"
+}
+
+func getChromePath() string {
+	path := strings.TrimSpace(os.Getenv("CHROME_PATH"))
+	if path != "" {
+		return path
+	}
+	return "/usr/bin/chromium"
 }
 
 func waitForFrontendReady() chromedp.Action {
@@ -141,13 +158,32 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	fileName := fmt.Sprintf("%s_%s.pdf", defaultPDFPrefix, time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(fixedReportsDir, fileName)
 
-	ctx, cancel := chromedp.NewContext(context.Background())
+	chromePath := getChromePath()
+
+	allocOpts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.ExecPath(chromePath),
+		chromedp.Flag("headless", true),
+		chromedp.Flag("no-sandbox", true),
+		chromedp.Flag("disable-setuid-sandbox", true),
+		chromedp.Flag("disable-dev-shm-usage", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("hide-scrollbars", true),
+		chromedp.Flag("mute-audio", true),
+		chromedp.WindowSize(int(defaultWindowW), int(defaultWindowH)),
+	)
+
+	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), allocOpts...)
+	defer allocCancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, 90*time.Second)
+	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, defaultPDFTimeout)
 	defer timeoutCancel()
 
 	var pdfBuf []byte
+
+	log.Printf("[capture] start pdf capture: url=%s chrome=%s", captureURL, chromePath)
 
 	err := chromedp.Run(timeoutCtx,
 		chromedp.EmulateViewport(defaultWindowW, defaultWindowH),
@@ -178,7 +214,7 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 		}),
 	)
 	if err != nil {
-		return "", fmt.Errorf("capture PDF failed (url=%s): %w", captureURL, err)
+		return "", fmt.Errorf("capture PDF failed (url=%s, chrome=%s): %w", captureURL, chromePath, err)
 	}
 
 	if len(pdfBuf) == 0 {
@@ -188,6 +224,8 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	if err := os.WriteFile(filePath, pdfBuf, 0644); err != nil {
 		return "", fmt.Errorf("save PDF failed: %w", err)
 	}
+
+	log.Printf("[capture] pdf saved: %s", filePath)
 
 	return filePath, nil
 }
@@ -343,11 +381,6 @@ func sortNotificationsByRequestedIDs(items []entity.AppNotification, requestedID
 		return items
 	}
 
-	indexMap := make(map[uint]int, len(requestedIDs))
-	for i, id := range requestedIDs {
-		indexMap[id] = i
-	}
-
 	result := make([]entity.AppNotification, 0, len(items))
 	for _, reqID := range requestedIDs {
 		for _, item := range items {
@@ -363,17 +396,6 @@ func sortNotificationsByRequestedIDs(items []entity.AppNotification, requestedID
 
 // ========================================================
 // GET /report/send-pdf-to-line
-//
-// รองรับ:
-// - /report/send-pdf-to-line
-// - /report/send-pdf-to-line?pdf=report_capture_20260401_123000.pdf
-// - /report/send-pdf-to-line?app_notification_id=1,2,3
-// - /report/send-pdf-to-line?pdf=report_capture_xxx.pdf&app_notification_id=1,2,3
-// - /report/send-pdf-to-line?app_notification_ids=1,2,3
-//
-// สำคัญ:
-// - PDF จะถูก generate/resolve "เพียง 1 ครั้ง"
-// - แล้วใช้ filePath/publicURL เดิม ส่งให้ทุก AppNotificationID
 // ========================================================
 func SendPDFToLine(c *gin.Context) {
 	pdfQuery := strings.TrimSpace(c.Query("pdf"))
@@ -396,7 +418,6 @@ func SendPDFToLine(c *gin.Context) {
 		publicURL string
 	)
 
-	// ===== สร้าง/resolve PDF แค่ครั้งเดียว =====
 	if pdfQuery != "" {
 		filePath, err = resolvePDFPathFromQuery(pdfQuery)
 		if err != nil {
@@ -406,7 +427,7 @@ func SendPDFToLine(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
+		filePath, err = generatePDFFromCapturePage(getCaptureURL())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),
@@ -423,7 +444,6 @@ func SendPDFToLine(c *gin.Context) {
 		publicURL,
 	)
 
-	// ===== กรณีเดิม: ไม่ส่ง app_notification_id มา =====
 	if len(requestedIDs) == 0 {
 		if err := pushLineTextMessage(msg); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
@@ -440,7 +460,6 @@ func SendPDFToLine(c *gin.Context) {
 		return
 	}
 
-	// ===== กรณีส่งหลาย AppNotificationID มา =====
 	notifications, err := listAppNotificationsByIDs(requestedIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -549,8 +568,6 @@ func SendPDFToLine(c *gin.Context) {
 
 // ========================================================
 // GET /report/download-pdf
-// ใช้การ capture แบบเดียวกับ SendPDFToLine
-// แต่ response กลับเป็นไฟล์ PDF ให้ browser โหลดลงเครื่อง
 // ========================================================
 func DownloadPDF(c *gin.Context) {
 	pdfQuery := strings.TrimSpace(c.Query("pdf"))
@@ -569,7 +586,7 @@ func DownloadPDF(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(fixedCaptureURL)
+		filePath, err = generatePDFFromCapturePage(getCaptureURL())
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),
@@ -605,7 +622,7 @@ type AppReportResponse struct {
 
 type UpdateAppReportInput struct {
 	CompanyName *string `json:"company_name"`
-	Logo        *string `json:"logo"` // รองรับ base64
+	Logo        *string `json:"logo"`
 }
 
 func mapAppReportResponse(report entity.AppReport) AppReportResponse {
@@ -618,8 +635,6 @@ func mapAppReportResponse(report entity.AppReport) AppReportResponse {
 	}
 }
 
-// GET /app-report
-// ดึงแค่ตัวแรกตัวเดียว
 func ListAppReport(c *gin.Context) {
 	var report entity.AppReport
 
@@ -634,7 +649,6 @@ func ListAppReport(c *gin.Context) {
 	c.JSON(http.StatusOK, mapAppReportResponse(report))
 }
 
-// PUT /app-report/:id
 func UpdateAppReportByID(c *gin.Context) {
 	id := c.Param("id")
 
