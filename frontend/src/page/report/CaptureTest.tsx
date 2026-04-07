@@ -19,6 +19,22 @@ const sectionDescClass =
 
 const pageShellClass = "flex h-[1550px] flex-col bg-white";
 
+const readTaskIDsFromQuery = (): string[] => {
+  if (typeof window === "undefined") return [];
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return [];
+  }
+
+  return raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+};
+
 const CaptureTest: React.FC = () => {
   const [kpiReady, setKpiReady] = useState(false);
   const [severityReady, setSeverityReady] = useState(false);
@@ -28,9 +44,11 @@ const CaptureTest: React.FC = () => {
   const [section6Ready, setSection6Ready] = useState(false);
   const [conclusionReady, setConclusionReady] = useState(false);
   const [headerRefreshToken, setHeaderRefreshToken] = useState(0);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
 
   useEffect(() => {
     setHeaderRefreshToken(Date.now());
+    setQueryTaskIDs(readTaskIDsFromQuery());
   }, []);
 
   const reportReady = useMemo(() => {
@@ -65,6 +83,8 @@ const CaptureTest: React.FC = () => {
       data-comparison-ready={comparisonReady ? "true" : "false"}
       data-section6-ready={section6Ready ? "true" : "false"}
       data-conclusion-ready={conclusionReady ? "true" : "false"}
+      data-task-id-mode={queryTaskIDs.length > 0 ? "filtered" : "all"}
+      data-task-ids={queryTaskIDs.join(",")}
       style={{
         width: "1120px",
         margin: "0 auto",
@@ -170,13 +190,11 @@ const CaptureTest: React.FC = () => {
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <p className={sectionLabelClass}>Section 4</p>
 
-              <h2 className={sectionHeadingClass}>Top Device Risk Report</h2>
+              <h2 className={sectionHeadingClass}>Top Device Risk</h2>
 
               <p className={sectionDescClass}>
-                แสดงรายการอุปกรณ์ที่มีความเสี่ยงสูงจากผลการประเมินล่าสุด
-                โดยเรียงลำดับตามค่า Risk Score
-                เพื่อช่วยให้ติดตามอุปกรณ์ที่ควรได้รับการจัดการก่อน
-                ในรูปแบบที่เหมาะกับการอ่านบนรายงาน PDF
+                สรุปอุปกรณ์ที่มีค่าความเสี่ยงสูงสุดจากผลการสแกนล่าสุด
+                เพื่อช่วยให้เห็นลำดับความสำคัญในการติดตามและจัดการความเสี่ยง
               </p>
             </div>
 
@@ -198,45 +216,30 @@ const CaptureTest: React.FC = () => {
         }}
       >
         <main className="flex-1 px-7 pt-6 pb-2">
-          <section
-            className="mt-0"
-            style={{
-              breakInside: "avoid-page",
-              pageBreakInside: "avoid",
-            }}
-          >
+          <section className="mt-0">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <p className={sectionLabelClass}>Section 5</p>
 
-              <h2 className={sectionHeadingClass}>Risk Score Comparison</h2>
+              <h2 className={sectionHeadingClass}>Comparison Overview</h2>
 
               <p className={sectionDescClass}>
-                เปรียบเทียบค่า Latest Risk และ Previous Risk ของแต่ละเป้าหมาย
-                เพื่อให้เห็นแนวโน้มความเสี่ยงล่าสุด
+                แสดงภาพรวมเปรียบเทียบแนวโน้มความเสี่ยงของอุปกรณ์
+                เพื่อช่วยในการวิเคราะห์สถานะโดยรวมของระบบ
               </p>
             </div>
 
             <ComparisonReport onReady={setComparisonReady} />
           </section>
 
-          <section
-            className="mt-4"
-            style={{
-              breakInside: "avoid-page",
-              pageBreakInside: "avoid",
-            }}
-          >
+          <section className="mt-4">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <p className={sectionLabelClass}>Section 6</p>
 
-              <h2 className={sectionHeadingClass}>
-                Monthly Risk Score Overview
-              </h2>
+              <h2 className={sectionHeadingClass}>Monthly Risk Report</h2>
 
               <p className={sectionDescClass}>
-                This section presents mock monthly vulnerability counts and risk
-                scores for the current year, together with a compact summary
-                table for report review.
+                แสดงแนวโน้มความเสี่ยงรายเดือน เพื่อช่วยติดตามภาพรวมของความเสี่ยง
+                และการเปลี่ยนแปลงในแต่ละช่วงเวลา
               </p>
             </div>
 
@@ -258,24 +261,15 @@ const CaptureTest: React.FC = () => {
         }}
       >
         <main className="flex-1 px-7 pt-6 pb-2">
-          <section
-            className="mt-0"
-            style={{
-              breakInside: "avoid-page",
-              pageBreakInside: "avoid",
-            }}
-          >
+          <section className="mt-0">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <p className={sectionLabelClass}>Section 7</p>
 
-              <h2 className={sectionHeadingClass}>
-                Final Conclusion and Executive Summary
-              </h2>
+              <h2 className={sectionHeadingClass}>Conclusion</h2>
 
               <p className={sectionDescClass}>
-                สรุปภาพรวมของรายงานทั้งหมดในหน้าเดียว
-                โดยรวบรวมตัวเลขสำคัญ การกระจายความรุนแรง
-                ความเสี่ยงของเป้าหมายหลัก และข้อสังเกตสำหรับการตัดสินใจเชิงปฏิบัติการ
+                สรุปผลการประเมินภาพรวม พร้อมข้อเสนอแนะเชิงปฏิบัติสำหรับการติดตาม
+                และลดความเสี่ยงด้านความปลอดภัยของระบบ
               </p>
             </div>
 

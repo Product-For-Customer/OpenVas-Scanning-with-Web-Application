@@ -53,9 +53,46 @@ const levelTextMap: Record<SeverityLevel, string> = {
   info: "INFO",
 };
 
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
+const safeNumber = (value: unknown): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
   const [rows, setRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<"all" | "filtered">("all");
+
+  useEffect(() => {
+    const parsed = readTaskIDsFromQuery();
+    setQueryTaskIDs(parsed.ids);
+    setTaskMode(parsed.mode);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -89,6 +126,20 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
     };
   }, [onReady]);
 
+  const filteredRows = useMemo(() => {
+    if (taskMode === "all") {
+      return rows;
+    }
+
+    if (queryTaskIDs.length === 0) {
+      return rows;
+    }
+
+    const selected = new Set(queryTaskIDs.map((id) => String(id).trim()));
+
+    return rows.filter((row) => selected.has(String(row.task_id).trim()));
+  }, [rows, queryTaskIDs, taskMode]);
+
   const summary = useMemo(() => {
     let critical = 0;
     let high = 0;
@@ -96,12 +147,12 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
     let low = 0;
     let info = 0;
 
-    for (const row of rows) {
-      critical += Number(row.critical || 0);
-      high += Number(row.high || 0);
-      medium += Number(row.medium || 0);
-      low += Number(row.low || 0);
-      info += Number(row.info || 0);
+    for (const row of filteredRows) {
+      critical += safeNumber(row.critical);
+      high += safeNumber(row.high);
+      medium += safeNumber(row.medium);
+      low += safeNumber(row.low);
+      info += safeNumber(row.info);
     }
 
     const total = critical + high + medium + low + info;
@@ -113,8 +164,9 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
       medium,
       low,
       info,
+      taskCount: filteredRows.length,
     };
-  }, [rows]);
+  }, [filteredRows]);
 
   const items: MetricItem[] = useMemo(
     () => [
@@ -122,7 +174,10 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
         id: 1,
         label: "Total Findings",
         value: loading ? "..." : summary.total.toLocaleString(),
-        hint: "Total findings identified across all scanned devices",
+        hint:
+          taskMode === "all"
+            ? "Total findings identified across all scanned devices"
+            : `Total findings identified across ${summary.taskCount.toLocaleString()} selected device task(s)`,
         icon: <MdOutlineReportProblem className="text-[13px]" />,
         iconWrapClass: "bg-slate-100 text-slate-700",
         labelClass: "text-slate-700",
@@ -179,7 +234,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
         level: "info",
       },
     ],
-    [loading, summary]
+    [loading, summary, taskMode]
   );
 
   return (
@@ -196,7 +251,9 @@ const ReportKPI: React.FC<ReportKPIProps> = ({ onReady }) => {
           </div>
 
           <div className="text-right text-[9.5px] leading-[1.45] text-slate-500">
-            Consolidated findings by severity level
+            {taskMode === "all"
+              ? "Consolidated findings by severity level"
+              : `Filtered by ${summary.taskCount.toLocaleString()} selected task(s)`}
           </div>
         </div>
       </div>

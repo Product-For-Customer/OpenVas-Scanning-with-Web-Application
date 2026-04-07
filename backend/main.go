@@ -58,8 +58,8 @@ func main() {
 	//==== Report Data for Frontend =====
 	r.GET("/summary-vulnerability-report", vulnerability.ListTaskVulnSummary)
 	r.GET("/critical-report", report.ListCriticalForReport)
-	r.GET("/devices/risk-report", vulnerability.ListDeviceRisk)
-	r.GET("/target-differ-report", vulnerability.ListTargetDiffer)
+	r.GET("/devices/risk-report", report.ListDeviceRiskForReport)
+	r.GET("/target-differ-report", report.ListTargetDiffer)
 	r.GET("/download-pdf", report.DownloadPDF)
 	r.GET("/send-pdf-to-line", report.SendPDFToLine)
 	r.GET("/app-report", report.ListAppReport)

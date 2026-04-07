@@ -13,6 +13,7 @@ import { ListCriticalForReport } from "../../../services/report";
 type HighlightTone = "good" | "warning" | "critical" | "neutral";
 
 type CriticalForReportDTO = {
+  task_id: string;
   task_name: string;
   ip: string;
   vulnerability_id: string;
@@ -138,11 +139,43 @@ const formatDetectedDate = (detectedDate?: string): string => {
   }).format(date);
 };
 
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
 const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
   onReady,
 }) => {
   const [rows, setRows] = useState<CriticalForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<"all" | "filtered">("all");
+
+  useEffect(() => {
+    const parsed = readTaskIDsFromQuery();
+    setQueryTaskIDs(parsed.ids);
+    setTaskMode(parsed.mode);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -153,8 +186,10 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
       try {
         setLoading(true);
 
-        const response = await ListCriticalForReport();
-
+        const response =
+          taskMode === "all"
+            ? await ListCriticalForReport(undefined, 50)
+            : await ListCriticalForReport(queryTaskIDs, 50);
 
         if (!alive) return;
 
@@ -180,7 +215,7 @@ const ExecutiveHighlights: React.FC<ExecutiveHighlightsProps> = ({
     return () => {
       alive = false;
     };
-  }, [onReady]);
+  }, [onReady, taskMode, queryTaskIDs]);
 
   const items: HighlightItem[] = useMemo(() => {
     return [...rows]

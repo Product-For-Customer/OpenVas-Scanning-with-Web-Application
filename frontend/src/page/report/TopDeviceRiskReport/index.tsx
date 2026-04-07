@@ -68,11 +68,48 @@ const getAverageRiskTone = (score: number) => {
   };
 };
 
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
+const safeNumber = (value: unknown): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
   onReady,
 }) => {
   const [devices, setDevices] = useState<DeviceRiskForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<"all" | "filtered">("all");
+
+  useEffect(() => {
+    const parsed = readTaskIDsFromQuery();
+    setQueryTaskIDs(parsed.ids);
+    setTaskMode(parsed.mode);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -112,24 +149,40 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
     };
   }, [onReady]);
 
+  const filteredDevices = useMemo(() => {
+    if (taskMode === "all") {
+      return devices;
+    }
+
+    if (queryTaskIDs.length === 0) {
+      return devices;
+    }
+
+    const selected = new Set(queryTaskIDs.map((id) => String(id).trim()));
+
+    return devices.filter((device) =>
+      selected.has(String(device.task_id).trim())
+    );
+  }, [devices, queryTaskIDs, taskMode]);
+
   const sortedDevices = useMemo(() => {
-    return [...devices].sort((a, b) => {
-      const riskDiff = (b.risk_score || 0) - (a.risk_score || 0);
+    return [...filteredDevices].sort((a, b) => {
+      const riskDiff = safeNumber(b.risk_score) - safeNumber(a.risk_score);
       if (riskDiff !== 0) return riskDiff;
 
       const vulnDiff =
-        (b.vulnerability_total || 0) - (a.vulnerability_total || 0);
+        safeNumber(b.vulnerability_total) - safeNumber(a.vulnerability_total);
       if (vulnDiff !== 0) return vulnDiff;
 
       return (a.task_name || "").localeCompare(b.task_name || "");
     });
-  }, [devices]);
+  }, [filteredDevices]);
 
   const averageRiskScore = useMemo(() => {
     if (sortedDevices.length === 0) return 0;
 
     const totalRisk = sortedDevices.reduce(
-      (sum, item) => sum + (item.risk_score || 0),
+      (sum, item) => sum + safeNumber(item.risk_score),
       0
     );
 
@@ -205,7 +258,9 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
                   {formatNumber(totalTargets)}
                 </p>
                 <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                  Number of assessed devices included in the latest scan cycle.
+                  {taskMode === "all"
+                    ? "Number of assessed devices included in the latest scan cycle."
+                    : "Number of assessed devices included in the selected task scope."}
                 </p>
               </div>
             </div>
@@ -229,7 +284,9 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
                   {formatRiskScore(averageRiskScore)}
                 </p>
                 <p className={`mt-1 text-[11px] leading-5 ${averageTone.desc}`}>
-                  Average risk level across all Devices in this assessment.
+                  {taskMode === "all"
+                    ? "Average risk level across all Devices in this assessment."
+                    : "Average risk level across selected Devices in this assessment."}
                 </p>
               </div>
             </div>

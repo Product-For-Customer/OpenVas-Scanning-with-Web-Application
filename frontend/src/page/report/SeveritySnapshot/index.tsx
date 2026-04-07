@@ -39,6 +39,35 @@ const COLORS: Record<SeverityKey, string> = {
   Info: "#3b82f6",
 };
 
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
+const safeNumber = (value: unknown): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
   title = "Severity Snapshot",
   totalLabel = "Total Findings",
@@ -46,6 +75,14 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
 }) => {
   const [rows, setRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<"all" | "filtered">("all");
+
+  useEffect(() => {
+    const parsed = readTaskIDsFromQuery();
+    setQueryTaskIDs(parsed.ids);
+    setTaskMode(parsed.mode);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -79,6 +116,20 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
     };
   }, [onReady]);
 
+  const filteredRows = useMemo(() => {
+    if (taskMode === "all") {
+      return rows;
+    }
+
+    if (queryTaskIDs.length === 0) {
+      return rows;
+    }
+
+    const selected = new Set(queryTaskIDs.map((id) => String(id).trim()));
+
+    return rows.filter((row) => selected.has(String(row.task_id).trim()));
+  }, [rows, queryTaskIDs, taskMode]);
+
   const chartData = useMemo<SeverityChartRow[]>(() => {
     let critical = 0;
     let high = 0;
@@ -86,12 +137,12 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
     let low = 0;
     let info = 0;
 
-    for (const row of rows) {
-      critical += Number(row.critical || 0);
-      high += Number(row.high || 0);
-      medium += Number(row.medium || 0);
-      low += Number(row.low || 0);
-      info += Number(row.info || 0);
+    for (const row of filteredRows) {
+      critical += safeNumber(row.critical);
+      high += safeNumber(row.high);
+      medium += safeNumber(row.medium);
+      low += safeNumber(row.low);
+      info += safeNumber(row.info);
     }
 
     const raw: Omit<SeverityChartRow, "share">[] = [
@@ -108,7 +159,7 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
       ...item,
       share: total > 0 ? Number(((item.value / total) * 100).toFixed(1)) : 0,
     }));
-  }, [rows]);
+  }, [filteredRows]);
 
   const total = useMemo(() => {
     return chartData.reduce((sum, item) => sum + Number(item.value || 0), 0);
@@ -117,6 +168,10 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
   const hasData = useMemo(() => {
     return chartData.some((item) => item.value > 0);
   }, [chartData]);
+
+  const filteredTaskCount = useMemo(() => {
+    return filteredRows.length;
+  }, [filteredRows]);
 
   const tooltipFormatter = (
     value: number | string | undefined,
@@ -137,8 +192,9 @@ const SeveritySnapshot: React.FC<SeveritySnapshotProps> = ({
               {title}
             </h3>
             <p className="mt-1 text-[10px] leading-normal text-slate-600">
-              Summary of findings by severity level based on the latest
-              consolidated task assessment.
+              {taskMode === "all"
+                ? "Summary of findings by severity level based on the latest consolidated task assessment."
+                : `Summary of findings by severity level for ${filteredTaskCount.toLocaleString()} selected task(s).`}
             </p>
           </div>
 

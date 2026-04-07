@@ -18,8 +18,6 @@ import {
   FiActivity,
   FiAlertTriangle,
   FiBarChart2,
-  FiCheckCircle,
-  FiCpu,
   FiPieChart,
   FiShield,
   FiTarget,
@@ -31,23 +29,8 @@ import {
   ListCriticalForReport,
   type TaskVulnSummaryForReportResponse,
   type DeviceRiskForReportDTO,
+  type CriticalForReportResponse,
 } from "../../../services/report";
-
-type CriticalForReportDTO = {
-  task_name: string;
-  ip: string;
-  vulnerability_id: string;
-  vulnerability_name: string;
-  detected_date: string;
-  severity: number;
-  cve_list: string;
-  summary: string;
-  impact: string;
-  affected: string;
-  insight: string;
-  solution: string;
-  solution_type: string;
-};
 
 type ConclusionProps = {
   onReady?: (ready: boolean) => void;
@@ -100,6 +83,34 @@ const SEVERITY_COLORS: Record<SeverityKey, string> = {
   Medium: "#eab308",
   Low: "#22c55e",
   Info: "#3b82f6",
+};
+
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
+const normalizeTaskId = (value?: string | number | null) => {
+  return String(value ?? "").trim();
 };
 
 const normalizeText = (value?: string | null) => {
@@ -221,10 +232,19 @@ const sortDevicesByRiskDesc = (rows: DeviceRiskForReportDTO[]) => {
 };
 
 const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
+  const initialQuery = useMemo(() => readTaskIDsFromQuery(), []);
+
   const [summaryRows, setSummaryRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
   const [deviceRows, setDeviceRows] = useState<DeviceRiskForReportDTO[]>([]);
-  const [criticalRows, setCriticalRows] = useState<CriticalForReportDTO[]>([]);
+  const [criticalRows, setCriticalRows] = useState<CriticalForReportResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const [queryTaskIDs] = useState<string[]>(initialQuery.ids);
+  const [taskMode] = useState<"all" | "filtered">(initialQuery.mode);
+
+  const selectedTaskIdSet = useMemo(() => {
+    return new Set(queryTaskIDs.map((id) => normalizeTaskId(id)));
+  }, [queryTaskIDs]);
 
   useEffect(() => {
     let alive = true;
@@ -235,12 +255,14 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
       try {
         setLoading(true);
 
-        const [summaryResponse, deviceResponse, criticalResponse] =
-          await Promise.all([
-            ListTaskVulnSummaryForReport(),
-            ListDeviceRiskForReport(),
-            ListCriticalForReport(),
-          ]);
+        const requestTaskIds =
+          taskMode === "all" || queryTaskIDs.length === 0 ? undefined : queryTaskIDs;
+
+        const [summaryResponse, deviceResponse, criticalResponse] = await Promise.all([
+          ListTaskVulnSummaryForReport(requestTaskIds),
+          ListDeviceRiskForReport(requestTaskIds),
+          ListCriticalForReport(requestTaskIds, 50),
+        ]);
 
         if (!alive) return;
 
@@ -266,7 +288,22 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
     return () => {
       alive = false;
     };
-  }, [onReady]);
+  }, [onReady, queryTaskIDs, taskMode]);
+
+  const filteredSummaryRows = useMemo(() => {
+    if (taskMode === "all" || selectedTaskIdSet.size === 0) return summaryRows;
+    return summaryRows.filter((row) => selectedTaskIdSet.has(normalizeTaskId(row.task_id)));
+  }, [summaryRows, selectedTaskIdSet, taskMode]);
+
+  const filteredDeviceRows = useMemo(() => {
+    if (taskMode === "all" || selectedTaskIdSet.size === 0) return deviceRows;
+    return deviceRows.filter((row) => selectedTaskIdSet.has(normalizeTaskId(row.task_id)));
+  }, [deviceRows, selectedTaskIdSet, taskMode]);
+
+  const filteredCriticalRows = useMemo(() => {
+    if (taskMode === "all" || selectedTaskIdSet.size === 0) return criticalRows;
+    return criticalRows.filter((row) => selectedTaskIdSet.has(normalizeTaskId(row.task_id)));
+  }, [criticalRows, selectedTaskIdSet, taskMode]);
 
   const severityData = useMemo<SeverityRow[]>(() => {
     let critical = 0;
@@ -275,7 +312,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
     let low = 0;
     let info = 0;
 
-    for (const row of summaryRows) {
+    for (const row of filteredSummaryRows) {
       critical += Number(row.critical || 0);
       high += Number(row.high || 0);
       medium += Number(row.medium || 0);
@@ -297,18 +334,18 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
       ...item,
       share: total > 0 ? Number(((item.value / total) * 100).toFixed(2)) : 0,
     }));
-  }, [summaryRows]);
+  }, [filteredSummaryRows]);
 
   const totalFindings = useMemo(() => {
-    return severityData.reduce((sum, item) => sum + item.value, 0);
-  }, [severityData]);
+    return filteredSummaryRows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+  }, [filteredSummaryRows]);
 
   const sortedDevices = useMemo(() => {
-    return sortDevicesByRiskDesc(deviceRows);
-  }, [deviceRows]);
+    return sortDevicesByRiskDesc(filteredDeviceRows);
+  }, [filteredDeviceRows]);
 
   const topThreeLineData = useMemo<DeviceTrendRow[]>(() => {
-    const top3 = sortDevicesByRiskDesc(deviceRows).slice(0, 3);
+    const top3 = sortDevicesByRiskDesc(filteredDeviceRows).slice(0, 3);
 
     return top3.map((item, index) => ({
       rank: `#${index + 1}`,
@@ -318,9 +355,9 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
       riskScore: Number(item.risk_score || 0),
       vulnerabilities: Number(item.vulnerability_total || 0),
     }));
-  }, [deviceRows]);
+  }, [filteredDeviceRows]);
 
-  const targetListData = useMemo<DeviceTrendRow[]>(() => {
+  const targetListData = useMemo(() => {
     return [...topThreeLineData]
       .sort((a, b) => a.rankNumber - b.rankNumber)
       .slice(0, 3);
@@ -350,10 +387,10 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
   }, [highestRiskTarget]);
 
   const latestCritical = useMemo(() => {
-    return [...criticalRows]
+    return [...filteredCriticalRows]
       .sort((a, b) => Number(b.severity || 0) - Number(a.severity || 0))
       .find((item) => normalizeText(item.vulnerability_name));
-  }, [criticalRows]);
+  }, [filteredCriticalRows]);
 
   const priorityTone = getRiskTone(highestRiskScore);
 
@@ -747,6 +784,7 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
                       axisLine={{ stroke: "#cbd5e1" }}
                     />
                     <YAxis
+                      domain={[0, 10]}
                       tick={{ fontSize: 8, fill: "#64748b" }}
                       tickLine={false}
                       axisLine={{ stroke: "#cbd5e1" }}
@@ -867,23 +905,45 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
               <p>
                 จากกราฟ Top 3 Device Risk Curve จะเห็นว่าระดับความเสี่ยงของอุปกรณ์กลุ่มบนสุดยังอยู่ในระดับใกล้เคียงกัน
                 หมายความว่าการแก้ไขเฉพาะรายการเดียวอาจยังไม่เพียงพอ หากต้องการลดแรงกดดันของความเสี่ยงรวมในรอบถัดไป
-                ควรวางแผน remediation แบบเป็นชุดสำหรับกลุ่ม Top 3 พร้อมกัน
+                ก็ควรวางแผน remediation แบบครอบคลุมทั้งกลุ่มอุปกรณ์ที่อยู่ในลำดับต้น ๆ
               </p>
 
-              <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <div className="flex items-start gap-2">
-                  <FiCpu className="mt-0.5 text-[11px] text-slate-600" />
-                  <div>
-                    <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                      Operational note
-                    </p>
-                    <p className="mt-1 text-[8px] leading-[1.45] text-slate-600">
-                      ควรวางแผน remediation เป็นกลุ่มเป้าหมาย ไม่ใช่เฉพาะ Top 1 เท่านั้น
-                      เพื่อให้ภาพรวมความเสี่ยงลดลงได้เร็วขึ้นในรอบถัดไป
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <p>
+                {latestCritical ? (
+                  <>
+                    หากพิจารณารายการ critical ล่าสุด{" "}
+                    <span className="font-semibold text-slate-900">
+                      {latestCritical.vulnerability_name}
+                    </span>{" "}
+                    ซึ่งตรวจพบเมื่อ{" "}
+                    <span className="font-semibold text-slate-900">
+                      {formatDetectedDate(latestCritical.detected_date)}
+                    </span>
+                    {typeof getDetectedDays(latestCritical.detected_date) === "number" ? (
+                      <>
+                        {" "}
+                        หรือประมาณ{" "}
+                        <span className="font-semibold text-slate-900">
+                          {getDetectedDays(latestCritical.detected_date)}
+                        </span>{" "}
+                        วัน ควรได้รับการติดตามในระดับเร่งด่วน เพื่อจำกัดผลกระทบในเชิงระบบและลดโอกาสของการถูกโจมตีซ้ำ
+                      </>
+                    ) : (
+                      <> ควรได้รับการติดตามในระดับเร่งด่วน</>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    ในชุดข้อมูลที่เลือกไม่พบ critical finding ที่มีรายละเอียดพร้อมแสดงผลเพิ่มเติม
+                  </>
+                )}
+              </p>
+
+              <p>
+                โดยสรุป ผลการประเมินนี้ชี้ให้เห็นว่าองค์กรควรดำเนินการแบบเป็นลำดับขั้น:
+                เริ่มจากลดความเสี่ยงของ device กลุ่มบนสุด, จัดการ critical findings ที่ยังเปิดอยู่,
+                และติดตามแนวโน้มรายเดือนเพื่อให้เห็นผลของการปรับปรุงในรอบถัดไปอย่างชัดเจน
+              </p>
             </div>
           </div>
         </div>
@@ -891,78 +951,35 @@ const Conclusion: React.FC<ConclusionProps> = ({ onReady }) => {
         <div className="col-span-4">
           <div className="h-full rounded-lg border border-slate-200 bg-white px-3 py-2.5">
             <p className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Immediate attention
+              Recommended actions
             </p>
 
-            {latestCritical ? (
-              <div className="mt-2 space-y-1.5">
-                <div className="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-2">
-                  <div className="flex items-start gap-2">
-                    <FiAlertTriangle className="mt-0.5 text-[11px] text-rose-700" />
-                    <div className="min-w-0">
-                      <p className="text-[8.5px] font-semibold leading-[1.4] text-slate-900">
-                        {normalizeText(latestCritical.vulnerability_name) || "-"}
-                      </p>
-                      <p className="mt-1 text-[7.5px] leading-[1.4] text-slate-700">
-                        Device:{" "}
-                        <span className="font-medium text-slate-900">
-                          {normalizeText(latestCritical.task_name) || "-"}
-                        </span>
-                      </p>
-                      <p className="mt-0.5 text-[7.5px] leading-[1.4] text-slate-700">
-                        Severity:{" "}
-                        <span className="font-medium text-slate-900">
-                          {formatRiskScore(Number(latestCritical.severity || 0))}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1 text-[8px] leading-[1.45] text-slate-600">
-                  <p>
-                    <span className="font-medium text-slate-900">Detected:</span>{" "}
-                    {formatDetectedDate(latestCritical.detected_date)}
-                  </p>
-
-                  <p>
-                    <span className="font-medium text-slate-900">Open for:</span>{" "}
-                    {typeof getDetectedDays(latestCritical.detected_date) === "number"
-                      ? `${getDetectedDays(latestCritical.detected_date)} days`
-                      : "-"}
-                  </p>
-
-                  {normalizeText(latestCritical.solution) ? (
-                    <p>
-                      <span className="font-medium text-slate-900">Recommended action:</span>{" "}
-                      {normalizeText(latestCritical.solution)}
-                    </p>
-                  ) : (
-                    <p>
-                      <span className="font-medium text-slate-900">Recommended action:</span>{" "}
-                      Review and prioritize remediation for this issue as soon as possible.
-                    </p>
-                  )}
-                </div>
+            <div className="mt-2 space-y-2">
+              <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-rose-700">
+                  1. Immediate
+                </p>
+                <p className="mt-1 text-[8px] leading-[1.55] text-slate-700">
+                  Prioritize remediation for the highest-risk devices and close critical vulnerabilities first.
+                </p>
               </div>
-            ) : (
-              <div className="mt-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-3 text-[8px] text-slate-500">
-                No critical observation available for this section.
-              </div>
-            )}
 
-            <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-              <div className="flex items-start gap-2">
-                <FiCheckCircle className="mt-0.5 text-[11px] text-emerald-700" />
-                <div>
-                  <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Recommendation
-                  </p>
-                  <p className="mt-1 text-[8px] leading-[1.45] text-slate-600">
-                    เริ่มจาก Top 3 device ที่มี risk score สูงสุด พร้อมติดตาม critical finding
-                    ล่าสุดควบคู่กัน เพื่อให้การลดความเสี่ยงเห็นผลได้เร็วและชัดเจนมากขึ้น
-                  </p>
-                </div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-amber-700">
+                  2. Near-term
+                </p>
+                <p className="mt-1 text-[8px] leading-[1.55] text-slate-700">
+                  Review Medium and High findings in sequence and verify that affected systems are patched or mitigated.
+                </p>
+              </div>
+
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+                <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                  3. Continuous
+                </p>
+                <p className="mt-1 text-[8px] leading-[1.55] text-slate-700">
+                  Reassess risk trends monthly and compare future scan results against the current baseline.
+                </p>
               </div>
             </div>
           </div>

@@ -114,9 +114,41 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
   );
 };
 
+const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
+  if (typeof window === "undefined") {
+    return { mode: "all", ids: [] };
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const raw = (searchParams.get("task_id") || "").trim();
+
+  if (!raw || raw.toUpperCase() === "ALL") {
+    return { mode: "all", ids: [] };
+  }
+
+  const ids = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter((item) => item !== "");
+
+  if (ids.length === 0) {
+    return { mode: "all", ids: [] };
+  }
+
+  return { mode: "filtered", ids };
+};
+
 const ComparisonReport: React.FC<ComparisonReportProps> = ({ onReady }) => {
   const [rawData, setRawData] = useState<TargetDifferForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
+  const [taskMode, setTaskMode] = useState<"all" | "filtered">("all");
+
+  useEffect(() => {
+    const parsed = readTaskIDsFromQuery();
+    setQueryTaskIDs(parsed.ids);
+    setTaskMode(parsed.mode);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -127,7 +159,10 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({ onReady }) => {
       setLoading(true);
 
       try {
-        const result = await ListTargetDifferForReport();
+        const result =
+          taskMode === "all"
+            ? await ListTargetDifferForReport()
+            : await ListTargetDifferForReport(queryTaskIDs);
 
         if (!isMounted) return;
 
@@ -152,7 +187,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({ onReady }) => {
     return () => {
       isMounted = false;
     };
-  }, [onReady]);
+  }, [onReady, taskMode, queryTaskIDs]);
 
   const chartData = useMemo<ChartRow[]>(() => {
     return [...rawData]
@@ -174,8 +209,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({ onReady }) => {
           previousTime: item.previous_creation_time ?? null,
         };
       })
-      .sort((a, b) => (b.latestTime || 0) - (a.latestTime || 0))
-      .slice(0, 10);
+      .sort((a, b) => (b.latestTime || 0) - (a.latestTime || 0));
   }, [rawData]);
 
   const highestLatestRisk = useMemo(() => {
@@ -343,8 +377,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({ onReady }) => {
         </div>
 
         <p className="mt-2 text-[10.5px] leading-5 text-slate-500">
-          หมายเหตุ: ข้อมูลถูกเรียงตามเวลาสแกนล่าสุดจากใหม่ไปเก่า และแสดงเฉพาะ 10
-          อุปกรณ์แรกเพื่อให้การนำเสนอข้อมูลในรายงานมีความกระชับและอ่านง่าย
+          หมายเหตุ: ข้อมูลถูกเรียงตามเวลาสแกนล่าสุดจากใหม่ไปเก่า และแสดงข้อมูลตาม task ที่ถูกเลือกสำหรับการสร้างรายงาน
         </p>
       </div>
     </section>

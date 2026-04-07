@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -80,12 +81,58 @@ func buildPublicPDFURL(filePath string) string {
 	return fmt.Sprintf("%s/public/reports/%s", base, fileName)
 }
 
-func getCaptureURL() string {
-	url := strings.TrimSpace(os.Getenv("FRONTEND_CAPTURE_URL"))
-	if url != "" {
-		return url
+func getCaptureBaseURL() string {
+	u := strings.TrimSpace(os.Getenv("FRONTEND_CAPTURE_URL"))
+	if u != "" {
+		return u
 	}
 	return "http://frontend/capture"
+}
+
+func buildCaptureURL(taskIDs []string) string {
+	baseURL := getCaptureBaseURL()
+
+	if len(taskIDs) == 0 {
+		return baseURL
+	}
+
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return baseURL
+	}
+
+	query := parsedURL.Query()
+	query.Set("task_id", strings.Join(taskIDs, ","))
+	parsedURL.RawQuery = query.Encode()
+
+	return parsedURL.String()
+}
+
+func parseTaskIDs(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []string{}
+	}
+
+	parts := strings.Split(raw, ",")
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		id := strings.TrimSpace(part)
+		if id == "" {
+			continue
+		}
+
+		if seen[id] {
+			continue
+		}
+
+		seen[id] = true
+		result = append(result, id)
+	}
+
+	return result
 }
 
 func getChromePath() string {
@@ -188,13 +235,10 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	err := chromedp.Run(timeoutCtx,
 		chromedp.EmulateViewport(defaultWindowW, defaultWindowH),
 		chromedp.Navigate(captureURL),
-
 		chromedp.WaitReady("body", chromedp.ByQuery),
 		chromedp.WaitVisible("#capture-root", chromedp.ByQuery),
-
 		waitForFrontendReady(),
 		chromedp.Sleep(defaultWaitBefore),
-
 		chromedp.ActionFunc(func(ctx context.Context) error {
 			buf, _, err := page.PrintToPDF().
 				WithPrintBackground(true).
@@ -226,7 +270,6 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 	}
 
 	log.Printf("[capture] pdf saved: %s", filePath)
-
 	return filePath, nil
 }
 
@@ -399,6 +442,7 @@ func sortNotificationsByRequestedIDs(items []entity.AppNotification, requestedID
 // ========================================================
 func SendPDFToLine(c *gin.Context) {
 	pdfQuery := strings.TrimSpace(c.Query("pdf"))
+	taskIDs := parseTaskIDs(c.Query("task_id"))
 
 	rawIDs := strings.TrimSpace(c.Query("app_notification_id"))
 	if rawIDs == "" {
@@ -414,8 +458,9 @@ func SendPDFToLine(c *gin.Context) {
 	}
 
 	var (
-		filePath  string
-		publicURL string
+		filePath   string
+		publicURL  string
+		captureURL string
 	)
 
 	if pdfQuery != "" {
@@ -427,7 +472,8 @@ func SendPDFToLine(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(getCaptureURL())
+		captureURL = buildCaptureURL(taskIDs)
+		filePath, err = generatePDFFromCapturePage(captureURL)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),
@@ -438,16 +484,22 @@ func SendPDFToLine(c *gin.Context) {
 
 	publicURL = buildPublicPDFURL(filePath)
 
-	msg := fmt.Sprintf(
-		"รายงาน PDF พร้อมแล้ว\n\nไฟล์: %s\nลิงก์: %s",
-		filepath.Base(filePath),
-		publicURL,
-	)
+	msg := fmt.Sprintf("PDF report is ready\nFile: %s\n%s", filepath.Base(filePath), publicURL)
+	if len(taskIDs) > 0 {
+		msg = fmt.Sprintf(
+			"PDF report is ready\nTask ID: %s\nFile: %s\n%s",
+			strings.Join(taskIDs, ","),
+			filepath.Base(filePath),
+			publicURL,
+		)
+	}
 
 	if len(requestedIDs) == 0 {
 		if err := pushLineTextMessage(msg); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": fmt.Sprintf("send line message failed: %v", err),
+				"error":      fmt.Sprintf("send line message failed: %v", err),
+				"file_path":  filePath,
+				"public_url": publicURL,
 			})
 			return
 		}
@@ -460,7 +512,7 @@ func SendPDFToLine(c *gin.Context) {
 		return
 	}
 
-	notifications, err := listAppNotificationsByIDs(requestedIDs)
+	items, err := listAppNotificationsByIDs(requestedIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": fmt.Sprintf("load app notifications failed: %v", err),
@@ -468,65 +520,55 @@ func SendPDFToLine(c *gin.Context) {
 		return
 	}
 
-	if len(notifications) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "no app notifications found for provided IDs",
-		})
-		return
+	items = sortNotificationsByRequestedIDs(items, requestedIDs)
+
+	foundMap := make(map[uint]struct{}, len(items))
+	for _, item := range items {
+		foundMap[item.ID] = struct{}{}
 	}
 
-	notifications = sortNotificationsByRequestedIDs(notifications, requestedIDs)
-
-	foundMap := make(map[uint]bool, len(notifications))
-	for _, item := range notifications {
-		foundMap[item.ID] = true
-	}
-
-	var notFoundIDs []uint
-	for _, id := range requestedIDs {
-		if !foundMap[id] {
-			notFoundIDs = append(notFoundIDs, id)
+	notFoundIDs := make([]uint, 0)
+	for _, requestedID := range requestedIDs {
+		if _, ok := foundMap[requestedID]; !ok {
+			notFoundIDs = append(notFoundIDs, requestedID)
 		}
 	}
 
-	sentIDs := make([]uint, 0, len(notifications))
-	sentTargets := make([]string, 0, len(notifications))
+	sentIDs := make([]uint, 0)
+	sentTargets := make([]string, 0)
 	failedIDs := make([]uint, 0)
 	failedTargets := make([]string, 0)
 
-	for _, item := range notifications {
+	for _, item := range items {
 		if !item.Alert {
 			failedIDs = append(failedIDs, item.ID)
-			failedTargets = append(
-				failedTargets,
-				fmt.Sprintf("id=%d: alert is off", item.ID),
-			)
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: alert disabled", item.ID))
 			continue
 		}
 
 		sendID := strings.TrimSpace(item.SendID)
 		if sendID == "" {
 			failedIDs = append(failedIDs, item.ID)
-			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: empty SendID", item.ID))
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: send_id is empty", item.ID))
 			continue
 		}
 
-		if item.AppLineMaster == nil {
+		if item.AppLineMaster.ID == 0 {
 			failedIDs = append(failedIDs, item.ID)
-			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: AppLineMaster not found", item.ID))
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: app_line_master not found", item.ID))
 			continue
 		}
 
 		token := strings.TrimSpace(item.AppLineMaster.Token)
 		if token == "" {
 			failedIDs = append(failedIDs, item.ID)
-			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: empty AppLineMaster.Token", item.ID))
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: line token is empty", item.ID))
 			continue
 		}
 
 		if err := pushLineTextMessageToTarget(token, sendID, msg); err != nil {
 			failedIDs = append(failedIDs, item.ID)
-			failedTargets = append(failedTargets, fmt.Sprintf("id=%d send_id=%s error=%v", item.ID, sendID, err))
+			failedTargets = append(failedTargets, fmt.Sprintf("id=%d: %v", item.ID, err))
 			continue
 		}
 
@@ -571,10 +613,12 @@ func SendPDFToLine(c *gin.Context) {
 // ========================================================
 func DownloadPDF(c *gin.Context) {
 	pdfQuery := strings.TrimSpace(c.Query("pdf"))
+	taskIDs := parseTaskIDs(c.Query("task_id"))
 
 	var (
-		filePath string
-		err      error
+		filePath   string
+		captureURL string
+		err        error
 	)
 
 	if pdfQuery != "" {
@@ -586,7 +630,8 @@ func DownloadPDF(c *gin.Context) {
 			return
 		}
 	} else {
-		filePath, err = generatePDFFromCapturePage(getCaptureURL())
+		captureURL = buildCaptureURL(taskIDs)
+		filePath, err = generatePDFFromCapturePage(captureURL)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": fmt.Sprintf("generate pdf failed: %v", err),

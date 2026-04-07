@@ -614,7 +614,7 @@ const Value: React.FC<ValueProps> = ({
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} />
-                          <h3 className="min-w-0 truncate text-[10px] font-semibold leading-[1.1] tracking-wide sm:text-[10.5px]">
+                          <h3 className="min-w-0 truncate text-[10px] font-semibold leading-[1.1] tracking-wide sm:text-[10.5px] dark:text-white">
                             {item.title}
                           </h3>
                         </div>

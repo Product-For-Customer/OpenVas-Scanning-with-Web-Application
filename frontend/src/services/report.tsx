@@ -46,12 +46,35 @@ export type TaskVulnSummaryForReportResponse = {
 // =======================
 // API: GET /summary-vulnerability-report
 // Public route: no login required
+// Optional query:
+//   - task_id
+// รองรับทั้ง "ALL", "123", "123,456"
 // =======================
-export const ListTaskVulnSummaryForReport = async (): Promise<
-  TaskVulnSummaryForReportResponse[] | null
-> => {
+export const ListTaskVulnSummaryForReport = async (
+  taskID?: string | number | Array<string | number>
+): Promise<TaskVulnSummaryForReportResponse[] | null> => {
   try {
-    const response = await publicReportApi.get("/summary-vulnerability-report");
+    const params: Record<string, string> = {};
+
+    if (Array.isArray(taskID)) {
+      const normalized = taskID
+        .map((id) => String(id).trim())
+        .filter((id) => id !== "");
+
+      if (normalized.length > 0) {
+        params.task_id = normalized.join(",");
+      }
+    } else if (
+      taskID !== undefined &&
+      taskID !== null &&
+      String(taskID).trim() !== ""
+    ) {
+      params.task_id = String(taskID).trim();
+    }
+
+    const response = await publicReportApi.get("/summary-vulnerability-report", {
+      params,
+    });
 
     if (Array.isArray(response.data)) {
       return response.data as TaskVulnSummaryForReportResponse[];
@@ -78,6 +101,7 @@ export const ListTaskVulnSummaryForReport = async (): Promise<
 // Types: GET /critical-report
 // =======================
 export type CriticalForReportResponse = {
+  task_id: string;
   task_name: string;
   ip: string;
   vulnerability_id: string;
@@ -99,16 +123,29 @@ export type CriticalForReportResponse = {
 // Optional query:
 //   - task_id
 //   - limit
+// รองรับทั้งค่าเดียว และหลายค่า เช่น "1,2,3"
 // =======================
 export const ListCriticalForReport = async (
-  taskID?: string | number,
+  taskID?: string | number | Array<string | number>,
   limit?: string | number
 ): Promise<CriticalForReportResponse[] | null> => {
   try {
     const params: Record<string, string | number> = {};
 
-    if (taskID !== undefined && taskID !== null && `${taskID}`.trim() !== "") {
-      params.task_id = taskID;
+    if (Array.isArray(taskID)) {
+      const normalized = taskID
+        .map((id) => String(id).trim())
+        .filter((id) => id !== "");
+
+      if (normalized.length > 0) {
+        params.task_id = normalized.join(",");
+      }
+    } else if (
+      taskID !== undefined &&
+      taskID !== null &&
+      `${taskID}`.trim() !== ""
+    ) {
+      params.task_id = String(taskID).trim();
     }
 
     if (limit !== undefined && limit !== null && `${limit}`.trim() !== "") {
@@ -155,12 +192,35 @@ export type DeviceRiskForReportDTO = {
 // =======================
 // API: GET /devices/risk-report
 // Public route: no login required
+// Optional query:
+//   - task_id
+// รองรับทั้ง "1" และ "1,2,3"
 // =======================
-export const ListDeviceRiskForReport = async (): Promise<
-  DeviceRiskForReportDTO[] | null
-> => {
+export const ListDeviceRiskForReport = async (
+  taskID?: string | number | Array<string | number>
+): Promise<DeviceRiskForReportDTO[] | null> => {
   try {
-    const response = await publicReportApi.get("/devices/risk-report");
+    const params: Record<string, string> = {};
+
+    if (Array.isArray(taskID)) {
+      const normalized = taskID
+        .map((id) => String(id).trim())
+        .filter((id) => id !== "");
+
+      if (normalized.length > 0) {
+        params.task_id = normalized.join(",");
+      }
+    } else if (
+      taskID !== undefined &&
+      taskID !== null &&
+      `${taskID}`.trim() !== ""
+    ) {
+      params.task_id = String(taskID).trim();
+    }
+
+    const response = await publicReportApi.get("/devices/risk-report", {
+      params,
+    });
 
     if (Array.isArray(response.data)) {
       return response.data as DeviceRiskForReportDTO[];
@@ -189,7 +249,6 @@ export const ListDeviceRiskForReport = async (): Promise<
 export type TargetDifferForReportDTO = {
   host: string;
   task_name: string;
-
   latest_task_id: string;
   latest_report_id: number;
   latest_creation_time: number | null;
@@ -200,7 +259,6 @@ export type TargetDifferForReportDTO = {
   latest_low: number;
   latest_info: number;
   latest_risk_score: number;
-
   previous_task_id: string | null;
   previous_report_id: number | null;
   previous_creation_time: number | null;
@@ -211,9 +269,7 @@ export type TargetDifferForReportDTO = {
   previous_low: number | null;
   previous_info: number | null;
   previous_risk_score: number | null;
-
   previous_version_status: string;
-
   diff_total: number | null;
   diff_critical: number | null;
   diff_high: number | null;
@@ -226,12 +282,35 @@ export type TargetDifferForReportDTO = {
 // =======================
 // API: GET /target-differ-report
 // Public route: no login required
+// Optional query:
+//   - task_id
+// รองรับทั้ง "1" และ "1,2,3"
 // =======================
-export const ListTargetDifferForReport = async (): Promise<
-  TargetDifferForReportDTO[] | null
-> => {
+export const ListTargetDifferForReport = async (
+  taskID?: string | number | Array<string | number>
+): Promise<TargetDifferForReportDTO[] | null> => {
   try {
-    const response = await publicReportApi.get("/target-differ-report");
+    const params: Record<string, string> = {};
+
+    if (Array.isArray(taskID)) {
+      const normalized = taskID
+        .map((id) => String(id).trim())
+        .filter((id) => id !== "");
+
+      if (normalized.length > 0) {
+        params.task_id = normalized.join(",");
+      }
+    } else if (
+      taskID !== undefined &&
+      taskID !== null &&
+      `${taskID}`.trim() !== ""
+    ) {
+      params.task_id = String(taskID).trim();
+    }
+
+    const response = await publicReportApi.get("/target-differ-report", {
+      params,
+    });
 
     if (Array.isArray(response.data)) {
       return response.data as TargetDifferForReportDTO[];
@@ -279,13 +358,10 @@ export type SendPDFToLineResponse = {
   message: string;
   file_path?: string;
   public_url?: string;
-
   sent_notification_ids?: number[];
   sent_targets?: string[];
-
   failed_notification_ids?: number[];
   failed_targets?: string[];
-
   error?: string;
 };
 
@@ -332,14 +408,23 @@ export const UpdateAppReportByID = async (
   }
 };
 
+const normalizeTaskIDs = (taskIDs?: Array<string | number>): string[] => {
+  if (!Array.isArray(taskIDs)) return [];
+
+  return taskIDs
+    .map((id) => String(id).trim())
+    .filter((id) => id !== "");
+};
+
 // =======================
 // API: GET /send-pdf-to-line
 // public route
-// รองรับ pdf และ app_notification_id หลายตัว
+// รองรับ pdf, app_notification_id, task_id
 // =======================
 export const SendPDFToLine = async (
   pdf?: string,
-  appNotificationIDs?: number[]
+  appNotificationIDs?: number[],
+  taskIDs?: Array<string | number>
 ): Promise<SendPDFToLineResponse | null> => {
   try {
     const params: Record<string, string> = {};
@@ -356,6 +441,11 @@ export const SendPDFToLine = async (
       if (normalizedIDs.length > 0) {
         params.app_notification_id = normalizedIDs.join(",");
       }
+    }
+
+    const normalizedTaskIDs = normalizeTaskIDs(taskIDs);
+    if (normalizedTaskIDs.length > 0) {
+      params.task_id = normalizedTaskIDs.join(",");
     }
 
     const response = await publicReportApi.get("/send-pdf-to-line", {
@@ -378,12 +468,21 @@ export const SendPDFToLine = async (
 // API: GET /download-pdf
 // public route
 // ใช้โหลดไฟล์ PDF ลงเครื่อง
+// รองรับ pdf และ task_id
 // =======================
-export const DownloadPDFFile = async (pdf?: string): Promise<void> => {
+export const DownloadPDFFile = async (
+  pdf?: string,
+  taskIDs?: Array<string | number>
+): Promise<void> => {
   const params: Record<string, string> = {};
 
   if (pdf && pdf.trim() !== "") {
-    params.pdf = pdf;
+    params.pdf = pdf.trim();
+  }
+
+  const normalizedTaskIDs = normalizeTaskIDs(taskIDs);
+  if (normalizedTaskIDs.length > 0) {
+    params.task_id = normalizedTaskIDs.join(",");
   }
 
   const response = await publicReportApi.get("/download-pdf", {
