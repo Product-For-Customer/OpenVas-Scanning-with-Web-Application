@@ -292,7 +292,7 @@ services:
 
       - FRONTEND_CAPTURE_URL=http://frontend/capture
       - REPORT_OUTPUT_DIR=/app/tmp/reports
-      - REPORT_PUBLIC_BASE_URL=https://21bb-124-120-126-89.ngrok-free.app/public/reports
+      - REPORT_PUBLIC_BASE_URL=https://1dee-180-183-245-221.ngrok-free.app/public/reports
 
       - REPORT_EMAIL_TO=tawunchaien@gmail.com
       - REPORT_EMAIL_SUBJECT=OpenVAS Test Capture Report

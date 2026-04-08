@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const apiUrl = "https://21bb-124-120-126-89.ngrok-free.app"; // เปลี่ยนเป็น URL ของ API ของคุณ http://localhost:9000 and https://4917-49-0-82-165.ngrok-free.app
+export const apiUrl = "https://1dee-180-183-245-221.ngrok-free.app"; // เปลี่ยนเป็น URL ของ API ของคุณ http://localhost:9000 and https://4917-49-0-82-165.ngrok-free.app
 
 export const defaultHeaders = {
   "Content-Type": "application/json",

@@ -737,3 +737,69 @@ UPDATED=false
 RESULT_TYPE=no_update
 [2026-04-07T10:06:54+07:00] FEED CHECK DONE (NO UPDATE)
 ==================================================
+==================================================
+[2026-04-07T23:59:41+07:00] START feed update automation
+Using compose dir: /workspace
+Using log file: /app/logs/feed-update.log
+Force update: false
+Resolved compose file: /workspace/docker-compose.yml
+Feed services: vulnerability-tests notus-data scap-data cert-bund-data dfn-cert-data report-formats data-objects
+Checking feed images one by one...
+--------------------------------------------------
+Service: vulnerability-tests
+Image:   registry.community.greenbone.net/community/vulnerability-tests
+Before:  sha256:768a04b022b3e7fe1e6ac842341d9b3f35792441b9185503e57240ba54636826
+Pull attempt 1/3 for registry.community.greenbone.net/community/vulnerability-tests
+Using default tag: latest
+latest: Pulling from community/vulnerability-tests
+4024b9ca21d6: Pulling fs layer
+94d9876c97b0: Pulling fs layer
+5ed8e32e0360: Pulling fs layer
+94d9876c97b0: Download complete
+5ed8e32e0360: Download complete
+4024b9ca21d6: Download complete
+4024b9ca21d6: Pull complete
+94d9876c97b0: Pull complete
+5ed8e32e0360: Pull complete
+Digest: sha256:ebca27f1cdb7f4251e4b0944fd3ddb27593d52847e84b758e4bc9cf6482c5d23
+Status: Downloaded newer image for registry.community.greenbone.net/community/vulnerability-tests:latest
+registry.community.greenbone.net/community/vulnerability-tests:latest
+After:   sha256:ebca27f1cdb7f4251e4b0944fd3ddb27593d52847e84b758e4bc9cf6482c5d23
+Detected update for service 'vulnerability-tests'
+--------------------------------------------------
+Service: notus-data
+Image:   registry.community.greenbone.net/community/notus-data
+Before:  sha256:1d52995d67d8e0946a35e16ef2fc7341dcbf2b7ff89183fa38e9eb5cefde8893
+Pull attempt 1/3 for registry.community.greenbone.net/community/notus-data
+Using default tag: latest
+latest: Pulling from community/notus-data
+c5e4535c82da: Pulling fs layer
+9a1f649ebb7f: Pulling fs layer
+8d2712912673: Pulling fs layer
+207a931c1ed0: Pulling fs layer
+608374f2e931: Pulling fs layer
+608374f2e931: Download complete
+c5e4535c82da: Download complete
+8d2712912673: Download complete
+207a931c1ed0: Download complete
+9a1f649ebb7f: Download complete
+9a1f649ebb7f: Pull complete
+608374f2e931: Pull complete
+c5e4535c82da: Pull complete
+8d2712912673: Pull complete
+207a931c1ed0: Pull complete
+Digest: sha256:e8db6fb7329757e02bce8d7a4805a9a72a993417be318eb38885b9f91da08dac
+Status: Downloaded newer image for registry.community.greenbone.net/community/notus-data:latest
+registry.community.greenbone.net/community/notus-data:latest
+After:   sha256:e8db6fb7329757e02bce8d7a4805a9a72a993417be318eb38885b9f91da08dac
+Detected update for service 'notus-data'
+--------------------------------------------------
+Service: scap-data
+Image:   registry.community.greenbone.net/community/scap-data
+Before:  sha256:d1d91e2d1997f2d4d8083f8c0b868cd207f6efeb010bd0197c95fe284ca76d5f
+Pull attempt 1/3 for registry.community.greenbone.net/community/scap-data
+Using default tag: latest
+latest: Pulling from community/scap-data
+202de040f87d: Pulling fs layer
+c06b1ed8617a: Pulling fs layer
+202de040f87d: Download complete
