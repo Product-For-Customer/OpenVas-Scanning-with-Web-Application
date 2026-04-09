@@ -81,6 +81,7 @@ func main() {
 		authorized.GET("/target-differ", vulnerability.ListTargetDiffer)
 		authorized.GET("/vulnerabilities/level/:level", vulnerability.ListVulnerabilityByLevel)
 		authorized.GET("/tasks/summary-vulnerability", vulnerability.ListTaskVulnSummary)
+		authorized.GET("/reports/all/:task_id", vulnerability.ListALLReportByTaskID)
 
 		// ===== Location =====
 		authorized.GET("/locations", location.ListLocation)

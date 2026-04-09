@@ -355,5 +355,51 @@ export const ListVulnerabilityByLevel = async (
   }
 };
 
+// =======================
+// DTO: /reports/all/:task_id
+// =======================
+export type AllReportByTaskIDDTO = {
+  task_id: string;
+  task_name: string;
+  detected_date: number;
+  host_ip: string;
+  total: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  info: number;
+  risk_score: number;
+};
+
+// =======================
+// API: GET /reports/all/:task_id
+// =======================
+export const ListALLReportByTaskID = async (
+  taskID: string
+): Promise<AllReportByTaskIDDTO[] | null> => {
+  try {
+    if (!taskID || !taskID.trim()) {
+      console.error("taskID is required");
+      return [];
+    }
+
+    const response = await vulnerabilityApi.get(
+      `/reports/all/${encodeURIComponent(taskID.trim())}`
+    );
+
+    if (response.status === 200) {
+      const data = response.data?.data ?? response.data;
+      return Array.isArray(data) ? (data as AllReportByTaskIDDTO[]) : [];
+    }
+
+    console.error("Unexpected status:", response.status);
+    return null;
+  } catch (error) {
+    console.error(`Error fetching all reports by task ID (${taskID}):`, error);
+    return null;
+  }
+};
+
 export default vulnerabilityApi;
 

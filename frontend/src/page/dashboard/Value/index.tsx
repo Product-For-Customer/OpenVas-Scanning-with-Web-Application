@@ -42,6 +42,7 @@ type TargetOption = {
 };
 
 type SummaryRow = {
+  task_id: string;
   task_name: string;
   critical: number;
   high: number;
@@ -85,8 +86,11 @@ const Value: React.FC<ValueProps> = ({
     for (const item of vulnerabilityData) {
       const taskName = String((item as any)?.task_name ?? "").trim() || "Unknown";
 
+      const taskID = String((item as any)?.task_id ?? "").trim();
+
       if (!map.has(taskName)) {
         map.set(taskName, {
+          task_id: taskID,
           task_name: taskName,
           critical: 0,
           high: 0,
@@ -156,6 +160,18 @@ const Value: React.FC<ValueProps> = ({
     );
   }, [rows, selectedTargets]);
 
+  const selectedTaskIDs = useMemo(() => {
+    if (selectedTargets.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        filteredRows
+          .map((row) => String(row.task_id ?? "").trim())
+          .filter((id) => id !== "")
+      )
+    );
+  }, [filteredRows, selectedTargets.length]);
+
   const totals = useMemo(() => {
     let critical = 0;
     let high = 0;
@@ -188,14 +204,6 @@ const Value: React.FC<ValueProps> = ({
   };
 
   const barWidth = (n: number) => `${percent(n)}%`;
-
-  const highestSeverity = useMemo<SeverityKey>(() => {
-    if (totals.critical > 0) return "Critical";
-    if (totals.high > 0) return "High";
-    if (totals.medium > 0) return "Medium";
-    if (totals.low > 0) return "Low";
-    return "Info";
-  }, [totals]);
 
   const selectedScopeLabel = useMemo(() => {
     if (loading) return "Loading scope...";
@@ -425,6 +433,8 @@ const Value: React.FC<ValueProps> = ({
       state: {
         level,
         scopeTask: selectedTargets.length > 0 ? selectedTargets : "all",
+        task_id: selectedTaskIDs.length === 1 ? selectedTaskIDs[0] : undefined,
+        task_ids: selectedTaskIDs.length > 0 ? selectedTaskIDs : undefined,
       },
     });
   };
@@ -459,21 +469,14 @@ const Value: React.FC<ValueProps> = ({
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-[10px] font-medium text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
               <FiRadio className="text-[12px]" />
-              Security Severity Matrix
-            </span>
-
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-              <FiActivity className="text-[12px]" />
-              {highestSeverity === "Critical"
-                ? "Critical activity detected"
-                : `${highestSeverity} activity detected`}
+              Overall Severity
             </span>
 
             <span className="inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1 text-[10px] font-medium text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
               <FiActivity className="text-[12px]" />
               {loading
                 ? "Loading findings."
-                : `${totals.totalAll.toLocaleString()} findings loaded`}
+                : `${totals.totalAll.toLocaleString()} finding vulnerabilities`}
             </span>
           </div>
 
@@ -498,9 +501,8 @@ const Value: React.FC<ValueProps> = ({
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
-                  className={`ml-auto text-[12px] transition-transform ${
-                    openTargetQuery ? "rotate-180" : ""
-                  }`}
+                  className={`ml-auto text-[12px] transition-transform ${openTargetQuery ? "rotate-180" : ""
+                    }`}
                 />
               </button>
 
@@ -625,12 +627,12 @@ const Value: React.FC<ValueProps> = ({
               item.title === "Critical"
                 ? totals.critical
                 : item.title === "High"
-                ? totals.high
-                : item.title === "Medium"
-                ? totals.medium
-                : item.title === "Low"
-                ? totals.low
-                : totals.info;
+                  ? totals.high
+                  : item.title === "Medium"
+                    ? totals.medium
+                    : item.title === "Low"
+                      ? totals.low
+                      : totals.info;
 
             const w = barWidth(rawNumber);
 

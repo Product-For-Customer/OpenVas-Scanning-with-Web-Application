@@ -22,8 +22,13 @@ import {
   FiCheck,
   FiSearch,
   FiX,
+  FiArrowLeft,
 } from "react-icons/fi";
-import { ListTargetDiffer, type TargetDifferDTO } from "../../../services";
+import {
+  ListTargetDiffer,
+  ListALLReportByTaskID,
+  type TargetDifferDTO,
+} from "../../../services";
 
 type SortType = "Latest Updated" | "Highest Latest Risk" | "Biggest Change";
 
@@ -41,11 +46,27 @@ type ChartRow = {
   previous_version_status: string;
   latest_creation_time: number | null;
   previous_creation_time: number | null;
+
+  previous_for_increase: number;
+  previous_for_nonincrease: number;
+  latest_overlay_equal_or_lower: number;
+  latest_positive_diff: number;
+  overlay_top_value: number;
 };
 
 type FilterOption = {
   key: string;
   label: string;
+};
+
+type DetailRow = {
+  task_id: string;
+  task_name: string;
+  detected_date_raw: string;
+  detected_date_label: string;
+  detected_time?: string;
+  risk_score: number;
+  axis_key: string;
 };
 
 const SORT_OPTIONS: SortType[] = [
@@ -58,6 +79,7 @@ const COLORS = {
   previous: "#8B7CFF",
   latestStable: "#39C6F4",
   latestUp: "#FF6B88",
+  detail: "#39C6F4",
   gridLight: "#E8ECF3",
   gridDark: "rgba(255,255,255,0.10)",
   axisLight: "#667085",
@@ -90,6 +112,46 @@ const formatUnixThai = (unix?: number | null) => {
 const isDarkMode = () => {
   if (typeof document === "undefined") return false;
   return document.documentElement.classList.contains("dark");
+};
+
+const toDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatDetectedDateLabel = (value: unknown) => {
+  const date = toDate(value);
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const formatDetectedTimeLabel = (value: unknown) => {
+  const date = toDate(value);
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+};
+
+const getDetectedDateValue = (item: any) => {
+  return (
+    item?.detected_date ??
+    item?.detected_at ??
+    item?.creation_time ??
+    item?.created_at ??
+    item?.date ??
+    item?.time ??
+    ""
+  );
 };
 
 const CustomTooltip = ({
@@ -207,6 +269,39 @@ const CustomTooltip = ({
   );
 };
 
+const DetailTooltip = ({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: DetailRow }>;
+}) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const item = payload[0]?.payload;
+  if (!item) return null;
+
+  return (
+    <div className="min-w-60 max-w-[320px] rounded-[18px] border border-gray-200/90 bg-white/96 px-3 py-2.5 shadow-[0_14px_32px_rgba(15,23,42,0.14)] backdrop-blur dark:border-white/10 dark:bg-[#0B1220]/96 dark:shadow-[0_14px_28px_rgba(0,0,0,0.32)]">
+      <div className="mb-2">
+        <p className="text-[13px] font-semibold text-[#1f2240] dark:text-white/92 wrap-break-word">
+          {item.task_name || "-"}
+        </p>
+        <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45">
+          Date-Time: {item.detected_date_label || "-"}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-[11px]">
+        <span className="text-cyan-600 dark:text-cyan-300">Risk Score</span>
+        <span className="font-semibold text-[#1f2240] dark:text-white/92">
+          {formatRisk(item.risk_score)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const CustomXAxisTick = (props: {
   x?: number;
   y?: number;
@@ -236,7 +331,49 @@ const CustomXAxisTick = (props: {
   );
 };
 
-const CustomLegend = () => {
+const DetailXAxisTick = (props: {
+  x?: number;
+  y?: number;
+  payload?: { value?: string };
+}) => {
+  const { x = 0, y = 0, payload } = props;
+  const rawValue = String(payload?.value || "");
+  const dark = isDarkMode();
+
+  const label = rawValue.includes("__AXIS__")
+    ? rawValue.split("__AXIS__")[0]
+    : rawValue;
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text
+        x={0}
+        y={12}
+        textAnchor="middle"
+        fill={dark ? COLORS.axisSubtleDark : COLORS.axisLight}
+        fontSize={11}
+        fontWeight={600}
+      >
+        {label}
+      </text>
+    </g>
+  );
+};
+
+const CustomLegend = ({ detailMode = false }: { detailMode?: boolean }) => {
+  if (detailMode) {
+    return (
+      <div className="mb-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50 px-2.5 py-1 dark:border-cyan-400/15 dark:bg-cyan-400/10">
+          <span className="inline-block h-2 w-2 rounded-full bg-[#39C6F4]" />
+          <span className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
+            Risk Score by Date-Time
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
       <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/70 bg-violet-50 px-2.5 py-1 dark:border-violet-400/15 dark:bg-violet-400/10">
@@ -264,10 +401,15 @@ const CustomLegend = () => {
 };
 
 const AverageEnrollment: React.FC = () => {
-  const [sortBy, setSortBy] = useState<SortType>("Latest Updated");
-  const [loading, setLoading] = useState<boolean>(true); //@ts-ignore
+  const [sortBy, setSortBy] = useState<SortType>("Latest Updated"); //@ts-ignore
+  const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [rows, setRows] = useState<TargetDifferDTO[]>([]);
+
+  const [detailLoading, setDetailLoading] = useState<boolean>(false);
+  const [detailRows, setDetailRows] = useState<DetailRow[]>([]);
+  const [detailTaskID, setDetailTaskID] = useState<string>("");
+  const [detailTaskName, setDetailTaskName] = useState<string>("");
 
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -276,6 +418,8 @@ const AverageEnrollment: React.FC = () => {
 
   const [sortOpen, setSortOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const detailMode = detailTaskID !== "";
 
   const fetchData = async (mode: "initial" | "refresh" = "initial") => {
     try {
@@ -293,13 +437,64 @@ const AverageEnrollment: React.FC = () => {
     }
   };
 
+  const fetchDetailByTaskID = async (taskID: string, taskName?: string) => {
+    try {
+      setDetailLoading(true);
+      setDetailTaskID(taskID);
+      setDetailTaskName(taskName || "");
+
+      const res = await ListALLReportByTaskID(taskID);
+
+      const mapped: DetailRow[] = (Array.isArray(res) ? res : [])
+        .map((item: any, index: number) => {
+          const detectedRaw = getDetectedDateValue(item);
+          const detectedLabel = formatDetectedDateLabel(detectedRaw);
+
+          return {
+            task_id: String(item?.task_id ?? taskID),
+            task_name: String(item?.task_name ?? taskName ?? "-"),
+            detected_date_raw: String(detectedRaw ?? ""),
+            detected_date_label: `${detectedLabel} ${formatDetectedTimeLabel(
+              detectedRaw
+            )}`,
+            detected_time: formatDetectedTimeLabel(detectedRaw),
+            risk_score: Number(item?.risk_score ?? 0),
+            axis_key: `${detectedLabel} ${formatDetectedTimeLabel(
+              detectedRaw
+            )}__AXIS__${index}`,
+          };
+        })
+        .sort((a, b) => {
+          const da = toDate(a.detected_date_raw)?.getTime() ?? 0;
+          const db = toDate(b.detected_date_raw)?.getTime() ?? 0;
+          return da - db;
+        });
+
+      setDetailRows(mapped);
+    } catch (error) {
+      console.error("fetch ListALLReportByTaskID error:", error);
+      setDetailRows([]);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleBackToOverview = () => {
+    setDetailTaskID("");
+    setDetailTaskName("");
+    setDetailRows([]);
+  };
+
   useEffect(() => {
     void fetchData("initial");
   }, []);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
 
@@ -320,6 +515,11 @@ const AverageEnrollment: React.FC = () => {
       const taskName = item.task_name || "-";
       const host = item.host || "-";
 
+      const previousRisk = Number(item.previous_risk_score ?? 0);
+      const latestRisk = Number(item.latest_risk_score ?? 0);
+      const isEqual = latestRisk === previousRisk;
+      const isIncrease = latestRisk > previousRisk;
+
       return {
         host,
         task_name: taskName,
@@ -329,14 +529,21 @@ const AverageEnrollment: React.FC = () => {
           item.latest_task_id !== null && item.latest_task_id !== undefined
             ? String(item.latest_task_id)
             : "-",
-        latest_risk_score: Number(item.latest_risk_score ?? 0),
-        previous_risk_score: Number(item.previous_risk_score ?? 0),
+        latest_risk_score: latestRisk,
+        previous_risk_score: previousRisk,
         diff_risk_score: Number(item.diff_risk_score ?? 0),
         latest_total: Number(item.latest_total ?? 0),
         previous_total: Number(item.previous_total ?? 0),
         previous_version_status: item.previous_version_status || "-",
         latest_creation_time: item.latest_creation_time ?? null,
         previous_creation_time: item.previous_creation_time ?? null,
+
+        previous_for_increase: isIncrease ? previousRisk : 0,
+        previous_for_nonincrease: !isIncrease && !isEqual ? previousRisk : 0,
+        latest_overlay_equal_or_lower:
+          latestRisk <= previousRisk ? latestRisk : 0,
+        latest_positive_diff: isIncrease ? latestRisk - previousRisk : 0,
+        overlay_top_value: Math.max(previousRisk, latestRisk),
       };
     });
   }, [rows]);
@@ -423,14 +630,25 @@ const AverageEnrollment: React.FC = () => {
     };
   }, [filteredMappedRows]);
 
+  const detailAvgRisk = useMemo(() => {
+    if (detailRows.length === 0) return 0;
+    return (
+      detailRows.reduce((sum, item) => sum + Number(item.risk_score || 0), 0) /
+      detailRows.length
+    );
+  }, [detailRows]);
+
   const maxRisk = useMemo(() => {
-    const values = chartData.flatMap((item) => [
-      item.latest_risk_score || 0,
-      item.previous_risk_score || 0,
-    ]);
+    if (detailMode) {
+      const values = detailRows.map((item) => item.risk_score || 0);
+      const rawMax = Math.max(...values, 0);
+      return Math.max(6, Math.ceil(rawMax + 1));
+    }
+
+    const values = chartData.map((item) => item.overlay_top_value || 0);
     const rawMax = Math.max(...values, 0);
     return Math.max(6, Math.ceil(rawMax + 1));
-  }, [chartData]);
+  }, [chartData, detailRows, detailMode]);
 
   const yTicks = useMemo(() => {
     const step = maxRisk <= 6 ? 1 : Math.ceil(maxRisk / 5);
@@ -485,6 +703,11 @@ const AverageEnrollment: React.FC = () => {
 
   const sortButtonLabel = sortBy;
 
+  const handleOverviewBarClick = (row?: ChartRow) => {
+    if (!row?.latest_task_id || row.latest_task_id === "-") return;
+    void fetchDetailByTaskID(row.latest_task_id, row.task_name);
+  };
+
   return (
     <section
       className={[
@@ -509,328 +732,416 @@ const AverageEnrollment: React.FC = () => {
 
                 <div className="min-w-0">
                   <h2 className="text-[17px] font-semibold tracking-tight text-[#1f2240] dark:text-white/92 sm:text-[19px]">
-                    Target Risk Comparison
+                    {detailMode
+                      ? `Risk Score Timeline${detailTaskName ? ` • ${detailTaskName}` : ""}`
+                      : "Target Risk Comparison"}
                   </h2>
                   <p className="text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
-                    เปรียบเทียบ Previous Risk Score กับ Latest Risk Score ของแต่ละ Targets
+                    {detailMode
+                      ? "แสดง Risk Score ของ task ที่เลือกตาม Date-Time"
+                      : "เปรียบเทียบ Previous Risk Score กับ Latest Risk Score ของแต่ละ Targets"}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start xl:items-center">
-              <div className="relative min-w-full sm:min-w-72.5" ref={dropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setOpen((prev) => !prev)}
-                  className={[
-                    "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
-                    "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
-                    "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
-                  ].join(" ")}
-                >
-                  <span className="truncate">{dropdownButtonLabel}</span>
+            {!detailMode ? (
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start xl:items-center">
+                <div className="relative min-w-full sm:min-w-72.5" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setOpen((prev) => !prev)}
+                    className={[
+                      "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
+                      "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
+                      "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    <span className="truncate">{dropdownButtonLabel}</span>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    {selectedCount > 0 && (
-                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                        {selectedCount}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {selectedCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
+                          {selectedCount}
+                        </span>
+                      )}
 
-                    <FiChevronDown
-                      className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
-                        open ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
-                </button>
+                      <FiChevronDown
+                        className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
+                          open ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </button>
 
-                {open && (
-                  <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                    <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
-                      <div
-                        className={[
-                          "flex items-center gap-2 rounded-2xl px-3 h-9",
-                          "bg-slate-50 border border-slate-200/80",
-                          "dark:bg-white/5 dark:border-white/10",
-                        ].join(" ")}
-                      >
-                        <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
-                        <input
-                          type="text"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Search task name or host..."
-                          className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
-                        />
-                        {searchQuery.trim() !== "" && (
+                  {open && (
+                    <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+                      <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
+                        <div
+                          className={[
+                            "flex items-center gap-2 rounded-2xl px-3 h-9",
+                            "bg-slate-50 border border-slate-200/80",
+                            "dark:bg-white/5 dark:border-white/10",
+                          ].join(" ")}
+                        >
+                          <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search task name or host..."
+                            className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                          />
+                          {searchQuery.trim() !== "" && (
+                            <button
+                              type="button"
+                              onClick={() => setSearchQuery("")}
+                              className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                              aria-label="Clear search"
+                            >
+                              <FiX className="text-[13px]" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-2.5 flex items-center justify-between gap-2">
                           <button
                             type="button"
-                            onClick={() => setSearchQuery("")}
-                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                            aria-label="Clear search"
+                            onClick={handleSelectAllVisible}
+                            className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
                           >
-                            <FiX className="text-[13px]" />
+                            {allVisibleSelected ? "Unselect visible" : "Select visible"}
                           </button>
+
+                          <button
+                            type="button"
+                            onClick={clearAllSelections}
+                            className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="max-h-62 overflow-y-auto overscroll-contain p-2 pr-1">
+                        {filteredOptions.length === 0 ? (
+                          <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
+                            No matching task / host
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {filteredOptions.map((opt) => {
+                              const checked = selectedKeys.includes(opt.key);
+
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => toggleSelect(opt.key)}
+                                  className={[
+                                    "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
+                                    checked
+                                      ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                      : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                  ].join(" ")}
+                                >
+                                  <span
+                                    className={[
+                                      "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
+                                      checked
+                                        ? "bg-cyan-500 border-cyan-500 text-white"
+                                        : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                    ].join(" ")}
+                                  >
+                                    <FiCheck className="text-[10px]" />
+                                  </span>
+
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                                      {opt.label}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
-
-                      <div className="mt-2.5 flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllVisible}
-                          className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-                        >
-                          {allVisibleSelected ? "Unselect visible" : "Select visible"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={clearAllSelections}
-                          className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-                        >
-                          Clear all
-                        </button>
-                      </div>
                     </div>
+                  )}
+                </div>
 
-                    <div className="max-h-62 overflow-y-auto overscroll-contain p-2 pr-1">
-                      {filteredOptions.length === 0 ? (
-                        <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
-                          No matching task / host
-                        </div>
-                      ) : (
+                <div
+                  className="relative min-w-full sm:min-w-62.5"
+                  ref={sortDropdownRef}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSortOpen((prev) => !prev)}
+                    className={[
+                      "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
+                      "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
+                      "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    <span className="truncate">{sortButtonLabel}</span>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-400/20">
+                        Sort
+                      </span>
+
+                      <FiChevronDown
+                        className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
+                          sortOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                    </div>
+                  </button>
+
+                  {sortOpen && (
+                    <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+                      <div className="p-2">
                         <div className="space-y-1">
-                          {filteredOptions.map((opt) => {
-                            const checked = selectedKeys.includes(opt.key);
+                          {SORT_OPTIONS.map((item) => {
+                            const active = sortBy === item;
 
                             return (
                               <button
-                                key={opt.key}
+                                key={item}
                                 type="button"
-                                onClick={() => toggleSelect(opt.key)}
+                                onClick={() => {
+                                  setSortBy(item);
+                                  setSortOpen(false);
+                                }}
                                 className={[
-                                  "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
-                                  checked
-                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                  "w-full flex items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition",
+                                  active
+                                    ? "bg-violet-50 border border-violet-200 dark:bg-violet-500/10 dark:border-violet-400/20"
                                     : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
                                 ].join(" ")}
                               >
                                 <span
                                   className={[
-                                    "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
-                                    checked
-                                      ? "bg-cyan-500 border-cyan-500 text-white"
+                                    "h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
+                                    active
+                                      ? "bg-violet-500 border-violet-500 text-white"
                                       : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
                                   ].join(" ")}
                                 >
                                   <FiCheck className="text-[10px]" />
                                 </span>
 
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                                    {opt.label}
-                                  </span>
+                                <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80">
+                                  {item}
                                 </span>
                               </button>
                             );
                           })}
                         </div>
-                      )}
+                      </div>
                     </div>
-                  </div>
+                  )}
+                </div>
+
+                {!detailMode && (
+                  <button
+                    type="button"
+                    onClick={() => void fetchData("refresh")}
+                    disabled={refreshing}
+                    className={[
+                      "inline-flex items-center justify-center gap-2 rounded-2xl h-9 px-3.5 transition shrink-0",
+                      "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
+                      "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+                      refreshing ? "opacity-70 cursor-not-allowed" : "",
+                    ].join(" ")}
+                  >
+                    <FiRefreshCw className={refreshing ? "animate-spin" : ""} />
+                    Refresh
+                  </button>
                 )}
               </div>
-
-              <div
-                className="relative min-w-full sm:min-w-62.5"
-                ref={sortDropdownRef}
-              >
+            ) : (
+              <div className="flex items-center">
                 <button
                   type="button"
-                  onClick={() => setSortOpen((prev) => !prev)}
+                  onClick={handleBackToOverview}
                   className={[
-                    "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
+                    "inline-flex items-center justify-center gap-2 rounded-2xl h-9 px-3.5 transition shrink-0",
                     "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
                     "dark:bg-white/6 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
                   ].join(" ")}
                 >
-                  <span className="truncate">{sortButtonLabel}</span>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/10 dark:text-violet-300 dark:border-violet-400/20">
-                      Sort
-                    </span>
-
-                    <FiChevronDown
-                      className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
-                        sortOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </div>
+                  <FiArrowLeft />
+                  Back
                 </button>
-
-                {sortOpen && (
-                  <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                    <div className="border-b border-gray-100 px-3 py-2.5 dark:border-white/10">
-                      <p className="text-[11px] font-semibold text-gray-500 dark:text-white/45">
-                        Sort By
-                      </p>
-                    </div>
-
-                    <div className="p-2 space-y-1">
-                      {SORT_OPTIONS.map((option) => {
-                        const checked = sortBy === option;
-
-                        return (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => {
-                              setSortBy(option);
-                              setSortOpen(false);
-                            }}
-                            className={[
-                              "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
-                              checked
-                                ? "bg-violet-50 border border-violet-200 dark:bg-violet-500/10 dark:border-violet-400/20"
-                                : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                            ].join(" ")}
-                          >
-                            <span
-                              className={[
-                                "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
-                                checked
-                                  ? "bg-violet-500 border-violet-500 text-white"
-                                  : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                              ].join(" ")}
-                            >
-                              <FiCheck className="text-[10px]" />
-                            </span>
-
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                                {option}
-                              </span>
-                              <span className="mt-0.5 block text-[10px] text-gray-400 dark:text-white/35">
-                                {option === "Latest Updated"
-                                  ? "เรียงตามเวลาล่าสุด"
-                                  : option === "Highest Latest Risk"
-                                  ? "เรียงตาม latest risk สูงสุด"
-                                  : "เรียงตามความเปลี่ยนแปลงมากที่สุด"}
-                              </span>
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </div>
-            </div>
+            )}
           </div>
 
-          <div
-            className={[
-              "rounded-[18px] px-3.5 py-2.5 flex flex-wrap items-center gap-2.5",
-              "bg-slate-50 border border-slate-200/80",
-              "dark:bg-white/4 dark:border-white/10",
-            ].join(" ")}
-          >
-            <div className="inline-flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
-              </span>
-              <span className="text-[11px] font-medium text-slate-700 dark:text-white/75">
-                Risk comparison telemetry active
-              </span>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            <div className="rounded-[18px] border border-gray-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-white/50">
+                <FiShield />
+                <span>{detailMode ? "Reports" : "Compared Targets"}</span>
+              </div>
+              <div className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
+                {detailMode ? detailRows.length : summary.totalAssets}
+              </div>
             </div>
 
-            <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-
-            <div className="inline-flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/50">
-              <FiActivity className="text-cyan-500 text-[12px]" />
-              Previous vs Latest risk score by task and host
+            <div className="rounded-[18px] border border-gray-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-white/50">
+                <FiActivity />
+                <span>Average Risk</span>
+              </div>
+              <div className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
+                {detailMode ? formatRisk(detailAvgRisk) : formatRisk(summary.avgLatestRisk)}
+              </div>
             </div>
 
-            {selectedCount > 0 && (
+            {!detailMode ? (
               <>
-                <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-                <div className="inline-flex items-center gap-2 text-[11px] text-cyan-700 dark:text-cyan-300">
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                  Filtered by {selectedCount} selected target{selectedCount > 1 ? "s" : ""}
+                <div className="rounded-[18px] border border-gray-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-white/50">
+                    <MdTrendingUp className="text-[14px]" />
+                    <span>Risk Increased</span>
+                  </div>
+                  <div className="mt-1 text-[18px] font-semibold text-rose-600 dark:text-rose-300">
+                    {summary.increasedCount}
+                  </div>
+                </div>
+
+                <div className="rounded-[18px] border border-gray-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-white/50">
+                    <MdTrendingDown className="text-[14px]" />
+                    <span>Risk Decreased</span>
+                  </div>
+                  <div className="mt-1 text-[18px] font-semibold text-cyan-600 dark:text-cyan-300">
+                    {summary.decreasedCount}
+                  </div>
                 </div>
               </>
-            )}
-
-            <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-
-            <div className="inline-flex items-center gap-2 text-[11px] text-violet-700 dark:text-violet-300">
-              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-violet-500" />
-              Sort: {sortBy}
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-4 mt-4 grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-slate-50 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-white/8 dark:to-white/4">
-            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
-              Targets
-            </p>
-            <p className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
-              {summary.totalAssets}
-            </p>
-          </div>
-
-          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-cyan-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-sky-500/5">
-            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
-              Avg Latest Risk
-            </p>
-            <p className="mt-1 text-[18px] font-semibold text-[#1f2240] dark:text-white/92">
-              {formatRisk(summary.avgLatestRisk)}
-            </p>
-          </div>
-
-          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-rose-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-rose-400/10 dark:to-rose-500/5">
-            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
-              Risk Increased
-            </p>
-            <p className="mt-1 text-[18px] font-semibold text-rose-600 dark:text-rose-300">
-              {summary.increasedCount}
-            </p>
-          </div>
-
-          <div className="rounded-[18px] border border-gray-200/80 bg-linear-to-br from-white to-sky-50/40 p-3 dark:border-white/10 dark:bg-linear-to-br dark:from-cyan-400/10 dark:to-cyan-500/5">
-            <p className="text-[9px] uppercase tracking-[0.14em] text-gray-400 dark:text-white/38">
-              Risk Decreased
-            </p>
-            <p className="mt-1 text-[18px] font-semibold text-cyan-600 dark:text-cyan-300">
-              {summary.decreasedCount}
-            </p>
-          </div>
-        </div>
-
-        <CustomLegend />
-
-        <div
-          className={[
-            "rounded-[22px] border p-2.5 sm:p-3",
-            "border-gray-200/70 bg-linear-to-b from-[#fcfdff] to-[#f7faff]",
-            "dark:border-white/10 dark:bg-linear-to-b dark:from-[#0B1220] dark:to-[#0E1830]",
-          ].join(" ")}
-        >
-          <div className="h-80 sm:h-95 lg:h-105">
-            {loading ? (
-              <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
-                <div className="flex items-center gap-2.5 text-gray-500 dark:text-white/60">
-                  <FiRefreshCw className="animate-spin text-base" />
-                  <span className="text-[12px] font-medium">
-                    Loading target differ data...
-                  </span>
+            ) : (
+              <div className="rounded-[18px] border border-gray-200/80 bg-white/60 px-3 py-2.5 dark:border-white/10 dark:bg-white/5 col-span-2">
+                <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-white/50">
+                  <FiActivity />
+                  <span>Selected Task</span>
+                </div>
+                <div className="mt-1 text-[14px] font-semibold text-[#1f2240] dark:text-white/92 wrap-break-word">
+                  {detailTaskName || detailTaskID || "-"}
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+
+        <div className="relative z-10 flex-1 min-h-0 rounded-[20px] border border-gray-200/80 bg-white/72 p-3 sm:p-4 dark:border-white/10 dark:bg-white/4">
+          <CustomLegend detailMode={detailMode} />
+
+          <div className="h-85 sm:h-97.5 xl:h-107.5">
+            {detailMode ? (
+              detailLoading ? (
+                <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-center">
+                    <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-600 dark:bg-cyan-400/10 dark:text-cyan-300">
+                      <FiRefreshCw className="animate-spin text-[18px]" />
+                    </div>
+                    <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
+                      Loading report detail
+                    </p>
+                    <p className="mt-1 text-[10px] text-gray-500 dark:text-white/50">
+                      กำลังดึงข้อมูลจาก ListALLReportByTaskID
+                    </p>
+                  </div>
+                </div>
+              ) : detailRows.length === 0 ? (
+                <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-center">
+                    <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
+                      <FiAlertCircle className="text-[18px]" />
+                    </div>
+                    <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
+                      No report detail data
+                    </p>
+                    <p className="mt-1 text-[10px] text-gray-500 dark:text-white/50">
+                      ยังไม่มีข้อมูลจาก ListALLReportByTaskID
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={detailRows}
+                    margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
+                    barCategoryGap="18%"
+                  >
+                    <CartesianGrid
+                      stroke={isDarkMode() ? COLORS.gridDark : COLORS.gridLight}
+                      strokeDasharray="3 3"
+                      vertical={false}
+                    />
+
+                    <XAxis
+                      dataKey="axis_key"
+                      tick={<DetailXAxisTick />}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={0}
+                      height={42}
+                    />
+
+                    <YAxis
+                      tick={{
+                        fill: isDarkMode() ? COLORS.axisDark : COLORS.axisLight,
+                        fontSize: 11,
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={38}
+                      domain={[0, maxRisk]}
+                      ticks={yTicks}
+                    />
+
+                    <Tooltip
+                      content={<DetailTooltip />}
+                      cursor={{
+                        fill: isDarkMode()
+                          ? "rgba(255,255,255,0.04)"
+                          : "rgba(148,163,184,0.08)",
+                      }}
+                    />
+
+                    <ReferenceLine
+                      y={Number(detailAvgRisk.toFixed(2))}
+                      stroke={isDarkMode() ? COLORS.avgLineDark : COLORS.avgLineLight}
+                      strokeDasharray="5 5"
+                      ifOverflow="extendDomain"
+                    />
+
+                    <Bar
+                      dataKey="risk_score"
+                      name="Risk Score"
+                      radius={[8, 8, 0, 0]}
+                      maxBarSize={34}
+                    >
+                      <LabelList
+                        dataKey="risk_score"
+                        position="top"
+                        formatter={(value: any) => formatRisk(Number(value ?? 0))}
+                        style={{
+                          fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      />
+                      {detailRows.map((_, index) => (
+                        <Cell key={`detail-${index}`} fill={COLORS.detail} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )
             ) : chartData.length === 0 ? (
               <div className="grid h-full w-full place-items-center rounded-[18px] border border-dashed border-gray-200 bg-white/50 dark:border-white/10 dark:bg-white/5">
                 <div className="text-center">
@@ -849,9 +1160,9 @@ const AverageEnrollment: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
-                  margin={{ top: 14, right: 8, left: -16, bottom: 6 }}
+                  margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
                   barCategoryGap="14%"
-                  barGap={3}
+                  barGap="-100%"
                 >
                   <CartesianGrid
                     stroke={isDarkMode() ? COLORS.gridDark : COLORS.gridLight}
@@ -897,62 +1208,86 @@ const AverageEnrollment: React.FC = () => {
                   />
 
                   <Bar
-                    dataKey="previous_risk_score"
-                    name="Previous Risk Score"
+                    dataKey="previous_for_nonincrease"
+                    name="Previous Risk"
+                    fill={COLORS.previous}
                     radius={[8, 8, 0, 0]}
-                    maxBarSize={26}
+                    maxBarSize={34}
+                    onClick={(payload) => handleOverviewBarClick(payload as unknown as ChartRow)}
+                    style={{ cursor: "pointer" }}
                   >
                     <LabelList
-                      dataKey="previous_risk_score"
+                      dataKey="previous_for_nonincrease"
                       position="top"
-                      formatter={(value) => formatRisk(Number(value ?? 0))}
+                      formatter={(value: any) =>
+                        Number(value ?? 0) > 0 ? formatRisk(Number(value ?? 0)) : ""
+                      }
                       style={{
-                        fill: isDarkMode() ? "rgba(255,255,255,0.68)" : "#6B7280",
+                        fill: isDarkMode() ? "rgba(255,255,255,0.78)" : "#667085",
                         fontSize: 10,
-                        fontWeight: 600,
+                        fontWeight: 700,
                       }}
                     />
-                    {chartData.map((_, index) => (
-                      <Cell key={`prev-${index}`} fill={COLORS.previous} />
-                    ))}
                   </Bar>
 
                   <Bar
-                    dataKey="latest_risk_score"
-                    name="Latest Risk Score"
+                    dataKey="previous_for_increase"
+                    name="Previous Risk"
+                    stackId="riskUp"
+                    fill={COLORS.previous}
                     radius={[8, 8, 0, 0]}
-                    maxBarSize={26}
+                    maxBarSize={34}
+                    onClick={(payload) => handleOverviewBarClick(payload as unknown as ChartRow)}
+                    style={{ cursor: "pointer" }}
+                  />
+
+                  <Bar
+                    dataKey="latest_positive_diff"
+                    name="Latest Risk Increased"
+                    stackId="riskUp"
+                    fill={COLORS.latestUp}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) => handleOverviewBarClick(payload as unknown as ChartRow)}
+                    style={{ cursor: "pointer" }}
                   >
                     <LabelList
-                      dataKey="latest_risk_score"
+                      dataKey="overlay_top_value"
                       position="top"
-                      formatter={(value) => formatRisk(Number(value ?? 0))}
+                      formatter={(value: any) => formatRisk(Number(value ?? 0))}
                       style={{
                         fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
                         fontSize: 10,
                         fontWeight: 700,
                       }}
                     />
-                    {chartData.map((row, index) => {
-                      const diff = row.diff_risk_score ?? 0;
-                      const color = diff > 0 ? COLORS.latestUp : COLORS.latestStable;
-                      return <Cell key={`latest-${index}`} fill={color} />;
-                    })}
+                  </Bar>
+
+                  <Bar
+                    dataKey="latest_overlay_equal_or_lower"
+                    name="Latest Risk"
+                    fill={COLORS.latestStable}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) => handleOverviewBarClick(payload as unknown as ChartRow)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <LabelList
+                      dataKey="latest_overlay_equal_or_lower"
+                      position="top"
+                      formatter={(value: any) =>
+                        Number(value ?? 0) > 0 ? formatRisk(Number(value ?? 0)) : ""
+                      }
+                      style={{
+                        fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-[10.5px] text-gray-500 dark:text-white/50">
-          <div className="inline-flex items-center gap-1.5 rounded-xl bg-gray-50 px-2.5 py-1.5 dark:bg-white/6">
-            <FiActivity className="text-[12px]" />
-            X = Task Name
-          </div>
-          <div className="inline-flex items-center gap-1.5 rounded-xl bg-gray-50 px-2.5 py-1.5 dark:bg-white/6">
-            <FiShield className="text-[12px]" />
-            Y = Average Severity (Risk Score)
           </div>
         </div>
       </div>

@@ -5,8 +5,8 @@ import {
   FiChevronDown,
   FiSearch,
   FiCheck,
-  FiX,
 } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import type { VulnerabilityLevelDTO } from "../../../services";
 
 type SeverityKey = "Critical" | "High" | "Medium" | "Low" | "Info";
@@ -23,6 +23,7 @@ type TargetOption = {
 };
 
 type SummaryRow = {
+  task_id: string;
   task_name: string;
   critical: number;
   high: number;
@@ -89,6 +90,8 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
   vulnerabilityData = [],
   loading = false,
 }) => {
+  const navigate = useNavigate();
+
   const [openTargetQuery, setOpenTargetQuery] = useState(false);
   const [targetQuerySearch, setTargetQuerySearch] = useState("");
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
@@ -111,10 +114,13 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
     const map = new Map<string, SummaryRow>();
 
     for (const item of vulnerabilityData) {
-      const taskName = String((item as any)?.task_name ?? "").trim() || "Unknown";
+      const taskName =
+        String((item as any)?.task_name ?? "").trim() || "Unknown";
+      const taskID = String((item as any)?.task_id ?? "").trim();
 
       if (!map.has(taskName)) {
         map.set(taskName, {
+          task_id: taskID,
           task_name: taskName,
           critical: 0,
           high: 0,
@@ -183,6 +189,18 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
       selectedTargets.includes(String(r.task_name ?? "").trim())
     );
   }, [rows, selectedTargets]);
+
+  const selectedTaskIDs = useMemo(() => {
+    if (selectedTargets.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        filteredRows
+          .map((row) => String(row.task_id ?? "").trim())
+          .filter((id) => id !== "")
+      )
+    );
+  }, [filteredRows, selectedTargets.length]);
 
   const totals = useMemo(() => {
     let critical = 0;
@@ -253,6 +271,17 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
   const allVisibleTargetsSelected =
     filteredTargetOptions.length > 0 &&
     filteredTargetOptions.every((opt) => selectedTargets.includes(opt.key));
+
+  const handleNavigateByLevel = (level: SeverityKey) => {
+    navigate("/admin/vulnerability-by-level", {
+      state: {
+        level,
+        scopeTask: selectedTargets.length > 0 ? selectedTargets : "all",
+        task_id: selectedTaskIDs.length === 1 ? selectedTaskIDs[0] : undefined,
+        task_ids: selectedTaskIDs.length > 0 ? selectedTaskIDs : undefined,
+      },
+    });
+  };
 
   return (
     <section
@@ -325,8 +354,9 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
-                  className={`ml-auto text-[12px] transition-transform ${openTargetQuery ? "rotate-180" : ""
-                    }`}
+                  className={`ml-auto text-[12px] transition-transform ${
+                    openTargetQuery ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
@@ -426,95 +456,58 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
                 </div>
               )}
             </div>
-
-            {selectedTargets.length > 0 && (
-              <button
-                type="button"
-                onClick={clearAllTargets}
-                className={[
-                  "h-9 w-9 rounded-xl border flex items-center justify-center transition",
-                  "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
-                  "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
-                ].join(" ")}
-                aria-label="Clear filters"
-              >
-                <FiX className="text-[12px]" />
-              </button>
-            )}
           </div>
         </div>
 
-        <div
-          className={[
-            "mt-3 rounded-2xl px-3 py-2 flex flex-wrap items-center gap-2",
-            "bg-slate-50 border border-slate-200/80",
-            "dark:bg-white/4 dark:border-white/10",
-          ].join(" ")}
-        >
-          <div className="inline-flex items-center gap-1.5">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-500" />
-            </span>
-            <span className="text-[10px] font-medium text-slate-700 dark:text-white/75">
-              Scanner Telemetry Active
-            </span>
-          </div>
+        <div className="mt-4 flex-1 flex flex-col">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="relative mx-auto h-67.5 w-full max-w-67.5 sm:h-75 sm:max-w-75">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="62%"
+                    outerRadius="86%"
+                    paddingAngle={3}
+                    stroke="rgba(255,255,255,0.95)"
+                    strokeWidth={2}
+                    onClick={(entry) => {
+                      const level = entry?.name as SeverityKey | undefined;
+                      if (!level) return;
+                      handleNavigateByLevel(level);
+                    }}
+                    cursor="pointer"
+                  >
+                    {data.map((entry) => (
+                      <Cell
+                        key={entry.name}
+                        fill={entry.color}
+                        style={{ cursor: "pointer" }}
+                      />
+                    ))}
+                  </Pie>
 
-          <div className="hidden sm:block h-3 w-px bg-slate-200 dark:bg-white/10" />
+                  <Tooltip content={<CustomTooltip total={total} />} />
+                </PieChart>
+              </ResponsiveContainer>
 
-          <div className="text-[10px] text-slate-500 dark:text-white/50">
-            {selectedTargets.length === 0
-              ? "Severity distribution across the latest imported scan results"
-              : `Severity distribution for ${selectedTargets.length} selected target${selectedTargets.length > 1 ? "s" : ""
-              }`}
-          </div>
-        </div>
-
-        <div className="mt-2.5 flex-1 flex flex-col">
-          <div className="relative h-65 sm:h-72.5 md:h-77.5">
-            <div className="pointer-events-none absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/10 blur-2xl dark:bg-cyan-400/10" />
-
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div
-                className={[
-                  "rounded-full h-24 w-24 sm:h-26 sm:w-26 flex flex-col items-center justify-center text-center",
-                  "bg-white/90 border border-slate-200 shadow-sm",
-                  "dark:bg-[#0b1728]/80 dark:border-white/10 dark:shadow-none backdrop-blur-md",
-                ].join(" ")}
-              >
-                <div className="text-[18px] sm:text-[20px] font-semibold text-slate-900 dark:text-white/90 tabular-nums leading-none">
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-slate-400 dark:text-white/35">
+                  TOTAL
+                </span>
+                <span className="mt-1 text-[26px] sm:text-[30px] font-semibold tracking-tight text-[#1f2240] dark:text-white">
                   {loading ? "..." : total.toLocaleString()}
-                </div>
-                <div className="mt-1 text-[9.5px] sm:text-[10px] text-slate-500 dark:text-white/55">
-                  Total
-                </div>
+                </span>
+                <span className="mt-1 text-[10px] text-slate-500 dark:text-white/50">
+                  findings
+                </span>
               </div>
             </div>
-
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="value"
-                  nameKey="name"
-                  innerRadius="58%"
-                  outerRadius="84%"
-                  paddingAngle={3}
-                  stroke="rgba(255,255,255,0.95)"
-                  strokeWidth={2}
-                >
-                  {data.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-
-                <Tooltip content={<CustomTooltip total={total} />} />
-              </PieChart>
-            </ResponsiveContainer>
           </div>
 
-          <div className="mt-auto">
+          <div>
             <div
               className={[
                 "rounded-2xl px-3 py-2.5",
@@ -532,7 +525,11 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
                   const p = total > 0 ? item.value / total : 0;
 
                   return (
-                    <div key={k} className="flex items-center gap-1.5">
+                    <div
+                      key={k}
+                      className="flex items-center gap-1.5 cursor-pointer"
+                      onClick={() => handleNavigateByLevel(k)}
+                    >
                       <span
                         className="h-3 w-3 rounded-sm"
                         style={{ background: COLORS[k] }}
@@ -561,7 +558,11 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
                   const p = total > 0 ? item.value / total : 0;
 
                   return (
-                    <div key={k} className="flex items-center gap-1.5">
+                    <div
+                      key={k}
+                      className="flex items-center gap-1.5 cursor-pointer"
+                      onClick={() => handleNavigateByLevel(k)}
+                    >
                       <span
                         className="h-3 w-3 rounded-sm"
                         style={{ background: COLORS[k] }}

@@ -10,7 +10,6 @@ import {
   FiChevronDown,
   FiSearch,
   FiCheck,
-  FiX,
 } from "react-icons/fi";
 import { ListAssetRisk, type AssetRiskDTO } from "../../../services";
 
@@ -422,21 +421,6 @@ const TopPerforming: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {selectedTargets.length > 0 && (
-              <button
-                type="button"
-                onClick={clearAllTargets}
-                className={[
-                  "h-9 w-9 rounded-xl border flex items-center justify-center transition",
-                  "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
-                  "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
-                ].join(" ")}
-                aria-label="Clear filters"
-              >
-                <FiX className="text-[12px]" />
-              </button>
-            )}
           </div>
         </div>
 

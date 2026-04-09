@@ -6,7 +6,6 @@ import {
   FiChevronDown,
   FiSearch,
   FiCheck,
-  FiX,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import type { VulnerabilityLevelDTO } from "../../../services";
@@ -300,14 +299,18 @@ const TopVulnerability: React.FC<TopVulnerabilityProps> = ({
     return rows.filter((row) => row.severity === "CRITICAL").length;
   }, [rows]);
 
+  const totalVulnerabilityCount = useMemo(() => {
+    return rows.reduce((sum, row) => sum + Number(row.count || 0), 0);
+  }, [rows]);
+
   const statusText = useMemo(() => {
     if (loading) return "Syncing threat feed...";
     if (rows.length === 0) return "No vulnerabilities detected";
     if (topCriticalCount > 0) {
-      return `${topCriticalCount} critical threats require attention`;
+      return `${topCriticalCount} critical threats require attention - ${totalVulnerabilityCount.toLocaleString()} vulnerabilities total`;
     }
-    return "Latest vulnerability queue loaded";
-  }, [loading, rows.length, topCriticalCount]);
+    return `Latest vulnerability queue loaded - ${totalVulnerabilityCount.toLocaleString()} vulnerabilities total`;
+  }, [loading, rows.length, topCriticalCount, totalVulnerabilityCount]);
 
   const levelButtonLabel = useMemo(() => {
     if (selectedLevels.length === 0) return "Level Query";
@@ -525,21 +528,6 @@ const TopVulnerability: React.FC<TopVulnerabilityProps> = ({
                 </div>
               )}
             </div>
-
-            {selectedLevels.length > 0 && (
-              <button
-                type="button"
-                onClick={clearAllLevels}
-                className={[
-                  "h-9 w-9 rounded-xl border flex items-center justify-center transition",
-                  "bg-white border-gray-200 text-slate-500 hover:text-red-500 hover:border-red-200 hover:bg-red-50/60",
-                  "dark:bg-white/5 dark:border-white/10 dark:text-white/55 dark:hover:text-red-300 dark:hover:bg-red-500/10",
-                ].join(" ")}
-                aria-label="Clear filters"
-              >
-                <FiX className="text-[12px]" />
-              </button>
-            )}
           </div>
         </div>
 
