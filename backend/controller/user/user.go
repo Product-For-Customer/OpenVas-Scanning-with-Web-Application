@@ -1,6 +1,7 @@
 package user
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/utils"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -76,27 +78,62 @@ func CreateUser(c *gin.Context) {
 
 	db := config.DB()
 
+	email := strings.TrimSpace(input.Email)
+	password := strings.TrimSpace(input.Password)
+	firstName := strings.TrimSpace(input.FirstName)
+	lastName := strings.TrimSpace(input.LastName)
+	profile := strings.TrimSpace(input.Profile)
+	phoneNumber := strings.TrimSpace(input.PhoneNumber)
+	location := strings.TrimSpace(input.Location)
+	position := strings.TrimSpace(input.Position)
+
 	var existing entity.AppUser
-	if err := db.Where("email = ?", input.Email).First(&existing).Error; err == nil {
+	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing email"})
 		return
 	}
 
-	hashedPassword, err := utils.HashPassword(input.Password)
+	var role entity.AppRole
+	if err := db.First(&role, input.AppRoleID).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "role not found"})
+		return
+	}
+
+	validateUser := entity.AppUser{
+		Email:       email,
+		Password:    password,
+		FirstName:   firstName,
+		LastName:    lastName,
+		Profile:     profile,
+		PhoneNumber: phoneNumber,
+		Location:    location,
+		Position:    position,
+		AppRoleID:   input.AppRoleID,
+	}
+
+	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 		return
 	}
 
 	user := entity.AppUser{
-		Email:       input.Email,
+		Email:       email,
 		Password:    hashedPassword,
-		FirstName:   input.FirstName,
-		LastName:    input.LastName,
-		Profile:     input.Profile,
-		PhoneNumber: input.PhoneNumber,
-		Location:    input.Location,
-		Position:    input.Position,
+		FirstName:   firstName,
+		LastName:    lastName,
+		Profile:     profile,
+		PhoneNumber: phoneNumber,
+		Location:    location,
+		Position:    position,
 		AppRoleID:   input.AppRoleID,
 	}
 
@@ -173,32 +210,121 @@ func UpdateUserByID(c *gin.Context) {
 		return
 	}
 
+	if input.Email == nil &&
+		input.Password == nil &&
+		input.FirstName == nil &&
+		input.LastName == nil &&
+		input.Profile == nil &&
+		input.PhoneNumber == nil &&
+		input.Location == nil &&
+		input.Position == nil &&
+		input.AppRoleID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
+	validateUser := entity.AppUser{
+		Model:       user.Model,
+		Email:       user.Email,
+		Password:    user.Password,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Profile:     user.Profile,
+		PhoneNumber: user.PhoneNumber,
+		Location:    user.Location,
+		Position:    user.Position,
+		AppRoleID:   user.AppRoleID,
+		AppRole:     user.AppRole,
+	}
+
+	var newPlainPassword string
+
 	if input.Email != nil {
-		user.Email = *input.Email
+		newEmail := strings.TrimSpace(*input.Email)
+
+		var existing entity.AppUser
+		err := db.Where("email = ? AND id <> ?", newEmail, user.ID).First(&existing).Error
+		if err == nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			return
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing email"})
+			return
+		}
+
+		validateUser.Email = newEmail
+	}
+
+	if input.FirstName != nil {
+		validateUser.FirstName = strings.TrimSpace(*input.FirstName)
+	}
+
+	if input.LastName != nil {
+		validateUser.LastName = strings.TrimSpace(*input.LastName)
+	}
+
+	if input.Profile != nil {
+		validateUser.Profile = strings.TrimSpace(*input.Profile)
+	}
+
+	if input.PhoneNumber != nil {
+		validateUser.PhoneNumber = strings.TrimSpace(*input.PhoneNumber)
+	}
+
+	if input.Location != nil {
+		validateUser.Location = strings.TrimSpace(*input.Location)
+	}
+
+	if input.Position != nil {
+		validateUser.Position = strings.TrimSpace(*input.Position)
+	}
+
+	if input.AppRoleID != nil {
+		var role entity.AppRole
+		if err := db.First(&role, *input.AppRoleID).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "role not found"})
+			return
+		}
+		validateUser.AppRoleID = *input.AppRoleID
+	}
+
+	if input.Password != nil {
+		newPlainPassword = strings.TrimSpace(*input.Password)
+		validateUser.Password = newPlainPassword
+	}
+
+	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Email != nil {
+		user.Email = validateUser.Email
 	}
 	if input.FirstName != nil {
-		user.FirstName = *input.FirstName
+		user.FirstName = validateUser.FirstName
 	}
 	if input.LastName != nil {
-		user.LastName = *input.LastName
+		user.LastName = validateUser.LastName
 	}
 	if input.Profile != nil {
-		user.Profile = *input.Profile
+		user.Profile = validateUser.Profile
 	}
 	if input.PhoneNumber != nil {
-		user.PhoneNumber = *input.PhoneNumber
+		user.PhoneNumber = validateUser.PhoneNumber
 	}
 	if input.Location != nil {
-		user.Location = *input.Location
+		user.Location = validateUser.Location
 	}
 	if input.Position != nil {
-		user.Position = *input.Position
+		user.Position = validateUser.Position
 	}
 	if input.AppRoleID != nil {
-		user.AppRoleID = *input.AppRoleID
+		user.AppRoleID = validateUser.AppRoleID
 	}
-	if input.Password != nil && *input.Password != "" {
-		hashedPassword, err := utils.HashPassword(*input.Password)
+	if input.Password != nil {
+		hashedPassword, err := utils.HashPassword(newPlainPassword)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 			return
@@ -234,8 +360,6 @@ func DeleteUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
 }
 
-
-//
 type RoleResponse struct {
 	ID   uint   `json:"id"`
 	Role string `json:"role"`
@@ -252,7 +376,6 @@ type UpdateUserByAdminInput struct {
 	Position    *string `json:"position"`
 	AppRoleID   *uint   `json:"app_role_id"`
 }
-
 
 func ListRoles(c *gin.Context) {
 	var roles []entity.AppRole
@@ -305,16 +428,40 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		return
 	}
 
+	if input.Email == nil &&
+		input.Password == nil &&
+		input.FirstName == nil &&
+		input.LastName == nil &&
+		input.Profile == nil &&
+		input.PhoneNumber == nil &&
+		input.Location == nil &&
+		input.Position == nil &&
+		input.AppRoleID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "no fields to update",
+		})
+		return
+	}
+
+	validateUser := entity.AppUser{
+		Model:       user.Model,
+		Email:       user.Email,
+		Password:    user.Password,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Profile:     user.Profile,
+		PhoneNumber: user.PhoneNumber,
+		Location:    user.Location,
+		Position:    user.Position,
+		AppRoleID:   user.AppRoleID,
+		AppRole:     user.AppRole,
+	}
+
 	updates := map[string]interface{}{}
+	var newPlainPassword string
 
 	if input.Email != nil {
 		newEmail := strings.TrimSpace(*input.Email)
-		if newEmail == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "email cannot be empty",
-			})
-			return
-		}
 
 		var existing entity.AppUser
 		err := db.Where("email = ? AND id <> ?", newEmail, user.ID).First(&existing).Error
@@ -324,38 +471,45 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 			})
 			return
 		}
-		if err != nil && err != gorm.ErrRecordNotFound {
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to check existing email",
 			})
 			return
 		}
 
+		validateUser.Email = newEmail
 		updates["Email"] = newEmail
 	}
 
 	if input.FirstName != nil {
-		updates["FirstName"] = strings.TrimSpace(*input.FirstName)
+		validateUser.FirstName = strings.TrimSpace(*input.FirstName)
+		updates["FirstName"] = validateUser.FirstName
 	}
 
 	if input.LastName != nil {
-		updates["LastName"] = strings.TrimSpace(*input.LastName)
+		validateUser.LastName = strings.TrimSpace(*input.LastName)
+		updates["LastName"] = validateUser.LastName
 	}
 
 	if input.Profile != nil {
-		updates["Profile"] = strings.TrimSpace(*input.Profile)
+		validateUser.Profile = strings.TrimSpace(*input.Profile)
+		updates["Profile"] = validateUser.Profile
 	}
 
 	if input.PhoneNumber != nil {
-		updates["PhoneNumber"] = strings.TrimSpace(*input.PhoneNumber)
+		validateUser.PhoneNumber = strings.TrimSpace(*input.PhoneNumber)
+		updates["PhoneNumber"] = validateUser.PhoneNumber
 	}
 
 	if input.Location != nil {
-		updates["Location"] = strings.TrimSpace(*input.Location)
+		validateUser.Location = strings.TrimSpace(*input.Location)
+		updates["Location"] = validateUser.Location
 	}
 
 	if input.Position != nil {
-		updates["Position"] = strings.TrimSpace(*input.Position)
+		validateUser.Position = strings.TrimSpace(*input.Position)
+		updates["Position"] = validateUser.Position
 	}
 
 	if input.AppRoleID != nil {
@@ -367,28 +521,31 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 			return
 		}
 
+		validateUser.AppRoleID = *input.AppRoleID
 		updates["AppRoleID"] = *input.AppRoleID
 	}
 
 	if input.Password != nil {
-		newPassword := strings.TrimSpace(*input.Password)
-		if newPassword != "" {
-			hashedPassword, err := utils.HashPassword(newPassword)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "failed to hash password",
-				})
-				return
-			}
-			updates["Password"] = hashedPassword
-		}
+		newPlainPassword = strings.TrimSpace(*input.Password)
+		validateUser.Password = newPlainPassword
 	}
 
-	if len(updates) == 0 {
+	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "no fields to update",
+			"error": err.Error(),
 		})
 		return
+	}
+
+	if input.Password != nil {
+		hashedPassword, err := utils.HashPassword(newPlainPassword)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "failed to hash password",
+			})
+			return
+		}
+		updates["Password"] = hashedPassword
 	}
 
 	tx := db.Model(&entity.AppUser{}).

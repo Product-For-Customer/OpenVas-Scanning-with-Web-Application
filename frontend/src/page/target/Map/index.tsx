@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -17,20 +17,15 @@ import {
   FiPlus,
   FiEdit2,
   FiSave,
-  FiChevronDown,
-  FiServer,
-  FiCheck,
 } from "react-icons/fi";
 import {
   ListLocation,
   DeleteLocationByID,
   CreateLocation as CreateLocationService,
   UpdateLocationByID as UpdateLocationByIDService,
-  ListTaskIDForOwn,
   type LocationResponse,
   type CreateLocationInput,
   type UpdateLocationInput,
-  type OwnTargetItem,
 } from "../../../services";
 
 type DeviceStatus = "online" | "offline" | "warning";
@@ -156,278 +151,6 @@ const DeviceMarker: React.FC<{
   );
 };
 
-type TargetSelectorProps = {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: OwnTargetItem[];
-  loading?: boolean;
-  placeholder?: string;
-};
-
-const TargetSelector: React.FC<TargetSelectorProps> = ({
-  label,
-  value,
-  onChange,
-  options,
-  loading = false,
-  placeholder = "Select Target",
-}) => {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const onClickOutside = (event: MouseEvent) => {
-      if (!wrapRef.current) return;
-      if (!wrapRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
-
-  const selectedTarget = useMemo(() => {
-    return options.find((t) => String(t.task_id) === value) || null;
-  }, [options, value]);
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-        {label}
-      </label>
-
-      <button
-        type="button"
-        onClick={() => setOpen((s) => !s)}
-        className={[
-          "h-9 w-full rounded-2xl px-3.5 inline-flex items-center justify-between gap-3 transition text-left",
-          "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-700 hover:bg-gray-50",
-          "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-        ].join(" ")}
-      >
-        <span className="min-w-0 flex items-center gap-2 truncate">
-          <FiServer className="shrink-0 text-slate-400 dark:text-white/40 text-[13px]" />
-          <span className="truncate">
-            {loading
-              ? "Loading targets..."
-              : selectedTarget
-                ? `${selectedTarget.hostname}${
-                    selectedTarget.ip ? ` (${selectedTarget.ip})` : ""
-                  }`
-                : placeholder}
-          </span>
-        </span>
-
-        <FiChevronDown
-          className={`shrink-0 transition ${
-            open ? "rotate-180" : ""
-          } text-gray-400 dark:text-white/45 text-[13px]`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 z-260 mt-2 overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-          <div className="max-h-56 overflow-y-auto py-1">
-            {!loading && options.length === 0 && (
-              <div className="px-3.5 py-3 text-[12px] text-slate-500 dark:text-white/50">
-                No target found
-              </div>
-            )}
-
-            {options.map((target) => {
-              const active = String(target.task_id) === value;
-              return (
-                <button
-                  key={`${target.own_id}-${target.task_id}`}
-                  type="button"
-                  onClick={() => {
-                    onChange(String(target.task_id));
-                    setOpen(false);
-                  }}
-                  className={[
-                    "w-full px-3.5 py-2.5 text-left text-[12px] transition",
-                    active
-                      ? "bg-violet-50 text-violet-700 font-semibold dark:bg-violet-500/10 dark:text-violet-200"
-                      : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
-                  ].join(" ")}
-                >
-                  <div className="flex flex-col">
-                    <span className="truncate">{target.hostname || "-"}</span>
-                    <span className="mt-0.5 text-[10px] text-slate-400 dark:text-white/40">
-                      {target.ip || "-"} • {target.task_id}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-type MultiTargetSelectorProps = {
-  values: string[];
-  onChange: (values: string[]) => void;
-  options: OwnTargetItem[];
-  loading?: boolean;
-};
-
-const MultiTargetSelector: React.FC<MultiTargetSelectorProps> = ({
-  values,
-  onChange,
-  options,
-  loading = false,
-}) => {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const onClickOutside = (event: MouseEvent) => {
-      if (!wrapRef.current) return;
-      if (!wrapRef.current.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
-  }, []);
-
-  const selectedTargets = useMemo(() => {
-    return options.filter((t) => values.includes(String(t.task_id)));
-  }, [options, values]);
-
-  const toggleValue = (taskID: string) => {
-    if (values.includes(taskID)) {
-      onChange(values.filter((v) => v !== taskID));
-    } else {
-      onChange([...values, taskID]);
-    }
-  };
-
-  const clearAll = () => onChange([]);
-  const selectAll = () => onChange(options.map((t) => String(t.task_id)));
-
-  const label = useMemo(() => {
-    if (loading) return "Loading targets...";
-    if (selectedTargets.length === 0) return "Filter by Targets";
-    if (selectedTargets.length === 1) {
-      const target = selectedTargets[0];
-      return `${target.hostname}${target.ip ? ` (${target.ip})` : ""}`;
-    }
-    return `${selectedTargets.length} targets selected`;
-  }, [loading, selectedTargets]);
-
-  return (
-    <div className="relative w-full sm:w-70" ref={wrapRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((s) => !s)}
-        className={[
-          "h-9 w-full rounded-2xl px-3.5 inline-flex items-center justify-between gap-3 transition text-left",
-          "bg-white border border-slate-200 text-[12px] font-medium text-slate-700 hover:bg-slate-50",
-          "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-        ].join(" ")}
-      >
-        <span className="min-w-0 flex items-center gap-2 truncate">
-          <FiServer className="shrink-0 text-slate-400 dark:text-white/40 text-[13px]" />
-          <span className="truncate">{label}</span>
-        </span>
-
-        <FiChevronDown
-          className={`shrink-0 transition ${
-            open ? "rotate-180" : ""
-          } text-slate-400 dark:text-white/45 text-[13px]`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute left-0 right-0 z-260 mt-2 overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-          <div className="flex items-center justify-between border-b border-slate-200 px-3.5 py-2.5 dark:border-white/10">
-            <span className="text-[11px] font-semibold text-slate-700 dark:text-white/75">
-              Select Target
-            </span>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={selectAll}
-                className="text-[10px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300"
-              >
-                Select all
-              </button>
-              <button
-                type="button"
-                onClick={clearAll}
-                className="text-[10px] font-medium text-slate-500 hover:text-slate-700 dark:text-white/50 dark:hover:text-white/70"
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-60 overflow-y-auto py-1">
-            {!loading && options.length === 0 && (
-              <div className="px-3.5 py-3 text-[12px] text-slate-500 dark:text-white/50">
-                No target found
-              </div>
-            )}
-
-            {options.map((target) => {
-              const checked = values.includes(String(target.task_id));
-
-              return (
-                <button
-                  key={`${target.own_id}-${target.task_id}`}
-                  type="button"
-                  onClick={() => toggleValue(String(target.task_id))}
-                  className={[
-                    "flex w-full items-start gap-3 px-3.5 py-2.5 text-left text-[12px] transition",
-                    checked
-                      ? "bg-violet-50 dark:bg-violet-500/10"
-                      : "hover:bg-gray-50 dark:hover:bg-white/8",
-                  ].join(" ")}
-                >
-                  <span
-                    className={[
-                      "mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition",
-                      checked
-                        ? "border-violet-500 bg-violet-500 text-white"
-                        : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
-                    ].join(" ")}
-                  >
-                    <FiCheck className="text-[10px]" />
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={[
-                        "block truncate font-medium",
-                        checked
-                          ? "text-violet-700 dark:text-violet-200"
-                          : "text-slate-700 dark:text-white/75",
-                      ].join(" ")}
-                    >
-                      {target.hostname || "-"}
-                    </span>
-                    <span className="mt-0.5 block truncate text-[10px] text-slate-400 dark:text-white/40">
-                      {target.ip || "-"} • {target.task_id}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 const MapPopupCard: React.FC<{
   device: Device;
   onClose: () => void;
@@ -523,10 +246,7 @@ const MapPopupCard: React.FC<{
 const MapDevice: React.FC = () => {
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Device[]>([]);
-  const [targets, setTargets] = useState<OwnTargetItem[]>([]);
-  const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [loadingTargets, setLoadingTargets] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -599,32 +319,15 @@ const MapDevice: React.FC = () => {
     }
   };
 
-  const fetchTargets = async () => {
-    try {
-      setLoadingTargets(true);
-      const data = await ListTaskIDForOwn();
-      setTargets(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("fetchTargets error:", e);
-      setTargets([]);
-    } finally {
-      setLoadingTargets(false);
-    }
-  };
 
   useEffect(() => {
     fetchLocations();
-    fetchTargets();
   }, []);
 
   const filteredDevices = useMemo(() => {
     const keyword = search.toLowerCase().trim();
 
     return rows.filter((device) => {
-      const matchTarget =
-        selectedTargetIds.length === 0 ||
-        selectedTargetIds.includes(String(device.target_id));
-
       const blob = [
         device.device_name,
         device.ip,
@@ -636,11 +339,9 @@ const MapDevice: React.FC = () => {
         .join(" ")
         .toLowerCase();
 
-      const matchSearch = !keyword || blob.includes(keyword);
-
-      return matchTarget && matchSearch;
+      return !keyword || blob.includes(keyword);
     });
-  }, [rows, search, selectedTargetIds]);
+  }, [rows, search]);
 
   useEffect(() => {
     if (!selectedDevice) return;
@@ -985,13 +686,6 @@ const MapDevice: React.FC = () => {
                       ].join(" ")}
                     />
                   </div>
-
-                  <MultiTargetSelector
-                    values={selectedTargetIds}
-                    onChange={setSelectedTargetIds}
-                    options={targets}
-                    loading={loadingTargets}
-                  />
                 </div>
 
                 <div className="flex items-center">
@@ -1220,14 +914,15 @@ const MapDevice: React.FC = () => {
                   className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
                 />
               </div>
-
               <div>
-                <TargetSelector
-                  label="Target"
+                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
+                  Target ID
+                </label>
+                <input
+                  type="text"
                   value={createForm.target_id}
-                  onChange={(value) => handleCreateChange("target_id", value)}
-                  options={targets}
-                  loading={loadingTargets}
+                  onChange={(e) => handleCreateChange("target_id", e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
                 />
               </div>
 
@@ -1348,14 +1043,15 @@ const MapDevice: React.FC = () => {
                   className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
                 />
               </div>
-
               <div>
-                <TargetSelector
-                  label="Target"
+                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
+                  Target ID
+                </label>
+                <input
+                  type="text"
                   value={editForm.target_id}
-                  onChange={(value) => handleEditChange("target_id", value)}
-                  options={targets}
-                  loading={loadingTargets}
+                  onChange={(e) => handleEditChange("target_id", e.target.value)}
+                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
                 />
               </div>
 

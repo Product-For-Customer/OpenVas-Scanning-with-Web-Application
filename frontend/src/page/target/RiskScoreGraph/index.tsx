@@ -12,21 +12,13 @@ import {
 import {
   FiActivity,
   FiChevronDown,
-  FiCalendar,
-  FiRefreshCw,
   FiAlertCircle,
   FiCheck,
   FiSearch,
-  FiX,
+  FiArrowRight,
+  FiBarChart2,
 } from "react-icons/fi";
 import { ListTargetDiffer, type TargetDifferDTO } from "../../../services";
-
-type RangeKey =
-  | "Today"
-  | "This Week"
-  | "This Month"
-  | "This Year"
-  | "Custom Range";
 
 type Row = {
   label: string;
@@ -78,32 +70,6 @@ const formatUnixToDateTime = (unix?: number | null) => {
   }).format(new Date(unix * 1000));
 };
 
-const getStartOfWeek = (date: Date) => {
-  const copied = new Date(date);
-  const day = copied.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  copied.setDate(copied.getDate() + diff);
-  copied.setHours(0, 0, 0, 0);
-  return copied;
-};
-
-const addDays = (date: Date, days: number) => {
-  const copied = new Date(date);
-  copied.setDate(copied.getDate() + days);
-  return copied;
-};
-
-const addMonths = (date: Date, months: number) => {
-  const copied = new Date(date);
-  copied.setMonth(copied.getMonth() + months);
-  return copied;
-};
-
-const isDateBetween = (targetYMD: string, startYMD: string, endYMD: string) => {
-  if (!targetYMD || !startYMD || !endYMD) return false;
-  return targetYMD >= startYMD && targetYMD <= endYMD;
-};
-
 const clamp = (num: number, min: number, max: number) =>
   Math.max(min, Math.min(num, max));
 
@@ -121,79 +87,77 @@ const isDarkMode = () => {
 type CustomTooltipProps = {
   active?: boolean;
   payload?: Array<{ payload: Row }>;
+  coordinate?: { x?: number; y?: number };
+  viewBox?: { x?: number; y?: number; width?: number; height?: number };
 };
 
-const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
+const CustomTooltip: React.FC<CustomTooltipProps> = ({
+  active,
+  payload,
+  coordinate,
+  viewBox,
+}) => {
   if (!active || !payload || !payload.length) return null;
 
   const row = payload?.[0]?.payload;
   if (!row) return null;
 
+  const tooltipWidth = 304;
+  const gap = 14;
+  const raiseY = 112;
+
+  const currentX = Number(coordinate?.x ?? 0);
+  const chartLeft = Number(viewBox?.x ?? 0);
+  const chartWidth = Number(viewBox?.width ?? 0);
+  const chartRight = chartLeft + chartWidth;
+
+  const wouldOverflowRight = currentX + tooltipWidth + gap > chartRight;
+  const wouldOverflowLeft = currentX - tooltipWidth - gap < chartLeft;
+
+  let tooltipTransform = `translate(${gap}px, -${raiseY}px)`;
+
+  if (wouldOverflowRight && !wouldOverflowLeft) {
+    tooltipTransform = `translate(calc(-100% - ${gap}px), -${raiseY}px)`;
+  } else if (wouldOverflowLeft) {
+    tooltipTransform = `translate(${gap}px, -${raiseY}px)`;
+  }
+
   return (
     <div
-      className={[
-        "min-w-60 rounded-[18px] border border-gray-200 bg-white shadow-md px-3 py-2.5",
-        "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
-      ].join(" ")}
+      style={{ transform: tooltipTransform }}
+      className="min-w-64 max-w-76 rounded-[22px] border border-gray-200 bg-white px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_38px_rgba(0,0,0,0.34)]"
     >
-      <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/90 mb-1 wrap-break-word">
-        {row.taskName || "-"}
-      </p>
+      <div className="mb-2.5">
+        <p className="wrap-break-words text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
+          {row.taskName || "-"}
+        </p>
+        <p className="mt-1 break-all text-[10.5px] text-gray-500 dark:text-white/45">
+          Host: {row.host || "-"}
+        </p>
+      </div>
 
-      <p className="mb-2 text-[10.5px] text-gray-500 dark:text-white/50 break-all">
-        Host: {row.host}
-      </p>
-
-      <div className="space-y-1.5 text-[11px]">
+      <div className="space-y-2 text-[11px]">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#8b5cf6]">Latest Risk:</span>
-          <span className="font-semibold text-[#1f2240] dark:text-white/85 tabular-nums">
+          <span className="tabular-nums font-semibold text-[#1f2240] dark:text-white/90">
             {row.riskScore.toFixed(2)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#38bdf8]">Previous Risk:</span>
-          <span className="font-semibold text-[#1f2240] dark:text-white/85 tabular-nums">
+          <span className="tabular-nums font-semibold text-[#1f2240] dark:text-white/90">
             {row.threatLevel.toFixed(2)}
           </span>
         </div>
 
-        <div className="my-2 h-px bg-gray-200 dark:bg-white/10" />
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-gray-500 dark:text-white/55">Task Name:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right wrap-break-word">
-            {row.taskName || "-"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-gray-500 dark:text-white/55">Host:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right break-all">
-            {row.host || "-"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-gray-500 dark:text-white/55">Latest Task ID:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
-            {row.latestTaskID || "-"}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-gray-500 dark:text-white/55">Previous Task ID:</span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
-            {row.previousTaskID || "-"}
-          </span>
-        </div>
+        <div className="h-px bg-gray-200 dark:bg-white/10" />
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-gray-500 dark:text-white/55">
             Latest Total Vulnerability:
           </span>
-          <span className="font-semibold text-[#1f2240] dark:text-white/85">
+          <span className="font-semibold text-[#1f2240] dark:text-white/90">
             {row.latestTotal}
           </span>
         </div>
@@ -202,7 +166,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           <span className="text-gray-500 dark:text-white/55">
             Previous Total Vulnerability:
           </span>
-          <span className="font-semibold text-[#1f2240] dark:text-white/85">
+          <span className="font-semibold text-[#1f2240] dark:text-white/90">
             {row.previousTotal}
           </span>
         </div>
@@ -211,7 +175,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           <span className="text-gray-500 dark:text-white/55">
             Latest Detected Time:
           </span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
+          <span className="text-right font-medium text-[#1f2240] dark:text-white/90">
             {formatUnixToDateTime(row.latestDetectedTime)}
           </span>
         </div>
@@ -220,7 +184,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
           <span className="text-gray-500 dark:text-white/55">
             Previous Detected Time:
           </span>
-          <span className="font-medium text-[#1f2240] dark:text-white/85 text-right">
+          <span className="text-right font-medium text-[#1f2240] dark:text-white/90">
             {formatUnixToDateTime(row.previousDetectedTime)}
           </span>
         </div>
@@ -233,10 +197,14 @@ const CustomXAxisTick = (props: {
   x?: number;
   y?: number;
   payload?: { value?: string };
+  index?: number;
+  visibleIndexes?: number[];
 }) => {
-  const { x = 0, y = 0, payload } = props;
+  const { x = 0, y = 0, payload, index = 0, visibleIndexes = [] } = props;
   const rawValue = String(payload?.value || "");
   const dark = isDarkMode();
+
+  if (!visibleIndexes.includes(index)) return null;
 
   const label = rawValue.includes("__AXIS__")
     ? rawValue.split("__AXIS__")[0]
@@ -279,47 +247,30 @@ const useIsSmall = () => {
 };
 
 const RiskScoreGraph: React.FC = () => {
-  const [range] = useState<RangeKey>("This Year");
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [rawData, setRawData] = useState<TargetDifferDTO[]>([]);
-  const isSmall = useIsSmall();
-
   const [queryOpen, setQueryOpen] = useState(false);
   const [querySearch, setQuerySearch] = useState("");
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
+  const isSmall = useIsSmall();
   const queryDropdownRef = useRef<HTMLDivElement | null>(null);
-  const rangeDropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const todayYMD = useMemo(() => formatDateToYMD(new Date()), []);
-  const sevenDaysAgoYMD = useMemo(
-    () => formatDateToYMD(addDays(new Date(), -6)),
-    []
-  );
-
-  const [startDate, setStartDate] = useState<string>(sevenDaysAgoYMD);
-  const [endDate, setEndDate] = useState<string>(todayYMD);
-
-  const fetchData = async (mode: "initial" | "refresh" = "initial") => {
+  const fetchData = async () => {
     try {
-      if (mode === "initial") setLoading(true);
-      if (mode === "refresh") setRefreshing(true);
-
+      setLoading(true);
       const res = await ListTargetDiffer();
       setRawData(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("fetch target differ error:", error);
       setRawData([]);
     } finally {
-      if (mode === "initial") setLoading(false);
-      if (mode === "refresh") setRefreshing(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    void fetchData("initial");
+    void fetchData();
   }, []);
 
   useEffect(() => {
@@ -329,13 +280,6 @@ const RiskScoreGraph: React.FC = () => {
         !queryDropdownRef.current.contains(e.target as Node)
       ) {
         setQueryOpen(false);
-      }
-
-      if (
-        rangeDropdownRef.current &&
-        !rangeDropdownRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
       }
     };
 
@@ -362,7 +306,8 @@ const RiskScoreGraph: React.FC = () => {
               ? String(item.latest_task_id)
               : "-",
           previousTaskID:
-            item.previous_task_id !== null && item.previous_task_id !== undefined
+            item.previous_task_id !== null &&
+            item.previous_task_id !== undefined
               ? String(item.previous_task_id)
               : "-",
 
@@ -407,7 +352,7 @@ const RiskScoreGraph: React.FC = () => {
     );
   }, [filterOptions, querySearch]);
 
-  const queryFilteredRows = useMemo(() => {
+  const data = useMemo<Row[]>(() => {
     if (selectedKeys.length === 0) return mappedRows;
 
     const selectedSet = new Set(selectedKeys);
@@ -416,109 +361,31 @@ const RiskScoreGraph: React.FC = () => {
     );
   }, [mappedRows, selectedKeys]);
 
-  const data = useMemo<Row[]>(() => {
-    const now = new Date();
-    const today = formatDateToYMD(now);
-
-    let filtered = [...queryFilteredRows];
-
-    switch (range) {
-      case "Today": {
-        filtered = filtered.filter((row) => row.date === today);
-        break;
-      }
-
-      case "This Week": {
-        const start = formatDateToYMD(getStartOfWeek(now));
-        const end = formatDateToYMD(now);
-        filtered = filtered.filter((row) => isDateBetween(row.date, start, end));
-        break;
-      }
-
-      case "This Month": {
-        const start = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-01`;
-        const end = formatDateToYMD(now);
-        filtered = filtered.filter((row) => isDateBetween(row.date, start, end));
-        break;
-      }
-
-      case "This Year": {
-        const start = `${now.getFullYear()}-01-01`;
-        const end = formatDateToYMD(now);
-        filtered = filtered.filter((row) => isDateBetween(row.date, start, end));
-        break;
-      }
-
-      case "Custom Range": {
-        if (!startDate || !endDate || startDate > endDate) return [];
-        filtered = filtered.filter((row) =>
-          isDateBetween(row.date, startDate, endDate)
-        );
-        break;
-      }
-
-      default:
-        break;
-    }
-
-    return filtered;
-  }, [queryFilteredRows, range, startDate, endDate]);
-
-  const peakRisk = useMemo(() => {
-    if (!data.length) return null;
-    return data.reduce((max, item) =>
-      item.riskScore > max.riskScore ? item : max
-    );
-  }, [data]);
-
-  const xInterval = useMemo(() => {
+  const visibleTickIndexes = useMemo(() => {
     const n = data.length;
 
-    if (n <= 7) return 0;
-    if (n <= 12) return isSmall ? 1 : 0;
-    if (n <= 20) return isSmall ? 2 : 1;
-    if (n <= 30) return isSmall ? 3 : 1;
-    return isSmall ? 4 : 2;
-  }, [data.length, isSmall]);
+    if (n <= 0) return [] as number[];
+    if (n <= 3) return Array.from({ length: n }, (_, i) => i);
+    if (n === 4) return [1, 2, 3];
 
-  const customRangeError = useMemo(() => {
-    if (range !== "Custom Range") return "";
-    if (!startDate || !endDate) return "กรุณาเลือก Start Date และ End Date";
-    if (startDate > endDate) return "Start Date ต้องไม่มากกว่า End Date";
-    return "";
-  }, [range, startDate, endDate]);
+    const clampIndex = (value: number) => Math.max(1, Math.min(n - 2, value));
 
-  const rangeDescription = useMemo(() => {
-    switch (range) {
-      case "Today":
-        return "Filled area shows previous risk while lines compare latest and previous risk for targets detected today";
-      case "This Week":
-        return "Compare latest risk against previous risk for targets detected this week";
-      case "This Month":
-        return "Compare latest risk against previous risk for targets detected this month";
-      case "This Year":
-        return "Compare latest risk against previous risk for targets detected this year";
-      case "Custom Range":
-        return "Compare latest risk against previous risk within selected detected date range";
-      default:
-        return "Compare latest risk and previous risk over selected period";
-    }
-  }, [range]);
+    const indexes = [
+      clampIndex(Math.round((n - 1) * 0.2)),
+      clampIndex(Math.round((n - 1) * 0.5)),
+      clampIndex(Math.round((n - 1) * 0.8)),
+    ];
+
+    return Array.from(new Set(indexes)).sort((a, b) => a - b);
+  }, [data.length]);
 
   const selectedCount = selectedKeys.length;
 
-  const queryButtonLabel = useMemo(() => {
-    if (selectedCount === 0) return "Filter by Targets";
-    if (selectedCount === 1) {
-      const found = filterOptions.find((x) => x.key === selectedKeys[0]);
-      return found?.label || "1 selected";
-    }
-    return `${selectedCount} selected`;
-  }, [selectedCount, filterOptions, selectedKeys]);
-
   const toggleSelect = (key: string) => {
     setSelectedKeys((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+      prev.includes(key)
+        ? prev.filter((item) => item !== key)
+        : [...prev, key]
     );
   };
 
@@ -527,7 +394,8 @@ const RiskScoreGraph: React.FC = () => {
 
     setSelectedKeys((prev) => {
       const prevSet = new Set(prev);
-      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
+      const allVisibleSelected =
+        visibleKeys.length > 0 && visibleKeys.every((key) => prevSet.has(key));
 
       if (allVisibleSelected) {
         return prev.filter((key) => !visibleKeys.includes(key));
@@ -546,12 +414,15 @@ const RiskScoreGraph: React.FC = () => {
     filteredOptions.length > 0 &&
     filteredOptions.every((opt) => selectedKeys.includes(opt.key));
 
+  const description =
+    "Compare latest risk against previous risk for selected targets";
+
   return (
     <section
       className={[
-        "relative overflow-hidden h-full rounded-[22px] p-3 sm:p-4 md:p-4.5 flex flex-col",
-        "bg-white border border-gray-200/80 shadow-sm",
-        "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
+        "relative flex h-full flex-col overflow-hidden rounded-[22px] border p-3 shadow-sm sm:p-4 md:p-4.5",
+        "border-gray-200/80 bg-white",
+        "dark:border-white/10 dark:bg-white/5 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -564,460 +435,339 @@ const RiskScoreGraph: React.FC = () => {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0 flex-1">
               <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                
+                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
+                  <FiActivity className="text-[13px]" />
+                  Risk Score Graph
+                </div>
+              </div>
 
-                {peakRisk && (
-                  <div
-                    className={[
-                      "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
-                      "bg-slate-50 text-slate-600 border border-slate-200/80",
-                      "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                    ].join(" ")}
-                  >
-                    <FiActivity className="text-[11px] text-violet-500" />
-                    <span className="text-[10.5px] font-medium">
-                      Peak Risk {peakRisk.label}: {peakRisk.riskScore.toFixed(2)}
-                    </span>
+              <h3 className="text-[16px] font-semibold tracking-tight text-[#111827] dark:text-white">
+                Risk score comparison by target
+              </h3>
+
+              <p className="mt-1 overflow-x-auto whitespace-nowrap text-[11px] leading-5 text-slate-500 dark:text-white/55">
+                {description}
+              </p>
+            </div>
+
+            <div className="flex w-full flex-col gap-2.5 xl:w-auto xl:min-w-65">
+              <div
+                className="relative min-w-full sm:min-w-60"
+                ref={queryDropdownRef}
+              >
+                <button
+                  type="button"
+                  onClick={() => setQueryOpen((prev) => !prev)}
+                  className={[
+                    "inline-flex min-h-9.5 w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left transition",
+                    "border-gray-200 bg-white text-[12px] font-semibold text-slate-700 shadow-sm hover:bg-gray-50",
+                    "dark:border-white/10 dark:bg-[#0B1220] dark:text-white/80 dark:hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  <span className="truncate">Target Filter</span>
+
+                  <FiChevronDown
+                    className={`shrink-0 text-[13px] text-gray-400 transition-transform dark:text-white/45 ${
+                      queryOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {queryOpen && (
+                  <div className="absolute right-0 z-50 mt-2 w-full overflow-hidden rounded-[20px] border border-gray-200 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.10)] dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_16px_32px_rgba(0,0,0,0.24)]">
+                    <div className="p-3">
+                      <div
+                        className={[
+                          "flex h-9.5 items-center gap-2 rounded-[14px] border px-3",
+                          "border-slate-200 bg-slate-50",
+                          "dark:border-white/10 dark:bg-white/5",
+                        ].join(" ")}
+                      >
+                        <FiSearch className="shrink-0 text-[14px] text-gray-400 dark:text-white/40" />
+                        <input
+                          type="text"
+                          value={querySearch}
+                          onChange={(e) => setQuerySearch(e.target.value)}
+                          placeholder="Search target name or host..."
+                          className="w-full bg-transparent text-[12px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                        />
+                      </div>
+
+                      <div className="mt-2.5 flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllVisible}
+                          className="text-[11px] font-semibold text-sky-500 transition hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200"
+                        >
+                          {allVisibleSelected ? "Unselect visible" : "Select visible"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={clearAllSelections}
+                          className="text-[11px] font-semibold text-slate-500 transition hover:text-slate-700 dark:text-white/45 dark:hover:text-white/75"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-52.5 overflow-y-auto px-2.5 pb-2.5">
+                      {filteredOptions.length > 0 ? (
+                        <div className="space-y-0.5">
+                          {filteredOptions.map((opt) => {
+                            const checked = selectedKeys.includes(opt.key);
+
+                            return (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => toggleSelect(opt.key)}
+                                className={[
+                                  "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2.5 text-left transition",
+                                  checked
+                                    ? "bg-slate-50 dark:bg-white/5"
+                                    : "bg-transparent hover:bg-slate-50 dark:hover:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <span
+                                  className={[
+                                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-[7px] border transition",
+                                    checked
+                                      ? "border-sky-500 bg-sky-500 text-white"
+                                      : "border-gray-300 bg-white text-transparent dark:border-white/20 dark:bg-transparent",
+                                  ].join(" ")}
+                                >
+                                  <FiCheck className="text-[11px]" />
+                                </span>
+
+                                <span className="min-w-0 truncate text-[12px] font-semibold text-slate-600 dark:text-white/80">
+                                  {opt.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center px-3 py-6 text-center text-[11px] text-slate-500 dark:text-white/45">
+                          No target found
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-
-              <h2 className="text-[17px] sm:text-[19px] font-semibold text-[#1f2240] dark:text-white/90 tracking-tight">
-                Risk Score Trend
-              </h2>
-
-              <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-[11px] text-gray-500 dark:text-white/55">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-4 rounded-full bg-[#8b5cf6]" />
-                  <span>Latest Risk</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-4 rounded-full bg-[#38bdf8]" />
-                  <span>Previous Risk</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex w-full flex-col gap-2.5 xl:w-auto xl:min-w-70">
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:justify-end">
-                <div
-                  className="relative min-w-full sm:min-w-72.5"
-                  ref={queryDropdownRef}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setQueryOpen((prev) => !prev)}
-                    className={[
-                      "w-full min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-between gap-3 transition text-left",
-                      "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
-                      "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10",
-                    ].join(" ")}
-                  >
-                    <span className="truncate">{queryButtonLabel}</span>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      {selectedCount > 0 && (
-                        <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                          {selectedCount}
-                        </span>
-                      )}
-
-                      <FiChevronDown
-                        className={`text-[13px] text-gray-400 dark:text-white/45 transition-transform ${
-                          queryOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </div>
-                  </button>
-
-                  {queryOpen && (
-                    <div className="absolute right-0 mt-2 w-full rounded-[22px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-                      <div className="p-2.5 border-b border-gray-100 dark:border-white/10">
-                        <div
-                          className={[
-                            "flex items-center gap-2 rounded-2xl px-3 h-9",
-                            "bg-slate-50 border border-slate-200/80",
-                            "dark:bg-white/5 dark:border-white/10",
-                          ].join(" ")}
-                        >
-                          <FiSearch className="text-gray-400 dark:text-white/40 shrink-0 text-[13px]" />
-                          <input
-                            type="text"
-                            value={querySearch}
-                            onChange={(e) => setQuerySearch(e.target.value)}
-                            placeholder="Search task name or host..."
-                            className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
-                          />
-                          {querySearch.trim() !== "" && (
-                            <button
-                              type="button"
-                              onClick={() => setQuerySearch("")}
-                              className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                              aria-label="Clear search"
-                            >
-                              <FiX className="text-[13px]" />
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="mt-2.5 flex items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            onClick={handleSelectAllVisible}
-                            className="text-[11px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-                          >
-                            {allVisibleSelected ? "Unselect visible" : "Select visible"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={clearAllSelections}
-                            className="text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-                          >
-                            Clear all
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="max-h-64 overflow-y-auto p-2">
-                        {filteredOptions.length === 0 ? (
-                          <div className="px-3 py-7 text-center text-[12px] text-gray-500 dark:text-white/50">
-                            No matching task / host
-                          </div>
-                        ) : (
-                          <div className="space-y-1">
-                            {filteredOptions.map((opt) => {
-                              const checked = selectedKeys.includes(opt.key);
-
-                              return (
-                                <button
-                                  key={opt.key}
-                                  type="button"
-                                  onClick={() => toggleSelect(opt.key)}
-                                  className={[
-                                    "w-full flex items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition",
-                                    checked
-                                      ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                                      : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                                  ].join(" ")}
-                                >
-                                  <span
-                                    className={[
-                                      "mt-0.5 h-4.5 w-4.5 rounded-md border flex items-center justify-center shrink-0 transition",
-                                      checked
-                                        ? "bg-cyan-500 border-cyan-500 text-white"
-                                        : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                                    ].join(" ")}
-                                  >
-                                    <FiCheck className="text-[10px]" />
-                                  </span>
-
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block text-[12px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                                      {opt.label}
-                                    </span>
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => void fetchData("refresh")}
-                  disabled={refreshing}
-                  className={[
-                    "min-h-9 px-3.5 rounded-2xl inline-flex items-center justify-center gap-2 transition",
-                    "bg-white border border-gray-200/80 text-[12px] font-medium text-gray-600 hover:bg-gray-50",
-                    "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10",
-                    refreshing ? "opacity-70 cursor-not-allowed" : "",
-                  ].join(" ")}
-                >
-                  <FiRefreshCw className={refreshing ? "animate-spin text-[13px]" : "text-[13px]"} />
-                  Refresh
-                </button>
-              </div>
-
-              {range === "Custom Range" && (
-                <div className="flex justify-end">
-                  <div
-                    className={[
-                      "w-full lg:w-115 rounded-[18px] border p-3",
-                      "bg-slate-50 border-slate-200/80",
-                      "dark:bg-white/4 dark:border-white/10",
-                    ].join(" ")}
-                  >
-                    <div className="mb-2.5 flex items-center gap-2">
-                      <FiCalendar className="text-[13px] text-cyan-600 dark:text-cyan-300" />
-                      <span className="text-[12px] font-semibold text-slate-700 dark:text-white/85">
-                        Select Date Range
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                      <div className="min-w-0">
-                        <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-white/60">
-                          Start Date
-                        </label>
-                        <input
-                          type="date"
-                          value={startDate}
-                          max={endDate || undefined}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className={[
-                            "w-full h-9 rounded-2xl px-3 outline-none transition",
-                            "border border-gray-200 bg-white text-[12px] text-slate-700",
-                            "focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100",
-                            "dark:bg-[#0B1220] dark:border-white/10 dark:text-white/85 dark:focus:border-cyan-400 dark:focus:ring-cyan-500/10",
-                          ].join(" ")}
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <label className="mb-1.5 block text-[11px] font-medium text-slate-600 dark:text-white/60">
-                          End Date
-                        </label>
-                        <input
-                          type="date"
-                          value={endDate}
-                          min={startDate || undefined}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className={[
-                            "w-full h-9 rounded-2xl px-3 outline-none transition",
-                            "border border-gray-200 bg-white text-[12px] text-slate-700",
-                            "focus:border-cyan-400 focus:ring-2 focus:ring-cyan-100",
-                            "dark:bg-[#0B1220] dark:border-white/10 dark:text-white/85 dark:focus:border-cyan-400 dark:focus:ring-cyan-500/10",
-                          ].join(" ")}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const end = new Date();
-                          const start = addDays(end, -6);
-                          setStartDate(formatDateToYMD(start));
-                          setEndDate(formatDateToYMD(end));
-                        }}
-                        className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-[11px] font-medium text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15"
-                      >
-                        Last 7 Days
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const end = new Date();
-                          const start = addDays(end, -29);
-                          setStartDate(formatDateToYMD(start));
-                          setEndDate(formatDateToYMD(end));
-                        }}
-                        className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
-                      >
-                        Last 30 Days
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const end = new Date();
-                          const start = addMonths(end, -3);
-                          setStartDate(formatDateToYMD(start));
-                          setEndDate(formatDateToYMD(end));
-                        }}
-                        className="rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
-                      >
-                        Last 3 Months
-                      </button>
-                    </div>
-
-                    {customRangeError && (
-                      <p className="mt-2.5 text-[11px] font-medium text-red-500">
-                        {customRangeError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
-          <div
-            className={[
-              "rounded-[18px] px-3.5 py-2.5 flex flex-wrap items-center gap-2.5",
-              "bg-slate-50 border border-slate-200/80",
-              "dark:bg-white/4 dark:border-white/10",
-            ].join(" ")}
-          >
-            <div className="inline-flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-500" />
-              </span>
-              <span className="text-[11px] font-medium text-slate-700 dark:text-white/75">
-                Monitoring risk behavior
-              </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <div
+              className={[
+                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                "border-violet-200/70 bg-violet-50 text-violet-700",
+                "dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+              ].join(" ")}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-violet-500" />
+              Previous Risk
             </div>
 
-            <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-
-            <div className="text-[11px] text-slate-500 dark:text-white/50">
-              {rangeDescription}
+            <div
+              className={[
+                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                "border-cyan-200/70 bg-cyan-50 text-cyan-700",
+                "dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
+              ].join(" ")}
+            >
+              <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500" />
+              Latest Risk
             </div>
 
             {selectedCount > 0 && (
-              <>
-                <div className="hidden sm:block h-4 w-px bg-slate-200 dark:bg-white/10" />
-                <div className="inline-flex items-center gap-2 text-[11px] text-cyan-700 dark:text-cyan-300">
-                  <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                  Filtered by {selectedCount} selected target{selectedCount > 1 ? "s" : ""}
-                </div>
-              </>
+              <div
+                className={[
+                  "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                  "border-emerald-200/70 bg-emerald-50 text-emerald-700",
+                  "dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
+                ].join(" ")}
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Filtered by {selectedCount} selected target
+                {selectedCount > 1 ? "s" : ""}
+              </div>
             )}
           </div>
         </div>
 
-        <div className="mt-3.5 h-75 sm:h-90 lg:flex-1 lg:min-h-90">
+        <div className="mt-3.5 h-80 sm:h-96 lg:min-h-90 lg:flex-1">
           {loading ? (
             <div
               className={[
-                "h-full rounded-[18px] border flex items-center justify-center text-center px-4",
-                "border-dashed border-gray-200 bg-slate-50",
-                "dark:border-white/10 dark:bg-white/4",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-2.5 text-slate-500 dark:text-white/60">
-                <FiRefreshCw className="animate-spin text-[16px]" />
-                <span className="text-[12px] font-medium">
-                  Loading risk score data...
-                </span>
-              </div>
-            </div>
-          ) : !customRangeError && data.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={data}
-                margin={{ top: 8, right: 6, left: -10, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="5 5"
-                  vertical={false}
-                  stroke="#ececf1"
-                  className="dark:opacity-30"
-                />
-
-                <XAxis
-                  dataKey="axisKey"
-                  interval={xInterval}
-                  minTickGap={8}
-                  tick={<CustomXAxisTick />}
-                  axisLine={false}
-                  tickLine={false}
-                />
-
-                <YAxis
-                  tick={{ fill: "#5b6170", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                  domain={[0, 10]}
-                  ticks={[0, 2, 4, 6, 8, 10]}
-                />
-
-                <Tooltip content={<CustomTooltip />} />
-
-                <defs>
-                  <linearGradient id="threatFillLight" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.26} />
-                    <stop offset="60%" stopColor="#38bdf8" stopOpacity={0.10} />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-
-                  <linearGradient id="threatFillDark" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#67e8f9" stopOpacity={0.32} />
-                    <stop offset="60%" stopColor="#38bdf8" stopOpacity={0.12} />
-                    <stop offset="100%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-
-                <Area
-                  type="monotone"
-                  dataKey="threatLevel"
-                  name="Previous Risk"
-                  stroke="transparent"
-                  fill="url(#threatFillLight)"
-                  className="dark:hidden"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="threatLevel"
-                  name="Previous Risk"
-                  stroke="transparent"
-                  fill="url(#threatFillDark)"
-                  className="hidden dark:block"
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="riskScore"
-                  name="Latest Risk"
-                  stroke="#8b5cf6"
-                  strokeWidth={2.2}
-                  dot={false}
-                  activeDot={{ r: 3.5 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="threatLevel"
-                  name="Previous Risk"
-                  stroke="#38bdf8"
-                  strokeWidth={2.2}
-                  dot={false}
-                  activeDot={{ r: 3.5 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div
-              className={[
-                "h-full rounded-[18px] border flex items-center justify-center text-center px-4",
+                "flex h-full items-center justify-center rounded-[18px] border px-4 text-center",
                 "border-dashed border-gray-200 bg-slate-50",
                 "dark:border-white/10 dark:bg-white/4",
               ].join(" ")}
             >
               <div>
-                <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
-                  <FiAlertCircle className="text-[18px]" />
+                <span className="text-[12px] font-medium text-slate-500 dark:text-white/60">
+                  Loading risk score data...
+                </span>
+              </div>
+            </div>
+          ) : data.length > 0 ? (
+            <div
+              className={[
+                "h-full rounded-2xl border p-2 sm:p-2.5",
+                "border-gray-200/70 bg-linear-to-b from-[#fcfdff] to-[#f7faff]",
+                "dark:border-white/10 dark:bg-linear-to-b dark:from-[#0B1220] dark:to-[#0E1830]",
+              ].join(" ")}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={data}
+                  margin={{
+                    top: 8,
+                    right: 6,
+                    left: isSmall ? 2 : 10,
+                    bottom: 28,
+                  }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="5 5"
+                    vertical={false}
+                    stroke="#ececf1"
+                    className="dark:opacity-30"
+                  />
+
+                  <XAxis
+                    dataKey="axisKey"
+                    interval={0}
+                    minTickGap={8}
+                    tick={<CustomXAxisTick visibleIndexes={visibleTickIndexes} />}
+                    axisLine={false}
+                    tickLine={false}
+                    height={42}
+                  />
+
+                  <YAxis
+                    tick={{
+                      fill: isDarkMode() ? "rgba(255,255,255,0.72)" : "#5b6170",
+                      fontSize: 11,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={36}
+                    domain={[0, 10]}
+                    ticks={[0, 2, 4, 6, 8, 10]}
+                  />
+
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    shared={false}
+                    offset={10}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{
+                      pointerEvents: "none",
+                    }}
+                    cursor={{
+                      stroke: isDarkMode()
+                        ? "rgba(255,255,255,0.10)"
+                        : "rgba(148,163,184,0.35)",
+                      strokeWidth: 1,
+                    }}
+                  />
+
+                  <defs>
+                    <linearGradient
+                      id="riskScoreGraphThreatFill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.18} />
+                      <stop offset="60%" stopColor="#38bdf8" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+
+                  <Area
+                    type="monotone"
+                    dataKey="threatLevel"
+                    stroke="#8b5cf6"
+                    strokeWidth={2}
+                    fill="url(#riskScoreGraphThreatFill)"
+                    dot={false}
+                    activeDot={{
+                      r: 4.5,
+                      stroke: "#8b5cf6",
+                      strokeWidth: 2,
+                      fill: "#ffffff",
+                    }}
+                  />
+
+                  <Line
+                    type="monotone"
+                    dataKey="riskScore"
+                    stroke="#38bdf8"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{
+                      r: 4.5,
+                      stroke: "#38bdf8",
+                      strokeWidth: 2,
+                      fill: "#ffffff",
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div
+              className={[
+                "flex h-full items-center justify-center rounded-[18px] border px-4 text-center",
+                "border-dashed border-gray-200 bg-slate-50",
+                "dark:border-white/10 dark:bg-white/4",
+              ].join(" ")}
+            >
+              <div>
+                <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-400/10 dark:text-amber-300">
+                  <FiAlertCircle className="text-[15px]" />
                 </div>
-                <p className="text-[12px] font-semibold text-slate-700 dark:text-white/85">
-                  ไม่มีข้อมูลสำหรับช่วงวันที่ที่เลือก
+                <p className="text-[10px] font-semibold text-slate-700 dark:text-white/85">
+                  No data is available for the selected targets.
                 </p>
-                <p className="mt-1 text-[10.5px] text-slate-500 dark:text-white/50">
-                  {customRangeError || "กรุณาเลือกช่วงวันที่ใหม่อีกครั้ง"}
+                <p className="mt-1 text-[9.5px] text-slate-500 dark:text-white/50">
+                  Please choose a different target filter and try again.
                 </p>
               </div>
             </div>
           )}
         </div>
 
-        {(open || queryOpen) && (
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setQueryOpen(false);
-            }}
-            className="fixed inset-0 z-20 cursor-default"
-            aria-label="Close dropdown"
-          />
-        )}
+        <div className="mt-3 flex flex-row flex-wrap items-center justify-center gap-2 text-center">
+          <div
+            className={[
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5",
+              "border-cyan-200/80 bg-cyan-50 text-cyan-700",
+              "dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
+            ].join(" ")}
+          >
+            <FiBarChart2 className="text-[13px]" />
+            <span className="text-[11px] font-semibold">Y Axis = Risk Score</span>
+          </div>
+
+          <div
+            className={[
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5",
+              "border-violet-200/80 bg-violet-50 text-violet-700",
+              "dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
+            ].join(" ")}
+          >
+            <FiArrowRight className="text-[13px]" />
+            <span className="text-[11px] font-semibold">X Axis = Target</span>
+          </div>
+        </div>
       </div>
     </section>
   );

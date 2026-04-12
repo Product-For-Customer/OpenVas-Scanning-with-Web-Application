@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +19,7 @@ type CreateAppNotificationInput struct {
 	Name            string `json:"name" binding:"required"`
 	SendID          string `json:"send_id" binding:"required"`
 	Alert           bool   `json:"alert"`
-	IsGroup         bool   `json:"is_group"` // true = Group, false = Personal
+	IsGroup         bool   `json:"is_group"`
 	AppLineMasterID uint   `json:"app_line_master_id" binding:"required"`
 }
 
@@ -73,13 +74,8 @@ func CreateAppNotification(c *gin.Context) {
 		AppLineMasterID: input.AppLineMasterID,
 	}
 
-	if appNotification.Name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
-		return
-	}
-
-	if appNotification.SendID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "send_id is required"})
+	if ok, err := govalidator.ValidateStruct(appNotification); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -88,7 +84,10 @@ func CreateAppNotification(c *gin.Context) {
 		return
 	}
 
-	db.Preload("AppLineMaster").First(&appNotification, appNotification.ID)
+	if err := db.Preload("AppLineMaster").First(&appNotification, appNotification.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "create success but failed to reload notification"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"message": "create app notification success",
@@ -137,52 +136,67 @@ func UpdateAppNotificationByID(c *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{}
+	if input.Name == nil &&
+		input.SendID == nil &&
+		input.Alert == nil &&
+		input.IsGroup == nil &&
+		input.AppLineMasterID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
+	updatedNotification := appNotification
 
 	if input.Name != nil {
-		trimmedName := strings.TrimSpace(*input.Name)
-		if trimmedName == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name cannot be empty"})
-			return
-		}
-		updates["name"] = trimmedName
+		updatedNotification.Name = strings.TrimSpace(*input.Name)
 	}
 
 	if input.SendID != nil {
-		trimmedSendID := strings.TrimSpace(*input.SendID)
-		if trimmedSendID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "send_id cannot be empty"})
-			return
-		}
-		updates["send_id"] = trimmedSendID
+		updatedNotification.SendID = strings.TrimSpace(*input.SendID)
 	}
 
 	if input.Alert != nil {
-		updates["alert"] = *input.Alert
+		updatedNotification.Alert = *input.Alert
 	}
 
 	if input.IsGroup != nil {
-		updates["is_group"] = *input.IsGroup
+		updatedNotification.IsGroup = *input.IsGroup
 	}
 
 	if input.AppLineMasterID != nil {
-		if *input.AppLineMasterID == 0 {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "app_line_master_id is required"})
-			return
-		}
-
 		var lineMaster entity.AppLineMaster
 		if err := db.First(&lineMaster, *input.AppLineMasterID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "app line master not found"})
 			return
 		}
-
-		updates["app_line_master_id"] = *input.AppLineMasterID
+		updatedNotification.AppLineMasterID = *input.AppLineMasterID
 	}
 
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+	if ok, err := govalidator.ValidateStruct(updatedNotification); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	updates := map[string]interface{}{}
+
+	if input.Name != nil {
+		updates["name"] = updatedNotification.Name
+	}
+
+	if input.SendID != nil {
+		updates["send_id"] = updatedNotification.SendID
+	}
+
+	if input.Alert != nil {
+		updates["alert"] = updatedNotification.Alert
+	}
+
+	if input.IsGroup != nil {
+		updates["is_group"] = updatedNotification.IsGroup
+	}
+
+	if input.AppLineMasterID != nil {
+		updates["app_line_master_id"] = updatedNotification.AppLineMasterID
 	}
 
 	if err := db.Model(&appNotification).Updates(updates).Error; err != nil {
@@ -226,8 +240,6 @@ func DeleteAppNotificationByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "app notification deleted successfully"})
 }
 
-
-// Create By Line Application 
 type LineWebhookRequest struct {
 	Destination string             `json:"destination"`
 	Events      []LineWebhookEvent `json:"events"`
@@ -348,7 +360,6 @@ func CreateAppNotificationByLine(c *gin.Context) {
 	isGroup := false
 	sourceType := ""
 
-	// สำคัญ: ต้องเช็ค group ก่อน user
 	if event.Source.GroupID != "" {
 		sendID = event.Source.GroupID
 		isGroup = true
@@ -370,7 +381,6 @@ func CreateAppNotificationByLine(c *gin.Context) {
 
 	db := config.DB()
 
-	// เช็คซ้ำจาก send_id
 	var existingNotification entity.AppNotification
 	if err := db.Preload("AppLineMaster").Where("send_id = ?", sendID).First(&existingNotification).Error; err == nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -381,7 +391,6 @@ func CreateAppNotificationByLine(c *gin.Context) {
 		return
 	}
 
-	// หา AppLineMaster ตัวแรก
 	var lineMaster entity.AppLineMaster
 	if err := db.Order("id asc").First(&lineMaster).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -396,6 +405,13 @@ func CreateAppNotificationByLine(c *gin.Context) {
 		Alert:           true,
 		IsGroup:         isGroup,
 		AppLineMasterID: lineMaster.ID,
+	}
+
+	if ok, err := govalidator.ValidateStruct(notification); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
 	}
 
 	if err := db.Create(&notification).Error; err != nil {

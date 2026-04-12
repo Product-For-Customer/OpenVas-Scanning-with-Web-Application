@@ -61,11 +61,6 @@ func ListHistoryNotify(c *gin.Context) {
 }
 
 // DELETE /delete-history-notifies
-//
-// body:
-// {
-//   "ids": [1,2,3]
-// }
 func DeleteHistoryNotifyByIDs(c *gin.Context) {
 	var input DeleteHistoryNotifyByIDsInput
 	if err := c.ShouldBindJSON(&input); err != nil {

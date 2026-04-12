@@ -92,7 +92,6 @@ func SetupDatabase() {
 		&entity.AppGroup{},
 		&entity.AppLocation{},
 		&entity.AppGroupLocation{},
-		&entity.Own{},
 		&entity.AppReport{},
 	)
 	if err != nil {

@@ -1,9 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { message } from "antd";
 import {
   FiSearch,
-  FiMoreVertical,
-  FiRefreshCw,
   FiTrash2,
   FiSquare,
   FiCheckSquare,
@@ -20,6 +18,8 @@ import {
   FiLock,
   FiServer,
   FiAlertCircle,
+  FiCalendar,
+  FiCheck,
 } from "react-icons/fi";
 import {
   DeleteHistoryNotifyByIDs,
@@ -37,6 +37,20 @@ type FilterKey =
   | "Server Error"
   | "Timeout";
 
+type StatusKey = Exclude<FilterKey, "All">;
+
+type CombinedFilterOption = {
+  key: string;
+  label: string;
+  type: "month" | "year";
+  order: number;
+};
+
+type StatusOption = {
+  key: FilterKey;
+  label: string;
+};
+
 const FILTER_OPTIONS: FilterKey[] = [
   "All",
   "Update Completed",
@@ -49,7 +63,20 @@ const FILTER_OPTIONS: FilterKey[] = [
   "Timeout",
 ];
 
-type StatusKey = Exclude<FilterKey, "All">;
+const MONTH_OPTIONS: { key: string; label: string; value: number }[] = [
+  { key: "1", label: "January", value: 1 },
+  { key: "2", label: "February", value: 2 },
+  { key: "3", label: "March", value: 3 },
+  { key: "4", label: "April", value: 4 },
+  { key: "5", label: "May", value: 5 },
+  { key: "6", label: "June", value: 6 },
+  { key: "7", label: "July", value: 7 },
+  { key: "8", label: "August", value: 8 },
+  { key: "9", label: "September", value: 9 },
+  { key: "10", label: "October", value: 10 },
+  { key: "11", label: "November", value: 11 },
+  { key: "12", label: "December", value: 12 },
+];
 
 const statusStyles: Record<
   StatusKey,
@@ -301,6 +328,382 @@ const getDisplayDescription = (item: HistoryNotifyResponse) => {
   }
 };
 
+type CombinedFilterProps = {
+  buttonLabel: string;
+  options: CombinedFilterOption[];
+  selectedKeys: string[];
+  searchValue: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSearchChange: (value: string) => void;
+  onToggle: (key: string) => void;
+  onSelectAllVisible: () => void;
+  onClearAll: () => void;
+  allVisibleSelected: boolean;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+};
+
+const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
+  buttonLabel,
+  options,
+  selectedKeys,
+  searchValue,
+  open,
+  onOpenChange,
+  onSearchChange,
+  onToggle,
+  onSelectAllVisible,
+  onClearAll,
+  allVisibleSelected,
+  containerRef,
+}) => {
+  const selectedCount = selectedKeys.length;
+  const monthOptions = options.filter((opt) => opt.type === "month");
+  const yearOptions = options.filter((opt) => opt.type === "year");
+
+  return (
+    <div className="relative w-full sm:w-55" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className={[
+          "w-full h-8 rounded-[14px] px-3 inline-flex items-center justify-between gap-2 transition text-left",
+          "bg-white border border-gray-200/80 text-[11px] font-medium text-gray-700 hover:bg-gray-50",
+          "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
+        ].join(" ")}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <FiCalendar className="shrink-0 text-[12px] text-gray-500 dark:text-white/55" />
+          <span className="truncate">{buttonLabel}</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {selectedCount > 0 && (
+            <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1.5 rounded-full text-[9px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
+              {selectedCount}
+            </span>
+          )}
+
+          <FiChevronDown
+            className={`pointer-events-none text-[12px] text-gray-400 dark:text-white/45 transition-transform ${open ? "rotate-180" : ""
+              }`}
+          />
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-72.5 rounded-[18px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+          <div className="p-2 border-b border-gray-100 dark:border-white/10">
+            <div
+              className={[
+                "flex items-center gap-2 rounded-[14px] px-2.5 h-8",
+                "bg-slate-50 border border-slate-200/80",
+                "dark:bg-white/5 dark:border-white/10",
+              ].join(" ")}
+            >
+              <FiSearch className="text-[11px] text-gray-400 dark:text-white/40 shrink-0" />
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search month or year..."
+                className="w-full bg-transparent outline-none text-[10.5px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+              />
+              {searchValue.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                  aria-label="Clear date filter search"
+                >
+                  <FiX className="text-[11px]" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onSelectAllVisible}
+                className="text-[10px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+              >
+                {allVisibleSelected ? "Unselect visible" : "Select visible"}
+              </button>
+
+              <button
+                type="button"
+                onClick={onClearAll}
+                className="text-[10px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto p-2">
+            {options.length === 0 ? (
+              <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
+                No matching date filter
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {monthOptions.length > 0 && (
+                  <div>
+                    <div className="px-2.5 pb-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
+                      Month
+                    </div>
+                    <div className="space-y-1">
+                      {monthOptions.map((opt) => {
+                        const checked = selectedKeys.includes(opt.key);
+
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => onToggle(opt.key)}
+                            className={[
+                              "w-full flex items-start gap-2.5 rounded-[14px] px-2.5 py-2 text-left transition",
+                              checked
+                                ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={[
+                                "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                                checked
+                                  ? "bg-cyan-500 border-cyan-500 text-white"
+                                  : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                              ].join(" ")}
+                            >
+                              <FiCheck className="text-[9px]" />
+                            </span>
+
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[10px] sm:text-[10.5px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                                {opt.label}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {yearOptions.length > 0 && (
+                  <div>
+                    <div className="px-2.5 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
+                      Year
+                    </div>
+                    <div className="space-y-1">
+                      {yearOptions.map((opt) => {
+                        const checked = selectedKeys.includes(opt.key);
+
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => onToggle(opt.key)}
+                            className={[
+                              "w-full flex items-start gap-2.5 rounded-[14px] px-2.5 py-2 text-left transition",
+                              checked
+                                ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={[
+                                "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                                checked
+                                  ? "bg-cyan-500 border-cyan-500 text-white"
+                                  : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                              ].join(" ")}
+                            >
+                              <FiCheck className="text-[9px]" />
+                            </span>
+
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[10px] sm:text-[10.5px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                                {opt.label}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+type StatusFilterProps = {
+  buttonLabel: string;
+  options: StatusOption[];
+  selectedValues: FilterKey[];
+  searchValue: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSearchChange: (value: string) => void;
+  onToggle: (value: FilterKey) => void;
+  onSelectAllVisible: () => void;
+  onClearAll: () => void;
+  allVisibleSelected: boolean;
+  containerRef: React.RefObject<HTMLDivElement | null>;
+};
+
+const StatusFilterDropdown: React.FC<StatusFilterProps> = ({
+  buttonLabel,
+  options,
+  selectedValues,
+  searchValue,
+  open,
+  onOpenChange,
+  onSearchChange,
+  onToggle,
+  onSelectAllVisible,
+  onClearAll,
+  allVisibleSelected,
+  containerRef,
+}) => {
+  const selectedCount = selectedValues.includes("All")
+    ? 0
+    : selectedValues.length;
+
+  return (
+    <div className="relative w-full sm:w-47.5" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className={[
+          "w-full h-8 rounded-[14px] px-3 inline-flex items-center justify-between gap-2 transition text-left",
+          "bg-white border border-gray-200/80 text-[11px] font-medium text-gray-700 hover:bg-gray-50",
+          "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
+        ].join(" ")}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate">{buttonLabel}</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          {selectedCount > 1 && (
+            <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1.5 rounded-full text-[9px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
+              {selectedCount}
+            </span>
+          )}
+
+          <FiChevronDown
+            className={`pointer-events-none shrink-0 text-[12px] text-gray-400 dark:text-white/45 transition-transform ${open ? "rotate-180" : ""
+              }`}
+          />
+        </div>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-full rounded-[18px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+          <div className="p-2 border-b border-gray-100 dark:border-white/10">
+            <div
+              className={[
+                "flex items-center gap-2 rounded-[14px] px-2.5 h-8",
+                "bg-slate-50 border border-slate-200/80",
+                "dark:bg-white/5 dark:border-white/10",
+              ].join(" ")}
+            >
+              <FiSearch className="text-[11px] text-gray-400 dark:text-white/40 shrink-0" />
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search status..."
+                className="w-full bg-transparent outline-none text-[10.5px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+              />
+              {searchValue.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => onSearchChange("")}
+                  className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                  aria-label="Clear status search"
+                >
+                  <FiX className="text-[11px]" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={onSelectAllVisible}
+                className="text-[10px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+              >
+                {allVisibleSelected ? "Unselect visible" : "Select visible"}
+              </button>
+
+              <button
+                type="button"
+                onClick={onClearAll}
+                className="text-[10px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto p-2">
+            {options.length === 0 ? (
+              <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
+                No matching status
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {options.map((opt) => {
+                  const checked = selectedValues.includes(opt.key);
+
+                  return (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => onToggle(opt.key)}
+                      className={[
+                        "w-full flex items-start gap-2.5 rounded-[14px] px-2.5 py-2 text-left transition",
+                        checked
+                          ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                          : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                      ].join(" ")}
+                    >
+                      <span
+                        className={[
+                          "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
+                          checked
+                            ? "bg-cyan-500 border-cyan-500 text-white"
+                            : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                        ].join(" ")}
+                      >
+                        <FiCheck className="text-[9px]" />
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[10px] sm:text-[10.5px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
+                          {opt.label}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 type HistoryNotifyProps = {
   items: HistoryNotifyResponse[];
   setItems: React.Dispatch<React.SetStateAction<HistoryNotifyResponse[]>>;
@@ -314,19 +717,263 @@ const Index: React.FC<HistoryNotifyProps> = ({
   items,
   setItems,
   loading,
-  refreshing,
   error,
-  onRefresh,
 }) => {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<FilterKey>("All");
+
+  const [selectedFilters, setSelectedFilters] = useState<FilterKey[]>(["All"]);
   const [openFilter, setOpenFilter] = useState(false);
+  const [filterSearch, setFilterSearch] = useState("");
 
   const [selected, setSelected] = useState<number[]>([]);
 
   const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>("");
+
+  const [openDateFilter, setOpenDateFilter] = useState(false);
+  const [dateFilterSearch, setDateFilterSearch] = useState("");
+  const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>([]);
+
+  const dateFilterRef = useRef<HTMLDivElement | null>(null);
+  const statusFilterRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+
+      if (dateFilterRef.current && !dateFilterRef.current.contains(target)) {
+        setOpenDateFilter(false);
+      }
+
+      if (
+        statusFilterRef.current &&
+        !statusFilterRef.current.contains(target)
+      ) {
+        setOpenFilter(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, []);
+
+  const yearOptions = useMemo<CombinedFilterOption[]>(() => {
+    const years = items
+      .map((item) => {
+        const raw = item.datetime || item.created_at || item.updated_at;
+        if (!raw) return null;
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return null;
+        return String(d.getFullYear());
+      })
+      .filter((v): v is string => Boolean(v));
+
+    const uniqueYears = Array.from(new Set(years)).sort(
+      (a, b) => Number(b) - Number(a)
+    );
+
+    return uniqueYears.map((year) => ({
+      key: `year:${year}`,
+      label: year,
+      type: "year",
+      order: Number(year),
+    }));
+  }, [items]);
+
+  const monthOptions = useMemo<CombinedFilterOption[]>(() => {
+    return MONTH_OPTIONS.map((m) => ({
+      key: `month:${m.key}`,
+      label: m.label,
+      type: "month",
+      order: m.value,
+    }));
+  }, []);
+
+  const combinedFilterOptions = useMemo<CombinedFilterOption[]>(() => {
+    const keyword = dateFilterSearch.trim().toLowerCase();
+    const all = [...monthOptions, ...yearOptions];
+
+    if (!keyword) return all;
+
+    return all.filter((opt) => opt.label.toLowerCase().includes(keyword));
+  }, [monthOptions, yearOptions, dateFilterSearch]);
+
+  const filteredStatusOptions = useMemo<StatusOption[]>(() => {
+    const keyword = filterSearch.trim().toLowerCase();
+    const all = FILTER_OPTIONS.map((opt) => ({
+      key: opt,
+      label: opt,
+    }));
+
+    if (!keyword) return all;
+
+    return all.filter((opt) => opt.label.toLowerCase().includes(keyword));
+  }, [filterSearch]);
+
+  const selectedMonths = useMemo(
+    () =>
+      selectedDateKeys
+        .filter((key) => key.startsWith("month:"))
+        .map((key) => key.replace("month:", "")),
+    [selectedDateKeys]
+  );
+
+  const selectedYears = useMemo(
+    () =>
+      selectedDateKeys
+        .filter((key) => key.startsWith("year:"))
+        .map((key) => key.replace("year:", "")),
+    [selectedDateKeys]
+  );
+
+  const normalizedSelectedFilters = useMemo<FilterKey[]>(() => {
+    if (selectedFilters.length === 0 || selectedFilters.includes("All")) {
+      return ["All"];
+    }
+    return selectedFilters;
+  }, [selectedFilters]);
+
+  const activeStatusFilters = useMemo<StatusKey[]>(() => {
+    return normalizedSelectedFilters.filter(
+      (value): value is StatusKey => value !== "All"
+    );
+  }, [normalizedSelectedFilters]);
+
+  const statusFilterButtonLabel = useMemo(() => {
+    if (
+      normalizedSelectedFilters.length === 0 ||
+      normalizedSelectedFilters.includes("All")
+    ) {
+      return "All";
+    }
+
+    if (normalizedSelectedFilters.length === 1) {
+      return normalizedSelectedFilters[0];
+    }
+
+    return `${normalizedSelectedFilters.length} selected`;
+  }, [normalizedSelectedFilters]);
+
+  const dateFilterButtonLabel = useMemo(() => {
+    if (selectedDateKeys.length === 0) return "Date Filter";
+
+    if (selectedDateKeys.length === 1) {
+      const found = [...monthOptions, ...yearOptions].find(
+        (opt) => opt.key === selectedDateKeys[0]
+      );
+      return found?.label || "1 selected";
+    }
+
+    return `${selectedDateKeys.length} selected`;
+  }, [selectedDateKeys, monthOptions, yearOptions]);
+
+  const allVisibleDateFiltersSelected =
+    combinedFilterOptions.length > 0 &&
+    combinedFilterOptions.every((opt) => selectedDateKeys.includes(opt.key));
+
+  const allVisibleStatusSelected =
+    filteredStatusOptions
+      .filter((opt) => opt.key !== "All")
+      .length > 0 &&
+    filteredStatusOptions
+      .filter((opt) => opt.key !== "All")
+      .every((opt) => activeStatusFilters.includes(opt.key as StatusKey));
+
+  const toggleDateFilter = (key: string) => {
+    setSelectedDateKeys((prev) => {
+      if (prev.includes(key)) {
+        return prev.filter((item) => item !== key);
+      }
+
+      const next = [...prev, key];
+      return next.sort((a, b) => {
+        const aIsMonth = a.startsWith("month:");
+        const bIsMonth = b.startsWith("month:");
+        if (aIsMonth && !bIsMonth) return -1;
+        if (!aIsMonth && bIsMonth) return 1;
+
+        const aVal = Number(a.split(":")[1]);
+        const bVal = Number(b.split(":")[1]);
+
+        if (aIsMonth && bIsMonth) return aVal - bVal;
+        return bVal - aVal;
+      });
+    });
+  };
+
+  const handleSelectAllVisibleDateFilters = () => {
+    const visibleKeys = combinedFilterOptions.map((x) => x.key);
+
+    setSelectedDateKeys((prev) => {
+      const prevSet = new Set(prev);
+      const allSelected =
+        visibleKeys.length > 0 &&
+        visibleKeys.every((key) => prevSet.has(key));
+
+      if (allSelected) {
+        return prev.filter((key) => !visibleKeys.includes(key));
+      }
+
+      const next = Array.from(new Set([...prev, ...visibleKeys]));
+      return next.sort((a, b) => {
+        const aIsMonth = a.startsWith("month:");
+        const bIsMonth = b.startsWith("month:");
+        if (aIsMonth && !bIsMonth) return -1;
+        if (!aIsMonth && bIsMonth) return 1;
+
+        const aVal = Number(a.split(":")[1]);
+        const bVal = Number(b.split(":")[1]);
+
+        if (aIsMonth && bIsMonth) return aVal - bVal;
+        return bVal - aVal;
+      });
+    });
+  };
+
+  const toggleStatusFilter = (value: FilterKey) => {
+    setSelectedFilters((prev) => {
+      if (value === "All") {
+        return ["All"];
+      }
+
+      const base = prev.includes("All") ? [] : prev;
+
+      if (base.includes(value)) {
+        const next = base.filter((item) => item !== value);
+        return next.length === 0 ? ["All"] : next;
+      }
+
+      return [...base, value];
+    });
+  };
+
+  const handleSelectAllVisibleStatus = () => {
+    const visibleKeys = filteredStatusOptions
+      .map((x) => x.key)
+      .filter((key): key is StatusKey => key !== "All");
+
+    const current = normalizedSelectedFilters.includes("All")
+      ? []
+      : normalizedSelectedFilters.filter(
+        (key): key is StatusKey => key !== "All"
+      );
+
+    const currentSet = new Set(current);
+
+    const allSelected =
+      visibleKeys.length > 0 &&
+      visibleKeys.every((key) => currentSet.has(key));
+
+    if (allSelected) {
+      const next = current.filter((key) => !visibleKeys.includes(key));
+      setSelectedFilters(next.length === 0 ? ["All"] : next);
+      return;
+    }
+
+    const next = Array.from(new Set([...current, ...visibleKeys]));
+    setSelectedFilters(next.length === 0 ? ["All"] : next);
+  };
 
   const notifications = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -335,7 +982,32 @@ const Index: React.FC<HistoryNotifyProps> = ({
       const normalizedStatus = normalizeStatus(item.status);
       const parsed = parseDescription(item.description);
 
-      const matchFilter = filter === "All" ? true : normalizedStatus === filter;
+      const rawDate = item.datetime || item.created_at || item.updated_at;
+      const itemDate = rawDate ? new Date(rawDate) : null;
+
+      const itemMonth =
+        itemDate && !Number.isNaN(itemDate.getTime())
+          ? String(itemDate.getMonth() + 1)
+          : "";
+
+      const itemYear =
+        itemDate && !Number.isNaN(itemDate.getTime())
+          ? String(itemDate.getFullYear())
+          : "";
+
+      const statusAll =
+        normalizedSelectedFilters.length === 0 ||
+        normalizedSelectedFilters.includes("All");
+
+      const matchFilter = statusAll
+        ? true
+        : activeStatusFilters.includes(normalizedStatus);
+
+      const matchMonth =
+        selectedMonths.length === 0 ? true : selectedMonths.includes(itemMonth);
+
+      const matchYear =
+        selectedYears.length === 0 ? true : selectedYears.includes(itemYear);
 
       const blob = [
         item.subject,
@@ -353,9 +1025,16 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
       const matchSearch = blob.includes(q);
 
-      return matchFilter && matchSearch;
+      return matchFilter && matchSearch && matchMonth && matchYear;
     });
-  }, [items, search, filter]);
+  }, [
+    items,
+    search,
+    normalizedSelectedFilters,
+    activeStatusFilters,
+    selectedMonths,
+    selectedYears,
+  ]);
 
   const toggleSelect = (id: number) => {
     setSelected((prev) =>
@@ -500,7 +1179,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <div className="relative min-w-46 flex-1 sm:flex-none sm:w-60">
+              <div className="relative min-w-46 flex-1 sm:flex-none sm:w-75">
                 <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 dark:text-white/35" />
                 <input
                   value={search}
@@ -513,6 +1192,42 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   ].join(" ")}
                 />
               </div>
+
+              <CombinedMonthYearFilter
+                buttonLabel={dateFilterButtonLabel}
+                options={combinedFilterOptions}
+                selectedKeys={selectedDateKeys}
+                searchValue={dateFilterSearch}
+                open={openDateFilter}
+                onOpenChange={(open) => {
+                  setOpenDateFilter(open);
+                  if (open) setOpenFilter(false);
+                }}
+                onSearchChange={setDateFilterSearch}
+                onToggle={toggleDateFilter}
+                onSelectAllVisible={handleSelectAllVisibleDateFilters}
+                onClearAll={() => setSelectedDateKeys([])}
+                allVisibleSelected={allVisibleDateFiltersSelected}
+                containerRef={dateFilterRef}
+              />
+
+              <StatusFilterDropdown
+                buttonLabel={statusFilterButtonLabel}
+                options={filteredStatusOptions}
+                selectedValues={normalizedSelectedFilters}
+                searchValue={filterSearch}
+                open={openFilter}
+                onOpenChange={(open) => {
+                  setOpenFilter(open);
+                  if (open) setOpenDateFilter(false);
+                }}
+                onSearchChange={setFilterSearch}
+                onToggle={toggleStatusFilter}
+                onSelectAllVisible={handleSelectAllVisibleStatus}
+                onClearAll={() => setSelectedFilters(["All"])}
+                allVisibleSelected={allVisibleStatusSelected}
+                containerRef={statusFilterRef}
+              />
 
               <button
                 type="button"
@@ -534,23 +1249,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
               <button
                 type="button"
-                onClick={() => onRefresh(true)}
-                disabled={refreshing}
-                className={[
-                  "inline-flex h-8 w-8 items-center justify-center rounded-[14px] transition",
-                  "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                  "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
-                ].join(" ")}
-                title="Refresh"
-              >
-                <FiRefreshCw
-                  className={`text-[12px] ${refreshing ? "animate-spin" : ""}`}
-                />
-              </button>
-
-              <button
-                type="button"
                 onClick={openDeleteModal}
                 disabled={selected.length === 0}
                 className={[
@@ -563,64 +1261,43 @@ const Index: React.FC<HistoryNotifyProps> = ({
               >
                 <FiTrash2 className="text-[12px]" />
               </button>
-
-              <button
-                type="button"
-                className={[
-                  "inline-flex h-8 w-8 items-center justify-center rounded-[14px] transition",
-                  "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                  "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
-                ].join(" ")}
-                title="More"
-              >
-                <FiMoreVertical className="text-[12px]" />
-              </button>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setOpenFilter((s) => !s)}
-                  className={[
-                    "h-8 px-3 rounded-[14px] inline-flex items-center gap-2 transition",
-                    "bg-white border border-gray-200/80 text-[11px] font-medium text-gray-700 hover:bg-gray-50",
-                    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-                  ].join(" ")}
-                >
-                  {filter}
-                  <FiChevronDown
-                    className={`transition text-[12px] ${
-                      openFilter ? "rotate-180" : ""
-                    } text-gray-400 dark:text-white/45`}
-                  />
-                </button>
-
-                {openFilter && (
-                  <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                    {FILTER_OPTIONS.map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => {
-                          setFilter(opt);
-                          setOpenFilter(false);
-                        }}
-                        className={[
-                          "w-full px-3 py-2 text-left text-[11px] transition",
-                          filter === opt
-                            ? "bg-cyan-50 text-cyan-700 font-semibold dark:bg-cyan-500/10 dark:text-cyan-200"
-                            : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
-                        ].join(" ")}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[9.5px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
+              Month:
+              <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                {selectedMonths.length === 0
+                  ? "All"
+                  : selectedMonths.length === 1
+                    ? MONTH_OPTIONS.find((m) => m.key === selectedMonths[0])?.label
+                    : `${selectedMonths.length} selected`}
+              </span>
+            </div>
+
+            <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[9.5px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
+              Year:
+              <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                {selectedYears.length === 0
+                  ? "All"
+                  : selectedYears.length === 1
+                    ? selectedYears[0]
+                    : `${selectedYears.length} selected`}
+              </span>
+            </div>
+
+            <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[9.5px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
+              Status:
+              <span className="ml-1 font-semibold text-slate-900 dark:text-white">
+                {normalizedSelectedFilters.includes("All")
+                  ? "All"
+                  : normalizedSelectedFilters.length === 1
+                    ? normalizedSelectedFilters[0]
+                    : `${normalizedSelectedFilters.length} selected`}
+              </span>
+            </div>
+
             <div className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[9.5px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
               Total:
               <span className="ml-1 font-semibold text-slate-900 dark:text-white">
@@ -696,9 +1373,9 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
           <div className="mt-3.5 overflow-hidden rounded-[18px] border border-gray-200/80 bg-white/70 dark:border-white/10 dark:bg-white/3">
             {loading ? (
-              <div className="px-5 py-8 text-center">
+              <div className="min-h-110 px-5 py-8 text-center flex flex-col items-center justify-center">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[14px] border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
-                  <FiRefreshCw className="animate-spin text-[16px]" />
+                  <FiRotateCw className="animate-spin text-[16px]" />
                 </div>
                 <h3 className="mt-3 text-[13px] font-semibold text-slate-900 dark:text-white/85">
                   Loading notifications...
@@ -708,7 +1385,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                 </p>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="px-5 py-8 text-center">
+              <div className="min-h-110 px-5 py-8 text-center flex flex-col items-center justify-center">
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-[14px] border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
                   <FiMessageSquare className="text-[16px]" />
                 </div>
@@ -716,11 +1393,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   No notifications found
                 </h3>
                 <p className="mt-1 text-[10px] text-slate-500 dark:text-white/55">
-                  Try adjusting your search or status filter.
+                  Try adjusting your search, date filter, or status filter.
                 </p>
               </div>
             ) : (
-              <div className="max-h-110 overflow-y-auto">
+              <div className="min-h-110 max-h-110 overflow-y-auto">
                 {notifications.map((item, idx) => {
                   const tone = getStatusMeta(item.status);
                   const isSelected = selected.includes(item.id);
@@ -851,97 +1528,61 @@ const Index: React.FC<HistoryNotifyProps> = ({
               <button
                 type="button"
                 onClick={closeDeleteModal}
-                disabled={deleting}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/10"
+                className="rounded-xl p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:text-white/35 dark:hover:bg-white/8 dark:hover:text-white/70"
               >
                 <FiX className="text-[14px]" />
               </button>
             </div>
 
-            <div className="px-4 py-4">
-              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-slate-700 dark:text-white/70">
-                    Selected items
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                    {selectedItems.length}
-                  </span>
-                </div>
+            <div className="px-4 py-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
+                <p className="text-[11px] font-medium text-slate-700 dark:text-white/75">
+                  Selected items: {selectedItems.length}
+                </p>
 
-                <div className="max-h-52 space-y-2 overflow-y-auto pr-1">
-                  {selectedItems.map((item) => {
-                    const tone = getStatusMeta(item.status);
-                    return (
-                      <div
-                        key={`delete-${item.id}`}
-                        className="rounded-2xl border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-[#0f172a]/70"
-                      >
-                        <div className="flex items-start gap-2">
-                          <div
-                            className={[
-                              "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border",
-                              tone.iconWrap,
-                            ].join(" ")}
-                          >
-                            {tone.icon}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <p className="truncate text-[11px] font-semibold text-slate-900 dark:text-white/85">
-                                {getDisplayTitle(item)}
-                              </p>
-
-                              <span
-                                className={[
-                                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[8.5px] font-medium",
-                                  tone.badge,
-                                ].join(" ")}
-                              >
-                                <span
-                                  className={`h-1.5 w-1.5 rounded-full ${tone.dot}`}
-                                />
-                                {tone.label}
-                              </span>
-                            </div>
-
-                            <p className="mt-1 line-clamp-2 text-[10px] text-slate-500 dark:text-white/55">
-                              {getDisplayDescription(item)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="mt-2 max-h-40 overflow-y-auto space-y-1.5">
+                  {selectedItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-600 dark:border-white/10 dark:bg-[#0F172A] dark:text-white/60"
+                    >
+                      <p className="font-medium text-slate-800 dark:text-white/80">
+                        {getDisplayTitle(item)}
+                      </p>
+                      <p className="mt-0.5 text-slate-500 dark:text-white/45">
+                        {formatDate(item.datetime || item.created_at)}{" "}
+                        {formatTime(item.datetime || item.created_at)}
+                      </p>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {deleteError && (
-                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10.5px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
                   {deleteError}
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3 dark:border-white/10">
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={deleting}
-                className="inline-flex h-8 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
-              >
-                Cancel
-              </button>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={closeDeleteModal}
+                  disabled={deleting}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"
+                >
+                  Cancel
+                </button>
 
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-                className="inline-flex h-8 items-center justify-center rounded-xl bg-red-600 px-3 text-[11px] font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deleting}
+                  className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-[11px] font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+                >
+                  {deleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

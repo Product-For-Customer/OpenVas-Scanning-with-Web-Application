@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -49,27 +50,19 @@ func CreateAppLineMaster(c *gin.Context) {
 
 	db := config.DB()
 
-	name := strings.TrimSpace(input.Name)
-	description := strings.TrimSpace(input.Description)
-	token := strings.TrimSpace(input.Token)
-
-	if name == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
-		return
+	lineMaster := entity.AppLineMaster{
+		Name:        strings.TrimSpace(input.Name),
+		Description: strings.TrimSpace(input.Description),
+		Token:       strings.TrimSpace(input.Token),
 	}
 
-	if description == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "description is required"})
-		return
-	}
-
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "token is required"})
+	if ok, err := govalidator.ValidateStruct(lineMaster); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var existingName entity.AppLineMaster
-	err := db.Where("LOWER(name) = LOWER(?)", name).First(&existingName).Error
+	err := db.Where("LOWER(name) = LOWER(?)", lineMaster.Name).First(&existingName).Error
 	if err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "app line master name already exists"})
 		return
@@ -80,7 +73,7 @@ func CreateAppLineMaster(c *gin.Context) {
 	}
 
 	var existingToken entity.AppLineMaster
-	err = db.Where("token = ?", token).First(&existingToken).Error
+	err = db.Where("token = ?", lineMaster.Token).First(&existingToken).Error
 	if err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "app line master token already exists"})
 		return
@@ -88,12 +81,6 @@ func CreateAppLineMaster(c *gin.Context) {
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master token"})
 		return
-	}
-
-	lineMaster := entity.AppLineMaster{
-		Name:        name,
-		Description: description,
-		Token:       token,
 	}
 
 	if err := db.Create(&lineMaster).Error; err != nil {
@@ -148,17 +135,31 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{}
+	if input.Name == nil && input.Description == nil && input.Token == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
+	updatedLineMaster := lineMaster
 
 	if input.Name != nil {
-		name := strings.TrimSpace(*input.Name)
-		if name == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "name cannot be empty"})
-			return
-		}
+		updatedLineMaster.Name = strings.TrimSpace(*input.Name)
+	}
+	if input.Description != nil {
+		updatedLineMaster.Description = strings.TrimSpace(*input.Description)
+	}
+	if input.Token != nil {
+		updatedLineMaster.Token = strings.TrimSpace(*input.Token)
+	}
 
+	if ok, err := govalidator.ValidateStruct(updatedLineMaster); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if input.Name != nil {
 		var existing entity.AppLineMaster
-		err := db.Where("LOWER(name) = LOWER(?) AND id <> ?", name, lineMaster.ID).First(&existing).Error
+		err := db.Where("LOWER(name) = LOWER(?) AND id <> ?", updatedLineMaster.Name, lineMaster.ID).First(&existing).Error
 		if err == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "app line master name already exists"})
 			return
@@ -167,29 +168,11 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master name"})
 			return
 		}
-
-		updates["name"] = name
-	}
-
-	if input.Description != nil {
-		description := strings.TrimSpace(*input.Description)
-		if description == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "description cannot be empty"})
-			return
-		}
-
-		updates["description"] = description
 	}
 
 	if input.Token != nil {
-		token := strings.TrimSpace(*input.Token)
-		if token == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "token cannot be empty"})
-			return
-		}
-
 		var existing entity.AppLineMaster
-		err := db.Where("token = ? AND id <> ?", token, lineMaster.ID).First(&existing).Error
+		err := db.Where("token = ? AND id <> ?", updatedLineMaster.Token, lineMaster.ID).First(&existing).Error
 		if err == nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "app line master token already exists"})
 			return
@@ -198,13 +181,18 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master token"})
 			return
 		}
-
-		updates["token"] = token
 	}
 
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
-		return
+	updates := map[string]interface{}{}
+
+	if input.Name != nil {
+		updates["name"] = updatedLineMaster.Name
+	}
+	if input.Description != nil {
+		updates["description"] = updatedLineMaster.Description
+	}
+	if input.Token != nil {
+		updates["token"] = updatedLineMaster.Token
 	}
 
 	tx := db.Model(&entity.AppLineMaster{}).

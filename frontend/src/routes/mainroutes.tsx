@@ -19,7 +19,6 @@ const Report = Loadable(lazy(() => import("../page/report/index")));
 
 // ===== Login Pages =====
 const SignIn = Loadable(lazy(() => import("../page/Authentication/Signin/index")));
-const SignUp = Loadable(lazy(() => import("../page/Authentication/Signup/index")));
 const Forget = Loadable(lazy(() => import("../page/Authentication/Forget/index")));
 const Reset = Loadable(lazy(() => import("../page/Authentication/Reset/index")));
 const Loader = Loadable(lazy(() => import("../component/third-patry/Loader")));
@@ -89,7 +88,6 @@ const MainRoutes = (): RouteObject[] => [
     path: "/",
     children: [
       { index: true, element: <SignIn /> },
-      { path: "register", element: <SignUp /> },
       { path: "loader", element: <Loader /> },
       { path: "forgot-password", element: <Forget /> },
       { path: "reset-password", element: <Reset /> },

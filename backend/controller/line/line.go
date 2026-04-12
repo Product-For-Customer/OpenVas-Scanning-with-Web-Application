@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/lib/pq"
@@ -265,10 +266,15 @@ func saveScanStatusHistory(subject string, description string) {
 	}
 
 	history := entity.AppHistoryNotify{
-		Subject:           subject,
-		Description:       description,
+		Subject:           strings.TrimSpace(subject),
 		DateTime:          time.Now(),
+		Description:       strings.TrimSpace(description),
 		AppStatusNotifyID: &status.ID,
+	}
+
+	if ok, err := govalidator.ValidateStruct(history); !ok {
+		log.Println("saveScanStatusHistory validation error:", err)
+		return
 	}
 
 	if err := db.Create(&history).Error; err != nil {

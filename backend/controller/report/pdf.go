@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/asaskevich/govalidator"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
 	"github.com/gin-gonic/gin"
@@ -717,20 +718,50 @@ func UpdateAppReportByID(c *gin.Context) {
 		return
 	}
 
-	if input.CompanyName != nil {
-		report.CompanyName = *input.CompanyName
-	}
-
-	if input.Logo != nil {
-		report.Logo = *input.Logo
-	}
-
-	if err := db.Save(&report).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if input.CompanyName == nil && input.Logo == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
 		return
 	}
 
-	db.First(&report, report.ID)
+	updatedReport := report
 
-	c.JSON(http.StatusOK, mapAppReportResponse(report))
+	if input.CompanyName != nil {
+		updatedReport.CompanyName = strings.TrimSpace(*input.CompanyName)
+	}
+
+	if input.Logo != nil {
+		updatedReport.Logo = strings.TrimSpace(*input.Logo)
+	}
+
+	if ok, err := govalidator.ValidateStruct(updatedReport); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	updates := map[string]interface{}{}
+
+	if input.CompanyName != nil {
+		updates["company_name"] = updatedReport.CompanyName
+	}
+
+	if input.Logo != nil {
+		updates["logo"] = updatedReport.Logo
+	}
+
+	tx := db.Model(&entity.AppReport{}).
+		Where("id = ?", report.ID).
+		Updates(updates)
+
+	if tx.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
+		return
+	}
+
+	var refreshed entity.AppReport
+	if err := db.First(&refreshed, report.ID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reload updated app report"})
+		return
+	}
+
+	c.JSON(http.StatusOK, mapAppReportResponse(refreshed))
 }
