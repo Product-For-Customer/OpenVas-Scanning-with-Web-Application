@@ -3,16 +3,27 @@ import {
   FiBriefcase,
   FiCheck,
   FiChevronDown,
+  FiEdit2,
   FiMail,
   FiMapPin,
   FiPhone,
+  FiPlus,
+  FiSave,
+  FiSearch,
   FiShield,
   FiUpload,
   FiUser,
+  FiUsers,
   FiX,
+  FiImage,
 } from "react-icons/fi";
 import { message } from "antd";
-import { ListRoles, UpdateUserIDByAdmin, CreateUser } from "../services";
+import {
+  ListRoles,
+  UpdateUserIDByAdmin,
+  CreateUser,
+  ListEmailAndPhoneNumber,
+} from "../services";
 
 type UiUser = {
   id: number;
@@ -29,6 +40,12 @@ type UiUser = {
 type RoleResponse = {
   id: number;
   role: string;
+};
+
+type EmailAndPhoneNumberResponse = {
+  id: number;
+  email: string;
+  phone_number: string;
 };
 
 type ModalCreateandUpdateUserProps = {
@@ -70,6 +87,15 @@ const toBase64 = (file: File) =>
     reader.onerror = (error) => reject(error);
   });
 
+const isBase64DataImage = (v: string) => {
+  const s = (v || "").trim();
+  return /^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);base64,/i.test(s);
+};
+
+const isImageFile = (file: File) => {
+  return file.type.startsWith("image/");
+};
+
 const getRoleBadgeClass = (role: string) => {
   if (role === "Admin") {
     return "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/25 dark:bg-violet-500/12 dark:text-violet-200";
@@ -78,10 +104,37 @@ const getRoleBadgeClass = (role: string) => {
   return "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-500/12 dark:text-cyan-200";
 };
 
-const isBase64DataImage = (v: string) => {
-  const s = (v || "").trim();
-  return /^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);base64,/i.test(s);
-};
+const primaryBlueButtonCls = [
+  "h-8.5 px-3 rounded-lg inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
+  "bg-cyan-500 text-white hover:bg-cyan-600 border border-cyan-500 shadow-sm",
+  "dark:bg-cyan-500 dark:text-white dark:hover:bg-cyan-400 dark:border-cyan-400/30",
+  "disabled:cursor-not-allowed disabled:opacity-60",
+].join(" ");
+
+const secondaryBtnCls = [
+  "h-8.5 px-3 rounded-lg inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
+  "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
+  "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
+  "disabled:cursor-not-allowed disabled:opacity-60",
+].join(" ");
+
+const inputCls = [
+  "h-9 rounded-lg border px-3 text-[10px] outline-none transition w-full",
+  "border-gray-200/80 bg-white text-[#1f2240] focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
+  "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
+].join(" ");
+
+const selectorButtonCls = [
+  "h-9 rounded-lg px-3 flex items-center gap-2 border transition w-full",
+  "bg-white border-gray-200 text-slate-700 hover:border-cyan-200 hover:bg-cyan-50/60",
+  "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
+  "disabled:cursor-not-allowed disabled:opacity-60",
+].join(" ");
+
+const searchInputCls = [
+  "h-7 w-full bg-transparent text-[10px] text-gray-700 outline-none placeholder:text-gray-400",
+  "dark:text-white/80 dark:placeholder:text-white/35",
+].join(" ");
 
 const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   open,
@@ -100,16 +153,90 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   const fetchedRolesRef = useRef(false);
 
   const [roleOpen, setRoleOpen] = useState(false);
+  const [roleSearch, setRoleSearch] = useState("");
   const roleDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const [existingContacts, setExistingContacts] = useState<
+    EmailAndPhoneNumberResponse[]
+  >([]);
+  const [loadingExistingContacts, setLoadingExistingContacts] = useState(false);
+
+  const [emailDuplicateError, setEmailDuplicateError] = useState("");
+  const [phoneDuplicateError, setPhoneDuplicateError] = useState("");
+  const [phoneValidationError, setPhoneValidationError] = useState("");
 
   const fullName = useMemo(() => {
     return `${formData.first_name} ${formData.last_name}`.trim() || "User";
   }, [formData.first_name, formData.last_name]);
 
-  const selectedRoleName = useMemo(() => {
-    const found = roles.find((r) => r.id === Number(formData.app_role_id));
-    return found?.role || "";
+  const selectedRole = useMemo(() => {
+    return roles.find((r) => r.id === Number(formData.app_role_id)) || null;
   }, [roles, formData.app_role_id]);
+
+  const selectedRoleName = selectedRole?.role || "";
+
+  const filteredRoles = useMemo(() => {
+    const keyword = roleSearch.trim().toLowerCase();
+    if (!keyword) return roles;
+
+    return roles.filter((role) =>
+      String(role.role || "")
+        .toLowerCase()
+        .includes(keyword)
+    );
+  }, [roles, roleSearch]);
+
+  const normalizeEmail = (value: string) => value.trim().toLowerCase();
+  const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
+
+  const validateThaiPhoneNumber = (value: string) => {
+    const phone = normalizePhone(value);
+
+    if (!phone) return "";
+    if (!phone.startsWith("0")) return "Phone number must start with 0";
+    if (phone.length > 10) return "Phone number must not exceed 10 digits";
+    if (phone.length < 10) return "Phone number must be 10 digits";
+    return "";
+  };
+
+  const loadExistingContacts = async () => {
+    try {
+      setLoadingExistingContacts(true);
+      const data = await ListEmailAndPhoneNumber();
+      setExistingContacts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("ListEmailAndPhoneNumber error:", err);
+      setExistingContacts([]);
+    } finally {
+      setLoadingExistingContacts(false);
+    }
+  };
+
+  const checkDuplicateEmail = (email: string) => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) return "";
+
+    const duplicated = existingContacts.some((item) => {
+      const sameEmail = normalizeEmail(item.email) === normalizedEmail;
+      const isSameCurrentUser = isEditMode && user?.id === item.id;
+      return sameEmail && !isSameCurrentUser;
+    });
+
+    return duplicated ? "This email is already in use" : "";
+  };
+
+  const checkDuplicatePhone = (phoneNumber: string) => {
+    const normalizedPhone = normalizePhone(phoneNumber);
+    if (!normalizedPhone) return "";
+
+    const duplicated = existingContacts.some((item) => {
+      const samePhone = normalizePhone(item.phone_number) === normalizedPhone;
+      const isSameCurrentUser = isEditMode && user?.id === item.id;
+      return samePhone && !isSameCurrentUser;
+    });
+
+    return duplicated ? "This phone number is already in use" : "";
+  };
 
   const fetchRoles = async () => {
     try {
@@ -140,6 +267,11 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
 
   useEffect(() => {
     if (!open) return;
+    loadExistingContacts();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
 
     if (isEditMode && user) {
       const matchedRole = roles.find(
@@ -165,6 +297,10 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
     setUploadingImage(false);
     setError("");
     setRoleOpen(false);
+    setRoleSearch("");
+    setEmailDuplicateError("");
+    setPhoneDuplicateError("");
+    setPhoneValidationError("");
   }, [open, isEditMode, user, roles]);
 
   useEffect(() => {
@@ -183,6 +319,14 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, [roleOpen]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    setEmailDuplicateError(checkDuplicateEmail(formData.email));
+    setPhoneDuplicateError(checkDuplicatePhone(formData.phone_number));
+    setPhoneValidationError(validateThaiPhoneNumber(formData.phone_number));
+  }, [formData.email, formData.phone_number, existingContacts, open]);
+
   if (!open) return null;
 
   const handleChange = (
@@ -192,10 +336,24 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
 
     if (name === "phone_number") {
       const numericOnly = value.replace(/\D/g, "").slice(0, 10);
+
       setFormData((prev) => ({
         ...prev,
         phone_number: numericOnly,
       }));
+
+      setPhoneValidationError(validateThaiPhoneNumber(numericOnly));
+      setPhoneDuplicateError(checkDuplicatePhone(numericOnly));
+      return;
+    }
+
+    if (name === "email") {
+      setFormData((prev) => ({
+        ...prev,
+        email: value,
+      }));
+
+      setEmailDuplicateError(checkDuplicateEmail(value));
       return;
     }
 
@@ -211,6 +369,7 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
       app_role_id: roleId,
     }));
     setRoleOpen(false);
+    setRoleSearch("");
   };
 
   const handleUploadImage = async (
@@ -218,6 +377,12 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!isImageFile(file)) {
+      message.warning("Please upload image only");
+      e.target.value = "";
+      return;
+    }
 
     try {
       setUploadingImage(true);
@@ -239,13 +404,19 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
     if (!formData.last_name.trim()) return "Please enter last name";
     if (!formData.email.trim()) return "Please enter email";
     if (!/\S+@\S+\.\S+/.test(formData.email)) return "Invalid email format";
+    if (emailDuplicateError) return emailDuplicateError;
 
     if (!isEditMode && !formData.password.trim()) {
       return "Please enter password";
     }
 
     if (!formData.phone_number.trim()) return "Please enter phone number";
-    if (formData.phone_number.length !== 10) return "Phone must be 10 digits";
+
+    const phoneError = validateThaiPhoneNumber(formData.phone_number);
+    if (phoneError) return phoneError;
+
+    if (phoneDuplicateError) return phoneDuplicateError;
+
     if (!formData.location.trim()) return "Please enter location";
     if (!formData.position.trim()) return "Please enter position";
     if (!formData.app_role_id) return "Please select role";
@@ -256,6 +427,18 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    await loadExistingContacts();
+
+    const latestEmailDuplicateError = checkDuplicateEmail(formData.email);
+    const latestPhoneDuplicateError = checkDuplicatePhone(formData.phone_number);
+    const latestPhoneValidationError = validateThaiPhoneNumber(
+      formData.phone_number
+    );
+
+    setEmailDuplicateError(latestEmailDuplicateError);
+    setPhoneDuplicateError(latestPhoneDuplicateError);
+    setPhoneValidationError(latestPhoneValidationError);
 
     const validationError = validateForm();
     if (validationError) {
@@ -324,392 +507,465 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/25 px-3 py-4 backdrop-blur-[2px]">
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0"
-        aria-label="Close modal overlay"
-      />
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-950/55 backdrop-blur-[2px] p-2">
+      <div className="w-full max-w-4xl overflow-hidden rounded-[22px] border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+        <div className="relative border-b border-gray-100 bg-white px-3 py-3 dark:border-white/10 dark:bg-[#0B1220]">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-linear-to-r from-cyan-500/8 via-transparent to-violet-500/8 dark:from-cyan-500/10 dark:via-transparent dark:to-violet-500/10" />
 
-      <div
-        className={[
-          "relative w-full max-w-190 overflow-visible rounded-[22px]",
-          "border border-slate-200/80 bg-white px-5 py-5",
-          "shadow-[0_20px_60px_rgba(15,23,42,0.12)]",
-          "dark:border-white/10 dark:bg-[#0f172a]",
-        ].join(" ")}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={submitting}
-          className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white/80"
-          aria-label="Close modal"
-        >
-          <FiX className="text-[15px]" />
-        </button>
+          <div className="relative flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-1 rounded-full border border-cyan-200/80 bg-cyan-50 px-2 py-0.5 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                {isEditMode ? (
+                  <FiEdit2 className="text-[8px]" />
+                ) : (
+                  <FiPlus className="text-[8px]" />
+                )}
+                <span className="text-[8px] font-semibold tracking-wide">
+                  {isEditMode ? "Edit User" : "Create User"}
+                </span>
+              </div>
 
-        <div className="mb-4 flex items-center gap-3 pr-8">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-white/8 dark:text-white/80">
-            <FiUser className="text-[17px]" />
-          </div>
+              <div className="mt-2 flex items-start gap-2">
+                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-cyan-200/80 bg-cyan-50 dark:border-cyan-400/20 dark:bg-cyan-500/10">
+                  <FiUsers className="text-[12px] text-cyan-600 dark:text-cyan-300" />
+                </div>
 
-          <div>
-            <h3 className="text-[16px] font-semibold tracking-tight text-slate-900 dark:text-white">
-              {isEditMode ? "Edit User" : "Create User"}
-            </h3>
-            <p className="mt-0.5 text-[12px] text-slate-500 dark:text-white/50">
-              Compact user account form
-            </p>
-          </div>
-        </div>
-
-        {error ? (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
-            {error}
-          </div>
-        ) : null}
-
-        <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-[180px_1fr]">
-            <div>
-              <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                Profile
-              </label>
-
-              <div className="rounded-[18px] border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
-                <div className="flex flex-col items-center text-center">
-                  {formData.profile && isBase64DataImage(formData.profile) ? (
-                    <img
-                      src={formData.profile}
-                      alt="Profile Preview"
-                      className="h-20 w-20 rounded-[22px] object-cover ring-1 ring-slate-200 dark:ring-white/10"
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-white/40">
-                      <FiUser className="text-[24px]" />
-                    </div>
-                  )}
-
-                  <p className="mt-3 text-[13px] font-semibold text-slate-800 dark:text-white">
-                    {fullName}
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold text-[#1f2240] dark:text-white/90">
+                    User Form
                   </p>
-                  <p className="mt-1 break-all text-[11px] text-slate-500 dark:text-white/50">
-                    {formData.email || "No email"}
+                  <p className="mt-1 text-[9px] leading-relaxed text-gray-500 dark:text-white/50">
+                    Manage user profile, contact information, role, and profile
+                    image. Upload supports image files only.
                   </p>
-
-                  <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8">
-                    <FiUpload className="text-[12px]" />
-                    {uploadingImage ? "Uploading..." : "Upload"}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleUploadImage}
-                      className="hidden"
-                    />
-                  </label>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  First Name
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleChange}
-                    placeholder="First name"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Last Name
-                </label>
-                <div className="relative">
-                  <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleChange}
-                    placeholder="Last name"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Email
-                </label>
-                <div className="relative">
-                  <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Email"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              {!isEditMode && (
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Password"
-                      className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="text"
-                    name="phone_number"
-                    value={formData.phone_number}
-                    onChange={handleChange}
-                    placeholder="Phone number"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Location
-                </label>
-                <div className="relative">
-                  <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    placeholder="Location"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Position
-                </label>
-                <div className="relative">
-                  <FiBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
-                  <input
-                    type="text"
-                    name="position"
-                    value={formData.position}
-                    onChange={handleChange}
-                    placeholder="Position"
-                    className="h-11 w-full rounded-2xl border border-slate-300 bg-white pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-200/70 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-white/15 dark:focus:ring-white/10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Role
-                </label>
-
-                <div className="relative" ref={roleDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => !loadingRoles && setRoleOpen((prev) => !prev)}
-                    disabled={loadingRoles}
-                    className={[
-                      "group w-full min-h-11 rounded-[22px] px-3 text-left transition-all duration-200",
-                      "border border-slate-300 bg-white",
-                      "hover:border-cyan-300 hover:bg-cyan-50/40",
-                      "focus:outline-none focus:ring-4 focus:ring-cyan-100/80",
-                      "disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100",
-                      "dark:border-[#23314d] dark:bg-[#182338]",
-                      "dark:hover:border-cyan-400/35 dark:hover:bg-[#1d2b45]",
-                      "dark:focus:border-cyan-400/30 dark:focus:ring-cyan-400/10",
-                      "dark:disabled:border-white/10 dark:disabled:bg-white/5",
-                      roleOpen
-                        ? "border-cyan-300 bg-cyan-50/50 dark:border-cyan-400/35 dark:bg-[#1b2a44]"
-                        : "",
-                    ].join(" ")}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-200">
-                        <FiShield className="text-[11px]" />
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span
-                          className={[
-                            "block truncate text-[12px] font-semibold",
-                            selectedRoleName
-                              ? "text-slate-800 dark:text-slate-100"
-                              : "text-slate-500 dark:text-white/45",
-                          ].join(" ")}
-                        >
-                          {loadingRoles
-                            ? "Loading roles..."
-                            : selectedRoleName || "Select role"}
-                        </span>
-                      </span>
-
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition group-hover:border-cyan-200 group-hover:text-cyan-700 dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:group-hover:border-cyan-400/20 dark:group-hover:bg-cyan-400/10 dark:group-hover:text-cyan-200">
-                        <FiChevronDown
-                          className={`text-[12px] transition-transform duration-200 ${
-                            roleOpen ? "rotate-180" : ""
-                          }`}
-                        />
-                      </span>
-                    </div>
-                  </button>
-
-                  {roleOpen && !loadingRoles && (
-                    <div className="absolute bottom-[calc(100%+8px)] left-0 right-0 z-50 overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.14)] dark:border-[#22304a] dark:bg-[#101a2c] dark:shadow-[0_22px_50px_rgba(0,0,0,0.45)]">
-                      <div className="border-b border-slate-100 px-3 py-2 dark:border-white/8">
-                        <span className="text-[10px] font-medium text-slate-500 dark:text-white/45">
-                          Select role
-                        </span>
-                      </div>
-
-                      <div className="p-2">
-                        <div className="space-y-1">
-                          {roles.map((role) => {
-                            const checked =
-                              Number(formData.app_role_id) === role.id;
-
-                            return (
-                              <button
-                                key={role.id}
-                                type="button"
-                                onClick={() => handleRoleSelect(role.id)}
-                                className={[
-                                  "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-150",
-                                  checked
-                                    ? "border border-cyan-200 bg-cyan-50 shadow-[0_4px_14px_rgba(34,211,238,0.08)] dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:shadow-none"
-                                    : "border border-transparent hover:bg-slate-50 dark:hover:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <span
-                                  className={[
-                                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
-                                    checked
-                                      ? "border-cyan-500 bg-cyan-500 text-white"
-                                      : "border-slate-300 bg-white text-transparent dark:border-white/15 dark:bg-[#162136]",
-                                  ].join(" ")}
-                                >
-                                  <FiCheck className="text-[10px]" />
-                                </span>
-
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-[12px] font-medium text-slate-700 dark:text-white/85">
-                                    {role.role}
-                                  </span>
-                                </span>
-
-                                {checked && (
-                                  <span
-                                    className={[
-                                      "inline-flex items-center rounded-full border px-2 py-0.5 text-[9px] font-semibold",
-                                      getRoleBadgeClass(role.role),
-                                    ].join(" ")}
-                                  >
-                                    Selected
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-white/10 dark:bg-white/4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] text-slate-500 dark:text-white/45">
-                      Current role:
-                    </span>
-
-                    {selectedRoleName ? (
-                      <span
-                        className={[
-                          "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                          getRoleBadgeClass(selectedRoleName),
-                        ].join(" ")}
-                      >
-                        {selectedRoleName === "Admin" ? (
-                          <FiShield className="mr-1.5 text-[10px]" />
-                        ) : (
-                          <FiUser className="mr-1.5 text-[10px]" />
-                        )}
-                        {selectedRoleName}
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-slate-400 dark:text-white/35">
-                        No role selected
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="inline-flex h-10 items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 text-[12px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/8"
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/8"
+            >
+              <FiX className="text-[12px]" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="max-h-[64vh] overflow-y-auto px-3 py-3">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[210px_1fr]">
+              <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
+                <div className="mb-2 flex items-center gap-2">
+                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200/80 bg-white dark:border-white/10 dark:bg-white/5">
+                    <FiUser className="text-[11px] text-cyan-600 dark:text-cyan-300" />
+                  </div>
+                  <p className="text-[10px] font-semibold text-[#1f2240] dark:text-white/90">
+                    Profile
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex flex-col items-center text-center">
+                    {formData.profile && isBase64DataImage(formData.profile) ? (
+                      <img
+                        src={formData.profile}
+                        alt="Profile Preview"
+                        className="h-18 w-18 rounded-[18px] object-cover ring-1 ring-gray-200 dark:ring-white/10"
+                      />
+                    ) : (
+                      <div className="flex h-18 w-18 items-center justify-center rounded-[18px] border border-dashed border-gray-300 bg-gray-50 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/35">
+                        <FiUser className="text-[20px]" />
+                      </div>
+                    )}
+
+                    <p className="mt-2.5 text-[10px] font-semibold text-[#1f2240] dark:text-white/90 line-clamp-1">
+                      {fullName}
+                    </p>
+                    <p className="mt-1 break-all text-[8.5px] text-gray-500 dark:text-white/50 line-clamp-2">
+                      {formData.email || "No email"}
+                    </p>
+
+                    <label className="mt-3 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[9px] font-semibold text-cyan-700 transition hover:bg-cyan-100 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15">
+                      <FiUpload className="text-[10px]" />
+                      {uploadingImage ? "Uploading..." : "Upload"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleUploadImage}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <div className="mt-2 flex items-center gap-1 text-[8px] text-gray-500 dark:text-white/45">
+                      <FiImage className="text-[9px]" />
+                      <span>Image files only</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 rounded-lg border border-cyan-200/80 bg-cyan-50/70 px-2.5 py-2 dark:border-cyan-400/20 dark:bg-cyan-500/10">
+                    <div className="space-y-1.5">
+                      <p className="text-[8.5px] text-cyan-800 dark:text-cyan-200 line-clamp-1">
+                        <span className="font-semibold">Name:</span> {fullName}
+                      </p>
+                      <p className="text-[8.5px] text-cyan-800 dark:text-cyan-200 line-clamp-1">
+                        <span className="font-semibold">Role:</span>{" "}
+                        {selectedRoleName || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200/80 bg-white dark:border-white/10 dark:bg-white/5">
+                      <FiUser className="text-[11px] text-cyan-600 dark:text-cyan-300" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-[#1f2240] dark:text-white/90">
+                      Basic Information
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiUser className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        First Name
+                      </label>
+                      <div className="relative">
+                        <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="text"
+                          name="first_name"
+                          value={formData.first_name}
+                          onChange={handleChange}
+                          placeholder="First name"
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiUser className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Last Name
+                      </label>
+                      <div className="relative">
+                        <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="text"
+                          name="last_name"
+                          value={formData.last_name}
+                          onChange={handleChange}
+                          placeholder="Last name"
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiMail className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Email
+                      </label>
+                      <div className="relative">
+                        <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleChange}
+                          placeholder="Email"
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                      {emailDuplicateError ? (
+                        <div className="mt-1 pl-1 text-[9px] font-medium text-red-600 dark:text-red-400">
+                          {emailDuplicateError}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {!isEditMode && (
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                          <FiShield className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                          Password
+                        </label>
+                        <div className="relative">
+                          <FiShield className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                          <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            placeholder="Password"
+                            className={["pl-8", inputCls].join(" ")}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiPhone className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Phone Number
+                      </label>
+                      <div className="relative">
+                        <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="text"
+                          name="phone_number"
+                          value={formData.phone_number}
+                          onChange={handleChange}
+                          placeholder="Phone number"
+                          inputMode="numeric"
+                          maxLength={10}
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                      {phoneValidationError ? (
+                        <div className="mt-1 pl-1 text-[9px] font-medium text-red-600 dark:text-red-400">
+                          {phoneValidationError}
+                        </div>
+                      ) : phoneDuplicateError ? (
+                        <div className="mt-1 pl-1 text-[9px] font-medium text-red-600 dark:text-red-400">
+                          {phoneDuplicateError}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div>
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiMapPin className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Location
+                      </label>
+                      <div className="relative">
+                        <FiMapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="text"
+                          name="location"
+                          value={formData.location}
+                          onChange={handleChange}
+                          placeholder="Location"
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiBriefcase className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Position
+                      </label>
+                      <div className="relative">
+                        <FiBriefcase className="absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-gray-400 dark:text-white/35" />
+                        <input
+                          type="text"
+                          name="position"
+                          value={formData.position}
+                          onChange={handleChange}
+                          placeholder="Position"
+                          className={["pl-8", inputCls].join(" ")}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200/80 bg-white dark:border-white/10 dark:bg-white/5">
+                      <FiShield className="text-[11px] text-cyan-600 dark:text-cyan-300" />
+                    </div>
+                    <p className="text-[10px] font-semibold text-[#1f2240] dark:text-white/90">
+                      Role
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="relative" ref={roleDropdownRef}>
+                      <label className="mb-1 flex items-center gap-1 text-[8.5px] font-medium text-gray-600 dark:text-white/65">
+                        <FiShield className="text-[9px] text-cyan-600 dark:text-cyan-300" />
+                        Role
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!loadingRoles) {
+                            setRoleOpen((prev) => !prev);
+                          }
+                        }}
+                        disabled={loadingRoles}
+                        className={selectorButtonCls}
+                      >
+                        <FiShield className="shrink-0 text-[10px]" />
+                        <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10px] font-medium">
+                          {loadingRoles
+                            ? "Loading role..."
+                            : selectedRoleName || "Select role"}
+                        </span>
+                        <FiChevronDown
+                          className={`ml-auto text-[10px] transition-transform ${
+                            roleOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {roleOpen && (
+                        <div
+                          className={[
+                            "absolute bottom-full left-0 right-0 z-50 mb-1.5 overflow-hidden rounded-xl",
+                            "border border-gray-200 bg-white shadow-xl",
+                            "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
+                          ].join(" ")}
+                        >
+                          <div className="border-b border-gray-100 p-1.5 dark:border-white/10">
+                            <div
+                              className={[
+                                "flex items-center gap-1.5 rounded-lg border px-2.5",
+                                "border-gray-200/80 bg-gray-50",
+                                "dark:border-white/10 dark:bg-white/5",
+                              ].join(" ")}
+                            >
+                              <FiSearch className="shrink-0 text-[10px] text-gray-400 dark:text-white/40" />
+                              <input
+                                value={roleSearch}
+                                onChange={(e) => setRoleSearch(e.target.value)}
+                                placeholder="Search role"
+                                className={searchInputCls}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="max-h-32 overflow-y-auto p-1.5">
+                            {loadingRoles ? (
+                              <div className="px-2 py-3 text-center text-[10px] text-gray-500 dark:text-white/50">
+                                Loading role...
+                              </div>
+                            ) : filteredRoles.length === 0 ? (
+                              <div className="px-2 py-3 text-center text-[10px] text-gray-500 dark:text-white/50">
+                                No matching role
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                {filteredRoles.map((role) => {
+                                  const checked =
+                                    Number(formData.app_role_id) === role.id;
+
+                                  return (
+                                    <button
+                                      key={role.id}
+                                      type="button"
+                                      onClick={() => handleRoleSelect(role.id)}
+                                      className={[
+                                        "w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition",
+                                        checked
+                                          ? "border border-cyan-200 bg-cyan-50 dark:border-cyan-400/20 dark:bg-cyan-500/10"
+                                          : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                      ].join(" ")}
+                                    >
+                                      <span
+                                        className={[
+                                          "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border transition",
+                                          checked
+                                            ? "border-cyan-500 bg-cyan-500 text-white"
+                                            : "border-gray-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
+                                        ].join(" ")}
+                                      >
+                                        <FiCheck className="text-[7px]" />
+                                      </span>
+
+                                      <span className="min-w-0 flex-1 truncate text-[9px] font-medium text-gray-700 dark:text-white/80">
+                                        {role.role}
+                                      </span>
+
+                                      {checked && (
+                                        <span
+                                          className={[
+                                            "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[7.5px] font-semibold",
+                                            getRoleBadgeClass(role.role),
+                                          ].join(" ")}
+                                        >
+                                          Selected
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-cyan-200/80 bg-cyan-50/70 px-2.5 py-2 dark:border-cyan-400/20 dark:bg-cyan-500/10">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[8.5px] font-semibold text-cyan-800 dark:text-cyan-200">
+                          Selected:
+                        </span>
+                        {selectedRoleName ? (
+                          <span
+                            className={[
+                              "inline-flex items-center rounded-full border px-2 py-0.5 text-[8px] font-semibold",
+                              getRoleBadgeClass(selectedRoleName),
+                            ].join(" ")}
+                          >
+                            {selectedRoleName}
+                          </span>
+                        ) : (
+                          <span className="text-[8.5px] text-cyan-800 dark:text-cyan-200">
+                            -
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-[9px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-white/90 px-3 py-2.5 dark:border-white/10 dark:bg-[#0B1220]">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className={secondaryBtnCls}
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              disabled={submitting}
-              className={[
-                "inline-flex h-10 items-center justify-center rounded-2xl px-4 text-[12px] font-medium text-white transition",
-                "bg-slate-900 hover:bg-slate-800",
-                "dark:bg-white dark:text-slate-900 dark:hover:bg-white/90",
-                submitting ? "cursor-not-allowed opacity-70" : "",
-              ].join(" ")}
+              disabled={
+                submitting ||
+                loadingExistingContacts ||
+                !!emailDuplicateError ||
+                !!phoneDuplicateError ||
+                !!phoneValidationError
+              }
+              className={primaryBlueButtonCls}
             >
+              <FiSave className="text-[10px]" />
               {submitting
-                ? "Saving..."
+                ? isEditMode
+                  ? "Saving..."
+                  : "Creating..."
                 : isEditMode
-                ? "Update User"
-                : "Create User"}
+                ? "Save"
+                : "Create"}
             </button>
           </div>
         </form>

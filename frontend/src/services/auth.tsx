@@ -281,3 +281,39 @@ export const SendOTPForSignUp = async (
     return null;
   }
 };
+
+// =======================
+// Types: Email + PhoneNumber
+// =======================
+export type EmailAndPhoneNumberResponse = {
+  id: number;
+  email: string;
+  phone_number: string;
+};
+
+// =======================
+// API: GET /email-phone-numbers
+// =======================
+export const ListEmailAndPhoneNumber = async (): Promise<
+  EmailAndPhoneNumberResponse[] | null
+> => {
+  try {
+    const response = await authApi.get("/email-phone-numbers");
+
+    if (Array.isArray(response.data)) {
+      return response.data as EmailAndPhoneNumberResponse[];
+    }
+
+    const data = response.data?.data ?? response.data;
+
+    if (Array.isArray(data)) {
+      return data as EmailAndPhoneNumberResponse[];
+    }
+
+    console.error("Expected email-phone-number array but got:", response.data);
+    return null;
+  } catch (error) {
+    console.error("ListEmailAndPhoneNumber error:", error);
+    return null;
+  }
+};

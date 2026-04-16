@@ -11,6 +11,5 @@ type AppLocation struct {
 	Latitude   float64 `json:"latitude" valid:"required~Latitude is required"`
 	Longtitude float64 `json:"longtitude" valid:"required~Longtitude is required"`
 
-	AppDiagramNodeID uint            `json:"app_diagram_node_id" gorm:"not null;index" valid:"required~AppDiagramNodeID is required"`
-	AppDiagramNode   *AppDiagramNode `json:"app_diagram_node"`
+	TaskID string `json:"task_id" gorm:"type:varchar(255);not null;index" valid:"required~TaskID is required"`
 }

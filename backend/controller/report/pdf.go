@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	fixedPublicBase  = "https://30e1-124-120-132-254.ngrok-free.app"
+	fixedPublicBase  = "https://2512-171-96-174-207.ngrok-free.app"
 	fixedReportsDir  = "./tmp/reports"
 	defaultPDFPrefix = "report_capture"
 

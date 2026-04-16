@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { message } from "antd";
 import {
   FiSearch,
   FiBell,
@@ -1075,6 +1076,7 @@ const Notify: React.FC = () => {
       setOpenCreateModal(false);
       resetCreateForm();
       await fetchNotifications(true);
+      message.success("create success");
     } catch (err: any) {
       setCreateError(
         err?.response?.data?.error ||
@@ -1118,6 +1120,7 @@ const Notify: React.FC = () => {
       setSelectedRow(null);
       resetEditForm();
       await fetchNotifications(true);
+      message.success("update success");
     } catch (err: any) {
       setEditError(
         err?.response?.data?.error ||
@@ -1191,6 +1194,7 @@ const Notify: React.FC = () => {
 
       setDeleteTarget(null);
       await fetchNotifications(true);
+      message.success("delete success");
     } catch (err: any) {
       setDeleteError(
         err?.response?.data?.error ||
@@ -1309,6 +1313,7 @@ const Notify: React.FC = () => {
           app_line_master_id: prev.app_line_master_id || String(res.data.id),
         }));
 
+        message.success("create success");
         return;
       }
 
@@ -1332,6 +1337,7 @@ const Notify: React.FC = () => {
         return next;
       });
       setMasterFormOpen(false);
+      message.success("update success");
     } catch (err: any) {
       setMasterFormError(
         err?.response?.data?.error ||
@@ -1397,6 +1403,7 @@ const Notify: React.FC = () => {
 
       setMasterDeleteOpen(false);
       setMasterDeleteTarget(null);
+      message.success("delete success");
     } catch (err) {
       console.error("handleDeleteMaster error:", err);
       setMasterDeleteError("Failed to delete integration.");

@@ -106,6 +106,25 @@ const dedupeAssetRisk = (items: AssetRiskDTO[]): AssetRiskDTO[] => {
   return Array.from(map.values());
 };
 
+const isAllowedImageFile = (file: File) => {
+  const allowedMimeTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+  ];
+
+  const allowedExtensions = [".png", ".jpg", ".jpeg", ".webp"];
+  const fileName = file.name.toLowerCase();
+
+  const hasValidMimeType = allowedMimeTypes.includes(file.type);
+  const hasValidExtension = allowedExtensions.some((ext) =>
+    fileName.endsWith(ext)
+  );
+
+  return hasValidMimeType || hasValidExtension;
+};
+
 const EditReportModal: React.FC<EditReportModalProps> = ({
   open,
   onClose,
@@ -179,8 +198,16 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!isAllowedImageFile(file)) {
+      message.error("Only image files can be uploaded");
+      e.target.value = "";
+      return;
+    }
+
     try {
       setUploadingImage(true);
+      setError("");
+
       const base64 = await toBase64(file);
       setFormData((prev) => ({
         ...prev,
@@ -189,6 +216,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
     } catch (err) {
       console.error("Upload image error:", err);
       message.error("Upload image failed");
+      e.target.value = "";
     } finally {
       setUploadingImage(false);
     }
@@ -342,11 +370,11 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                     {uploadingImage ? "Uploading..." : "Click to upload image"}
                   </span>
                   <span className="text-[11px] text-slate-500 dark:text-white/45">
-                    PNG, JPG, JPEG
+                    เฉพาะไฟล์รูป PNG, JPG, JPEG, WEBP
                   </span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     className="hidden"
                     onChange={handleUploadImage}
                   />
@@ -857,7 +885,7 @@ const ReportPreviewIndex: React.FC = () => {
       setOpenDownloadMenu(false);
 
       await DownloadPDFFile(undefined, selectedTaskIDs);
-      message.success("Download PDF success");
+      message.success("Download PDF Success");
     } catch (error: any) {
       console.error("DownloadPDFFile error:", error);
       message.error(
@@ -893,7 +921,7 @@ const ReportPreviewIndex: React.FC = () => {
             {showSuccess && (
               <div className="inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <FiCheckCircle className="text-[15px]" />
-                <span>Send to LINE success</span>
+                <span>Send To LINE Success</span>
               </div>
             )}
 

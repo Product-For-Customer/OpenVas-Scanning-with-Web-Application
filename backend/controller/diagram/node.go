@@ -3,6 +3,7 @@ package diagram
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
@@ -47,21 +48,31 @@ type DiagramInfo struct {
 }
 
 type AppDiagramNodeResponse struct {
-	ID           uint                 `json:"id"`
-	DiagramID    uint                 `json:"diagram_id"`
-	Diagram      *DiagramInfo         `json:"diagram,omitempty"`
-	TaskID       string               `json:"task_id"`
-	Label        string               `json:"label"`
-	Description  string               `json:"description"`
-	Icon         string               `json:"icon"`
-	X            float64              `json:"x"`
-	Y            float64              `json:"y"`
-	Width        float64              `json:"width"`
-	Height       float64              `json:"height"`
-	ZIndex       int                  `json:"z_index"`
-	AppLocations []entity.AppLocation `json:"app_locations,omitempty"`
-	CreatedAt    interface{}          `json:"created_at"`
-	UpdatedAt    interface{}          `json:"updated_at"`
+	ID          uint         `json:"id"`
+	DiagramID   uint         `json:"diagram_id"`
+	Diagram     *DiagramInfo `json:"diagram,omitempty"`
+	TaskID      string       `json:"task_id"`
+	Label       string       `json:"label"`
+	Description string       `json:"description"`
+	Icon        string       `json:"icon"`
+	X           float64      `json:"x"`
+	Y           float64      `json:"y"`
+	Width       float64      `json:"width"`
+	Height      float64      `json:"height"`
+	ZIndex      int          `json:"z_index"`
+	CreatedAt   interface{}  `json:"created_at"`
+	UpdatedAt   interface{}  `json:"updated_at"`
+}
+
+func cleanString(value string) string {
+	return strings.TrimSpace(value)
+}
+
+func cleanOptionalString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
 }
 
 func mapDiagramInfo(diagram *entity.AppDiagram) *DiagramInfo {
@@ -81,21 +92,20 @@ func mapDiagramInfo(diagram *entity.AppDiagram) *DiagramInfo {
 
 func mapAppDiagramNodeResponse(node entity.AppDiagramNode) AppDiagramNodeResponse {
 	return AppDiagramNodeResponse{
-		ID:           node.ID,
-		DiagramID:    node.DiagramID,
-		Diagram:      mapDiagramInfo(node.Diagram),
-		TaskID:       node.TaskID,
-		Label:        node.Label,
-		Description:  node.Description,
-		Icon:         node.Icon,
-		X:            node.X,
-		Y:            node.Y,
-		Width:        node.Width,
-		Height:       node.Height,
-		ZIndex:       node.ZIndex,
-		AppLocations: node.AppLocations,
-		CreatedAt:    node.CreatedAt,
-		UpdatedAt:    node.UpdatedAt,
+		ID:          node.ID,
+		DiagramID:   node.DiagramID,
+		Diagram:     mapDiagramInfo(node.Diagram),
+		TaskID:      node.TaskID,
+		Label:       node.Label,
+		Description: node.Description,
+		Icon:        node.Icon,
+		X:           node.X,
+		Y:           node.Y,
+		Width:       node.Width,
+		Height:      node.Height,
+		ZIndex:      node.ZIndex,
+		CreatedAt:   node.CreatedAt,
+		UpdatedAt:   node.UpdatedAt,
 	}
 }
 
@@ -158,7 +168,7 @@ func CreateAppDiagramNode(c *gin.Context) {
 	}
 
 	var createdNode entity.AppDiagramNode
-	if err := db.Preload("Diagram").Preload("AppLocations").First(&createdNode, node.ID).Error; err != nil {
+	if err := db.Preload("Diagram").First(&createdNode, node.ID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to reload created app diagram node",
 		})
@@ -175,7 +185,7 @@ func ListAppDiagramNodes(c *gin.Context) {
 	db := config.DB()
 
 	var nodes []entity.AppDiagramNode
-	if err := db.Preload("Diagram").Preload("AppLocations").Order("id ASC").Find(&nodes).Error; err != nil {
+	if err := db.Preload("Diagram").Order("id ASC").Find(&nodes).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to list app diagram nodes",
 		})
@@ -206,7 +216,7 @@ func ListAppDiagramNodeByID(c *gin.Context) {
 	db := config.DB()
 
 	var node entity.AppDiagramNode
-	if err := db.Preload("Diagram").Preload("AppLocations").First(&node, uint(nid)).Error; err != nil {
+	if err := db.Preload("Diagram").First(&node, uint(nid)).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error": "app diagram node not found",
@@ -393,7 +403,7 @@ func UpdateAppDiagramNodeByID(c *gin.Context) {
 	}
 
 	var reloadedNode entity.AppDiagramNode
-	if err := db.Preload("Diagram").Preload("AppLocations").First(&reloadedNode, node.ID).Error; err != nil {
+	if err := db.Preload("Diagram").First(&reloadedNode, node.ID).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to reload updated app diagram node",
 		})

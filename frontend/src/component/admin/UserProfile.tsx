@@ -11,6 +11,7 @@ import {
   FiServer,
 } from "react-icons/fi";
 import { useAuth } from "../../contexts/AuthContext";
+import { message } from "antd";
 
 type UserProfileItem = {
   icon: JSX.Element;
@@ -103,10 +104,13 @@ const UserProfile = () => {
     try {
       setLoggingOut(true);
       await logout();
+      message.success("logout success");
       close();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout failed:", error);
+      message.error("logout failed");
       close();
       navigate("/", { replace: true });
     } finally {

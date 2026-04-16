@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FiMail, FiArrowRight } from "react-icons/fi";
+import { FiMail, FiArrowRight, FiShield, FiX } from "react-icons/fi";
 import { message } from "antd";
 import { VerifyOTPSignUp } from "../services";
 
@@ -190,94 +190,98 @@ const ModalOTPSignUp: React.FC<ModalOTPSignUpProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/30 backdrop-blur-[3px] px-4">
-      <div
-        className={[
-          "w-full max-w-95 rounded-3xl border px-6 py-7",
-          "border-slate-200/80 bg-white",
-          "shadow-[0_20px_70px_rgba(15,23,42,0.16)]",
-          "dark:border-white/10 dark:bg-[#0f172a]",
-        ].join(" ")}
-      >
-        <div className="mx-auto flex h-15 w-15 items-center justify-center rounded-full bg-slate-100 dark:bg-white/8">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-violet-500 text-white shadow-[0_8px_20px_rgba(79,109,245,0.28)]">
-            <FiMail className="text-[18px]" />
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-950/35 backdrop-blur-xs px-4">
+      <div className="relative w-full max-w-107.5 overflow-hidden rounded-3xl border border-white/80 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-[rgba(8,15,31,0.92)]">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/10" />
+          <div className="absolute -bottom-12 right-0 h-32 w-32 rounded-full bg-sky-300/20 blur-3xl dark:bg-sky-500/10" />
+          <div className="absolute inset-0 opacity-[0.20] dark:opacity-[0.08]">
+            <div className="h-full w-full bg-[linear-gradient(rgba(59,130,246,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.08)_1px,transparent_1px)] dark:bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-size-[24px_24px]" />
           </div>
         </div>
 
-        <h3 className="mt-4 text-center text-[24px] font-bold tracking-tight text-slate-900 dark:text-white">
-          Check your email
-        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close modal"
+          className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200/80 bg-white/90 text-slate-500 shadow-sm transition-all duration-200 hover:border-cyan-300 hover:text-cyan-600 hover:shadow-md dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:border-cyan-400/30 dark:hover:text-cyan-300"
+        >
+          <FiX className="text-[18px]" />
+        </button>
 
-        <p className="mt-2 text-center text-[13px] leading-5 text-slate-500 dark:text-white/55">
-          Enter the verification code sent to
-        </p>
-        <p className="text-center text-[13px] font-semibold text-slate-700 dark:text-white/80">
-          {maskEmail(email)}
-        </p>
-
-        {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-[12px] text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
-            {error}
-          </div>
-        ) : null}
-
-        <form onSubmit={handleVerify} className="mt-5">
-          <div className="flex items-center justify-center gap-2.5">
-            {otp.map((digit, index) => (
-              <input
-                key={index}
-                ref={(el) => {
-                  inputRefs.current[index] = el;
-                }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChangeOTP(index, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                onPaste={handlePaste}
-                className={[
-                  "h-12 w-12 rounded-xl border text-center text-[22px] font-semibold outline-none transition-all",
-                  digit
-                    ? "border-[#4f6df5] bg-[#f4f7ff] text-slate-900 shadow-[0_4px_12px_rgba(79,109,245,0.10)]"
-                    : "border-slate-300 bg-white text-slate-900",
-                  "focus:border-[#4f6df5] focus:ring-4 focus:ring-[#4f6df5]/12",
-                  "dark:border-white/10 dark:bg-white/5 dark:text-white",
-                  "dark:focus:border-cyan-400 dark:focus:ring-cyan-400/10",
-                ].join(" ")}
-              />
-            ))}
+        <div className="relative px-6 py-7 sm:px-7 sm:py-8">
+          <div className="mx-auto inline-flex w-fit items-center gap-1.5 rounded-full border border-cyan-200/80 bg-cyan-50/90 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+            <FiShield className="text-[11px]" />
+            Email Verification
           </div>
 
-          <p className="mt-4 text-center text-[13px] text-slate-400 dark:text-white/35">
-            ระบบได้ส่ง OTP ไปแล้วจากหน้า Sign Up กรุณาตรวจสอบอีเมลของคุณ
-          </p>
+          <div className="mx-auto mt-4 flex h-15 w-15 items-center justify-center rounded-full border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="flex h-10.5 w-10.5 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 via-sky-500 to-blue-500 text-white shadow-[0_12px_24px_rgba(14,165,233,0.28)]">
+              <FiMail className="text-[18px]" />
+            </div>
+          </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className={[
-              "mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[14px] font-semibold text-white transition-all",
-              "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500",
-              "shadow-[0_10px_28px_rgba(63,92,240,0.24)]",
-              "hover:scale-[1.01] active:scale-[0.99]",
-              "focus:outline-none focus:ring-4 focus:ring-cyan-200/50",
-              submitting ? "opacity-70 cursor-not-allowed" : "",
-            ].join(" ")}
-          >
-            <span>{submitting ? "Verifying..." : "Verify email"}</span>
-            <FiArrowRight className="text-[16px]" />
-          </button>
+          <div className="mt-4 text-center">
+            <h3 className="bg-linear-to-r from-cyan-500 via-sky-500 to-blue-500 bg-clip-text text-[26px] font-extrabold tracking-[-0.03em] text-transparent">
+              Verify Your Email
+            </h3>
+            <p className="mt-2 text-[13px] leading-5 text-slate-500 dark:text-white/55">
+              กรุณากรอกรหัส OTP ที่ส่งไปยังอีเมลนี้
+            </p>
+            <p className="mt-1 text-[13px] font-semibold text-slate-700 dark:text-white/80">
+              {maskEmail(email)}
+            </p>
+          </div>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-3 w-full text-center text-[13px] text-slate-500 transition hover:text-slate-700 dark:text-white/45 dark:hover:text-white/75"
-          >
-            Cancel
-          </button>
-        </form>
+          {error ? (
+            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-3 py-2.5 text-center text-[12px] text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
+              {error}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleVerify} className="mt-6">
+            <div className="flex items-center justify-center gap-2 sm:gap-2.5">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    inputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChangeOTP(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={handlePaste}
+                  className={[
+                    "h-12 w-12 rounded-xl border text-center text-[21px] font-bold outline-none transition-all duration-300 sm:h-13 sm:w-13",
+                    digit
+                      ? "border-cyan-400 bg-cyan-50 text-slate-900 shadow-[0_8px_20px_rgba(14,165,233,0.12)] dark:border-cyan-400 dark:bg-cyan-500/10 dark:text-white"
+                      : "border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-white/4 dark:text-white",
+                    "focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/80 dark:focus:ring-cyan-500/15",
+                  ].join(" ")}
+                />
+              ))}
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className={[
+                "mt-6 inline-flex h-11.5 w-full items-center justify-center gap-2 rounded-2xl text-[14px] font-semibold text-white transition-all duration-300",
+                "bg-linear-to-r from-cyan-500 via-sky-500 to-blue-500",
+                "shadow-[0_16px_32px_rgba(14,165,233,0.24)]",
+                "hover:translate-y-px hover:shadow-[0_18px_36px_rgba(14,165,233,0.30)]",
+                "focus:outline-none focus:ring-4 focus:ring-cyan-200/60",
+                submitting ? "cursor-not-allowed opacity-70" : "",
+              ].join(" ")}
+            >
+              <span>{submitting ? "Verifying..." : "Verify Email"}</span>
+              <FiArrowRight className="text-[16px]" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -335,12 +335,6 @@ export type DeleteAppTargetResponse = {
 // =======================
 // Types: Location
 // =======================
-export type TargetInfoResponse = {
-  task_id: string;
-  hostname: string;
-  ip: string;
-};
-
 export type LocationResponse = {
   id: number;
   location: string;
@@ -348,8 +342,7 @@ export type LocationResponse = {
   floor: number;
   latitude: number;
   longtitude: number;
-  target_id: string;
-  target_info?: TargetInfoResponse;
+  task_id: string;
   created_at?: string;
   updated_at?: string;
   message?: string;
@@ -362,7 +355,7 @@ export type CreateLocationInput = {
   floor: number;
   latitude: number;
   longtitude: number;
-  target_id: string;
+  task_id: string;
 };
 
 export type UpdateLocationInput = {
@@ -371,7 +364,7 @@ export type UpdateLocationInput = {
   floor?: number;
   latitude?: number;
   longtitude?: number;
-  target_id?: string;
+  task_id?: string;
 };
 
 export type DeleteLocationResponse = {
@@ -381,16 +374,6 @@ export type DeleteLocationResponse = {
 // =======================
 // Helpers
 // =======================
-const normalizeTargetInfo = (raw: any): TargetInfoResponse | undefined => {
-  if (!raw || typeof raw !== "object") return undefined;
-
-  return {
-    task_id: String(raw.task_id ?? ""),
-    hostname: String(raw.hostname ?? ""),
-    ip: String(raw.ip ?? ""),
-  };
-};
-
 const normalizeLocation = (raw: any): LocationResponse => {
   return {
     id: Number(raw?.id ?? 0),
@@ -399,8 +382,7 @@ const normalizeLocation = (raw: any): LocationResponse => {
     floor: Number(raw?.floor ?? 0),
     latitude: Number(raw?.latitude ?? 0),
     longtitude: Number(raw?.longtitude ?? 0),
-    target_id: String(raw?.target_id ?? ""),
-    target_info: normalizeTargetInfo(raw?.target_info),
+    task_id: String(raw?.task_id ?? ""),
     created_at: raw?.created_at ? String(raw.created_at) : undefined,
     updated_at: raw?.updated_at ? String(raw.updated_at) : undefined,
     message: raw?.message ? String(raw.message) : undefined,
@@ -416,7 +398,6 @@ const normalizeLocation = (raw: any): LocationResponse => {
 export const ListLocation = async (): Promise<LocationResponse[] | null> => {
   try {
     const response = await userApi.get("/locations");
-
     const data = response.data?.data ?? response.data;
 
     if (Array.isArray(data)) {
@@ -437,7 +418,6 @@ export const ListLocationByID = async (
 ): Promise<LocationResponse | null> => {
   try {
     const response = await userApi.get(`/locations/${id}`);
-
     const data = response.data?.data ?? response.data;
 
     if (data && typeof data === "object") {
@@ -458,7 +438,6 @@ export const CreateLocation = async (
 ): Promise<LocationResponse | null> => {
   try {
     const response = await userApi.post("/create-locations", payload);
-
     const data = response.data?.data ?? response.data;
 
     if (data && typeof data === "object") {
@@ -480,7 +459,6 @@ export const UpdateLocationByID = async (
 ): Promise<LocationResponse | null> => {
   try {
     const response = await userApi.patch(`/update-locations/${id}`, payload);
-
     const data = response.data?.data ?? response.data;
 
     if (data && typeof data === "object") {

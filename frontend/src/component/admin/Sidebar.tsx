@@ -7,6 +7,7 @@ import { getLinks, type SidebarSection } from "./dummy";
 import { useStateContext } from "../../contexts/ContextProvider";
 import { useAuth } from "../../contexts/AuthContext";
 import logo from "../../assets/Logo_Sidebar_GetOn-Photoroom.png";
+import { message } from "antd";
 
 type SidebarLink = {
   name: string;
@@ -119,11 +120,14 @@ const Sidebar: React.FC = () => {
     try {
       setLoggingOut(true);
       await logout();
+      message.success("logout success");
       setHoveredSection(null);
       handleCloseSideBar();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout failed:", error);
+      message.error("logout failed");
       navigate("/", { replace: true });
     } finally {
       setLoggingOut(false);
@@ -172,16 +176,16 @@ const Sidebar: React.FC = () => {
           {/* Header */}
           <div
             className={`relative z-10 flex items-center ${isExpanded
-                ? "justify-between px-3.5 pb-3.5 pt-5"
-                : "justify-center px-2 pb-3.5 pt-4.5"
+              ? "justify-between px-3.5 pb-3.5 pt-5"
+              : "justify-center px-2 pb-3.5 pt-4.5"
               }`}
           >
             <Link
               to="/admin"
               onClick={handleCloseSideBar}
               className={`select-none ${isExpanded
-                  ? "flex items-center gap-3"
-                  : "flex justify-center items-center"
+                ? "flex items-center gap-3"
+                : "flex justify-center items-center"
                 }`}
               aria-label="Go to dashboard"
             >
@@ -226,8 +230,8 @@ const Sidebar: React.FC = () => {
           {/* Menu Body */}
           <nav
             className={`relative z-10 flex-1 ${isExpanded
-                ? "overflow-y-auto px-2.5 pb-3.5"
-                : "overflow-visible px-2 pb-3"
+              ? "overflow-y-auto px-2.5 pb-3.5"
+              : "overflow-visible px-2 pb-3"
               }`}
           >
             <div className={isExpanded ? "space-y-1.5" : "space-y-2.5"}>
@@ -290,8 +294,8 @@ const Sidebar: React.FC = () => {
 
                       <div
                         className={`overflow-hidden transition-all duration-200 ${isOpen
-                            ? "max-h-150 pb-1 pt-1.5 opacity-100"
-                            : "max-h-0 opacity-0"
+                          ? "max-h-150 pb-1 pt-1.5 opacity-100"
+                          : "max-h-0 opacity-0"
                           }`}
                       >
                         <div className="space-y-1 pl-6.5 pr-2">
@@ -442,8 +446,8 @@ const Sidebar: React.FC = () => {
           {/* Footer - Logout */}
           <div
             className={`${isExpanded
-                ? "relative z-10 px-2.5 pb-3.5 pt-1.5"
-                : "relative z-10 px-2 pb-3.5 pt-1"
+              ? "relative z-10 px-2.5 pb-3.5 pt-1.5"
+              : "relative z-10 px-2 pb-3.5 pt-1"
               }`}
           >
             {isExpanded ? (

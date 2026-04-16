@@ -572,3 +572,32 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		"data":    mapUserResponse(updatedUser),
 	})
 }
+
+type EmailAndPhoneNumberResponse struct {
+	ID          uint   `json:"id"`
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phone_number"`
+}
+
+func ListEmailAndPhoneNumber(c *gin.Context) {
+	db := config.DB()
+
+	var users []entity.AppUser
+	if err := db.Select("id, email, phone_number").Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to fetch email and phone number",
+		})
+		return
+	}
+
+	result := make([]EmailAndPhoneNumberResponse, 0, len(users))
+	for _, user := range users {
+		result = append(result, EmailAndPhoneNumberResponse{
+			ID:          user.ID,
+			Email:       user.Email,
+			PhoneNumber: user.PhoneNumber,
+		})
+	}
+
+	c.JSON(http.StatusOK, result)
+}

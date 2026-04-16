@@ -22,5 +22,4 @@ type AppDiagramNode struct {
 
 	ZIndex int `json:"z_index" gorm:"default:1"`
 
-	AppLocations []AppLocation `json:"app_locations" gorm:"foreignKey:AppDiagramNodeID"`
 }

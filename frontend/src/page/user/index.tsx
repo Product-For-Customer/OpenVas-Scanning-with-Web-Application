@@ -392,160 +392,166 @@ const Index: React.FC = () => {
           </div>
 
           <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/3">
-            <table className="min-w-280 w-full border-separate border-spacing-0">
-              <thead>
-                <tr className="text-left">
-                  <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60">
-                    User
-                  </th>
-                  <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60">
-                    Contact
-                  </th>
-                  <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60">
-                    Location
-                  </th>
-                  <th className="border-b border-gray-200/80 px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60">
-                    Action
-                  </th>
-                </tr>
-              </thead>
+            <div className="min-w-280">
+              <table className="w-full border-separate border-spacing-0">
+                <thead>
+                  <tr className="text-left">
+                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[34%]">
+                      User
+                    </th>
+                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[30%]">
+                      Contact
+                    </th>
+                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[22%]">
+                      Location
+                    </th>
+                    <th className="border-b border-gray-200/80 px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[14%]">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+              </table>
 
-              <tbody>
-                {!loading &&
-                  users.map((user, idx) => {
-                    const isCurrentUser =
-                      currentUserId !== null && user.id === currentUserId;
+              <div className="max-h-82.5 overflow-y-auto">
+                <table className="w-full border-separate border-spacing-0">
+                  <tbody>
+                    {!loading &&
+                      users.map((user, idx) => {
+                        const isCurrentUser =
+                          currentUserId !== null && user.id === currentUserId;
 
-                    return (
-                      <tr
-                        key={user.id}
-                        className="transition-colors hover:bg-violet-50/40 dark:hover:bg-white/4"
-                      >
-                        <td
-                          className={`px-3 py-2 ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <div className="min-w-0 flex items-center gap-2.5">
-                            <div className="shrink-0">{renderAvatar(user)}</div>
-
-                            <div className="min-w-0">
-                              <p className="truncate text-[11px] font-semibold text-slate-900 dark:text-white/85">
-                                {user.first_name} {user.last_name}
-                              </p>
-
-                              <div className="mt-0.5 space-y-0.5">
-                                <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
-                                  Role : {user.role || "-"}
-                                </p>
-                                <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
-                                  Position : {user.position || "-"}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td
-                          className={`px-3 py-2 ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                              <FiMail className="text-[10px] text-cyan-600 dark:text-cyan-300" />
-                              <span className="truncate">{user.email}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                              <FiPhone className="text-[10px] text-violet-600 dark:text-violet-300" />
-                              <span>{user.phone_number || "-"}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td
-                          className={`px-3 py-2 ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                            <FiMapPin className="text-[10px] text-emerald-600 dark:text-emerald-300" />
-                            <span>{user.location || "-"}</span>
-                          </div>
-                        </td>
-
-                        <td
-                          className={`px-3 py-2 text-right ${
-                            idx !== users.length - 1
-                              ? "border-b border-gray-100 dark:border-white/10"
-                              : ""
-                          }`}
-                        >
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(user)}
-                              className={[
-                                "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
-                                "bg-cyan-50 text-cyan-600 hover:bg-cyan-100 active:bg-cyan-200",
-                                "dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15 dark:active:bg-cyan-500/20",
-                              ].join(" ")}
-                              title="Edit user"
-                              aria-label="Edit user"
+                        return (
+                          <tr
+                            key={user.id}
+                            className="transition-colors hover:bg-violet-50/40 dark:hover:bg-white/4"
+                          >
+                            <td
+                              className={`px-3 py-2 w-[34%] ${
+                                idx !== users.length - 1
+                                  ? "border-b border-gray-100 dark:border-white/10"
+                                  : ""
+                              }`}
                             >
-                              <FiEdit2 className="text-[11px]" />
-                            </button>
+                              <div className="min-w-0 flex items-center gap-2.5">
+                                <div className="shrink-0">{renderAvatar(user)}</div>
 
-                            {!isCurrentUser && (
-                              <button
-                                type="button"
-                                onClick={() => openDeleteModal(user)}
-                                className={[
-                                  "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
-                                  "bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-200",
-                                  "dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15 dark:active:bg-red-500/20",
-                                ].join(" ")}
-                                title="Delete user"
-                                aria-label="Delete user"
-                              >
-                                <FiTrash2 className="text-[11px]" />
-                              </button>
-                            )}
-                          </div>
+                                <div className="min-w-0">
+                                  <p className="truncate text-[11px] font-semibold text-slate-900 dark:text-white/85">
+                                    {user.first_name} {user.last_name}
+                                  </p>
+
+                                  <div className="mt-0.5 space-y-0.5">
+                                    <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
+                                      Role : {user.role || "-"}
+                                    </p>
+                                    <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
+                                      Position : {user.position || "-"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td
+                              className={`px-3 py-2 w-[30%] ${
+                                idx !== users.length - 1
+                                  ? "border-b border-gray-100 dark:border-white/10"
+                                  : ""
+                              }`}
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
+                                  <FiMail className="text-[10px] text-cyan-600 dark:text-cyan-300" />
+                                  <span className="truncate">{user.email}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
+                                  <FiPhone className="text-[10px] text-violet-600 dark:text-violet-300" />
+                                  <span>{user.phone_number || "-"}</span>
+                                </div>
+                              </div>
+                            </td>
+
+                            <td
+                              className={`px-3 py-2 w-[22%] ${
+                                idx !== users.length - 1
+                                  ? "border-b border-gray-100 dark:border-white/10"
+                                  : ""
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
+                                <FiMapPin className="text-[10px] text-emerald-600 dark:text-emerald-300" />
+                                <span className="truncate">{user.location || "-"}</span>
+                              </div>
+                            </td>
+
+                            <td
+                              className={`px-3 py-2 text-right w-[14%] ${
+                                idx !== users.length - 1
+                                  ? "border-b border-gray-100 dark:border-white/10"
+                                  : ""
+                              }`}
+                            >
+                              <div className="inline-flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleEdit(user)}
+                                  className={[
+                                    "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
+                                    "bg-cyan-50 text-cyan-600 hover:bg-cyan-100 active:bg-cyan-200",
+                                    "dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15 dark:active:bg-cyan-500/20",
+                                  ].join(" ")}
+                                  title="Edit user"
+                                  aria-label="Edit user"
+                                >
+                                  <FiEdit2 className="text-[11px]" />
+                                </button>
+
+                                {!isCurrentUser && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openDeleteModal(user)}
+                                    className={[
+                                      "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
+                                      "bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-200",
+                                      "dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15 dark:active:bg-red-500/20",
+                                    ].join(" ")}
+                                    title="Delete user"
+                                    aria-label="Delete user"
+                                  >
+                                    <FiTrash2 className="text-[11px]" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                    {!loading && users.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
+                        >
+                          No user data found
                         </td>
                       </tr>
-                    );
-                  })}
+                    )}
 
-                {!loading && users.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
-                    >
-                      No user data found
-                    </td>
-                  </tr>
-                )}
-
-                {loading && (
-                  <tr>
-                    <td
-                      colSpan={4}
-                      className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
-                    >
-                      Loading...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                    {loading && (
+                      <tr>
+                        <td
+                          colSpan={4}
+                          className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
+                        >
+                          Loading...
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       </section>

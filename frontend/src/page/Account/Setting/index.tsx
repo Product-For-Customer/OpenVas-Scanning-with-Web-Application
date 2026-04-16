@@ -7,6 +7,7 @@ import {
   type UserResponse,
   type UpdateUserInput,
 } from "../../../services/user";
+import { ListEmailAndPhoneNumber } from "../../../services";
 
 type SettingProps = {
   user: UserResponse;
@@ -31,6 +32,12 @@ type TouchedField = {
   position: boolean;
 };
 
+type EmailAndPhoneNumberResponse = {
+  id: number;
+  email: string;
+  phone_number: string;
+};
+
 const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   const createInitialForm = (userData: UserResponse): SettingForm => ({
     firstName: userData.first_name || "",
@@ -42,7 +49,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   });
 
   const [form, setForm] = useState<SettingForm>(createInitialForm(user));
-  const [submitting, setSubmitting] = useState<boolean>(false);//@ts-ignore
+  const [submitting, setSubmitting] = useState<boolean>(false); //@ts-ignore
   const [uploadFile, setUploadFile] = useState<File | undefined>(undefined);
   const [profileBase64, setProfileBase64] = useState<string | undefined>(
     undefined
@@ -55,6 +62,11 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     location: false,
     position: false,
   });
+
+  const [existingContacts, setExistingContacts] = useState<
+    EmailAndPhoneNumberResponse[]
+  >([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
   useEffect(() => {
     setForm(createInitialForm(user));
@@ -70,6 +82,23 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     });
   }, [user]);
 
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        setLoadingContacts(true);
+        const data = await ListEmailAndPhoneNumber();
+        setExistingContacts(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("ListEmailAndPhoneNumber error:", error);
+        setExistingContacts([]);
+      } finally {
+        setLoadingContacts(false);
+      }
+    };
+
+    loadContacts();
+  }, []);
+
   const previewUrl = useMemo(() => {
     if (profileBase64) return profileBase64;
     if (user.profile) return user.profile;
@@ -77,6 +106,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   }, [profileBase64, user.profile]);
 
   const normalize = (value: string) => value.trim();
+  const normalizeEmail = (value: string) => value.trim().toLowerCase();
+  const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
 
   const validateFirstName = (value: string) => {
     if (!value.trim()) return "Please enter first name";
@@ -88,6 +119,19 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     return "";
   };
 
+  const validateEmailDuplicate = (value: string) => {
+    const email = normalizeEmail(value);
+    if (!email) return "";
+
+    const isDuplicate = existingContacts.some((item) => {
+      const sameEmail = normalizeEmail(item.email) === email;
+      const isCurrentUser = Number(item.id) === Number(user.id);
+      return sameEmail && !isCurrentUser;
+    });
+
+    return isDuplicate ? "This email is already in use" : "";
+  };
+
   const validateEmail = (value: string) => {
     const email = value.trim();
     if (!email) return "Please enter email";
@@ -95,17 +139,34 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return "Invalid email format";
 
+    const duplicateError = validateEmailDuplicate(email);
+    if (duplicateError) return duplicateError;
+
     return "";
   };
 
+  const validatePhoneDuplicate = (value: string) => {
+    const phone = normalizePhone(value);
+    if (!phone) return "";
+
+    const isDuplicate = existingContacts.some((item) => {
+      const samePhone = normalizePhone(item.phone_number) === phone;
+      const isCurrentUser = Number(item.id) === Number(user.id);
+      return samePhone && !isCurrentUser;
+    });
+
+    return isDuplicate ? "This phone number is already in use" : "";
+  };
+
   const validatePhone = (value: string) => {
-    const phone = value.trim();
+    const phone = normalizePhone(value);
 
     if (!phone) return "Please enter phone number";
-    if (!/^0\d+$/.test(phone)) {
-      return "Phone must start with 0 and use numbers only";
-    }
-    if (phone.length !== 10) return "Phone must be 10 digits";
+    if (!phone.startsWith("0")) return "Phone number must start with 0";
+    if (phone.length !== 10) return "Phone number must be 10 digits";
+
+    const duplicateError = validatePhoneDuplicate(phone);
+    if (duplicateError) return duplicateError;
 
     return "";
   };
@@ -129,7 +190,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
       location: validateLocation(form.location),
       position: validatePosition(form.position),
     }),
-    [form]
+    [form, existingContacts, user.id]
   );
 
   const isFormValid = useMemo(() => {
@@ -151,8 +212,8 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   }, [form, user, profileBase64]);
 
   const canSave = useMemo(() => {
-    return !submitting && hasFormChanged && isFormValid;
-  }, [submitting, hasFormChanged, isFormValid]);
+    return !submitting && !loadingContacts && hasFormChanged && isFormValid;
+  }, [submitting, loadingContacts, hasFormChanged, isFormValid]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -188,7 +249,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     }
 
     if (!file.type.startsWith("image/")) {
-      message.error("Please upload image only");
+      message.warning("Please upload image only");
       return;
     }
 

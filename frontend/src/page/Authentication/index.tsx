@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { message } from "antd";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,16 +17,17 @@ import {
   FiServer,
 } from "react-icons/fi";
 import { FaNetworkWired } from "react-icons/fa";
-import { Login } from "../../../services/auth";
+import { Login } from "../../services/auth";
 import {
   SendOTPForSignUp,
   CheckUserEmail,
   SendOTP,
-} from "../../../services";
-import { useAuth } from "../../../contexts/AuthContext";
-import ModalOTPSignUp from "../../../Model/ModalOTPSignUp";
-import ModalOTP from "../../../Model/ModalOTP";
-import travelPhoto from "../../../assets/login-photo.jpg";
+  ListEmailAndPhoneNumber,
+} from "../../services";
+import { useAuth } from "../../contexts/AuthContext";
+import ModalOTPSignUp from "../../Model/ModalOTPSignUp";
+import ModalOTP from "../../Model/ModalOTP";
+import travelPhoto from "../../assets/login-photo.jpg";
 
 type SignUpFormData = {
   email: string;
@@ -39,6 +40,17 @@ type SignUpFormData = {
 };
 
 type ViewMode = "login" | "signup" | "forgot" | "reset";
+
+type EmailAndPhoneNumberResponse = {
+  id: number;
+  email: string;
+  phone_number: string;
+};
+
+type DuplicateErrors = {
+  email: string;
+  phone_number: string;
+};
 
 const ANIM_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const ANIM_DURATION = "1100ms";
@@ -94,6 +106,16 @@ const Index: React.FC = () => {
     position: "",
   });
 
+  const [existingContacts, setExistingContacts] = useState<
+    EmailAndPhoneNumberResponse[]
+  >([]);
+  const [loadingExistingContacts, setLoadingExistingContacts] = useState(false);
+  const [duplicateErrors, setDuplicateErrors] = useState<DuplicateErrors>({
+    email: "",
+    phone_number: "",
+  });
+  const [phoneValidationError, setPhoneValidationError] = useState("");
+
   const isSignUp = viewMode === "signup";
 
   const inputBase =
@@ -114,6 +136,93 @@ const Index: React.FC = () => {
   const primaryButtonClass =
     "inline-flex h-[38px] min-w-[130px] items-center justify-center rounded-2xl bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm shadow-[0_18px_34px_rgba(47,128,237,0.28)] transition-all duration-300 hover:translate-y-[-1px] hover:shadow-[0_20px_36px_rgba(47,128,237,0.34)] disabled:cursor-not-allowed disabled:opacity-70";
 
+  const duplicateFieldClass =
+    "mt-1 pl-1 text-[11px] font-medium text-red-600 dark:text-red-400";
+
+  const normalizeEmail = (value: string) => value.trim().toLowerCase();
+  const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
+
+  const validateThaiPhoneNumber = (value: string) => {
+    const phone = normalizePhone(value);
+
+    if (!phone) return "";
+    if (!phone.startsWith("0")) return "เบอร์โทรต้องขึ้นต้นด้วย 0";
+    if (phone.length > 10) return "เบอร์โทรต้องไม่เกิน 10 ตัว";
+    if (phone.length < 10) return "เบอร์โทรต้องมี 10 ตัว";
+    return "";
+  };
+
+  const loadExistingContacts = async () => {
+    try {
+      setLoadingExistingContacts(true);
+      const data = await ListEmailAndPhoneNumber();
+      setExistingContacts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("ListEmailAndPhoneNumber error:", error);
+      setExistingContacts([]);
+    } finally {
+      setLoadingExistingContacts(false);
+    }
+  };
+
+  useEffect(() => {
+    loadExistingContacts();
+  }, []);
+
+  useEffect(() => {
+    if (
+      viewMode === "signup" &&
+      existingContacts.length === 0 &&
+      !loadingExistingContacts
+    ) {
+      loadExistingContacts();
+    }
+  }, [viewMode]);
+
+  const checkDuplicateFields = (email: string, phoneNumber: string) => {
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = normalizePhone(phoneNumber);
+
+    let emailError = "";
+    let phoneError = "";
+
+    if (normalizedEmail) {
+      const emailExists = existingContacts.some(
+        (item) => normalizeEmail(item.email) === normalizedEmail
+      );
+      if (emailExists) {
+        emailError = "อีเมลนี้ถูกใช้งานแล้ว";
+      }
+    }
+
+    if (normalizedPhone) {
+      const phoneExists = existingContacts.some(
+        (item) => normalizePhone(item.phone_number) === normalizedPhone
+      );
+      if (phoneExists) {
+        phoneError = "เบอร์โทรนี้ถูกใช้งานแล้ว";
+      }
+    }
+
+    return {
+      email: emailError,
+      phone_number: phoneError,
+    };
+  };
+
+  useEffect(() => {
+    if (viewMode !== "signup") return;
+
+    const phoneError = validateThaiPhoneNumber(signupForm.phone_number);
+    setPhoneValidationError(phoneError);
+
+    const result = checkDuplicateFields(
+      signupForm.email,
+      signupForm.phone_number
+    );
+    setDuplicateErrors(result);
+  }, [signupForm.email, signupForm.phone_number, existingContacts, viewMode]);
+
   const resetSignUpForm = () => {
     setSignupForm({
       email: "",
@@ -133,6 +242,11 @@ const Index: React.FC = () => {
       location: "",
       position: "",
     });
+    setDuplicateErrors({
+      email: "",
+      phone_number: "",
+    });
+    setPhoneValidationError("");
     setShowSignUpPassword(false);
   };
 
@@ -248,8 +362,8 @@ const Index: React.FC = () => {
       console.error("CheckUserEmail error:", err);
       setForgotError(
         err?.response?.data?.error ||
-        err?.message ||
-        "เกิดข้อผิดพลาดระหว่างตรวจสอบอีเมล"
+          err?.message ||
+          "เกิดข้อผิดพลาดระหว่างตรวจสอบอีเมล"
       );
     } finally {
       setForgotSubmitting(false);
@@ -306,8 +420,8 @@ const Index: React.FC = () => {
       console.error("Send OTP error:", err);
       setResetError(
         err?.response?.data?.error ||
-        err?.message ||
-        "เกิดข้อผิดพลาดระหว่างส่ง OTP"
+          err?.message ||
+          "เกิดข้อผิดพลาดระหว่างส่ง OTP"
       );
     } finally {
       setResetSubmitting(false);
@@ -325,10 +439,32 @@ const Index: React.FC = () => {
 
   const handleSignupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    if (name === "phone_number") {
+      const sanitizedPhone = value.replace(/\D/g, "").slice(0, 10);
+
+      setSignupForm((prev) => ({
+        ...prev,
+        phone_number: sanitizedPhone,
+      }));
+
+      const phoneError = validateThaiPhoneNumber(sanitizedPhone);
+      setPhoneValidationError(phoneError);
+
+      const result = checkDuplicateFields(signupForm.email, sanitizedPhone);
+      setDuplicateErrors(result);
+      return;
+    }
+
     setSignupForm((prev) => ({
       ...prev,
       [name]: value,
     }));
+
+    if (name === "email") {
+      const result = checkDuplicateFields(value, signupForm.phone_number);
+      setDuplicateErrors(result);
+    }
   };
 
   const validateSignUpForm = () => {
@@ -348,6 +484,10 @@ const Index: React.FC = () => {
       message.error("รูปแบบ Email ไม่ถูกต้อง");
       return false;
     }
+    if (duplicateErrors.email) {
+      message.error("อีเมลนี้ถูกใช้งานแล้ว");
+      return false;
+    }
     if (!signupForm.password.trim()) {
       message.error("กรุณากรอก Password");
       return false;
@@ -360,6 +500,18 @@ const Index: React.FC = () => {
       message.error("กรุณากรอก Phone Number");
       return false;
     }
+
+    const phoneError = validateThaiPhoneNumber(signupForm.phone_number);
+    if (phoneError) {
+      message.error(phoneError);
+      return false;
+    }
+
+    if (duplicateErrors.phone_number) {
+      message.error("เบอร์โทรนี้ถูกใช้งานแล้ว");
+      return false;
+    }
+
     if (!signupForm.location.trim()) {
       message.error("กรุณากรอก Location");
       return false;
@@ -374,6 +526,31 @@ const Index: React.FC = () => {
 
   const handleSignUpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    await loadExistingContacts();
+
+    const latestPhoneError = validateThaiPhoneNumber(signupForm.phone_number);
+    setPhoneValidationError(latestPhoneError);
+
+    const latestDuplicateCheck = checkDuplicateFields(
+      signupForm.email,
+      signupForm.phone_number
+    );
+    setDuplicateErrors(latestDuplicateCheck);
+
+    if (latestPhoneError) {
+      message.error(latestPhoneError);
+      return;
+    }
+
+    if (latestDuplicateCheck.email || latestDuplicateCheck.phone_number) {
+      if (latestDuplicateCheck.email) {
+        message.error("อีเมลนี้ถูกใช้งานแล้ว");
+      } else if (latestDuplicateCheck.phone_number) {
+        message.error("เบอร์โทรนี้ถูกใช้งานแล้ว");
+      }
+      return;
+    }
 
     if (!validateSignUpForm()) return;
 
@@ -406,13 +583,15 @@ const Index: React.FC = () => {
 
       setPendingSignupData(payload);
       setOtpOpen(true);
-      message.success((result as any).message || "ส่ง OTP สำเร็จ กรุณายืนยันอีเมล");
+      message.success(
+        (result as any).message || "ส่ง OTP สำเร็จ กรุณายืนยันอีเมล"
+      );
     } catch (error: any) {
       console.error("Send OTP error:", error);
       message.error(
         error?.response?.data?.error ||
-        error?.message ||
-        "เกิดข้อผิดพลาดในการส่ง OTP"
+          error?.message ||
+          "เกิดข้อผิดพลาดในการส่ง OTP"
       );
     } finally {
       setSignupSubmitting(false);
@@ -423,7 +602,6 @@ const Index: React.FC = () => {
     setOtpOpen(false);
     resetSignUpForm();
     setViewMode("login");
-    message.success("สมัครสมาชิกสำเร็จ");
   };
 
   const renderMotionStyles = () => (
@@ -983,6 +1161,9 @@ const Index: React.FC = () => {
                 className={inputBase}
               />
             </div>
+            {duplicateErrors.email ? (
+              <div className={duplicateFieldClass}>{duplicateErrors.email}</div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -996,9 +1177,18 @@ const Index: React.FC = () => {
                   value={signupForm.phone_number}
                   onChange={handleSignupChange}
                   placeholder="0812345678"
+                  inputMode="numeric"
+                  maxLength={10}
                   className={inputBase}
                 />
               </div>
+              {phoneValidationError ? (
+                <div className={duplicateFieldClass}>{phoneValidationError}</div>
+              ) : duplicateErrors.phone_number ? (
+                <div className={duplicateFieldClass}>
+                  {duplicateErrors.phone_number}
+                </div>
+              ) : null}
             </div>
 
             <div>
@@ -1065,7 +1255,12 @@ const Index: React.FC = () => {
         <div className="mt-5 flex justify-center">
           <button
             type="submit"
-            disabled={signupSubmitting}
+            disabled={
+              signupSubmitting ||
+              !!duplicateErrors.email ||
+              !!duplicateErrors.phone_number ||
+              !!phoneValidationError
+            }
             className={primaryButtonClass}
           >
             {signupSubmitting ? "Sending OTP..." : "Sign Up"}

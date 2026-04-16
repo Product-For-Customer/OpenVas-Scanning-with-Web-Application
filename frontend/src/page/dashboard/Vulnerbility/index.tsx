@@ -400,7 +400,7 @@ const TopVulnerability: React.FC<TopVulnerabilityProps> = ({
 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#1f2240] dark:text-white/90 whitespace-nowrap">
-                Top Vulnerability
+                Total Vulnerability
               </h3>
               <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-white/55 whitespace-nowrap">
                 Latest prioritized vulnerabilities from imported findings

@@ -3,7 +3,6 @@ package diagram
 import (
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
@@ -31,17 +30,6 @@ type DiagramResponse struct {
 	ImageBase64 string      `json:"image_base64"`
 	CreatedAt   interface{} `json:"created_at"`
 	UpdatedAt   interface{} `json:"updated_at"`
-}
-
-func cleanString(value string) string {
-	return strings.TrimSpace(value)
-}
-
-func cleanOptionalString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return strings.TrimSpace(*value)
 }
 
 func mapDiagramResponse(diagram entity.AppDiagram) DiagramResponse {

@@ -42,6 +42,7 @@ func main() {
 	r.POST("/send-otp", otp.SendOTP)
 	r.POST("/verify-otp-password", otp.VerifyOTPAddUpdatePassword)
 	r.POST("/auth/logout", auth.Logout)
+	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
 
 	// เปิดให้รูปที่แคปไว้เข้าถึงผ่าน URL
 	r.Static("/public/reports", "./tmp/reports")
@@ -128,8 +129,8 @@ func main() {
 		// ===== Diagram Management =====
 		authorized.GET("/diagrams", diagram.ListDiagrams) // complete
 		authorized.GET("/diagrams/:id", diagram.ListDiagramByID) // complete
-		authorized.POST("/create-diagrams", diagram.CreateDiagram)
-		authorized.PATCH("/update-diagrams/:id", diagram.UpdateDiagramByID)
+		authorized.POST("/create-diagrams", diagram.CreateDiagram) // complete
+		authorized.PATCH("/update-diagrams/:id", diagram.UpdateDiagramByID) // complete
 		authorized.DELETE("/delete-diagrams/:id", diagram.DeleteDiagramByID) // complete
 
 		// ===== Diagram Node Management =====

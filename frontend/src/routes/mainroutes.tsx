@@ -20,9 +20,7 @@ const Diagram = Loadable(lazy(() => import("../page/diagram/index")));
 const DiagramNode = Loadable(lazy(() => import("../page/diagram/node/index")));
 
 // ===== Login Pages =====
-const SignIn = Loadable(lazy(() => import("../page/Authentication/Signin/index")));
-const Forget = Loadable(lazy(() => import("../page/Authentication/Forget/index")));
-const Reset = Loadable(lazy(() => import("../page/Authentication/Reset/index")));
+const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
 const Loader = Loadable(lazy(() => import("../component/third-patry/Loader")));
 
 
@@ -91,12 +89,9 @@ const MainRoutes = (): RouteObject[] => [
   {
     path: "/",
     children: [
-      { index: true, element: <SignIn /> },
-      { path: "loader", element: <Loader /> },
-      { path: "forgot-password", element: <Forget /> },
-      { path: "reset-password", element: <Reset /> },
+      { index: true, element: <Authentication /> },
       { path: "capture", element: <CaptureTest /> },
-      { path: "*", element: <SignIn /> },
+      { path: "*", element: <Authentication /> },
     ],
   },
 ];

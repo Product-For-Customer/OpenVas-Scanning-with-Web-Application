@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import Map, {
+  Marker,
+  NavigationControl,
+  type MapRef,
+} from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { message } from "antd";
 import {
   FiCpu,
   FiSearch,
@@ -12,25 +17,27 @@ import {
   FiActivity,
   FiTrash2,
   FiX,
-  FiAlertTriangle,
   FiHome,
   FiPlus,
   FiEdit2,
-  FiSave,
+  FiCalendar,
 } from "react-icons/fi";
 import {
   ListLocation,
   DeleteLocationByID,
   CreateLocation as CreateLocationService,
   UpdateLocationByID as UpdateLocationByIDService,
-  type LocationResponse,
+  ListALLTarget,
   type CreateLocationInput,
   type UpdateLocationInput,
+  type AllTargetDTO,
 } from "../../../services";
+import ModalCreateAndUpdate from "./modal/ModalCreateAndUpdate";
+import ModalDelete from "./modal/ModalDelete";
 
-type DeviceStatus = "online" | "offline" | "warning";
+export type DeviceStatus = "online" | "offline" | "warning";
 
-type Device = {
+export type Device = {
   id: number;
   device_name: string;
   lat: number;
@@ -41,16 +48,17 @@ type Device = {
   floor: number;
   status: DeviceStatus;
   lastSeen: string;
-  target_id: string;
+  task_id: string;
+  detected_time: string;
 };
 
-type LocationFormState = {
+export type LocationFormState = {
   location: string;
   building: string;
   floor: string;
   latitude: string;
   longtitude: string;
-  target_id: string;
+  task_id: string;
 };
 
 const MAP_STYLE =
@@ -62,7 +70,13 @@ const emptyForm: LocationFormState = {
   floor: "",
   latitude: "",
   longtitude: "",
-  target_id: "",
+  task_id: "",
+};
+
+const DEFAULT_VIEW_STATE = {
+  longitude: 100.5018,
+  latitude: 13.7563,
+  zoom: 12,
 };
 
 const getGoogleMapsLink = (lat: number, lng: number) =>
@@ -81,16 +95,25 @@ const getStatusColor = (status: DeviceStatus) => {
   }
 };
 
-const deriveStatus = (item: LocationResponse): DeviceStatus => {
-  const targetName = (item.target_info?.hostname || "").toLowerCase();
-  const ip = (item.target_info?.ip || "").trim();
+const isValidLatitude = (value: number) =>
+  Number.isFinite(value) && value >= -90 && value <= 90;
 
-  if (!ip) return "offline";
+const isValidLongitude = (value: number) =>
+  Number.isFinite(value) && value >= -180 && value <= 180;
+
+const isValidCoordinate = (lat: number, lng: number) =>
+  isValidLatitude(lat) && isValidLongitude(lng);
+
+const deriveStatus = (taskName?: string, ip?: string): DeviceStatus => {
+  const normalizedTaskName = String(taskName || "").toLowerCase();
+  const normalizedIP = String(ip || "").trim();
+
+  if (!normalizedIP) return "offline";
 
   if (
-    targetName.includes("firewall") ||
-    targetName.includes("server") ||
-    targetName.includes("warning")
+    normalizedTaskName.includes("firewall") ||
+    normalizedTaskName.includes("server") ||
+    normalizedTaskName.includes("warning")
   ) {
     return "warning";
   }
@@ -98,12 +121,13 @@ const deriveStatus = (item: LocationResponse): DeviceStatus => {
   return "online";
 };
 
-const formatUpdatedAt = (value?: string) => {
+export const formatDateTime = (value?: string) => {
   if (!value) return "-";
 
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
+
     return d.toLocaleString("th-TH", {
       year: "numeric",
       month: "2-digit",
@@ -132,11 +156,11 @@ const DeviceMarker: React.FC<{
       >
         <div
           className={[
-            "relative flex h-8.5 w-8.5 items-center justify-center rounded-full border border-white/80 bg-white shadow-md transition-all duration-200",
+            "relative flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-white shadow-md transition-all duration-200",
             active ? "scale-105 ring-2 ring-sky-300" : "hover:scale-105",
           ].join(" ")}
         >
-          <FiCpu className="text-[14px] text-slate-700" />
+          <FiCpu className="text-[13px] text-slate-700" />
           <span
             className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white"
             style={{ backgroundColor: color }}
@@ -159,25 +183,25 @@ const MapPopupCard: React.FC<{
     <div className="absolute bottom-3 left-3 right-3 z-120 md:right-auto md:w-85">
       <div
         className={[
-          "overflow-hidden rounded-[18px] backdrop-blur",
+          "overflow-hidden rounded-2xl backdrop-blur",
           "border border-white/70 bg-white/92 shadow-xl",
           "dark:border-white/10 dark:bg-[#0d1524]/92 dark:shadow-none",
         ].join(" ")}
       >
-        <div className="border-b border-slate-200 px-3.5 py-2.5 dark:border-white/10">
-          <div className="flex items-start justify-between gap-3">
+        <div className="border-b border-slate-200 px-3 py-2 dark:border-white/10">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-slate-900 dark:text-white/90">
+              <p className="truncate text-[12px] font-semibold text-slate-900 dark:text-white/90">
                 {device.device_name}
               </p>
-              <p className="mt-1 text-[10px] text-slate-500 dark:text-white/45">
+              <p className="mt-1 text-[9px] text-slate-500 dark:text-white/45">
                 Last seen: {device.lastSeen}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-white"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-medium text-white"
                 style={{ backgroundColor: getStatusColor(device.status) }}
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-white/90" />
@@ -190,41 +214,50 @@ const MapPopupCard: React.FC<{
                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
                 title="Close"
               >
-                <FiX className="text-[13px]" />
+                <FiX className="text-[12px]" />
               </button>
             </div>
           </div>
         </div>
 
         <div className="space-y-2 p-3">
-
-          <div className="rounded-[14px] border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-700 dark:text-white/75">
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiNavigation />
               IP Address
             </div>
-            <p className="mt-1.5 text-[12px] text-slate-600 dark:text-white/65">
+            <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.ip}
             </p>
           </div>
 
-          <div className="rounded-[14px] border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-700 dark:text-white/75">
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiMapPin />
               Location
             </div>
-            <p className="mt-1.5 text-[12px] text-slate-600 dark:text-white/65">
+            <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.location}
             </p>
           </div>
 
-          <div className="rounded-[14px] border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-white/5">
-            <div className="flex items-center gap-2 text-[11px] font-medium text-slate-700 dark:text-white/75">
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiHome />
               Building / Floor
             </div>
-            <p className="mt-1.5 text-[12px] text-slate-600 dark:text-white/65">
+            <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.building} / Floor {device.floor}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
+              <FiCalendar />
+              Detected Time
+            </div>
+            <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
+              {device.detected_time}
             </p>
           </div>
 
@@ -232,9 +265,9 @@ const MapPopupCard: React.FC<{
             href={getGoogleMapsLink(device.lat, device.lng)}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-2xl bg-[#6d5efc] px-4 text-[12px] font-medium text-white transition hover:bg-[#5f51eb]"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-4 text-[11px] font-medium text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
           >
-            <FiExternalLink className="text-[13px]" />
+            <FiExternalLink className="text-[12px]" />
             Open in Google Maps
           </a>
         </div>
@@ -244,10 +277,15 @@ const MapPopupCard: React.FC<{
 };
 
 const MapDevice: React.FC = () => {
+  const mapRef = useRef<MapRef | null>(null);
+
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Device[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+
+  const [targets, setTargets] = useState<AllTargetDTO[]>([]);
+  const [loadingTargets, setLoadingTargets] = useState(false);
 
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
@@ -266,50 +304,91 @@ const MapDevice: React.FC = () => {
   const [editTarget, setEditTarget] = useState<Device | null>(null);
   const [editForm, setEditForm] = useState<LocationFormState>(emptyForm);
 
+  const moveToDevice = (device: Device, zoom = 16) => {
+    if (!isValidCoordinate(device.lat, device.lng)) return;
+
+    mapRef.current?.flyTo({
+      center: [device.lng, device.lat],
+      zoom,
+      duration: 1200,
+      essential: true,
+    });
+  };
+
+  const handleSelectDevice = (device: Device) => {
+    setSelectedDevice(device);
+    moveToDevice(device);
+  };
+
   const fetchLocations = async () => {
     try {
       setLoading(true);
       setError("");
 
-      const data = await ListLocation();
+      const [locationData, targetData] = await Promise.all([
+        ListLocation(),
+        ListALLTarget(),
+      ]);
 
-      if (!data) {
+      const allTargets = Array.isArray(targetData) ? targetData : [];
+      setTargets(allTargets);
+
+      if (!locationData) {
         setRows([]);
         setError("โหลดข้อมูล location ไม่สำเร็จ");
         return;
       }
 
-      const mapped: Device[] = data
-        .filter(
-          (item) =>
-            typeof item.latitude === "number" &&
-            typeof item.longtitude === "number"
-        )
-        .map((item) => ({
-          id: item.id,
-          device_name:
-            item.target_info?.hostname ||
-            item.target_id ||
-            `Location #${item.id}`,
-          lat: item.latitude,
-          lng: item.longtitude,
-          ip: item.target_info?.ip || "-",
-          location: item.location || "-",
-          building: item.building || "-",
-          floor: Number(item.floor ?? 0),
-          status: deriveStatus(item),
-          lastSeen: formatUpdatedAt(item.updated_at),
-          target_id: String(item.target_id ?? ""),
-        }));
+      const mapped: Device[] = locationData
+        .map((item) => {
+          const lat = Number(item.latitude);
+          const lng = Number(item.longtitude);
+
+          if (!isValidCoordinate(lat, lng)) return null;
+
+          const matchedTarget =
+            allTargets.find((target) => target.task_id === item.task_id) || null;
+
+          const targetName =
+            String(matchedTarget?.name ?? "").trim() ||
+            String(item.task_id ?? "").trim() ||
+            `Location #${item.id}`;
+
+          const targetIP = String(matchedTarget?.ip ?? "").trim() || "-";
+          const detectedTime = formatDateTime(
+            String(matchedTarget?.detected_date ?? "")
+          );
+
+          return {
+            id: item.id,
+            device_name: targetName,
+            lat,
+            lng,
+            ip: targetIP,
+            location: item.location || "-",
+            building: item.building || "-",
+            floor: Number(item.floor ?? 0),
+            status: deriveStatus(targetName, targetIP),
+            lastSeen: formatDateTime(item.updated_at),
+            task_id: String(item.task_id ?? ""),
+            detected_time: detectedTime,
+          };
+        })
+        .filter((item): item is Device => item !== null);
 
       setRows(mapped);
+
       setSelectedDevice((prev) => {
-        if (prev) {
-          const found = mapped.find((d) => d.id === prev.id);
-          return found ?? null;
-        }
-        return null;
+        if (!prev) return null;
+        const found = mapped.find((d) => d.id === prev.id);
+        return found ?? null;
       });
+
+      if (locationData.length > 0 && mapped.length === 0) {
+        setError(
+          "มีข้อมูล location บางรายการที่พิกัดไม่ถูกต้อง จึงไม่สามารถแสดงบนแผนที่ได้"
+        );
+      }
     } catch (e) {
       console.error("fetchLocations error:", e);
       setRows([]);
@@ -318,7 +397,6 @@ const MapDevice: React.FC = () => {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     fetchLocations();
@@ -334,7 +412,8 @@ const MapDevice: React.FC = () => {
         device.location,
         device.building,
         String(device.floor),
-        device.target_id,
+        device.task_id,
+        device.detected_time,
       ]
         .join(" ")
         .toLowerCase();
@@ -343,29 +422,26 @@ const MapDevice: React.FC = () => {
     });
   }, [rows, search]);
 
+  const initialViewState = useMemo(() => {
+    if (filteredDevices.length > 0) {
+      const first = filteredDevices[0];
+      if (isValidCoordinate(first.lat, first.lng)) {
+        return {
+          longitude: first.lng,
+          latitude: first.lat,
+          zoom: 15,
+        };
+      }
+    }
+
+    return DEFAULT_VIEW_STATE;
+  }, [filteredDevices]);
+
   useEffect(() => {
     if (!selectedDevice) return;
     const stillExists = filteredDevices.find((d) => d.id === selectedDevice.id);
-    if (!stillExists) {
-      setSelectedDevice(null);
-    }
+    if (!stillExists) setSelectedDevice(null);
   }, [filteredDevices, selectedDevice]);
-
-  const initialViewState = useMemo(() => {
-    if (filteredDevices.length > 0) {
-      return {
-        longitude: filteredDevices[0].lng,
-        latitude: filteredDevices[0].lat,
-        zoom: 15,
-      };
-    }
-
-    return {
-      longitude: 100.5018,
-      latitude: 13.7563,
-      zoom: 12,
-    };
-  }, [filteredDevices]);
 
   const openDeleteModal = (device: Device) => {
     setDeleteError("");
@@ -398,6 +474,7 @@ const MapDevice: React.FC = () => {
 
       setDeleteTarget(null);
       await fetchLocations();
+      message.success("delete success");
     } catch (err: any) {
       setDeleteError(
         err?.response?.data?.error ||
@@ -409,10 +486,21 @@ const MapDevice: React.FC = () => {
     }
   };
 
-  const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = async () => {
     setCreateError("");
     setCreateForm(emptyForm);
+    setLoadingTargets(true);
     setOpenCreateModal(true);
+
+    try {
+      const data = await ListALLTarget();
+      setTargets(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("fetch targets create error:", e);
+      setTargets([]);
+    } finally {
+      setLoadingTargets(false);
+    }
   };
 
   const closeCreateModal = () => {
@@ -421,25 +509,22 @@ const MapDevice: React.FC = () => {
     setCreateError("");
   };
 
-  const handleCreateChange = (
-    field: keyof LocationFormState,
-    value: string
-  ) => {
-    setCreateForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const confirmCreate = async () => {
+  const confirmCreate = async (form: LocationFormState) => {
     try {
       setCreating(true);
       setCreateError("");
 
+      const floor = Number(form.floor);
+      const latitude = Number(form.latitude);
+      const longtitude = Number(form.longtitude);
+
       const payload: CreateLocationInput = {
-        location: createForm.location.trim(),
-        building: createForm.building.trim(),
-        floor: Number(createForm.floor),
-        latitude: Number(createForm.latitude),
-        longtitude: Number(createForm.longtitude),
-        target_id: createForm.target_id.trim(),
+        location: form.location.trim(),
+        building: form.building.trim(),
+        floor,
+        latitude,
+        longtitude,
+        task_id: form.task_id.trim(),
       };
 
       if (!payload.location) {
@@ -454,16 +539,24 @@ const MapDevice: React.FC = () => {
         setCreateError("กรุณากรอก Floor ให้ถูกต้อง");
         return;
       }
-      if (Number.isNaN(payload.latitude)) {
+      if (!Number.isFinite(latitude)) {
         setCreateError("กรุณากรอก Latitude ให้ถูกต้อง");
         return;
       }
-      if (Number.isNaN(payload.longtitude)) {
+      if (!isValidLatitude(latitude)) {
+        setCreateError("Latitude ต้องอยู่ระหว่าง -90 ถึง 90");
+        return;
+      }
+      if (!Number.isFinite(longtitude)) {
         setCreateError("กรุณากรอก Longtitude ให้ถูกต้อง");
         return;
       }
-      if (!payload.target_id) {
-        setCreateError("กรุณาเลือก Target");
+      if (!isValidLongitude(longtitude)) {
+        setCreateError("Longtitude ต้องอยู่ระหว่าง -180 ถึง 180");
+        return;
+      }
+      if (!payload.task_id) {
+        setCreateError("กรุณาเลือก Task");
         return;
       }
 
@@ -477,6 +570,7 @@ const MapDevice: React.FC = () => {
       setOpenCreateModal(false);
       setCreateForm(emptyForm);
       await fetchLocations();
+      message.success("create success");
     } catch (err: any) {
       setCreateError(
         err?.response?.data?.error ||
@@ -488,7 +582,7 @@ const MapDevice: React.FC = () => {
     }
   };
 
-  const handleOpenEditModal = (device: Device) => {
+  const handleOpenEditModal = async (device: Device) => {
     setEditError("");
     setEditTarget(device);
     setEditForm({
@@ -497,9 +591,20 @@ const MapDevice: React.FC = () => {
       floor: String(device.floor || ""),
       latitude: String(device.lat || ""),
       longtitude: String(device.lng || ""),
-      target_id: String(device.target_id || ""),
+      task_id: String(device.task_id || ""),
     });
+    setLoadingTargets(true);
     setOpenEditModal(true);
+
+    try {
+      const data = await ListALLTarget();
+      setTargets(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("fetch targets edit error:", e);
+      setTargets([]);
+    } finally {
+      setLoadingTargets(false);
+    }
   };
 
   const closeEditModal = () => {
@@ -509,24 +614,24 @@ const MapDevice: React.FC = () => {
     setEditTarget(null);
   };
 
-  const handleEditChange = (field: keyof LocationFormState, value: string) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const confirmEdit = async () => {
+  const confirmEdit = async (form: LocationFormState) => {
     if (!editTarget) return;
 
     try {
       setEditing(true);
       setEditError("");
 
+      const floor = Number(form.floor);
+      const latitude = Number(form.latitude);
+      const longtitude = Number(form.longtitude);
+
       const payload: UpdateLocationInput = {
-        location: editForm.location.trim(),
-        building: editForm.building.trim(),
-        floor: Number(editForm.floor),
-        latitude: Number(editForm.latitude),
-        longtitude: Number(editForm.longtitude),
-        target_id: editForm.target_id.trim(),
+        location: form.location.trim(),
+        building: form.building.trim(),
+        floor,
+        latitude,
+        longtitude,
+        task_id: form.task_id.trim(),
       };
 
       if (!payload.location) {
@@ -537,20 +642,28 @@ const MapDevice: React.FC = () => {
         setEditError("กรุณากรอก Building");
         return;
       }
-      if (!payload.floor || Number.isNaN(Number(payload.floor))) {
+      if (!payload.floor || Number.isNaN(payload.floor)) {
         setEditError("กรุณากรอก Floor ให้ถูกต้อง");
         return;
       }
-      if (Number.isNaN(Number(payload.latitude))) {
+      if (!Number.isFinite(latitude)) {
         setEditError("กรุณากรอก Latitude ให้ถูกต้อง");
         return;
       }
-      if (Number.isNaN(Number(payload.longtitude))) {
+      if (!isValidLatitude(latitude)) {
+        setEditError("Latitude ต้องอยู่ระหว่าง -90 ถึง 90");
+        return;
+      }
+      if (!Number.isFinite(longtitude)) {
         setEditError("กรุณากรอก Longtitude ให้ถูกต้อง");
         return;
       }
-      if (!payload.target_id) {
-        setEditError("กรุณาเลือก Target");
+      if (!isValidLongitude(longtitude)) {
+        setEditError("Longtitude ต้องอยู่ระหว่าง -180 ถึง 180");
+        return;
+      }
+      if (!payload.task_id) {
+        setEditError("กรุณาเลือก Task");
         return;
       }
 
@@ -564,6 +677,7 @@ const MapDevice: React.FC = () => {
       setOpenEditModal(false);
       setEditTarget(null);
       await fetchLocations();
+      message.success("update success");
     } catch (err: any) {
       setEditError(
         err?.response?.data?.error ||
@@ -586,7 +700,7 @@ const MapDevice: React.FC = () => {
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-14 -right-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute -bottom-14 -left-10 h-32 w-32 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute -bottom-14 -left-10 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
           <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.055]">
             <div
               className="h-full w-full"
@@ -636,11 +750,11 @@ const MapDevice: React.FC = () => {
                     <div
                       className={[
                         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
-                        "bg-slate-50 text-slate-600 border border-slate-200/80",
-                        "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+                        "bg-sky-50 text-sky-700 border border-sky-200/80",
+                        "dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-400/20",
                       ].join(" ")}
                     >
-                      <FiActivity className="text-[11px] text-violet-500" />
+                      <FiActivity className="text-[11px] text-sky-500" />
                       <span className="text-[10.5px] font-medium">
                         Live location telemetry
                       </span>
@@ -649,10 +763,7 @@ const MapDevice: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleOpenCreateModal}
-                      className={[
-                        "inline-flex h-8 items-center justify-center gap-2 rounded-full px-3.5 transition",
-                        "bg-[#6d5efc] text-white hover:bg-[#5f51eb]",
-                      ].join(" ")}
+                      className="inline-flex h-8 items-center justify-center gap-2 rounded-full bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-3.5 text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
                     >
                       <FiPlus className="text-[12px]" />
                       <span className="text-[11px] font-medium">
@@ -661,11 +772,12 @@ const MapDevice: React.FC = () => {
                     </button>
                   </div>
 
-                  <h2 className="text-[17px] sm:text-[19px] font-semibold tracking-tight text-slate-900 dark:text-white">
+                  <h2 className="text-[17px] font-semibold tracking-tight text-slate-900 sm:text-[19px] dark:text-white">
                     Device Location Map
                   </h2>
-                  <p className="mt-1 text-[11px] sm:text-[12px] text-slate-500 dark:text-white/55">
-                    Display the device location from the Location and Target information.
+                  <p className="mt-1 text-[11px] text-slate-500 sm:text-[12px] dark:text-white/55">
+                    Display the device location from the Location and Task
+                    information.
                   </p>
                 </div>
               </div>
@@ -673,7 +785,7 @@ const MapDevice: React.FC = () => {
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="flex w-full flex-col gap-2.5 lg:flex-row lg:items-center">
                   <div className="relative w-full lg:max-w-sm">
-                    <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/40 text-[13px]" />
+                    <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/40" />
                     <input
                       type="text"
                       placeholder="Search device / IP / building / location / task..."
@@ -692,7 +804,7 @@ const MapDevice: React.FC = () => {
                   <div className="text-[11px] text-slate-500 dark:text-white/50">
                     {loading ? (
                       <span className="inline-flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-500" />
                         Loading map data...
                       </span>
                     ) : error ? (
@@ -725,7 +837,7 @@ const MapDevice: React.FC = () => {
                 </span>
               </div>
 
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1 xl:max-h-130">
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1 xl:max-h-130">
                 {loading && (
                   <div className="rounded-[18px] border border-dashed border-slate-300 bg-white px-3.5 py-5 text-center text-[12px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50">
                     Loading...
@@ -755,7 +867,7 @@ const MapDevice: React.FC = () => {
                       >
                         <button
                           type="button"
-                          onClick={() => setSelectedDevice(device)}
+                          onClick={() => handleSelectDevice(device)}
                           className="w-full text-left"
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -768,6 +880,9 @@ const MapDevice: React.FC = () => {
                               </p>
                               <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
                                 IP: {device.ip}
+                              </p>
+                              <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
+                                Detected Time: {device.detected_time}
                               </p>
                             </div>
 
@@ -813,6 +928,7 @@ const MapDevice: React.FC = () => {
 
             <div className="relative h-105 min-h-105 md:h-130 xl:h-155">
               <Map
+                ref={mapRef}
                 initialViewState={initialViewState}
                 mapStyle={MAP_STYLE}
                 attributionControl={{ compact: true }}
@@ -826,7 +942,7 @@ const MapDevice: React.FC = () => {
                     key={device.id}
                     device={device}
                     active={selectedDevice?.id === device.id}
-                    onClick={setSelectedDevice}
+                    onClick={handleSelectDevice}
                   />
                 ))}
               </Map>
@@ -855,341 +971,40 @@ const MapDevice: React.FC = () => {
         </div>
       </section>
 
-      {openCreateModal && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl dark:bg-[#0B1220]">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-[16px] font-semibold text-slate-900 dark:text-white">
-                  Create Location
-                </h3>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50">
-                  เพิ่ม location ใหม่และผูกกับ target
-                </p>
-              </div>
+      <ModalCreateAndUpdate
+        open={openCreateModal}
+        mode="create"
+        loading={creating}
+        loadingTargets={loadingTargets}
+        error={createError}
+        form={createForm}
+        targets={targets}
+        onClose={closeCreateModal}
+        onChange={setCreateForm}
+        onSubmit={confirmCreate}
+      />
 
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                disabled={creating}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
-              >
-                <FiX />
-              </button>
-            </div>
+      <ModalCreateAndUpdate
+        open={openEditModal}
+        mode="edit"
+        loading={editing}
+        loadingTargets={loadingTargets}
+        error={editError}
+        form={editForm}
+        targets={targets}
+        onClose={closeEditModal}
+        onChange={setEditForm}
+        onSubmit={confirmEdit}
+      />
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={createForm.location}
-                  onChange={(e) => handleCreateChange("location", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Building
-                </label>
-                <input
-                  type="text"
-                  value={createForm.building}
-                  onChange={(e) => handleCreateChange("building", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Floor
-                </label>
-                <input
-                  type="number"
-                  value={createForm.floor}
-                  onChange={(e) => handleCreateChange("floor", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Target ID
-                </label>
-                <input
-                  type="text"
-                  value={createForm.target_id}
-                  onChange={(e) => handleCreateChange("target_id", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Latitude
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={createForm.latitude}
-                  onChange={(e) => handleCreateChange("latitude", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Longtitude
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={createForm.longtitude}
-                  onChange={(e) =>
-                    handleCreateChange("longtitude", e.target.value)
-                  }
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-            </div>
-
-            {createError && (
-              <div className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-3.5 py-2.5 text-center text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                {createError}
-              </div>
-            )}
-
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={closeCreateModal}
-                disabled={creating}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-medium text-slate-600 transition hover:bg-slate-200 disabled:opacity-60 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmCreate}
-                disabled={creating}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#6d5efc] px-4 py-2 text-[12px] font-medium text-white transition hover:bg-[#5f51eb] disabled:opacity-60"
-              >
-                <FiSave className="text-[12px]" />
-                {creating ? "Creating..." : "Create"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {openEditModal && editTarget && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-5 shadow-2xl dark:bg-[#0B1220]">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-[16px] font-semibold text-slate-900 dark:text-white">
-                  Edit Location
-                </h3>
-                <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50">
-                  แก้ไขข้อมูล location และ target
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={closeEditModal}
-                disabled={editing}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
-              >
-                <FiX />
-              </button>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Location
-                </label>
-                <input
-                  type="text"
-                  value={editForm.location}
-                  onChange={(e) => handleEditChange("location", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Building
-                </label>
-                <input
-                  type="text"
-                  value={editForm.building}
-                  onChange={(e) => handleEditChange("building", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Floor
-                </label>
-                <input
-                  type="number"
-                  value={editForm.floor}
-                  onChange={(e) => handleEditChange("floor", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Target ID
-                </label>
-                <input
-                  type="text"
-                  value={editForm.target_id}
-                  onChange={(e) => handleEditChange("target_id", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Latitude
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={editForm.latitude}
-                  onChange={(e) => handleEditChange("latitude", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/75">
-                  Longtitude
-                </label>
-                <input
-                  type="number"
-                  step="any"
-                  value={editForm.longtitude}
-                  onChange={(e) => handleEditChange("longtitude", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-[12px] text-slate-700 outline-none focus:border-sky-400 dark:border-white/10 dark:bg-white/5 dark:text-white/80"
-                />
-              </div>
-            </div>
-
-            {editError && (
-              <div className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-3.5 py-2.5 text-center text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                {editError}
-              </div>
-            )}
-
-            <div className="mt-5 flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={closeEditModal}
-                disabled={editing}
-                className="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-medium text-slate-600 transition hover:bg-slate-200 disabled:opacity-60 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmEdit}
-                disabled={editing}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#6d5efc] px-4 py-2 text-[12px] font-medium text-white transition hover:bg-[#5f51eb] disabled:opacity-60"
-              >
-                <FiSave className="text-[12px]" />
-                {editing ? "Saving..." : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/55 p-4 backdrop-blur-[2px]">
-          <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl dark:bg-[#0B1220]">
-            <div className="mx-auto flex h-13 w-13 items-center justify-center rounded-full bg-[#f8dedd] text-[#ff5a3c]">
-              <FiAlertTriangle className="text-[22px]" />
-            </div>
-
-            <div className="mt-4 text-center">
-              <h3 className="text-[17px] font-semibold text-slate-900 dark:text-white">
-                Delete Location?
-              </h3>
-              <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-white/50">
-                คุณกำลังจะลบ location นี้ออกจากระบบ
-              </p>
-
-              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-left text-[11px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
-                <p>
-                  <span className="font-medium text-slate-700 dark:text-white/80">
-                    Device:
-                  </span>{" "}
-                  {deleteTarget.device_name}
-                </p>
-                <p>
-                  <span className="font-medium text-slate-700 dark:text-white/80">
-                    Building:
-                  </span>{" "}
-                  {deleteTarget.building}
-                </p>
-                <p>
-                  <span className="font-medium text-slate-700 dark:text-white/80">
-                    Floor:
-                  </span>{" "}
-                  {deleteTarget.floor}
-                </p>
-                <p>
-                  <span className="font-medium text-slate-700 dark:text-white/80">
-                    IP:
-                  </span>{" "}
-                  {deleteTarget.ip}
-                </p>
-              </div>
-            </div>
-
-            {deleteError && (
-              <div className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-3.5 py-2.5 text-center text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                {deleteError}
-              </div>
-            )}
-
-            <div className="mt-5 flex items-center justify-center gap-2.5">
-              <button
-                type="button"
-                onClick={confirmDelete}
-                disabled={deleting}
-                className={[
-                  "min-w-27.5 rounded-[10px] px-3.5 py-2 text-[12px] font-medium transition",
-                  "bg-[#f8dedd] text-[#ff5a3c] hover:bg-[#f4d2d1]",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                ].join(" ")}
-              >
-                {deleting ? "Deleting..." : "Yes, Delete!"}
-              </button>
-
-              <button
-                type="button"
-                onClick={closeDeleteModal}
-                disabled={deleting}
-                className={[
-                  "min-w-27.5 rounded-[10px] px-3.5 py-2 text-[12px] font-medium transition",
-                  "bg-[#6d5efc] text-white hover:bg-[#5f51eb]",
-                  "disabled:cursor-not-allowed disabled:opacity-60",
-                ].join(" ")}
-              >
-                No, Keep It.
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ModalDelete
+        open={!!deleteTarget}
+        loading={deleting}
+        error={deleteError}
+        target={deleteTarget}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDelete}
+      />
     </>
   );
 };
