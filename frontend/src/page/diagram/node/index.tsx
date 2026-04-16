@@ -5,8 +5,6 @@ import {
   FiArrowLeft,
   FiMapPin,
   FiImage,
-  FiRefreshCw,
-  FiPlus,
   FiEdit2,
   FiLayers,
   FiCrosshair,
@@ -82,7 +80,7 @@ const DiagramNode: React.FC = () => {
   const [diagram, setDiagram] = useState<DiagramResponse | null>(null);
   const [nodes, setNodes] = useState<AppDiagramNodeResponse[]>([]);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); //@ts-ignore
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState("");
 
@@ -371,16 +369,19 @@ const DiagramNode: React.FC = () => {
     "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
   ].join(" ");
 
-  const cyanBtn = [
-    "h-9 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[11px] font-semibold",
-    "bg-cyan-50 border border-cyan-200 text-cyan-700 hover:bg-cyan-100",
-    "dark:bg-cyan-500/10 dark:border-cyan-400/20 dark:text-cyan-200 dark:hover:bg-cyan-500/15",
-  ].join(" ");
-
   const badgeCls = [
     "inline-flex items-center gap-1.5 rounded-full px-2 py-1 min-w-0",
     "bg-slate-50 text-slate-600 border border-slate-200/80",
     "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
+  ].join(" ");
+
+  const editGradientBtn = [
+    "w-full h-9 rounded-xl inline-flex items-center justify-center gap-2",
+    "text-white shadow-sm transition-all duration-200 text-[11px] font-semibold",
+    "bg-linear-to-r from-sky-400 via-blue-400 to-indigo-500",
+    "hover:from-sky-500 hover:via-blue-500 hover:to-indigo-600",
+    "focus:outline-none focus:ring-2 focus:ring-sky-200",
+    "dark:focus:ring-sky-500/30",
   ].join(" ");
 
   return (
@@ -434,35 +435,6 @@ const DiagramNode: React.FC = () => {
                 >
                   <FiArrowLeft className="text-[12px]" />
                   Back
-                </button>
-
-                <button
-                  type="button"
-                  className={secondaryBtn}
-                  onClick={() => loadData(false)}
-                  disabled={reloading}
-                >
-                  <FiRefreshCw className={`text-[12px] ${reloading ? "animate-spin" : ""}`} />
-                  Refresh
-                </button>
-
-                <button
-                  type="button"
-                  className={cyanBtn}
-                  onClick={() => {
-                    setModalMode("create");
-                    setSelectedNode(null);
-                    setDraftPosition({
-                      x: 10,
-                      y: 10,
-                      width: 12,
-                      height: 9,
-                    });
-                    setModalOpen(true);
-                  }}
-                >
-                  <FiPlus className="text-[12px]" />
-                  Add Node
                 </button>
               </div>
             </div>
@@ -626,11 +598,7 @@ const DiagramNode: React.FC = () => {
                             <div className="pt-1">
                               <button
                                 type="button"
-                                className={[
-                                  "w-full h-9 rounded-xl inline-flex items-center justify-center gap-2",
-                                  "bg-cyan-50 border border-cyan-200 text-cyan-700",
-                                  "hover:bg-cyan-100 transition text-[11px] font-semibold",
-                                ].join(" ")}
+                                className={editGradientBtn}
                                 onClick={() => handleOpenEdit(hoverCard.node.id)}
                               >
                                 <FiEdit2 className="text-[12px]" />

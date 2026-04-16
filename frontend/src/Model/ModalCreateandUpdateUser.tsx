@@ -136,6 +136,10 @@ const searchInputCls = [
   "dark:text-white/80 dark:placeholder:text-white/35",
 ].join(" ");
 
+const normalizeString = (value: string) => value.trim();
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
+
 const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   open,
   user,
@@ -185,9 +189,6 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
         .includes(keyword)
     );
   }, [roles, roleSearch]);
-
-  const normalizeEmail = (value: string) => value.trim().toLowerCase();
-  const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
 
   const validateThaiPhoneNumber = (value: string) => {
     const phone = normalizePhone(value);
@@ -327,6 +328,47 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
     setPhoneValidationError(validateThaiPhoneNumber(formData.phone_number));
   }, [formData.email, formData.phone_number, existingContacts, open]);
 
+  const originalEditForm = useMemo<Payload>(() => {
+    if (!isEditMode || !user) return EMPTY_FORM;
+
+    const matchedRole = roles.find(
+      (r) => r.role.toLowerCase() === String(user.role || "").toLowerCase()
+    );
+
+    return {
+      email: user.email ?? "",
+      password: "",
+      first_name: user.first_name ?? "",
+      last_name: user.last_name ?? "",
+      profile: user.profile ?? "",
+      phone_number: user.phone_number ?? "",
+      location: user.location ?? "",
+      position: user.position ?? "",
+      app_role_id: matchedRole?.id ?? "",
+    };
+  }, [isEditMode, user, roles]);
+
+  const hasFormChanged = useMemo(() => {
+    if (!isEditMode) return true;
+
+    return (
+      normalizeEmail(formData.email) !== normalizeEmail(originalEditForm.email) ||
+      normalizeString(formData.first_name) !==
+        normalizeString(originalEditForm.first_name) ||
+      normalizeString(formData.last_name) !==
+        normalizeString(originalEditForm.last_name) ||
+      normalizePhone(formData.phone_number) !==
+        normalizePhone(originalEditForm.phone_number) ||
+      normalizeString(formData.location) !==
+        normalizeString(originalEditForm.location) ||
+      normalizeString(formData.position) !==
+        normalizeString(originalEditForm.position) ||
+      String(formData.app_role_id || "") !==
+        String(originalEditForm.app_role_id || "") ||
+      (formData.profile || "") !== (originalEditForm.profile || "")
+    );
+  }, [formData, originalEditForm, isEditMode]);
+
   if (!open) return null;
 
   const handleChange = (
@@ -396,6 +438,7 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
       message.error("Upload image failed");
     } finally {
       setUploadingImage(false);
+      e.target.value = "";
     }
   };
 
@@ -421,12 +464,21 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
     if (!formData.position.trim()) return "Please enter position";
     if (!formData.app_role_id) return "Please select role";
 
+    if (isEditMode && !hasFormChanged) {
+      return "No changes detected";
+    }
+
     return "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (isEditMode && !hasFormChanged) {
+      message.warning("No changes detected");
+      return;
+    }
 
     await loadExistingContacts();
 
@@ -951,10 +1003,12 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
               type="submit"
               disabled={
                 submitting ||
+                uploadingImage ||
                 loadingExistingContacts ||
                 !!emailDuplicateError ||
                 !!phoneDuplicateError ||
-                !!phoneValidationError
+                !!phoneValidationError ||
+                (isEditMode && !hasFormChanged)
               }
               className={primaryBlueButtonCls}
             >

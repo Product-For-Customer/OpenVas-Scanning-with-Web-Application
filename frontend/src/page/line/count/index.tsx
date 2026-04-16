@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiBarChart2,
   FiCalendar,
-  FiRefreshCw,
   FiAlertCircle,
   FiChevronDown,
   FiCheck,
@@ -101,9 +100,7 @@ type CountProps = {
 const Index: React.FC<CountProps> = ({
   items,
   loading,
-  refreshing,
   error,
-  onRefresh,
 }) => {
   const currentYear = new Date().getFullYear();
 
@@ -367,23 +364,6 @@ const Index: React.FC<CountProps> = ({
                 </div>
               )}
             </div>
-
-            <button
-              type="button"
-              onClick={() => onRefresh(true)}
-              disabled={refreshing}
-              className={[
-                "inline-flex h-8.5 w-8.5 items-center justify-center rounded-xl transition",
-                "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                "disabled:cursor-not-allowed disabled:opacity-60",
-                "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
-              ].join(" ")}
-              title="Refresh"
-            >
-              <FiRefreshCw
-                className={`text-[12px] ${refreshing ? "animate-spin" : ""}`}
-              />
-            </button>
           </div>
         </div>
 

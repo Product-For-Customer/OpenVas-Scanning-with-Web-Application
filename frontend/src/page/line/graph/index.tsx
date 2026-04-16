@@ -123,9 +123,7 @@ type GraphProps = {
 const Index: React.FC<GraphProps> = ({
   items,
   loading,
-  refreshing,
   error,
-  onRefresh,
 }) => {
   const summaryCount = useMemo(() => {
     const completed = items.filter(
@@ -358,25 +356,6 @@ const Index: React.FC<GraphProps> = ({
             <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 dark:text-white/55">
               Radar chart showing total counts by notification status.
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onRefresh(true)}
-              disabled={refreshing}
-              className={[
-                "inline-flex h-8.5 w-8.5 items-center justify-center rounded-xl transition",
-                "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50",
-                "disabled:cursor-not-allowed disabled:opacity-60",
-                "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
-              ].join(" ")}
-              title="Refresh"
-            >
-              <FiRefreshCw
-                className={`text-[12px] ${refreshing ? "animate-spin" : ""}`}
-              />
-            </button>
           </div>
         </div>
 

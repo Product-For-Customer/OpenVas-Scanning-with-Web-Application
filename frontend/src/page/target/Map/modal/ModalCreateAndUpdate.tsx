@@ -62,6 +62,17 @@ const inputCls = [
 
 const emptySearch = "";
 
+const normalizeValue = (value: unknown) => String(value ?? "").trim();
+
+const createComparableForm = (form: LocationFormState) => ({
+  location: normalizeValue(form.location),
+  building: normalizeValue(form.building),
+  floor: normalizeValue(form.floor),
+  task_id: normalizeValue(form.task_id),
+  latitude: normalizeValue(form.latitude),
+  longtitude: normalizeValue(form.longtitude),
+});
+
 const ModalCreateAndUpdate: React.FC<Props> = ({
   open,
   mode,
@@ -77,13 +88,24 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
   const [openTargetSelector, setOpenTargetSelector] = useState(false);
   const [targetSearch, setTargetSearch] = useState(emptySearch);
   const selectorRef = useRef<HTMLDivElement | null>(null);
+  const initialEditFormRef = useRef<ReturnType<typeof createComparableForm> | null>(
+    null
+  );
 
   useEffect(() => {
     if (!open) {
       setOpenTargetSelector(false);
       setTargetSearch("");
+      initialEditFormRef.current = null;
+      return;
     }
-  }, [open]);
+
+    if (mode === "edit") {
+      initialEditFormRef.current = createComparableForm(form);
+    } else {
+      initialEditFormRef.current = null;
+    }
+  }, [open, mode]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -122,6 +144,22 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
     return targets.find((item) => item.task_id === form.task_id) ?? null;
   }, [targets, form.task_id]);
 
+  const isFormChanged = useMemo(() => {
+    if (mode !== "edit") return true;
+    if (!initialEditFormRef.current) return false;
+
+    const currentComparableForm = createComparableForm(form);
+
+    return (
+      currentComparableForm.location !== initialEditFormRef.current.location ||
+      currentComparableForm.building !== initialEditFormRef.current.building ||
+      currentComparableForm.floor !== initialEditFormRef.current.floor ||
+      currentComparableForm.task_id !== initialEditFormRef.current.task_id ||
+      currentComparableForm.latitude !== initialEditFormRef.current.latitude ||
+      currentComparableForm.longtitude !== initialEditFormRef.current.longtitude
+    );
+  }, [form, mode]);
+
   const handleChange = (field: keyof LocationFormState, value: string) => {
     onChange((prev) => ({ ...prev, [field]: value }));
   };
@@ -136,6 +174,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
     mode === "create"
       ? "เพิ่ม location ใหม่และผูกกับ target"
       : "แก้ไขข้อมูล location และ target";
+
   const submitText =
     mode === "create"
       ? loading
@@ -144,6 +183,8 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
       : loading
       ? "Saving..."
       : "Save Changes";
+
+  const isSubmitDisabled = loading || (mode === "edit" && !isFormChanged);
 
   if (!open) return null;
 
@@ -436,8 +477,6 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                     </div>
                   </div>
                 </div>
-
-                
               </div>
             </div>
           </div>
@@ -461,8 +500,11 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
 
           <button
             type="button"
-            onClick={() => onSubmit(form)}
-            disabled={loading}
+            onClick={() => {
+              if (mode === "edit" && !isFormChanged) return;
+              onSubmit(form);
+            }}
+            disabled={isSubmitDisabled}
             className={primaryBlueButtonCls}
           >
             <FiSave className="text-[11px]" />

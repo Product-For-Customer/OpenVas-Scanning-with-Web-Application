@@ -261,6 +261,24 @@ const Index: React.FC = () => {
     );
   };
 
+  const editGradientIconBtn = [
+    "inline-flex h-8 w-8 items-center justify-center rounded-full",
+    "text-white shadow-sm transition-all duration-200",
+    "bg-linear-to-r from-sky-400 via-blue-400 to-indigo-500",
+    "hover:from-sky-500 hover:via-blue-500 hover:to-indigo-600",
+    "focus:outline-none focus:ring-2 focus:ring-sky-200",
+    "dark:focus:ring-sky-500/30",
+  ].join(" ");
+
+  const deleteGradientIconBtn = [
+    "inline-flex h-8 w-8 items-center justify-center rounded-full",
+    "text-white shadow-sm transition-all duration-200",
+    "bg-linear-to-r from-rose-400 via-red-400 to-rose-500",
+    "hover:from-rose-500 hover:via-red-500 hover:to-rose-600",
+    "focus:outline-none focus:ring-2 focus:ring-red-200",
+    "dark:focus:ring-red-500/30",
+  ].join(" ");
+
   return (
     <>
       <section
@@ -295,15 +313,10 @@ const Index: React.FC = () => {
             <button
               type="button"
               onClick={handleCreate}
-              className={[
-                "inline-flex h-8.5 items-center justify-center gap-1.5 rounded-xl px-3",
-                "border border-slate-200 bg-white text-[11px] font-medium text-slate-700",
-                "hover:bg-slate-50 transition",
-                "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8",
-              ].join(" ")}
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-full bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-3.5 text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
             >
               <FiPlus className="text-[12px]" />
-              Create User
+              <span className="text-[11px] font-medium">Create User</span>
             </button>
           </div>
 
@@ -495,11 +508,7 @@ const Index: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleEdit(user)}
-                                  className={[
-                                    "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
-                                    "bg-cyan-50 text-cyan-600 hover:bg-cyan-100 active:bg-cyan-200",
-                                    "dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:bg-cyan-500/15 dark:active:bg-cyan-500/20",
-                                  ].join(" ")}
+                                  className={editGradientIconBtn}
                                   title="Edit user"
                                   aria-label="Edit user"
                                 >
@@ -510,11 +519,7 @@ const Index: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => openDeleteModal(user)}
-                                    className={[
-                                      "inline-flex h-7.5 w-7.5 items-center justify-center rounded-lg transition-colors",
-                                      "bg-red-50 text-red-600 hover:bg-red-100 active:bg-red-200",
-                                      "dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15 dark:active:bg-red-500/20",
-                                    ].join(" ")}
+                                    className={deleteGradientIconBtn}
                                     title="Delete user"
                                     aria-label="Delete user"
                                   >

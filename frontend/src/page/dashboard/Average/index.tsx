@@ -15,7 +15,6 @@ import { MdTrendingUp, MdTrendingDown } from "react-icons/md";
 import {
   FiActivity,
   FiAlertCircle,
-  FiRefreshCw,
   FiShield,
   FiBarChart2,
   FiChevronDown,
@@ -567,7 +566,7 @@ const CustomLegend = ({ detailMode = false }: { detailMode?: boolean }) => {
 
 const AverageEnrollment: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortType>("Latest Updated");
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true); //@ts-ignore
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [rows, setRows] = useState<TargetDifferDTO[]>([]);
 
@@ -1143,18 +1142,6 @@ const AverageEnrollment: React.FC = () => {
                     </div>
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => void fetchData("refresh")}
-                  disabled={refreshing}
-                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-gray-200/80 bg-white px-4 text-[12px] font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10"
-                >
-                  <FiRefreshCw
-                    className={`text-[13px] ${refreshing ? "animate-spin" : ""}`}
-                  />
-                  Refresh
-                </button>
               </div>
             ) : (
               <div className="flex justify-end">

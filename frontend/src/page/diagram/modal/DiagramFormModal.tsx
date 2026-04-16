@@ -43,6 +43,29 @@ const emptyForm: FormState = {
   image_base64: "",
 };
 
+const MAX_IMAGE_SIZE_MB = 5;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
+const ALLOWED_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/svg+xml",
+  "image/bmp",
+];
+
+const ALLOWED_IMAGE_EXTENSIONS = [
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".svg",
+  ".bmp",
+];
+
 const getImageSrc = (value?: string) => {
   if (!value) return "";
   const trimmed = value.trim();
@@ -61,6 +84,32 @@ const fileToBase64 = (file: File): Promise<string> =>
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
   });
+
+const getFileExtension = (fileName: string): string => {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  if (lastDotIndex === -1) return "";
+  return fileName.slice(lastDotIndex).toLowerCase();
+};
+
+const normalizeValue = (value?: string) => (value ?? "").trim();
+
+const validateImageFile = (file: File): string => {
+  const extension = getFileExtension(file.name);
+  const hasValidMimeType = ALLOWED_IMAGE_MIME_TYPES.includes(
+    file.type.toLowerCase()
+  );
+  const hasValidExtension = ALLOWED_IMAGE_EXTENSIONS.includes(extension);
+
+  if (!hasValidMimeType || !hasValidExtension) {
+    return "Only image files can be uploaded";
+  }
+
+  if (file.size > MAX_IMAGE_SIZE_BYTES) {
+    return `Image size must be less than ${MAX_IMAGE_SIZE_MB} MB`;
+  }
+
+  return "";
+};
 
 const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
   open,
@@ -86,6 +135,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
         image_base64: initialData.image_base64 ?? "",
       });
       setFormError("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
@@ -102,12 +152,24 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
       : "Edit diagram information and replace image if needed";
   }, [mode]);
 
+  const isFormChanged = useMemo(() => {
+    if (mode !== "edit") return true;
+    if (!initialData) return false;
+
+    return (
+      normalizeValue(form.name) !== normalizeValue(initialData.name) ||
+      normalizeValue(form.description) !==
+        normalizeValue(initialData.description) ||
+      normalizeValue(form.image_base64) !== normalizeValue(initialData.image_base64)
+    );
+  }, [form, initialData, mode]);
+
   const validateForm = () => {
     const name = form.name.trim();
     const image = form.image_base64.trim();
 
-    if (!name) return "กรุณากรอกชื่อ Diagram";
-    if (!image) return "กรุณาอัปโหลดรูป Diagram";
+    if (!name) return "Please enter diagram name";
+    if (!image) return "Please upload a diagram image";
     return "";
   };
 
@@ -118,21 +180,64 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     }));
   };
 
+  const resetImageInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setForm((prev) => ({
+      ...prev,
+      image_base64: "",
+    }));
+    setFormError("");
+    resetImageInput();
+  };
+
   const handleSelectImage = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const validationMessage = validateImageFile(file);
+    if (validationMessage) {
+      setFormError(validationMessage);
+      message.error(validationMessage);
+      resetImageInput();
+      setForm((prev) => ({
+        ...prev,
+        image_base64: "",
+      }));
+      return;
+    }
+
     try {
       const base64 = await fileToBase64(file);
+
+      if (!base64.startsWith("data:image/")) {
+        const errorMessage = "The selected file is not a valid image";
+        setFormError(errorMessage);
+        message.error(errorMessage);
+        resetImageInput();
+        setForm((prev) => ({
+          ...prev,
+          image_base64: "",
+        }));
+        return;
+      }
+
       setForm((prev) => ({
         ...prev,
         image_base64: base64,
       }));
       setFormError("");
     } catch {
-      setFormError("ไม่สามารถแปลงรูปเป็น base64 ได้");
+      const errorMessage = "Failed to convert image to base64";
+      setFormError(errorMessage);
+      message.error(errorMessage);
+      resetImageInput();
     }
   };
 
@@ -140,6 +245,11 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     const validationMessage = validateForm();
     if (validationMessage) {
       setFormError(validationMessage);
+      return;
+    }
+
+    if (mode === "edit" && !isFormChanged) {
+      setFormError("No changes detected");
       return;
     }
 
@@ -156,14 +266,14 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
 
         const created = await CreateDiagram(payload);
         if (!created) {
-          setFormError("ไม่สามารถสร้าง Diagram ได้");
+          setFormError("Failed to create diagram");
           return;
         }
 
-        message.success("create success");
+        message.success("Create success");
       } else {
         if (!initialData?.id) {
-          setFormError("ไม่พบ Diagram ที่ต้องการแก้ไข");
+          setFormError("Diagram not found");
           return;
         }
 
@@ -175,11 +285,11 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
 
         const updated = await UpdateDiagramByID(initialData.id, payload);
         if (!updated) {
-          setFormError("ไม่สามารถอัปเดต Diagram ได้");
+          setFormError("Failed to update diagram");
           return;
         }
 
-        message.success("update success");
+        message.success("Update success");
       }
 
       await onSuccess();
@@ -220,8 +330,16 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-200 dark:hover:bg-red-500/15",
   ].join(" ");
 
+  const disabledActionBtn = [
+    actionBtn,
+    "opacity-60 cursor-not-allowed pointer-events-none",
+  ].join(" ");
+
   const sectionTitleCls =
     "mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-gray-700 dark:text-white/75";
+
+  const isSubmitDisabled =
+    submitting || loading || (mode === "edit" && !isFormChanged);
 
   return (
     <div className="fixed inset-0 z-1200 flex items-center justify-center bg-slate-950/60 backdrop-blur-[3px] p-2.5">
@@ -264,65 +382,62 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
-                  <label className={sectionTitleCls}>
-                    <FiType className="text-[11px] text-cyan-600 dark:text-cyan-300" />
-                    Name
-                  </label>
-                  <div className="relative">
-                    <FiType className="absolute left-3 top-1/2 -translate-y-1/2 text-[10.5px] text-gray-400 dark:text-white/35" />
-                    <input
-                      value={form.name}
-                      onChange={(e) => handleChangeForm("name", e.target.value)}
-                      placeholder="Enter diagram name"
-                      className={["pl-8", inputCls].join(" ")}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
-                  <label className={sectionTitleCls}>
-                    <FiUpload className="text-[11px] text-emerald-600 dark:text-emerald-300" />
-                    Diagram Image
-                  </label>
-
+              <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
+                <label className={sectionTitleCls}>
+                  <FiType className="text-[11px] text-cyan-600 dark:text-cyan-300" />
+                  Name
+                </label>
+                <div className="relative">
+                  <FiType className="absolute left-3 top-1/2 -translate-y-1/2 text-[10.5px] text-gray-400 dark:text-white/35" />
                   <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleSelectImage}
-                    className="hidden"
+                    value={form.name}
+                    onChange={(e) => handleChangeForm("name", e.target.value)}
+                    placeholder="Enter diagram name"
+                    className={["pl-8", inputCls].join(" ")}
                   />
+                </div>
+              </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
+                <label className={sectionTitleCls}>
+                  <FiUpload className="text-[11px] text-emerald-600 dark:text-emerald-300" />
+                  Update
+                </label>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.svg,.bmp,image/*"
+                  onChange={handleSelectImage}
+                  className="hidden"
+                />
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className={secondaryBtn}
+                  >
+                    <FiUpload className="text-[10px]" />
+                    Upload Image
+                  </button>
+
+                  {form.image_base64?.trim() && (
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className={secondaryBtn}
+                      onClick={handleRemoveImage}
+                      className={dangerBtn}
                     >
-                      <FiUpload className="text-[10px]" />
-                      Upload Image
+                      <FiX className="text-[10px]" />
+                      Remove
                     </button>
-
-                    {form.image_base64?.trim() && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setForm((prev) => ({ ...prev, image_base64: "" }))
-                        }
-                        className={dangerBtn}
-                      >
-                        <FiX className="text-[10px]" />
-                        Remove
-                      </button>
-                    )}
-                  </div>
-
-                  <p className="mt-1.5 text-[9px] text-gray-500 dark:text-white/45">
-                    รองรับการอัปโหลดรูปและแปลงเป็น base64 อัตโนมัติ
-                  </p>
+                  )}
                 </div>
+
+                <p className="mt-1.5 text-[9px] text-gray-500 dark:text-white/45">
+                  Only image files can be uploaded (jpg, jpeg, png, webp, gif,
+                  svg, bmp)
+                </p>
               </div>
 
               <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
@@ -332,7 +447,9 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
                 </label>
                 <textarea
                   value={form.description}
-                  onChange={(e) => handleChangeForm("description", e.target.value)}
+                  onChange={(e) =>
+                    handleChangeForm("description", e.target.value)
+                  }
                   placeholder="Enter diagram description"
                   className={textareaCls}
                 />
@@ -396,11 +513,8 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || loading}
-            className={[
-              actionBtn,
-              submitting ? "opacity-60 cursor-not-allowed" : "",
-            ].join(" ")}
+            disabled={isSubmitDisabled}
+            className={isSubmitDisabled ? disabledActionBtn : actionBtn}
           >
             {submitting ? (
               <>

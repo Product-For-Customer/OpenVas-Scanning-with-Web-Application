@@ -71,6 +71,20 @@ const toNumber = (value: unknown, fallback: number) => {
   return Number.isFinite(n) ? n : fallback;
 };
 
+const normalizeValue = (value: unknown) => String(value ?? "").trim();
+
+const createComparableForm = (form: DiagramNodeFormValues) => ({
+  task_id: normalizeValue(form.task_id),
+  label: normalizeValue(form.label),
+  description: normalizeValue(form.description),
+  icon: normalizeValue(form.icon),
+  x: Number(form.x),
+  y: Number(form.y),
+  width: Number(form.width),
+  height: Number(form.height),
+  z_index: Number(form.z_index),
+});
+
 const DiagramNodeFormModal: React.FC<Props> = ({
   open,
   mode,
@@ -93,12 +107,15 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   const [targetSearch, setTargetSearch] = useState("");
 
   const targetSelectorRef = useRef<HTMLDivElement | null>(null);
+  const initialEditFormRef = useRef<ReturnType<typeof createComparableForm> | null>(
+    null
+  );
 
   useEffect(() => {
     if (!open) return;
 
     if (mode === "edit" && initialData) {
-      setForm({
+      const editForm: DiagramNodeFormValues = {
         task_id: initialData.task_id ?? "",
         label: initialData.label ?? "",
         description: initialData.description ?? "",
@@ -108,20 +125,26 @@ const DiagramNodeFormModal: React.FC<Props> = ({
         width: toNumber(initialData.width, 12),
         height: toNumber(initialData.height, 9),
         z_index: toNumber(initialData.z_index, 1),
-      });
+      };
+
+      setForm(editForm);
+      initialEditFormRef.current = createComparableForm(editForm);
       setErrors({});
       return;
     }
 
     if (mode === "create") {
-      setForm({
+      const createForm: DiagramNodeFormValues = {
         ...defaultForm,
         icon: FIXED_ICON,
         x: draftPosition?.x ?? 10,
         y: draftPosition?.y ?? 10,
         width: draftPosition?.width ?? 12,
         height: draftPosition?.height ?? 9,
-      });
+      };
+
+      setForm(createForm);
+      initialEditFormRef.current = null;
       setErrors({});
     }
   }, [open, mode, initialData, draftPosition]);
@@ -204,6 +227,26 @@ const DiagramNodeFormModal: React.FC<Props> = ({
       : "Selected target";
   }, [selectedTarget, loadingTargets]);
 
+  const isFormChanged = useMemo(() => {
+    if (mode !== "edit") return true;
+    if (!initialEditFormRef.current) return false;
+
+    const currentComparableForm = createComparableForm(form);
+
+    return (
+      currentComparableForm.task_id !== initialEditFormRef.current.task_id ||
+      currentComparableForm.label !== initialEditFormRef.current.label ||
+      currentComparableForm.description !==
+        initialEditFormRef.current.description ||
+      currentComparableForm.icon !== initialEditFormRef.current.icon ||
+      currentComparableForm.x !== initialEditFormRef.current.x ||
+      currentComparableForm.y !== initialEditFormRef.current.y ||
+      currentComparableForm.width !== initialEditFormRef.current.width ||
+      currentComparableForm.height !== initialEditFormRef.current.height ||
+      currentComparableForm.z_index !== initialEditFormRef.current.z_index
+    );
+  }, [form, mode]);
+
   if (!open) return null;
 
   const setField = <K extends keyof DiagramNodeFormValues>(
@@ -237,6 +280,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
 
   const handleSubmit = async () => {
     if (!validate()) return;
+    if (mode === "edit" && !isFormChanged) return;
 
     setSubmitting(true);
     try {
@@ -288,11 +332,17 @@ const DiagramNodeFormModal: React.FC<Props> = ({
     "dark:bg-cyan-500 dark:text-white dark:hover:bg-cyan-400 dark:border-cyan-400/30",
   ].join(" ");
 
-  const dangerBtn = [
-    "h-8.5 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
-    "bg-red-50 border border-red-200 text-red-700 hover:bg-red-100",
-    "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-200 dark:hover:bg-red-500/15",
+  const deleteGradientIconBtn = [
+    "inline-flex h-8 w-8 items-center justify-center rounded-full",
+    "text-white shadow-sm transition-all duration-200",
+    "bg-linear-to-r from-rose-400 via-red-400 to-rose-500",
+    "hover:from-rose-500 hover:via-red-500 hover:to-rose-600",
+    "focus:outline-none focus:ring-2 focus:ring-red-200",
+    "dark:focus:ring-red-500/30",
   ].join(" ");
+
+  const isUpdateDisabled =
+    submitting || loading || loadingTargets || (mode === "edit" && !isFormChanged);
 
   return (
     <div className="fixed inset-0 z-1200 flex items-center justify-center bg-slate-950/60 backdrop-blur-[3px] p-3 sm:p-4">
@@ -567,12 +617,13 @@ const DiagramNodeFormModal: React.FC<Props> = ({
                 onClick={onDelete}
                 disabled={submitting || loading}
                 className={[
-                  dangerBtn,
+                  deleteGradientIconBtn,
                   submitting || loading ? "cursor-not-allowed opacity-60" : "",
                 ].join(" ")}
+                title="Delete"
+                aria-label="Delete"
               >
-                <FiTrash2 className="text-[11px]" />
-                Delete
+                <FiTrash2 className="text-[12px]" />
               </button>
             ) : (
               <div />
@@ -595,12 +646,10 @@ const DiagramNodeFormModal: React.FC<Props> = ({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || loading || loadingTargets}
+              disabled={isUpdateDisabled}
               className={[
                 actionBtn,
-                submitting || loading || loadingTargets
-                  ? "cursor-not-allowed opacity-60"
-                  : "",
+                isUpdateDisabled ? "cursor-not-allowed opacity-60" : "",
               ].join(" ")}
             >
               {submitting || loading ? (
