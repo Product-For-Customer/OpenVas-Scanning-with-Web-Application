@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Map, {
   Marker,
   NavigationControl,
@@ -304,11 +304,24 @@ const MapDevice: React.FC = () => {
   const [editTarget, setEditTarget] = useState<Device | null>(null);
   const [editForm, setEditForm] = useState<LocationFormState>(emptyForm);
 
+  const hasFetchedInitialRef = useRef(false);
+  const isFetchingLocationsRef = useRef(false);
+  const isFetchingTargetsRef = useRef(false);
+  const isMountedRef = useRef(false);
+
   const usedTaskIds = useMemo(() => {
     return rows
       .map((item) => String(item.task_id || "").trim())
       .filter((taskId) => !!taskId);
   }, [rows]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const moveToDevice = (device: Device, zoom = 16) => {
     if (!isValidCoordinate(device.lat, device.lng)) return;
@@ -326,18 +339,57 @@ const MapDevice: React.FC = () => {
     moveToDevice(device);
   };
 
-  const fetchLocations = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  const fetchTargets = useCallback(async () => {
+    if (isFetchingTargetsRef.current) return [];
 
-      const [locationData, targetData] = await Promise.all([
+    try {
+      isFetchingTargetsRef.current = true;
+
+      if (isMountedRef.current) {
+        setLoadingTargets(true);
+      }
+
+      const targetData = await ListALLTarget();
+      const allTargets = Array.isArray(targetData) ? targetData : [];
+
+      if (isMountedRef.current) {
+        setTargets(allTargets);
+      }
+
+      return allTargets;
+    } catch (e) {
+      console.error("fetch targets error:", e);
+
+      if (isMountedRef.current) {
+        setTargets([]);
+      }
+
+      return [];
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingTargets(false);
+      }
+      isFetchingTargetsRef.current = false;
+    }
+  }, []);
+
+  const fetchLocations = useCallback(async () => {
+    if (isFetchingLocationsRef.current) return;
+
+    try {
+      isFetchingLocationsRef.current = true;
+
+      if (isMountedRef.current) {
+        setLoading(true);
+        setError("");
+      }
+
+      const [locationData, allTargets] = await Promise.all([
         ListLocation(),
-        ListALLTarget(),
+        fetchTargets(),
       ]);
 
-      const allTargets = Array.isArray(targetData) ? targetData : [];
-      setTargets(allTargets);
+      if (!isMountedRef.current) return;
 
       if (!locationData) {
         setRows([]);
@@ -397,16 +449,24 @@ const MapDevice: React.FC = () => {
       }
     } catch (e) {
       console.error("fetchLocations error:", e);
+
+      if (!isMountedRef.current) return;
+
       setRows([]);
       setError("เกิดข้อผิดพลาดตอนโหลดข้อมูลแผนที่");
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isFetchingLocationsRef.current = false;
     }
-  };
+  }, [fetchTargets]);
 
   useEffect(() => {
-    fetchLocations();
-  }, []);
+    if (hasFetchedInitialRef.current) return;
+    hasFetchedInitialRef.current = true;
+    void fetchLocations();
+  }, [fetchLocations]);
 
   const filteredDevices = useMemo(() => {
     const keyword = search.toLowerCase().trim();
@@ -495,18 +555,9 @@ const MapDevice: React.FC = () => {
   const handleOpenCreateModal = async () => {
     setCreateError("");
     setCreateForm(emptyForm);
-    setLoadingTargets(true);
     setOpenCreateModal(true);
 
-    try {
-      const data = await ListALLTarget();
-      setTargets(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("fetch targets create error:", e);
-      setTargets([]);
-    } finally {
-      setLoadingTargets(false);
-    }
+    await fetchTargets();
   };
 
   const closeCreateModal = () => {
@@ -603,18 +654,9 @@ const MapDevice: React.FC = () => {
       longtitude: String(device.lng || ""),
       task_id: String(device.task_id || ""),
     });
-    setLoadingTargets(true);
     setOpenEditModal(true);
 
-    try {
-      const data = await ListALLTarget();
-      setTargets(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error("fetch targets edit error:", e);
-      setTargets([]);
-    } finally {
-      setLoadingTargets(false);
-    }
+    await fetchTargets();
   };
 
   const closeEditModal = () => {
@@ -751,7 +793,7 @@ const MapDevice: React.FC = () => {
         </div>
 
         <div className="relative z-10 overflow-hidden rounded-[22px]">
-          <div className="border-b border-slate-200 px-3.5 py-3.5 sm:px-4 md:px-4.5 dark:border-white/10">
+          <div className="border-b border-slate-200 px-3.5 py-3.5 dark:border-white/10 sm:px-4 md:px-4.5">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
@@ -807,10 +849,10 @@ const MapDevice: React.FC = () => {
                     </button>
                   </div>
 
-                  <h2 className="text-[17px] font-semibold tracking-tight text-slate-900 sm:text-[19px] dark:text-white">
+                  <h2 className="text-[17px] font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[19px]">
                     Device Location Map
                   </h2>
-                  <p className="mt-1 text-[11px] text-slate-500 sm:text-[12px] dark:text-white/55">
+                  <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55 sm:text-[12px]">
                     Display the device location from the Location and Task
                     information.
                   </p>

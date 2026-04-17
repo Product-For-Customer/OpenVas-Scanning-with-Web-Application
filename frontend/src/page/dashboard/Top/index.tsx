@@ -103,28 +103,52 @@ const TopPerforming: React.FC = () => {
 
   const targetRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    let mounted = true;
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-    (async () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const fetchAssetRisk = async () => {
+      if (isFetchingRef.current) return;
+
       try {
-        setLoading(true);
+        isFetchingRef.current = true;
+
+        if (isMountedRef.current) {
+          setLoading(true);
+        }
+
         const res = await ListAssetRisk();
-        if (!mounted) return;
+
+        if (!isMountedRef.current) return;
+
         setData(Array.isArray(res) ? res : []);
       } catch (error) {
         console.error("Failed to load asset risk:", error);
-        if (!mounted) return;
+
+        if (!isMountedRef.current) return;
+
         setData([]);
       } finally {
-        if (!mounted) return;
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+        isFetchingRef.current = false;
       }
-    })();
-
-    return () => {
-      mounted = false;
     };
+
+    void fetchAssetRisk();
   }, []);
 
   useEffect(() => {
@@ -294,16 +318,16 @@ const TopPerforming: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h3 className="text-[14px] sm:text-[15px] font-semibold text-[#1f2240] dark:text-white/90 whitespace-nowrap">
+              <h3 className="whitespace-nowrap text-[14px] font-semibold text-[#1f2240] dark:text-white/90 sm:text-[15px]">
                 Average Risk Overview
               </h3>
-              <p className="text-[10px] sm:text-[10.5px] text-slate-500 dark:text-white/55 whitespace-nowrap">
+              <p className="whitespace-nowrap text-[10px] text-slate-500 dark:text-white/55 sm:text-[10.5px]">
                 Live risk summary from imported asset results
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-1 shrink-0">
+          <div className="flex shrink-0 items-start gap-1">
             <div className="relative" ref={targetRef}>
               <button
                 type="button"
@@ -315,7 +339,7 @@ const TopPerforming: React.FC = () => {
                 ].join(" ")}
               >
                 <FiShield className="text-[12px]" />
-                <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] font-medium">
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
@@ -407,7 +431,7 @@ const TopPerforming: React.FC = () => {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                   <span className="h-2 w-2 rounded-full bg-cyan-500" />
-                                  <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
+                                  <span className="truncate text-[11px] font-medium text-gray-700 dark:text-white/80">
                                     {opt.label}
                                   </span>
                                 </div>
@@ -438,7 +462,7 @@ const TopPerforming: React.FC = () => {
             </span>
           </div>
 
-          <div className="hidden sm:block h-3 w-px bg-slate-200 dark:bg-white/10" />
+          <div className="hidden h-3 w-px bg-slate-200 dark:bg-white/10 sm:block" />
 
           <div className="text-[10px] text-slate-500 dark:text-white/50">
             {selectedTargets.length === 0
@@ -449,7 +473,7 @@ const TopPerforming: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-2.5 flex-1 flex flex-col">
+        <div className="mt-2.5 flex flex-1 flex-col">
           <div
             className={[
               "flex-1 rounded-2xl px-3 py-3",
@@ -479,14 +503,14 @@ const TopPerforming: React.FC = () => {
                 </span>
               </div>
 
-              <div className="relative flex-1 min-h-65 sm:min-h-72.5 md:min-h-77.5">
+              <div className="relative min-h-65 flex-1 sm:min-h-72.5 md:min-h-77.5">
                 <div className="pointer-events-none absolute left-1/2 top-[52%] z-10 -translate-x-1/2 -translate-y-1/2 text-center">
                   <div
-                    className={`text-[32px] sm:text-[38px] font-semibold leading-none ${tone.text}`}
+                    className={`text-[32px] font-semibold leading-none ${tone.text} sm:text-[38px]`}
                   >
                     {loading ? "." : formatRisk(summary.avgRisk)}
                   </div>
-                  <div className="mt-2 text-[11px] sm:text-[12px] text-gray-500 dark:text-white/50">
+                  <div className="mt-2 text-[11px] text-gray-500 dark:text-white/50 sm:text-[12px]">
                     Average Risk Score
                   </div>
                 </div>
@@ -509,7 +533,7 @@ const TopPerforming: React.FC = () => {
                   </RadialBarChart>
                 </ResponsiveContainer>
 
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-between text-[10px] sm:text-[11px] text-gray-400 dark:text-white/40">
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex items-center justify-between text-[10px] text-gray-400 dark:text-white/40 sm:text-[11px]">
                   <span>0</span>
                   <span>10</span>
                 </div>
@@ -526,7 +550,7 @@ const TopPerforming: React.FC = () => {
                   <p className="text-[10px] text-gray-400 dark:text-white/40">
                     Targets
                   </p>
-                  <p className="mt-1 text-[14px] sm:text-[15px] font-semibold text-[#1f2240] dark:text-white/85">
+                  <p className="mt-1 text-[14px] font-semibold text-[#1f2240] dark:text-white/85 sm:text-[15px]">
                     {loading ? "..." : formatNumber(summary.taskCount)}
                   </p>
                 </div>
@@ -541,7 +565,7 @@ const TopPerforming: React.FC = () => {
                   <p className="text-[10px] text-gray-400 dark:text-white/40">
                     Highest Risk
                   </p>
-                  <p className="mt-1 text-[14px] sm:text-[15px] font-semibold text-[#1f2240] dark:text-white/85">
+                  <p className="mt-1 text-[14px] font-semibold text-[#1f2240] dark:text-white/85 sm:text-[15px]">
                     {loading ? "..." : formatRisk(summary.maxRisk)}
                   </p>
                 </div>

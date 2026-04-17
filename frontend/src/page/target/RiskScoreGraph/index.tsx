@@ -256,20 +256,50 @@ const RiskScoreGraph: React.FC = () => {
   const isSmall = useIsSmall();
   const queryDropdownRef = useRef<HTMLDivElement | null>(null);
 
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const fetchData = async () => {
+    if (isFetchingRef.current) return;
+
     try {
-      setLoading(true);
+      isFetchingRef.current = true;
+
+      if (isMountedRef.current) {
+        setLoading(true);
+      }
+
       const res = await ListTargetDiffer();
+
+      if (!isMountedRef.current) return;
+
       setRawData(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("fetch target differ error:", error);
+
+      if (!isMountedRef.current) return;
+
       setRawData([]);
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isFetchingRef.current = false;
     }
   };
 
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     void fetchData();
   }, []);
 
@@ -599,7 +629,7 @@ const RiskScoreGraph: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-3.5 h-80 sm:h-96 lg:min-h-90 lg:flex-1">
+        <div className="mt-3.5 h-80 sm:h-96 lg:flex-1 lg:min-h-90">
           {loading ? (
             <div
               className={[

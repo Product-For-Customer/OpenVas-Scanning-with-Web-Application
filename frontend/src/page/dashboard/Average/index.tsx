@@ -583,21 +583,46 @@ const AverageEnrollment: React.FC = () => {
   const [sortOpen, setSortOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement | null>(null);
 
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
+
   const detailMode = detailTaskID !== "";
 
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const fetchData = async (mode: "initial" | "refresh" = "initial") => {
+    if (isFetchingRef.current) return;
+
     try {
-      if (mode === "initial") setLoading(true);
-      if (mode === "refresh") setRefreshing(true);
+      isFetchingRef.current = true;
+
+      if (mode === "initial" && isMountedRef.current) setLoading(true);
+      if (mode === "refresh" && isMountedRef.current) setRefreshing(true);
 
       const res = await ListTargetDiffer();
+
+      if (!isMountedRef.current) return;
+
       setRows(Array.isArray(res) ? res : []);
     } catch (error) {
       console.error("fetch target differ error:", error);
+
+      if (!isMountedRef.current) return;
+
       setRows([]);
     } finally {
-      if (mode === "initial") setLoading(false);
-      if (mode === "refresh") setRefreshing(false);
+      if (isMountedRef.current) {
+        if (mode === "initial") setLoading(false);
+        if (mode === "refresh") setRefreshing(false);
+      }
+      isFetchingRef.current = false;
     }
   };
 
@@ -665,6 +690,8 @@ const AverageEnrollment: React.FC = () => {
   };
 
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     void fetchData("initial");
   }, []);
 

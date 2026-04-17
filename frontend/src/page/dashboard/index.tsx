@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Value from "./Value";
 import AverageEnrollment from "./Average/index";
 import TopPerforming from "./Top/index";
@@ -15,41 +15,60 @@ const DashboardIndex: React.FC = () => {
   >([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
+
   useEffect(() => {
-    let alive = true;
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
 
     const fetchData = async () => {
+      if (isFetchingRef.current) return;
+
       try {
-        setLoading(true);
+        isFetchingRef.current = true;
+
+        if (isMountedRef.current) {
+          setLoading(true);
+        }
+
         const res = await ListVulnerability();
 
-        if (!alive) return;
+        if (!isMountedRef.current) return;
+
         setVulnerabilityData(Array.isArray(res) ? res : []);
       } catch (error) {
         console.error("Failed to load vulnerability data:", error);
-        if (!alive) return;
+
+        if (!isMountedRef.current) return;
+
         setVulnerabilityData([]);
       } finally {
-        if (!alive) return;
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+        isFetchingRef.current = false;
       }
     };
 
-    fetchData();
-
-    return () => {
-      alive = false;
-    };
+    void fetchData();
   }, []);
 
   return (
     <div className="relative isolate z-0 w-full overflow-visible">
-      {/* ให้ Value อยู่สูงกว่า section ใน dashboard เท่านั้น */}
       <div className="relative z-20 mb-4 sm:mb-5">
         <Value vulnerabilityData={vulnerabilityData} loading={loading} />
       </div>
 
-      {/* section อื่นอยู่ต่ำกว่า Value ภายใน dashboard */}
       <div className="relative z-0 mb-4 sm:mb-5">
         <AverageEnrollment />
       </div>

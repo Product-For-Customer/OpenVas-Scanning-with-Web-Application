@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import { GetMe, Logout, type MeResponse } from "../services/auth";
 
 type AuthUser = MeResponse;
@@ -24,47 +32,78 @@ export const useAuth = () => {
   return ctx;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const refreshMe = async () => {
+  const hasFetchedInitialRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const refreshMe = useCallback(async () => {
+    if (isFetchingRef.current) return;
+
     try {
+      isFetchingRef.current = true;
+
       const me = await GetMe();
+
+      if (!isMountedRef.current) return;
+
       setUser(me);
     } catch (err) {
       console.error("GetMe error:", err);
-      setUser(null);
-    }
-  };
 
-  const logout = async () => {
+      if (!isMountedRef.current) return;
+
+      setUser(null);
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
     try {
       await Logout();
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      setUser(null);
+      if (isMountedRef.current) {
+        setUser(null);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    let alive = true;
+    if (hasFetchedInitialRef.current) return;
+    hasFetchedInitialRef.current = true;
 
-    (async () => {
+    const initAuth = async () => {
       try {
-        if (!alive) return;
-        setIsLoading(true);
+        if (isMountedRef.current) {
+          setIsLoading(true);
+        }
+
         await refreshMe();
       } finally {
-        if (alive) setIsLoading(false);
+        if (isMountedRef.current) {
+          setIsLoading(false);
+        }
       }
-    })();
-
-    return () => {
-      alive = false;
     };
-  }, []);
+
+    void initAuth();
+  }, [refreshMe]);
 
   const value = useMemo<AuthContextValue>(() => {
     const isAuthed = !!user;
@@ -83,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshMe,
       logout,
     };
-  }, [user, isLoading]);
+  }, [user, isLoading, refreshMe, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

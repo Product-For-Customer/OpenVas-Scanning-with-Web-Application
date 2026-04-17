@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiCheckCircle,
   FiPlayCircle,
@@ -27,11 +27,14 @@ const normalizeStatus = (s: string): StatusKey => {
   if (v === "stopped") return "Stopped";
 
   if (v.includes("run")) return "Running";
-  if (v.includes("stop") || v.includes("pause") || v.includes("interrupt"))
+  if (v.includes("stop") || v.includes("pause") || v.includes("interrupt")) {
     return "Stopped";
-  if (v.includes("new") || v.includes("request") || v.includes("queue"))
+  }
+  if (v.includes("new") || v.includes("request") || v.includes("queue")) {
     return "New";
+  }
   if (v.includes("done") || v.includes("finish")) return "Done";
+
   return "Done";
 };
 
@@ -39,28 +42,52 @@ const StatusTarget: React.FC = () => {
   const [rows, setRows] = useState<TaskStatusDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    let alive = true;
+  const hasFetchedRef = useRef(false);
+  const isFetchingRef = useRef(false);
+  const isMountedRef = useRef(false);
 
-    (async () => {
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const fetchTaskStatus = async () => {
+      if (isFetchingRef.current) return;
+
       try {
-        setLoading(true);
+        isFetchingRef.current = true;
+
+        if (isMountedRef.current) {
+          setLoading(true);
+        }
+
         const res = await ListTaskStatus();
-        if (!alive) return;
+
+        if (!isMountedRef.current) return;
+
         setRows(Array.isArray(res) ? res : []);
       } catch (error) {
         console.error("Fetched task status error:", error);
-        if (!alive) return;
+
+        if (!isMountedRef.current) return;
+
         setRows([]);
       } finally {
-        if (!alive) return;
-        setLoading(false);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+        isFetchingRef.current = false;
       }
-    })();
-
-    return () => {
-      alive = false;
     };
+
+    void fetchTaskStatus();
   }, []);
 
   const statusCounts = useMemo(() => {
@@ -79,12 +106,7 @@ const StatusTarget: React.FC = () => {
     return base;
   }, [rows]);
 
-  const totalTasks = useMemo(() => rows.length, [rows.length]);
-
-  const pct = (n: number) => {
-    if (!totalTasks) return 0;
-    return Math.round((n / totalTasks) * 100);
-  };
+  const totalTasks = rows.length;
 
   const dominantStatus = useMemo<StatusKey>(() => {
     const ordered: StatusKey[] = ["Running", "Done", "New", "Stopped"];
@@ -208,7 +230,7 @@ const StatusTarget: React.FC = () => {
         value: loading ? "..." : statusCounts.New.toLocaleString(),
         subtitle: "Queued",
         icon: <FiClock />,
-      },
+        },
       {
         id: 4,
         title: "Stopped",
@@ -219,6 +241,20 @@ const StatusTarget: React.FC = () => {
     ],
     [loading, statusCounts]
   );
+
+  const percents = useMemo(() => {
+    const toPercent = (n: number) => {
+      if (!totalTasks) return 0;
+      return Math.round((n / totalTasks) * 100);
+    };
+
+    return {
+      Done: toPercent(statusCounts.Done),
+      Running: toPercent(statusCounts.Running),
+      New: toPercent(statusCounts.New),
+      Stopped: toPercent(statusCounts.Stopped),
+    };
+  }, [statusCounts, totalTasks]);
 
   const nowText = useMemo(() => {
     const d = new Date();
@@ -231,7 +267,6 @@ const StatusTarget: React.FC = () => {
 
   return (
     <section className="w-full">
-      {/* HERO */}
       <div
         className={[
           "relative overflow-hidden rounded-[22px] px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 pb-18 sm:pb-20",
@@ -244,22 +279,22 @@ const StatusTarget: React.FC = () => {
 
         <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-[22px] sm:text-[26px] font-semibold tracking-tight">
+            <h2 className="text-[22px] font-semibold tracking-tight sm:text-[26px]">
               Scanning Network Status
             </h2>
 
-            <p className="mt-1.5 text-[11px] sm:text-[12px] text-white/70">
+            <p className="mt-1.5 text-[11px] text-white/70 sm:text-[12px]">
               OpenVAS task summary
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
-                <FiShield className="text-cyan-300 text-[12px]" />
+                <FiShield className="text-[12px] text-cyan-300" />
                 Security Monitor
               </div>
 
               <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
-                <FiRadio className="text-violet-300 text-[12px]" />
+                <FiRadio className="text-[12px] text-violet-300" />
                 {loading ? "Syncing..." : dominantStatus}
               </div>
             </div>
@@ -269,26 +304,25 @@ const StatusTarget: React.FC = () => {
             <p className="text-[9px] uppercase tracking-[0.16em] text-white/50">
               Date
             </p>
-            <p className="mt-1 text-[11px] sm:text-[12px] text-white/85">
+            <p className="mt-1 text-[11px] text-white/85 sm:text-[12px]">
               {nowText}
             </p>
           </div>
         </div>
       </div>
 
-      {/* CARDS */}
-      <div className="px-3 sm:px-4 md:px-5 -mt-13 sm:-mt-15 relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      <div className="relative z-10 -mt-13 px-3 sm:-mt-15 sm:px-4 md:px-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           {stats.map((s) => {
             const theme = themeByStatus[s.title];
             const count = statusCounts[s.title];
-            const percent = loading ? 0 : pct(count);
+            const percent = loading ? 0 : percents[s.title];
 
             return (
               <div
                 key={s.id}
                 className={[
-                  "relative overflow-hidden rounded-[22px] border p-3 sm:p-3.5 transition-all duration-300",
+                  "relative overflow-hidden rounded-[22px] border p-3 transition-all duration-300 sm:p-3.5",
                   "hover:-translate-y-0.5 hover:shadow-lg",
                   theme.panelLight,
                   theme.panelDark,
@@ -322,7 +356,7 @@ const StatusTarget: React.FC = () => {
 
                     <div
                       className={[
-                        "h-9 w-9 rounded-[14px] flex items-center justify-center text-[16px] shrink-0 shadow-sm",
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] text-[16px] shadow-sm",
                         theme.iconWrap,
                         theme.iconColor,
                       ].join(" ")}
@@ -333,7 +367,7 @@ const StatusTarget: React.FC = () => {
 
                   <div className="mt-3.5 flex items-end justify-between gap-3">
                     <div>
-                      <p className="text-[22px] sm:text-[26px] font-semibold leading-none tracking-tight text-slate-900 dark:text-white tabular-nums">
+                      <p className="text-[22px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums dark:text-white sm:text-[26px]">
                         {s.value}
                       </p>
                       <p className="mt-1.5 text-[10.5px] text-slate-600 dark:text-white/55">
@@ -343,7 +377,7 @@ const StatusTarget: React.FC = () => {
 
                     <span
                       className={[
-                        "shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold border backdrop-blur-sm",
+                        "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold backdrop-blur-sm",
                         theme.chip,
                       ].join(" ")}
                     >
@@ -357,7 +391,7 @@ const StatusTarget: React.FC = () => {
                       <span>{loading ? "..." : `${count}/${totalTasks}`}</span>
                     </div>
 
-                    <div className="h-2 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden border border-black/5 dark:border-white/10">
+                    <div className="h-2 w-full overflow-hidden rounded-full border border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/10">
                       <div
                         className={`h-full rounded-full transition-all duration-700 ${theme.progress}`}
                         style={{ width: `${percent}%` }}
