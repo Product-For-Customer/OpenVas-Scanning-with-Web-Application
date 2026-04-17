@@ -643,13 +643,13 @@ const Conclusion: React.FC<ConclusionProps> = ({
       </div>
 
       <div className="grid grid-cols-4 gap-2.5 border-b border-slate-200 bg-slate-50/50 px-4 py-3">
-        <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
+        <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5">
           <div className="flex items-start gap-2.5">
-            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700">
+            <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-white text-violet-700">
               <FiShield className="text-[13px]" />
             </span>
             <div>
-              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-violet-500">
                 Total Findings
               </p>
               <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
@@ -688,7 +688,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
             </span>
             <div>
               <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-orange-700">
-                Average Risk
+                Average Risk (0-10)
               </p>
               <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
                 {formatRiskScore(averageRiskScore)}
@@ -709,7 +709,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
             </span>
             <div>
               <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em]">
-                Highest Priority
+                Highest Priority (0-10)
               </p>
               <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
                 {formatRiskScore(highestRiskScore)}
@@ -928,15 +928,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
                     <Line
                       type="monotone"
                       dataKey="riskScore"
-                      stroke="#8b5cf6"
+                      stroke="#3b82f6"
                       strokeWidth={2.4}
                       dot={{
                         r: 3.5,
                         strokeWidth: 1.5,
                         fill: "#ffffff",
-                        stroke: "#8b5cf6",
+                        stroke: "#3b82f6",
                       }}
-                      activeDot={{ r: 4.5 }}
+                      activeDot={{ r: 4.5, stroke: "#3b82f6", fill: "#ffffff" }}
                       isAnimationActive={false}
                     />
                   </LineChart>
@@ -1069,13 +1069,13 @@ const Conclusion: React.FC<ConclusionProps> = ({
                                   <span className="font-semibold text-slate-800">
                                     {item.detected_date
                                       ? new Intl.DateTimeFormat("en-GB", {
-                                          day: "2-digit",
-                                          month: "2-digit",
-                                          year: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                          hour12: false,
-                                        }).format(new Date(item.detected_date))
+                                        day: "2-digit",
+                                        month: "2-digit",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: false,
+                                      }).format(new Date(item.detected_date))
                                       : "-"}
                                   </span>
                                 </span>

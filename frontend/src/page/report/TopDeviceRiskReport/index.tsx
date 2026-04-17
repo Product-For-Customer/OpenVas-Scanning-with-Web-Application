@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FiCpu, FiActivity } from "react-icons/fi";
+import { FiCpu, FiActivity, FiServer, FiWifi, FiHardDrive } from "react-icons/fi";
 import type { DeviceRiskForReportDTO } from "../../../services/report";
 import { ListDeviceRiskForReport } from "../../../services/report";
 
@@ -36,10 +36,79 @@ const truncateText = (value?: string, maxLength = 90) => {
   return `${value.slice(0, maxLength).trim()}...`;
 };
 
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
+
+const polarToCartesian = (
+  cx: number,
+  cy: number,
+  r: number,
+  angleDeg: number
+) => {
+  const rad = (angleDeg * Math.PI) / 180;
+  return {
+    x: cx + r * Math.cos(rad),
+    y: cy + r * Math.sin(rad),
+  };
+};
+
+const describeArc = (
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  endAngle: number
+) => {
+  const start = polarToCartesian(cx, cy, r, startAngle);
+  const end = polarToCartesian(cx, cy, r, endAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? "0" : "1";
+
+  return [
+    `M ${start.x} ${start.y}`,
+    `A ${r} ${r} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
+  ].join(" ");
+};
+
+const getGaugeAppearance = (score: number) => {
+  if (score >= 9) {
+    return {
+      activeStart: "#f97373",
+      activeEnd: "#ef4444",
+      needle: "#64748b",
+      center: "#94a3b8",
+    };
+  }
+
+  if (score >= 7) {
+    return {
+      activeStart: "#fb923c",
+      activeEnd: "#f97316",
+      needle: "#64748b",
+      center: "#94a3b8",
+    };
+  }
+
+  if (score >= 4) {
+    return {
+      activeStart: "#f6c65b",
+      activeEnd: "#e9a23b",
+      needle: "#64748b",
+      center: "#94a3b8",
+    };
+  }
+
+  return {
+    activeStart: "#5dd6a2",
+    activeEnd: "#27c084",
+    needle: "#64748b",
+    center: "#94a3b8",
+  };
+};
+
 const getAverageRiskTone = (score: number) => {
   if (score >= 9) {
     return {
-      card: "border-rose-200 bg-rose-50",
+      card: "border-rose-200 bg-rose-50/70",
       iconWrap: "border-rose-200 bg-white text-rose-700",
       label: "text-rose-700",
       value: "text-slate-900",
@@ -49,7 +118,7 @@ const getAverageRiskTone = (score: number) => {
 
   if (score >= 7) {
     return {
-      card: "border-orange-200 bg-orange-50",
+      card: "border-orange-200 bg-orange-50/70",
       iconWrap: "border-orange-200 bg-white text-orange-700",
       label: "text-orange-700",
       value: "text-slate-900",
@@ -59,7 +128,7 @@ const getAverageRiskTone = (score: number) => {
 
   if (score >= 4) {
     return {
-      card: "border-amber-200 bg-amber-50",
+      card: "border-amber-200 bg-amber-50/70",
       iconWrap: "border-amber-200 bg-white text-amber-700",
       label: "text-amber-700",
       value: "text-slate-900",
@@ -68,7 +137,7 @@ const getAverageRiskTone = (score: number) => {
   }
 
   return {
-    card: "border-emerald-200 bg-emerald-50",
+    card: "border-emerald-200 bg-emerald-50/70",
     iconWrap: "border-emerald-200 bg-white text-emerald-700",
     label: "text-emerald-700",
     value: "text-slate-900",
@@ -111,6 +180,105 @@ const normalizeTaskIDs = (ids?: string[]): string[] => {
   return ids
     .map((id) => String(id).trim())
     .filter((id) => id !== "");
+};
+
+type GaugeCardProps = {
+  score: number;
+};
+
+const AverageRiskGauge: React.FC<GaugeCardProps> = ({ score }) => {
+  const safeScore = clamp(score, 0, 10);
+  const progressAngle = 180 * (safeScore / 10);
+
+  const cx = 72;
+  const cy = 72;
+  const r = 46;
+
+  const appearance = getGaugeAppearance(safeScore);
+
+  const greenZone = describeArc(cx, cy, r, 180, 234);
+  const amberZone = describeArc(cx, cy, r, 234, 306);
+  const redZone = describeArc(cx, cy, r, 306, 360);
+  const valuePath = describeArc(cx, cy, r, 180, 180 + progressAngle);
+
+  const needleAngle = 180 + progressAngle;
+  const needleBaseLeft = polarToCartesian(cx, cy, 4.5, needleAngle - 90);
+  const needleBaseRight = polarToCartesian(cx, cy, 4.5, needleAngle + 90);
+  const needleTip = polarToCartesian(cx, cy, 35, needleAngle);
+  const needlePath = `M ${needleBaseLeft.x} ${needleBaseLeft.y} L ${needleTip.x} ${needleTip.y} L ${needleBaseRight.x} ${needleBaseRight.y} Z`;
+
+  return (
+    <div className="flex h-full min-w-30.5 items-center justify-center">
+      <div className="relative h-20.5 w-36">
+        <svg
+          viewBox="0 0 144 90"
+          className="h-full w-full overflow-visible"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="gaugeActiveGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={appearance.activeStart} />
+              <stop offset="100%" stopColor={appearance.activeEnd} />
+            </linearGradient>
+          </defs>
+
+          <path
+            d={greenZone}
+            fill="none"
+            stroke="#d8f5e8"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <path
+            d={amberZone}
+            fill="none"
+            stroke="#f8e7b3"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <path
+            d={redZone}
+            fill="none"
+            stroke="#f6d3d6"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+
+          <path
+            d={valuePath}
+            fill="none"
+            stroke="url(#gaugeActiveGradient)"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+
+          <path d={needlePath} fill={appearance.needle} opacity="0.92" />
+          <circle cx="72" cy="72" r="4.5" fill={appearance.center} />
+
+          <text
+            x="18"
+            y="82"
+            fontSize="9"
+            fill="#64748b"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            0
+          </text>
+          <text
+            x="126"
+            y="82"
+            fontSize="9"
+            fill="#64748b"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            10
+          </text>
+        </svg>
+      </div>
+    </div>
+  );
 };
 
 const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
@@ -401,51 +569,85 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
       <div className="px-5 py-5 md:px-6">
         {showOuterHeader ? (
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="border border-slate-200 bg-slate-50 px-4 py-3.5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                  <FiCpu className="text-[17px]" />
-                </span>
 
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                    Total Devices
-                  </p>
-                  <p className="mt-1 text-[17px] font-bold text-slate-900">
-                    {formatNumber(totalTargets)}
-                  </p>
-                  <p className="mt-1 text-[11px] leading-5 text-slate-600">
-                    {effectiveTaskMode === "all"
-                      ? "Number of assessed devices included in the latest scan cycle."
-                      : "Number of assessed devices included in the selected task scope."}
-                  </p>
+            <div className="border border-slate-200 bg-slate-50 px-4 py-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
+                    <FiCpu className="text-[17px]" />
+                  </span>
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+                      Total Devices
+                    </p>
+                    <p className="mt-1 text-[17px] font-bold text-slate-900">
+                      {formatNumber(totalTargets)}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                      {effectiveTaskMode === "all"
+                        ? "Devices assessed in the latest scan cycle."
+                        : "Devices assessed in the selected task scope."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex min-w-42.5 items-center justify-center">
+                  <div className="relative h-20.5 w-42.5 overflow-visible">
+                    <div className="absolute inset-x-7 top-1/2 h-px -translate-y-1/2 bg-slate-200" />
+                    <div className="absolute left-1/2 top-6 h-5.5 w-px -translate-x-1/2 bg-slate-200" />
+
+                    <div className="absolute left-3 top-2 h-3 w-3 rounded-full bg-slate-200/70 blur-[0.5px]" />
+                    <div className="absolute left-9 top-1.5 h-2 w-2 rounded-full bg-slate-200/80 blur-[0.5px]" />
+                    <div className="absolute right-4 top-2.5 h-3.5 w-3.5 rounded-full bg-slate-200/65 blur-[0.5px]" />
+                    <div className="absolute right-10.5 top-7 h-2 w-2 rounded-full bg-slate-200/75 blur-[0.5px]" />
+                    <div className="absolute left-5.5 bottom-3.5 h-2.5 w-2.5 rounded-full bg-slate-200/70 blur-[0.5px]" />
+                    <div className="absolute left-12 bottom-2 h-3 w-3 rounded-full bg-slate-200/60 blur-[0.5px]" />
+                    <div className="absolute right-7 bottom-2.5 h-2.5 w-2.5 rounded-full bg-slate-200/70 blur-[0.5px]" />
+                    <div className="absolute left-1/2 top-9.5 h-2 w-2 -translate-x-1/2 rounded-full bg-slate-300/75" />
+
+                    <div className="absolute left-7 top-4.5 text-slate-600">
+                      <FiHardDrive className="text-[25px]" />
+                    </div>
+
+                    <div className="absolute right-7 top-4.5 text-slate-600">
+                      <FiServer className="text-[25px]" />
+                    </div>
+
+                    <div className="absolute left-1/2 bottom-3.5 -translate-x-1/2 text-slate-600">
+                      <FiWifi className="text-[26px]" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className={`border px-4 py-3.5 ${averageTone.card}`}>
-              <div className="flex items-start gap-3">
-                <span
-                  className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${averageTone.iconWrap}`}
-                >
-                  <FiActivity className="text-[17px]" />
-                </span>
-
-                <div className="min-w-0">
-                  <p
-                    className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${averageTone.label}`}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span
+                    className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${averageTone.iconWrap}`}
                   >
-                    Average Risk Score
-                  </p>
-                  <p className={`mt-1 text-[17px] font-bold ${averageTone.value}`}>
-                    {formatRiskScore(averageRiskScore)}
-                  </p>
-                  <p className={`mt-1 text-[11px] leading-5 ${averageTone.desc}`}>
-                    {effectiveTaskMode === "all"
-                      ? "Average risk level across all Devices in this assessment."
-                      : "Average risk level across selected Devices in this assessment."}
-                  </p>
+                    <FiActivity className="text-[17px]" />
+                  </span>
+
+                  <div className="min-w-0">
+                    <p
+                      className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${averageTone.label}`}
+                    >
+                      Average Risk Score (max 10.00)
+                    </p>
+                    <p className={`mt-1 text-[17px] font-bold ${averageTone.value}`}>
+                      {formatRiskScore(averageRiskScore)}
+                    </p>
+                    <p className={`mt-1 text-[11px] leading-5 ${averageTone.desc}`}>
+                      {effectiveTaskMode === "all"
+                        ? "Average risk level across assessed devices."
+                        : "Average risk level across selected devices."}
+                    </p>
+                  </div>
                 </div>
+                <AverageRiskGauge score={averageRiskScore} />
               </div>
             </div>
           </div>

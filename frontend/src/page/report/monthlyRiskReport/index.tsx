@@ -443,19 +443,18 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
                   <p
                     className={`text-[8.5px] font-semibold uppercase tracking-[0.12em] ${highestRiskCard.label}`}
                   >
-                    Highest AVG Risk
+                    Highest AVG Risk (MAX 10.00)
                   </p>
-                  <p
-                    className={`mt-0.5 text-[14px] font-semibold ${getTextRiskColor(
-                      summary.highestAvgRiskScore
-                    )}`}
-                  >
-                    {formatRiskScore(summary.highestAvgRiskScore)}
-                  </p>
-                  <p className="mt-0.5 text-[9px] font-medium text-slate-600">
-                    {summary.highestAvgRiskMonth === "-"
-                      ? "No month data"
-                      : `${summary.highestAvgRiskMonth} ${currentYear}`}
+                  <p className="mt-0.5 text-[14px] font-semibold">
+                    <span className={getTextRiskColor(summary.highestAvgRiskScore)}>
+                      {formatRiskScore(summary.highestAvgRiskScore)}
+                    </span>
+                    <span className="mx-1 text-slate-400">-</span>
+                    <span className="font-medium text-slate-600 text-[12px]">
+                      {summary.highestAvgRiskMonth === "-"
+                        ? "No month data"
+                        : `${summary.highestAvgRiskMonth} ${currentYear}`}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -568,9 +567,8 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
                       {loading ? "0" : formatCount(row.vulnerabilityCount)}
                     </td>
                     <td
-                      className={`border-b border-slate-200 px-3 py-2 text-center text-[10.5px] font-semibold ${
-                        loading ? "text-slate-900" : getTextRiskColor(row.avgRiskScore)
-                      }`}
+                      className={`border-b border-slate-200 px-3 py-2 text-center text-[10.5px] font-semibold ${loading ? "text-slate-900" : getTextRiskColor(row.avgRiskScore)
+                        }`}
                     >
                       {loading ? "0.00" : formatRiskScore(row.avgRiskScore)}
                     </td>

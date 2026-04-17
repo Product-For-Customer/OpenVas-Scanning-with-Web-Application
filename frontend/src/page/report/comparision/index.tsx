@@ -334,7 +334,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
 
               <div className="min-w-0">
                 <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-violet-700">
-                  Highest Latest Risk
+                  Highest Latest Risk (MAX 10.00)
                 </p>
                 <p className="mt-1 text-[15px] font-semibold text-slate-900">
                   {highestLatestRisk.toFixed(2)}

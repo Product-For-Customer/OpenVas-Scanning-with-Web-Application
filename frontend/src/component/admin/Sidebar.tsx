@@ -52,11 +52,13 @@ const Sidebar: React.FC = () => {
       setMenuLinks(safeData);
 
       const nextOpen: Record<string, boolean> = {};
-      safeData.forEach((section: SidebarSection, index: number) => {
+      safeData.forEach((section: SidebarSection) => {
         const hasActiveChild = section.links?.some(
           (link) => location.pathname === `/admin/${link.name}`
         );
-        nextOpen[section.title] = hasActiveChild || index === 0;
+
+        // เปิดเฉพาะ section ที่มี active child
+        nextOpen[section.title] = !!hasActiveChild;
       });
       setOpenSections(nextOpen);
     } catch (error) {
@@ -255,10 +257,10 @@ const Sidebar: React.FC = () => {
                         onClick={() => toggleSection(section.title)}
                         className={[
                           "flex w-full items-center justify-between rounded-2xl px-3.5 py-2.75 text-left transition-all duration-200",
-                          hasActiveChild || isOpen
+                          isOpen
                             ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm"
                             : "bg-transparent text-[#4b4f63] hover:bg-gray-50",
-                          hasActiveChild || isOpen
+                          isOpen
                             ? "dark:shadow-none"
                             : "dark:text-white/70 dark:hover:bg-white/8",
                         ].join(" ")}
@@ -268,7 +270,7 @@ const Sidebar: React.FC = () => {
                           <span
                             className={[
                               "inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl text-[15px]",
-                              hasActiveChild || isOpen
+                              isOpen
                                 ? "bg-white/15 text-white"
                                 : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/55",
                             ].join(" ")}
@@ -285,7 +287,7 @@ const Sidebar: React.FC = () => {
                           className={[
                             "text-[19px] transition-transform",
                             isOpen ? "rotate-0" : "-rotate-90",
-                            hasActiveChild || isOpen
+                            isOpen
                               ? "text-white"
                               : "text-gray-500 dark:text-white/55",
                           ].join(" ")}
