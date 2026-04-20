@@ -87,10 +87,10 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           isolation: isolate;
           transition: background 0.45s ease, color 0.45s ease;
           background:
-            radial-gradient(circle at 50% 42%, rgba(56,189,248,0.14) 0%, rgba(56,189,248,0.05) 18%, transparent 38%),
-            radial-gradient(circle at 18% 20%, rgba(37,99,235,0.08) 0%, transparent 28%),
-            radial-gradient(circle at 82% 76%, rgba(6,182,212,0.08) 0%, transparent 28%),
-            linear-gradient(180deg, #f6fbff 0%, #edf6ff 42%, #e8f3ff 100%);
+            radial-gradient(circle at 50% 40%, rgba(14,165,233,0.18) 0%, rgba(56,189,248,0.09) 18%, rgba(255,255,255,0) 42%),
+            radial-gradient(circle at 22% 18%, rgba(37,99,235,0.09) 0%, transparent 28%),
+            radial-gradient(circle at 82% 78%, rgba(6,182,212,0.10) 0%, transparent 28%),
+            linear-gradient(180deg, #f5fbff 0%, #edf6ff 42%, #e6f2ff 100%);
         }
 
         .dark .argus-login {
@@ -107,7 +107,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           z-index: 1;
           pointer-events: none;
           background:
-            radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.08) 72%, rgba(0,0,0,0.16) 100%);
+            radial-gradient(circle at center, transparent 42%, rgba(0,0,0,0.06) 74%, rgba(0,0,0,0.10) 100%);
         }
 
         .dark .vignette {
@@ -132,11 +132,11 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           position: absolute;
           inset: -8%;
           z-index: 1;
-          opacity: 0.32;
+          opacity: 0.28;
           pointer-events: none;
           background-image:
-            linear-gradient(rgba(56,189,248,0.055) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(56,189,248,0.055) 1px, transparent 1px);
+            linear-gradient(rgba(56,189,248,0.05) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(56,189,248,0.05) 1px, transparent 1px);
           background-size: 52px 52px;
           transform: perspective(1000px) rotateX(74deg) scale(1.6);
           transform-origin: center center;
@@ -178,7 +178,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           z-index: 2;
           pointer-events: none;
           background:
-            radial-gradient(circle, rgba(255,255,255,0.22) 0%, rgba(103,232,249,0.18) 12%, rgba(56,189,248,0.12) 26%, rgba(37,99,235,0.04) 48%, transparent 72%);
+            radial-gradient(circle, rgba(255,255,255,0.24) 0%, rgba(103,232,249,0.20) 12%, rgba(56,189,248,0.12) 26%, rgba(37,99,235,0.04) 48%, transparent 72%);
           filter: blur(28px);
           animation: coreBreath 4.5s ease-in-out infinite;
         }
@@ -350,38 +350,28 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
         .device-node.pc { left: 79%; top: 59%; animation-delay: 0.45s; }
         .device-node.wireless { left: 50%; top: 15%; animation-delay: 1.6s; }
 
+        /* เอากล่องขาว/ใสออกตรงนี้ */
         .device-card {
           position: relative;
           width: 100%;
           border-radius: 18px;
           padding: 12px 10px 11px;
-          transition: background 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.34));
-          border: 1px solid rgba(125,211,252,0.24);
-          box-shadow:
-            0 10px 26px rgba(15,23,42,0.08),
-            inset 0 1px 0 rgba(255,255,255,0.6);
-          backdrop-filter: blur(8px);
+          transition: none;
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          backdrop-filter: none;
         }
 
         .dark .device-card {
-          background:
-            linear-gradient(180deg, rgba(255,255,255,0.11), rgba(255,255,255,0.04));
-          border: 1px solid rgba(125,211,252,0.16);
-          box-shadow:
-            0 12px 26px rgba(0,0,0,0.24),
-            inset 0 1px 0 rgba(255,255,255,0.10);
+          background: transparent;
+          border: none;
+          box-shadow: none;
         }
 
+        /* เอาแสงฟุ้งของกล่องออก */
         .device-glow {
-          position: absolute;
-          inset: -10px;
-          border-radius: 24px;
-          background: radial-gradient(circle, rgba(56,189,248,0.16) 0%, rgba(56,189,248,0.06) 40%, transparent 74%);
-          filter: blur(12px);
-          z-index: -1;
-          animation: glowBreath 3.4s ease-in-out infinite;
+          display: none;
         }
 
         .device-icon-wrap {
@@ -411,10 +401,14 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           letter-spacing: 0.18em;
           text-transform: uppercase;
           color: #0f172a;
+          text-shadow:
+            0 1px 0 rgba(255,255,255,0.4),
+            0 0 10px rgba(103,232,249,0.18);
         }
 
         .dark .device-label {
           color: rgba(240,249,255,0.92);
+          text-shadow: 0 0 12px rgba(103,232,249,0.18);
         }
 
         .device-sub {
@@ -452,10 +446,27 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          width: min(58vw, 620px);
-          max-width: 620px;
+          width: min(60vw, 650px);
+          max-width: 650px;
           animation: logoReveal 1.3s cubic-bezier(.18,.84,.24,1) both;
           animation-delay: 0.2s;
+        }
+
+        .logo-rim-light {
+          position: absolute;
+          inset: 2% -1%;
+          border-radius: 9999px;
+          z-index: 1;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 50% 45%, rgba(255,255,255,0.44) 0%, rgba(186,230,253,0.18) 26%, rgba(56,189,248,0.06) 48%, transparent 70%);
+          filter: blur(18px);
+          animation: rimPulse 3.4s ease-in-out infinite;
+        }
+
+        .dark .logo-rim-light {
+          background:
+            radial-gradient(circle at 50% 45%, rgba(103,232,249,0.18) 0%, rgba(56,189,248,0.12) 26%, rgba(37,99,235,0.05) 48%, transparent 70%);
         }
 
         .logo-aura {
@@ -463,9 +474,10 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           inset: 3% -2%;
           border-radius: 9999px;
           background:
-            radial-gradient(circle at 50% 42%, rgba(103,232,249,0.30) 0%, rgba(56,189,248,0.14) 32%, rgba(37,99,235,0.04) 56%, transparent 74%);
+            radial-gradient(circle at 50% 42%, rgba(103,232,249,0.26) 0%, rgba(56,189,248,0.16) 32%, rgba(37,99,235,0.05) 56%, transparent 74%);
           filter: blur(26px);
           animation: auraPulse 3.6s ease-in-out infinite;
+          z-index: 1;
         }
 
         .logo-crystal-beam {
@@ -480,15 +492,69 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
             linear-gradient(
               180deg,
               rgba(255,255,255,0) 0%,
-              rgba(103,232,249,0.28) 18%,
-              rgba(56,189,248,0.14) 42%,
-              rgba(37,99,235,0.06) 76%,
+              rgba(103,232,249,0.30) 18%,
+              rgba(56,189,248,0.18) 42%,
+              rgba(37,99,235,0.07) 76%,
               rgba(255,255,255,0) 100%
             );
           clip-path: polygon(48% 0%, 52% 0%, 100% 100%, 0% 100%);
           filter: blur(10px);
-          opacity: 0.9;
+          opacity: 0.92;
           animation: beamSurge 2.5s ease-in-out infinite;
+          z-index: 2;
+        }
+
+        .logo-crystal-focus {
+          position: absolute;
+          top: 3%;
+          left: 50%;
+          width: 46%;
+          height: 46%;
+          transform: translateX(-50%);
+          z-index: 2;
+          border-radius: 9999px;
+          pointer-events: none;
+          background:
+            radial-gradient(circle, rgba(255,255,255,0.52) 0%, rgba(186,230,253,0.28) 22%, rgba(56,189,248,0.12) 42%, transparent 72%);
+          filter: blur(20px);
+          animation: crystalFocusPulse 3s ease-in-out infinite;
+        }
+
+        .dark .logo-crystal-focus {
+          background:
+            radial-gradient(circle, rgba(103,232,249,0.26) 0%, rgba(56,189,248,0.18) 22%, rgba(37,99,235,0.09) 42%, transparent 72%);
+        }
+
+        .logo-text-focus {
+          position: absolute;
+          left: 10%;
+          right: 10%;
+          bottom: 9%;
+          height: 24%;
+          z-index: 2;
+          pointer-events: none;
+          border-radius: 9999px;
+          background:
+            radial-gradient(circle at center, rgba(8,47,73,0.26) 0%, rgba(3,105,161,0.16) 28%, rgba(56,189,248,0.06) 54%, transparent 80%);
+          filter: blur(16px);
+          animation: textFocusPulse 3.2s ease-in-out infinite;
+        }
+
+        .dark .logo-text-focus {
+          background:
+            radial-gradient(circle at center, rgba(8,47,73,0.22) 0%, rgba(14,165,233,0.14) 28%, rgba(56,189,248,0.05) 54%, transparent 80%);
+        }
+
+        .logo-emphasis {
+          position: absolute;
+          inset: auto 10% 12% 10%;
+          height: 18%;
+          border-radius: 9999px;
+          background:
+            radial-gradient(circle, rgba(255,255,255,0.34) 0%, rgba(103,232,249,0.18) 22%, rgba(56,189,248,0.05) 46%, transparent 78%);
+          filter: blur(14px);
+          z-index: 3;
+          animation: emphasisPulse 2.9s ease-in-out infinite;
         }
 
         .logo-wrap {
@@ -498,30 +564,34 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           display: flex;
           align-items: center;
           justify-content: center;
+          padding: 1.2rem 1rem 0.9rem;
         }
 
         .logo-img {
+          position: relative;
+          z-index: 2;
           width: 100%;
           height: auto;
           object-fit: contain;
           user-select: none;
           -webkit-user-drag: none;
           filter:
-            drop-shadow(0 0 20px rgba(103,232,249,0.24))
-            drop-shadow(0 20px 34px rgba(37,99,235,0.16));
+            contrast(1.18)
+            saturate(1.08)
+            brightness(0.97)
+            drop-shadow(0 0 1px rgba(8,47,73,0.78))
+            drop-shadow(0 0 2px rgba(8,47,73,0.52))
+            drop-shadow(0 0 16px rgba(103,232,249,0.26))
+            drop-shadow(0 18px 32px rgba(37,99,235,0.16));
           animation: logoFloat 4.8s ease-in-out infinite;
         }
 
-        .logo-emphasis {
-          position: absolute;
-          inset: auto 10% 12% 10%;
-          height: 18%;
-          border-radius: 9999px;
-          background:
-            radial-gradient(circle, rgba(255,255,255,0.34) 0%, rgba(103,232,249,0.16) 22%, rgba(56,189,248,0.04) 46%, transparent 78%);
-          filter: blur(14px);
-          z-index: 3;
-          animation: emphasisPulse 2.9s ease-in-out infinite;
+        .dark .logo-img {
+          filter:
+            saturate(1.04)
+            brightness(1.02)
+            drop-shadow(0 0 20px rgba(103,232,249,0.24))
+            drop-shadow(0 20px 34px rgba(37,99,235,0.16));
         }
 
         .scan-lines {
@@ -574,7 +644,42 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           animation: particleTwinkle 2.6s ease-in-out infinite;
         }
 
-        /* IMPROVED MINIMAL LOADER - BETTER LIGHT MODE CONTRAST */
+        .logo-shine {
+          position: absolute;
+          inset: 10% 6% 12% 6%;
+          z-index: 6;
+          overflow: hidden;
+          pointer-events: none;
+          border-radius: 28px;
+        }
+
+        .logo-shine::before {
+          content: "";
+          position: absolute;
+          top: -8%;
+          left: -28%;
+          width: 24%;
+          height: 116%;
+          background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,0.46) 48%,
+            rgba(255,255,255,0) 100%
+          );
+          transform: skewX(-18deg);
+          filter: blur(6px);
+          animation: logoSweep 4.2s ease-in-out infinite;
+        }
+
+        .dark .logo-shine::before {
+          background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,0.28) 48%,
+            rgba(255,255,255,0) 100%
+          );
+        }
+
         .loader-shell {
           position: absolute;
           left: 50%;
@@ -992,11 +1097,6 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           }
         }
 
-        @keyframes glowBreath {
-          0%, 100% { opacity: 0.65; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.06); }
-        }
-
         @keyframes loaderGlow {
           0%, 100% { opacity: 0.55; transform: scale(1); }
           50% { opacity: 0.95; transform: scale(1.03); }
@@ -1036,6 +1136,21 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           50% { opacity: 1; transform: scale(1.03); }
         }
 
+        @keyframes rimPulse {
+          0%, 100% { opacity: 0.66; transform: scale(0.98); }
+          50% { opacity: 1; transform: scale(1.02); }
+        }
+
+        @keyframes crystalFocusPulse {
+          0%, 100% { opacity: 0.72; transform: translateX(-50%) scale(0.98); }
+          50% { opacity: 1; transform: translateX(-50%) scale(1.04); }
+        }
+
+        @keyframes textFocusPulse {
+          0%, 100% { opacity: 0.68; transform: scaleX(0.96); }
+          50% { opacity: 1; transform: scaleX(1.03); }
+        }
+
         @keyframes logoFloat {
           0%, 100% { transform: translateY(0px); }
           50% { transform: translateY(-10px); }
@@ -1057,10 +1172,10 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
             left: -35%;
             opacity: 0;
           }
-          20% {
+          18% {
             opacity: 0.7;
           }
-          60% {
+          58% {
             opacity: 0.35;
           }
           100% {
@@ -1174,7 +1289,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           }
 
           .logo-zone {
-            width: min(64vw, 580px);
+            width: min(64vw, 590px);
           }
         }
 
@@ -1208,7 +1323,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           .device-node.wireless { left: 50%; top: 12%; }
 
           .logo-zone {
-            width: min(72vw, 520px);
+            width: min(74vw, 540px);
           }
 
           .loader-shell {
@@ -1256,7 +1371,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           .device-node.wireless { left: 50%; top: 11%; }
 
           .logo-zone {
-            width: min(82vw, 460px);
+            width: min(84vw, 470px);
           }
 
           .loader-shell {
@@ -1324,7 +1439,11 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           .device-node.wireless { left: 50%; top: 10%; }
 
           .logo-zone {
-            width: min(88vw, 390px);
+            width: min(90vw, 400px);
+          }
+
+          .logo-wrap {
+            padding: 1rem 0.8rem 0.8rem;
           }
 
           .loader-shell {
@@ -1489,8 +1608,11 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           </div>
 
           <div className="logo-zone">
+            <div className="logo-rim-light" />
             <div className="logo-aura" />
             <div className="logo-crystal-beam" />
+            <div className="logo-crystal-focus" />
+            <div className="logo-text-focus" />
             <div className="logo-emphasis" />
 
             <div className="scan-lines">
@@ -1528,7 +1650,6 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
               <img src={logo} alt="ARGUS logo" className="logo-img" />
             </div>
 
-            <div className="logo-shine" />
           </div>
 
           <div className="loader-shell">

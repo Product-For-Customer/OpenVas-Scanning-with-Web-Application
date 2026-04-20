@@ -8,6 +8,7 @@ import { useStateContext } from "../../contexts/ContextProvider";
 import { useAuth } from "../../contexts/AuthContext";
 import logo from "../../assets/argus-logo-real.png";
 import { message } from "antd";
+import { RiDoorOpenLine } from "react-icons/ri";
 
 type SidebarLink = {
   name: string;
@@ -161,7 +162,7 @@ const Sidebar: React.FC = () => {
               transform: scale(0.96);
             }
             50% {
-              opacity: 0.60;
+              opacity: 0.58;
               transform: scale(1.05);
             }
           }
@@ -171,32 +172,32 @@ const Sidebar: React.FC = () => {
               opacity: 0;
               transform: scale(0.74);
             }
-            16% {
-              opacity: 0.42;
+            18% {
+              opacity: 0.34;
             }
-            42% {
-              opacity: 0.24;
+            46% {
+              opacity: 0.16;
             }
             100% {
               opacity: 0;
-              transform: scale(1.38);
+              transform: scale(1.36);
             }
           }
 
           @keyframes argusPulseRingTwo {
             0% {
               opacity: 0;
-              transform: scale(0.80);
+              transform: scale(0.82);
             }
-            18% {
-              opacity: 0.34;
+            20% {
+              opacity: 0.24;
             }
-            46% {
-              opacity: 0.18;
+            44% {
+              opacity: 0.12;
             }
             100% {
               opacity: 0;
-              transform: scale(1.52);
+              transform: scale(1.48);
             }
           }
 
@@ -206,7 +207,7 @@ const Sidebar: React.FC = () => {
               transform: translateX(-16px) rotate(-16deg);
             }
             20% {
-              opacity: 0.42;
+              opacity: 0.34;
             }
             80% {
               opacity: 0.12;
@@ -223,24 +224,24 @@ const Sidebar: React.FC = () => {
               transform: translateX(-10px) scaleX(0.85);
             }
             25% {
-              opacity: 0.35;
+              opacity: 0.26;
             }
             75% {
-              opacity: 0.16;
+              opacity: 0.10;
             }
             100% {
               opacity: 0;
-              transform: translateX(10px) scaleX(1.05);
+              transform: translateX(10px) scaleX(1.06);
             }
           }
 
           @keyframes argusInnerArc {
             0%, 100% {
-              opacity: 0.18;
+              opacity: 0.16;
               transform: scale(0.98) rotate(0deg);
             }
             50% {
-              opacity: 0.38;
+              opacity: 0.34;
               transform: scale(1.03) rotate(8deg);
             }
           }
@@ -251,8 +252,8 @@ const Sidebar: React.FC = () => {
               transform: scale(1);
             }
             50% {
-              opacity: 0.9;
-              transform: scale(1.22);
+              opacity: 0.82;
+              transform: scale(1.2);
             }
           }
 
@@ -262,6 +263,20 @@ const Sidebar: React.FC = () => {
             }
             50% {
               transform: translateY(-2px);
+            }
+          }
+
+          @keyframes sidebarShimmer {
+            0% {
+              transform: translateX(-120%);
+              opacity: 0;
+            }
+            22% {
+              opacity: 0.26;
+            }
+            100% {
+              transform: translateX(130%);
+              opacity: 0;
             }
           }
         `}
@@ -292,12 +307,14 @@ const Sidebar: React.FC = () => {
       >
         <div
           className={[
-            "relative flex h-full flex-col overflow-visible rounded-[28px]",
+            "relative flex h-full min-h-0 flex-col overflow-visible rounded-[28px]",
             "border border-gray-200/80 bg-white/92 shadow-[0_18px_44px_-24px_rgba(15,23,42,0.35)] backdrop-blur",
             "dark:border-white/10 dark:bg-[#08111f]/88 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
           ].join(" ")}
         >
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
+            <div className="absolute inset-x-5 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/55 to-transparent" />
+            <div className="absolute inset-px rounded-[27px] ring-1 ring-white/45 dark:ring-white/5" />
             <div className="absolute -top-12 right-0 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
             <div className="absolute bottom-0 -left-10 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
@@ -305,8 +322,8 @@ const Sidebar: React.FC = () => {
           <div
             className={`relative z-10 flex items-center ${
               isExpanded
-                ? "justify-between px-3.5 pb-3.5 pt-5"
-                : "justify-center px-2 pb-3.5 pt-4.5"
+                ? "justify-between px-3.5 pb-3 pt-4.5"
+                : "justify-center px-2 pb-3 pt-4.5"
             }`}
           >
             <Link
@@ -335,28 +352,28 @@ const Sidebar: React.FC = () => {
                 />
 
                 <span
-                  className="pointer-events-none absolute inset-1.25 rounded-full border border-cyan-400/40"
+                  className="pointer-events-none absolute inset-1.25 rounded-full border border-cyan-400/32"
                   style={{
                     animation: "argusPulseRingOne 2.2s ease-out infinite",
                   }}
                 />
 
                 <span
-                  className="pointer-events-none absolute inset-0.75 rounded-full border border-sky-300/28"
+                  className="pointer-events-none absolute inset-0.75 rounded-full border border-sky-300/22"
                   style={{
                     animation: "argusPulseRingTwo 2.2s ease-out 0.7s infinite",
                   }}
                 />
 
                 <span
-                  className="pointer-events-none absolute left-1/2 top-1/2 h-13 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-b from-transparent via-cyan-300/55 to-transparent blur-[5px]"
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-b from-transparent via-cyan-300/45 to-transparent blur-[5px]"
                   style={{
                     animation: "argusScanLine 2.4s ease-in-out infinite",
                   }}
                 />
 
                 <span
-                  className="pointer-events-none absolute left-1/2 top-1/2 h-0.5 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-cyan-300/45 to-transparent blur-[1px]"
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-0.5 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-cyan-300/34 to-transparent blur-[1px]"
                   style={{
                     animation: "argusHorizontalBeam 2.8s ease-in-out infinite",
                   }}
@@ -376,20 +393,6 @@ const Sidebar: React.FC = () => {
                       "argusDotTwinkle 2.2s ease-in-out 0.55s infinite, argusDotFloat 2.9s ease-in-out 0.2s infinite",
                   }}
                 />
-                <span
-                  className="pointer-events-none absolute left-1 top-4 h-1.5 w-1.5 rounded-full bg-cyan-200/85 blur-[1px]"
-                  style={{
-                    animation:
-                      "argusDotTwinkle 2.4s ease-in-out 0.35s infinite, argusDotFloat 3s ease-in-out 0.4s infinite",
-                  }}
-                />
-                <span
-                  className="pointer-events-none absolute right-1 bottom-3 h-1 w-1 rounded-full bg-sky-200/90 blur-[1px]"
-                  style={{
-                    animation:
-                      "argusDotTwinkle 2.1s ease-in-out 0.8s infinite, argusDotFloat 2.7s ease-in-out 0.1s infinite",
-                  }}
-                />
 
                 <div
                   className="relative z-10 flex h-16 w-16 items-center justify-center transition-transform duration-300 group-hover:scale-[1.04] group-hover:rotate-3"
@@ -401,14 +404,14 @@ const Sidebar: React.FC = () => {
                   <img
                     src={logo}
                     alt="Logo"
-                    className="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(34,211,238,0.14)] transition-all duration-300 group-hover:drop-shadow-[0_10px_22px_rgba(34,211,238,0.22)]"
+                    className="h-24 w-24 object-contain drop-shadow-[0_8px_18px_rgba(34,211,238,0.14)] transition-all duration-300 group-hover:drop-shadow-[0_10px_22px_rgba(34,211,238,0.22)]"
                   />
                 </div>
               </div>
 
               {isExpanded && (
                 <div className="min-w-0">
-                  <span className="block text-[16px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90">
+                  <span className="block bg-linear-to-r from-[#1f2240] via-[#174966] to-[#4b4ca6] bg-clip-text text-[16px] font-semibold tracking-tight text-transparent dark:from-white dark:via-cyan-100 dark:to-violet-200">
                     Argus
                   </span>
                   <span className="block text-[10.5px] text-gray-500 dark:text-white/45">
@@ -437,10 +440,10 @@ const Sidebar: React.FC = () => {
           </div>
 
           <nav
-            className={`relative z-10 flex-1 ${
+            className={`relative z-10 min-h-0 flex-1 ${
               isExpanded
-                ? "overflow-y-auto px-2.5 pb-3.5"
-                : "overflow-visible px-2 pb-3"
+                ? "overflow-y-auto overflow-x-hidden px-2.5 pb-2"
+                : "overflow-visible px-2 pb-2"
             }`}
           >
             <div className={isExpanded ? "space-y-1.5" : "space-y-2.5"}>
@@ -451,43 +454,55 @@ const Sidebar: React.FC = () => {
                     isLinkActive(link.name)
                   ) ?? false;
 
-                const sectionIcon =
-                  section.links?.[0]?.icon ?? (
-                    <span className="h-2.5 w-2.5 rounded-full bg-current opacity-70" />
-                  );
+                const sectionIcon = section.icon ?? (
+                  <span className="h-2.5 w-2.5 rounded-full bg-current opacity-70" />
+                );
 
                 if (isExpanded) {
                   return (
-                    <div key={section.title} className="rounded-2xl">
+                    <div key={section.title} className="space-y-1">
                       <button
                         type="button"
                         onClick={() => toggleSection(section.title)}
                         className={[
                           "flex w-full items-center justify-between rounded-2xl px-3.5 py-2.75 text-left transition-all duration-200",
                           isOpen
-                            ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm"
-                            : "bg-transparent text-[#4b4f63] hover:bg-gray-50",
-                          isOpen
-                            ? "dark:shadow-none"
-                            : "dark:text-white/70 dark:hover:bg-white/8",
+                            ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-[0_12px_24px_-18px_rgba(56,189,248,0.88)]"
+                            : hasActiveChild
+                            ? "bg-white text-[#1f2937] shadow-[0_8px_18px_-16px_rgba(15,23,42,0.22)] dark:bg-white/5 dark:text-white/90"
+                            : "bg-transparent text-[#4b4f63] hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
                         ].join(" ")}
                         aria-expanded={isOpen}
                       >
                         <div className="min-w-0 flex items-center gap-3">
                           <span
                             className={[
-                              "inline-flex h-7.5 w-7.5 items-center justify-center rounded-xl text-[15px]",
+                              "inline-flex h-8 w-8 items-center justify-center rounded-xl text-[15px] transition-all duration-200",
                               isOpen
-                                ? "bg-white/15 text-white"
+                                ? "bg-white/18 text-white ring-1 ring-white/18"
+                                : hasActiveChild
+                                ? "bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-400/10"
                                 : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/55",
                             ].join(" ")}
                           >
                             {sectionIcon}
                           </span>
 
-                          <span className="truncate text-[14px] font-medium">
-                            {formatLabel(section.title)}
-                          </span>
+                          <div className="min-w-0">
+                            <span className="block truncate text-[14px] font-medium">
+                              {formatLabel(section.title)}
+                            </span>
+                            <span
+                              className={[
+                                "block truncate text-[10px]",
+                                isOpen
+                                  ? "text-white/70"
+                                  : "text-slate-400 dark:text-white/34",
+                              ].join(" ")}
+                            >
+                              {section.links?.length ?? 0} items
+                            </span>
+                          </div>
                         </div>
 
                         <MdKeyboardArrowDown
@@ -504,11 +519,11 @@ const Sidebar: React.FC = () => {
                       <div
                         className={`overflow-hidden transition-all duration-200 ${
                           isOpen
-                            ? "max-h-150 pb-1 pt-1.5 opacity-100"
+                            ? "max-h-55 pb-0.5 pt-1 opacity-100"
                             : "max-h-0 opacity-0"
                         }`}
                       >
-                        <div className="space-y-1 pl-6.5 pr-2">
+                        <div className="space-y-1 pl-5.5 pr-2">
                           {section.links?.map((link: SidebarLink) => {
                             const active = isLinkActive(link.name);
 
@@ -518,31 +533,37 @@ const Sidebar: React.FC = () => {
                                 key={`${section.title}-${link.name}`}
                                 onClick={handleCloseSideBar}
                                 className={[
-                                  "flex items-center justify-between gap-2 rounded-xl px-3 py-2.25 transition-colors",
+                                  "group relative flex items-center justify-between gap-2 overflow-hidden rounded-xl px-3 py-2.25 transition-all duration-200",
                                   active
-                                    ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
-                                    : "text-[#585b6b] hover:bg-gray-50 hover:text-[#2b2f45]",
-                                  active
-                                    ? ""
-                                    : "dark:text-white/60 dark:hover:bg-white/8 dark:hover:text-white/85",
+                                    ? "bg-cyan-50 font-semibold text-cyan-700 ring-1 ring-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-400/10"
+                                    : "text-[#585b6b] hover:bg-white hover:text-[#2b2f45] dark:text-white/60 dark:hover:bg-white/8 dark:hover:text-white/85",
                                 ].join(" ")}
                               >
+                                {active && (
+                                  <span className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-linear-to-b from-cyan-500 to-violet-500" />
+                                )}
+
                                 <div className="min-w-0 flex items-center gap-3">
                                   <span
                                     className={[
-                                      "inline-block h-2 w-2 rounded-full border",
+                                      "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[14px] transition-all duration-200",
                                       active
-                                        ? "border-cyan-500 bg-cyan-500"
-                                        : "border-gray-400 bg-transparent dark:border-white/30",
+                                        ? "bg-white text-cyan-600 shadow-sm dark:bg-white/10 dark:text-cyan-300"
+                                        : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 dark:bg-white/6 dark:text-white/55 dark:group-hover:bg-white/10",
                                     ].join(" ")}
-                                  />
+                                  >
+                                    {link.icon ?? (
+                                      <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                                    )}
+                                  </span>
+
                                   <span className="truncate text-[13px]">
                                     {formatLabel(link.name)}
                                   </span>
                                 </div>
 
                                 {link.badge && (
-                                  <span className="ml-2 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                  <span className="ml-2 shrink-0 rounded-full bg-linear-to-r from-cyan-500 to-violet-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-[0_8px_18px_-14px_rgba(59,130,246,0.95)]">
                                     {link.badge}
                                   </span>
                                 )}
@@ -571,11 +592,8 @@ const Sidebar: React.FC = () => {
                         className={[
                           "flex h-11 w-full items-center justify-center rounded-2xl transition-all duration-200",
                           hasActiveChild
-                            ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm"
-                            : "bg-[#eef3f8] text-gray-500 hover:bg-gray-50",
-                          hasActiveChild
-                            ? "dark:shadow-none"
-                            : "dark:bg-white/8 dark:text-white/60 dark:hover:bg-white/10",
+                            ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-[0_10px_18px_-14px_rgba(56,189,248,0.85)]"
+                            : "border border-transparent bg-[#eef3f8] text-gray-500 hover:border-slate-200 hover:bg-gray-50 dark:bg-white/8 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/10",
                         ].join(" ")}
                         aria-label={formatLabel(section.title)}
                       >
@@ -594,15 +612,22 @@ const Sidebar: React.FC = () => {
 
                     {hoveredSection === section.title && (
                       <div
-                        className="absolute left-[calc(100%+10px)] top-0 z-70 w-62.5"
+                        className="absolute left-[calc(100%+10px)] top-0 z-70 w-63.75"
                         onMouseEnter={() => openHoverPopup(section.title)}
                         onMouseLeave={() =>
                           closeHoverPopupWithDelay(section.title)
                         }
                       >
                         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                          <div className="bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 px-4 py-3 text-white">
-                            <div className="flex items-center gap-3">
+                          <div className="relative overflow-hidden bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 px-4 py-3 text-white">
+                            <span
+                              className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-linear-to-r from-white/18 to-transparent skew-x-[-20deg]"
+                              style={{
+                                animation:
+                                  "sidebarShimmer 2.8s ease-in-out infinite",
+                              }}
+                            />
+                            <div className="relative flex items-center gap-3">
                               <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-white/15 text-[15px]">
                                 {sectionIcon}
                               </span>
@@ -625,18 +650,33 @@ const Sidebar: React.FC = () => {
                                     handleCloseSideBar();
                                   }}
                                   className={[
-                                    "flex items-center justify-between px-4 py-2.5 text-[13px] transition-colors",
+                                    "flex items-center justify-between gap-2 px-4 py-2.5 text-[13px] transition-colors",
                                     active
                                       ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-white/8 dark:text-cyan-300"
                                       : "text-[#4f5366] hover:bg-gray-50 dark:text-white/65 dark:hover:bg-white/8",
                                   ].join(" ")}
                                 >
-                                  <span className="truncate">
-                                    {formatLabel(link.name)}
-                                  </span>
+                                  <div className="min-w-0 flex items-center gap-3">
+                                    <span
+                                      className={[
+                                        "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[14px]",
+                                        active
+                                          ? "bg-white text-cyan-600 shadow-sm dark:bg-white/10 dark:text-cyan-300"
+                                          : "bg-slate-100 text-slate-500 dark:bg-white/6 dark:text-white/55",
+                                      ].join(" ")}
+                                    >
+                                      {link.icon ?? (
+                                        <span className="h-2 w-2 rounded-full bg-current opacity-70" />
+                                      )}
+                                    </span>
+
+                                    <span className="truncate">
+                                      {formatLabel(link.name)}
+                                    </span>
+                                  </div>
 
                                   {link.badge && (
-                                    <span className="ml-3 shrink-0 rounded-md bg-linear-to-r from-cyan-500 to-violet-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                    <span className="ml-3 shrink-0 rounded-full bg-linear-to-r from-cyan-500 to-violet-500 px-2.5 py-0.5 text-[10px] font-semibold text-white">
                                       {link.badge}
                                     </span>
                                   )}
@@ -656,39 +696,50 @@ const Sidebar: React.FC = () => {
           <div
             className={`${
               isExpanded
-                ? "relative z-10 px-2.5 pb-3.5 pt-1.5"
-                : "relative z-10 px-2 pb-3.5 pt-1"
+                ? "relative z-10 px-2.5 pb-3 pt-1"
+                : "relative z-10 px-2 pb-3 pt-1"
             }`}
           >
             {isExpanded ? (
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                disabled={loggingOut}
-                className={[
-                  "flex w-full items-center justify-between rounded-2xl px-4 py-3.5 transition-colors",
-                  "bg-[#eef3f8] text-[#3a3d4f] hover:bg-[#e7edf5]",
-                  "dark:bg-white/8 dark:text-white/75 dark:hover:bg-white/10",
-                  loggingOut ? "cursor-not-allowed opacity-70" : "",
-                ].join(" ")}
-                aria-label="Logout"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-8.5 w-8.5 items-center justify-center rounded-xl bg-white text-gray-600 dark:bg-white/10 dark:text-white/70">
-                    <FiLogOut />
-                  </span>
-                  <div className="text-left leading-tight">
-                    <span className="block text-[14px] font-semibold">
-                      {loggingOut ? "Logging out..." : "Logout"}
-                    </span>
-                    <span className="block text-[10.5px] text-gray-500 dark:text-white/45">
-                      End current session
-                    </span>
-                  </div>
-                </div>
+              <div className="rounded-2xl bg-linear-to-r from-cyan-500/14 via-sky-500/8 to-violet-500/14 p-px">
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  disabled={loggingOut}
+                  className={[
+                    "group relative flex w-full items-center justify-between overflow-hidden rounded-[15px] px-3 py-2.25 transition-all duration-300",
+                    "bg-white text-[#303446] hover:bg-slate-50 dark:bg-[#0b1322] dark:text-white/82 dark:hover:bg-[#101a2d]",
+                    loggingOut ? "cursor-not-allowed opacity-70" : "",
+                  ].join(" ")}
+                  aria-label="Logout"
+                >
+                  <span
+                    className="pointer-events-none absolute inset-y-0 left-[-20%] w-[34%] bg-linear-to-r from-transparent via-cyan-200/35 to-transparent opacity-0 skew-x-[-18deg] transition-opacity duration-300 group-hover:opacity-100 dark:via-cyan-300/10"
+                    style={{
+                      animation: loggingOut
+                        ? "none"
+                        : "sidebarShimmer 2.8s ease-in-out infinite",
+                    }}
+                  />
 
-                <FiLogOut className="text-[17px] text-gray-500 dark:text-white/60" />
-              </button>
+                  <div className="relative z-10 flex items-center gap-2.5">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-linear-to-br from-cyan-500 to-violet-500 text-white shadow-[0_10px_18px_-14px_rgba(59,130,246,0.85)] transition-transform duration-300 group-hover:scale-[1.03]">
+                      <RiDoorOpenLine className="text-[15px]" />
+                    </span>
+
+                    <div className="text-left leading-tight">
+                      <span className="block text-[12.5px] font-semibold">
+                        {loggingOut ? "Logging out..." : "Logout"}
+                      </span>
+                      <span className="block text-[9.5px] text-slate-500 dark:text-white/45">
+                        End session
+                      </span>
+                    </div>
+                  </div>
+
+                  <FiLogOut className="relative z-10 text-[14px] text-slate-400 transition-colors duration-300 group-hover:text-cyan-600 dark:text-white/45 dark:group-hover:text-cyan-300" />
+                </button>
+              </div>
             ) : (
               <TooltipComponent
                 content={loggingOut ? "Logging out..." : "Logout"}
@@ -699,9 +750,9 @@ const Sidebar: React.FC = () => {
                   onClick={() => void handleLogout()}
                   disabled={loggingOut}
                   className={[
-                    "flex h-11 w-full items-center justify-center rounded-2xl transition-colors",
-                    "bg-[#eef3f8] text-gray-500 hover:bg-[#e7edf5]",
-                    "dark:bg-white/8 dark:text-white/60 dark:hover:bg-white/10",
+                    "flex h-11 w-full items-center justify-center rounded-2xl border transition-all duration-200",
+                    "border-transparent bg-[#eef3f8] text-gray-500 hover:border-cyan-100 hover:bg-linear-to-r hover:from-cyan-50 hover:to-violet-50 hover:text-cyan-700",
+                    "dark:bg-white/8 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-cyan-300",
                     loggingOut ? "cursor-not-allowed opacity-70" : "",
                   ].join(" ")}
                   aria-label="Logout"

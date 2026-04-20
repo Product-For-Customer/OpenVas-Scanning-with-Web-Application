@@ -1,9 +1,17 @@
 import React from "react";
-import { FiEdit, FiGrid, FiSettings } from "react-icons/fi";
+import {
+  FiShield,
+  FiTarget,
+  FiGitBranch,
+  FiBell,
+  FiFileText,
+  FiUsers,
+  FiSettings,
+} from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
-import { FaCarSide } from "react-icons/fa";
 import { RiCustomerService2Line } from "react-icons/ri";
 import type { JSX } from "react/jsx-dev-runtime";
+import { MdSpaceDashboard, MdDashboardCustomize } from "react-icons/md";
 
 export type SidebarLink = {
   name: string;
@@ -13,6 +21,7 @@ export type SidebarLink = {
 
 export type SidebarSection = {
   title: string;
+  icon?: React.ReactNode;
   links: SidebarLink[];
 };
 
@@ -24,22 +33,24 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
   const baseLinks: SidebarSection[] = [
     {
       title: "Dashboard",
+      icon: <MdDashboardCustomize />,
       links: [
-        { name: "dashboard", icon: <FiGrid /> },
-        { name: "vulnerability", icon: <FiEdit /> },
-        { name: "target", icon: <FiEdit /> },
-        { name: "diagrams", icon: <FiEdit /> },
+        { name: "dashboard", icon: <MdSpaceDashboard /> },
+        { name: "vulnerability", icon: <FiShield /> },
+        { name: "target", icon: <FiTarget /> },
+        { name: "diagrams", icon: <FiGitBranch /> },
       ],
     },
   ];
 
   if (isAdmin) {
     baseLinks.push({
-      title: "Mangement",
+      title: "Management",
+      icon: <FiSettings />,
       links: [
-        { name: "line notification", icon: <FiSettings /> },
-        { name: "report", icon: <FaCarSide /> },
-        { name: "user", icon: <FaCarSide /> },
+        { name: "line notification", icon: <FiBell /> },
+        { name: "report", icon: <FiFileText /> },
+        { name: "user", icon: <FiUsers /> },
       ],
     });
   }

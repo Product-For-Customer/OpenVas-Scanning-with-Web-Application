@@ -128,7 +128,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
       className="min-w-64 max-w-76 rounded-[22px] border border-gray-200 bg-white px-4 py-3 shadow-[0_16px_40px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_38px_rgba(0,0,0,0.34)]"
     >
       <div className="mb-2.5">
-        <p className="wrap-break-words text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
+        <p className="wrap-wrap-break-word text-[12px] font-semibold text-[#1f2240] dark:text-white/92">
           {row.taskName || "-"}
         </p>
         <p className="mt-1 break-all text-[10.5px] text-gray-500 dark:text-white/45">
