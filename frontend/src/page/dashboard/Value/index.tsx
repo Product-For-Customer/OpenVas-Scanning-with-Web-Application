@@ -680,6 +680,7 @@ const Value: React.FC<ValueProps> = ({
                           {item.subtitle}
                         </p>
                       </div>
+                      
 
                       <span
                         className={[

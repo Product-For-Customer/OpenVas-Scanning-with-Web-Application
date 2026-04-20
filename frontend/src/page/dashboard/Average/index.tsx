@@ -106,6 +106,9 @@ const COLORS = {
   avgLineDark: "rgba(255,255,255,0.30)",
 };
 
+const MOBILE_BREAKPOINT = 640;
+const IPAD_BREAKPOINT = 1280;
+
 const formatRisk = (value: number) => Number(value || 0).toFixed(2);
 
 const shortenTaskName = (taskName: string) => {
@@ -254,6 +257,23 @@ const getRiskHeatColor = (risk: number) => {
 
   const t = (clamped - 7.5) / 2.5;
   return interpolateColor(orange, red, t);
+};
+
+const getVisibleTickIndexSet = (length: number, maxLabels: number): Set<number> => {
+  if (length <= 0) return new Set<number>();
+  if (length <= maxLabels) {
+    return new Set(Array.from({ length }, (_, i) => i));
+  }
+
+  const set = new Set<number>();
+  const lastIndex = length - 1;
+
+  for (let i = 0; i < maxLabels; i++) {
+    const index = Math.round((i * lastIndex) / (maxLabels - 1));
+    set.add(index);
+  }
+
+  return set;
 };
 
 const CustomTooltip = ({
@@ -442,11 +462,17 @@ const DetailTooltip = ({
 const CustomXAxisTick = (props: {
   x?: number;
   y?: number;
-  payload?: { value?: string };
+  payload?: { value?: string; index?: number };
+  visibleIndexSet?: Set<number>;
 }) => {
-  const { x = 0, y = 0, payload } = props;
+  const { x = 0, y = 0, payload, visibleIndexSet } = props;
   const rawValue = String(payload?.value || "");
+  const tickIndex = Number(payload?.index ?? -1);
   const dark = isDarkMode();
+
+  if (visibleIndexSet && !visibleIndexSet.has(tickIndex)) {
+    return null;
+  }
 
   const label = rawValue.includes("__AXIS__")
     ? rawValue.split("__AXIS__")[0]
@@ -471,11 +497,17 @@ const CustomXAxisTick = (props: {
 const DetailXAxisTick = (props: {
   x?: number;
   y?: number;
-  payload?: { value?: string };
+  payload?: { value?: string; index?: number };
+  visibleIndexSet?: Set<number>;
 }) => {
-  const { x = 0, y = 0, payload } = props;
+  const { x = 0, y = 0, payload, visibleIndexSet } = props;
   const rawValue = String(payload?.value || "");
+  const tickIndex = Number(payload?.index ?? -1);
   const dark = isDarkMode();
+
+  if (visibleIndexSet && !visibleIndexSet.has(tickIndex)) {
+    return null;
+  }
 
   const pure = rawValue.includes("__AXIS__")
     ? rawValue.split("__AXIS__")[0]
@@ -583,6 +615,11 @@ const AverageEnrollment: React.FC = () => {
   const [sortOpen, setSortOpen] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement | null>(null);
 
+  const [screenWidth, setScreenWidth] = useState<number>(() => {
+    if (typeof window === "undefined") return 1440;
+    return window.innerWidth;
+  });
+
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -596,6 +633,34 @@ const AverageEnrollment: React.FC = () => {
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleResize = () => {
+      setScreenWidth(window.innerWidth);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isMobile = screenWidth < MOBILE_BREAKPOINT;
+  const isIPad = screenWidth >= MOBILE_BREAKPOINT && screenWidth < IPAD_BREAKPOINT;
+
+  const overviewMaxVisibleLabels = useMemo(() => {
+    if (isMobile) return 3;
+    if (isIPad) return 5;
+    return Number.MAX_SAFE_INTEGER;
+  }, [isMobile, isIPad]);
+
+  const detailMaxVisibleLabels = useMemo(() => {
+    if (isMobile) return 3;
+    if (isIPad) return 5;
+    return Number.MAX_SAFE_INTEGER;
+  }, [isMobile, isIPad]);
 
   const fetchData = async (mode: "initial" | "refresh" = "initial") => {
     if (isFetchingRef.current) return;
@@ -903,6 +968,14 @@ const AverageEnrollment: React.FC = () => {
     if (ticks[ticks.length - 1] !== maxRisk) ticks.push(maxRisk);
     return ticks;
   }, [maxRisk, detailMode]);
+
+  const overviewVisibleTickIndexSet = useMemo(() => {
+    return getVisibleTickIndexSet(chartData.length, overviewMaxVisibleLabels);
+  }, [chartData.length, overviewMaxVisibleLabels]);
+
+  const detailVisibleTickIndexSet = useMemo(() => {
+    return getVisibleTickIndexSet(detailRows.length, detailMaxVisibleLabels);
+  }, [detailRows.length, detailMaxVisibleLabels]);
 
   const selectedCount = selectedKeys.length;
 
@@ -1250,7 +1323,9 @@ const AverageEnrollment: React.FC = () => {
 
                   <XAxis
                     dataKey="axis_key"
-                    tick={<DetailXAxisTick />}
+                    tick={
+                      <DetailXAxisTick visibleIndexSet={detailVisibleTickIndexSet} />
+                    }
                     axisLine={false}
                     tickLine={false}
                     interval={0}
@@ -1332,7 +1407,9 @@ const AverageEnrollment: React.FC = () => {
 
                 <XAxis
                   dataKey="axis_key"
-                  tick={<CustomXAxisTick />}
+                  tick={
+                    <CustomXAxisTick visibleIndexSet={overviewVisibleTickIndexSet} />
+                  }
                   axisLine={false}
                   tickLine={false}
                   interval={0}

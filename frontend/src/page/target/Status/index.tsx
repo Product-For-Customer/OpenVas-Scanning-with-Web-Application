@@ -230,7 +230,7 @@ const StatusTarget: React.FC = () => {
         value: loading ? "..." : statusCounts.New.toLocaleString(),
         subtitle: "Queued",
         icon: <FiClock />,
-        },
+      },
       {
         id: 4,
         title: "Stopped",
@@ -312,7 +312,7 @@ const StatusTarget: React.FC = () => {
       </div>
 
       <div className="relative z-10 -mt-13 px-3 sm:-mt-15 sm:px-4 md:px-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
           {stats.map((s) => {
             const theme = themeByStatus[s.title];
             const count = statusCounts[s.title];

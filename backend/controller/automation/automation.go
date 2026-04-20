@@ -605,15 +605,6 @@ func TriggerFeedUpdateHandler(c *gin.Context) {
 			),
 		)
 
-		notifyFeedUpdateToAllNotifications(
-			"no_update",
-			req.TriggeredBy,
-			req.Source,
-			req.Force,
-			successMsg,
-			combinedOutput,
-		)
-
 		c.JSON(http.StatusOK, gin.H{
 			"success":      true,
 			"updated":      false,
@@ -683,15 +674,6 @@ func TriggerFeedUpdateHandler(c *gin.Context) {
 				successMsg,
 				combinedOutput,
 			),
-		)
-
-		notifyFeedUpdateToAllNotifications(
-			"no_update",
-			req.TriggeredBy,
-			req.Source,
-			req.Force,
-			successMsg,
-			combinedOutput,
 		)
 
 		c.JSON(http.StatusOK, gin.H{

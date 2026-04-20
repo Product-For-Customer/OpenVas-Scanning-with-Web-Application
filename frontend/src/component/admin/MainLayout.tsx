@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { TooltipComponent } from "@syncfusion/ej2-react-popups";
 import { useStateContext } from "../../contexts/ContextProvider";
@@ -18,11 +18,10 @@ const MainLayout: React.FC = () => {
   const isDesktop =
     typeof screenSize === "number" ? screenSize > DESKTOP_BREAKPOINT : true;
 
-  const contentMarginLeft = isDesktop
-    ? activeMenu
-      ? SIDEBAR_EXPANDED_WIDTH
-      : SIDEBAR_COLLAPSED_WIDTH
-    : 0;
+  const contentMarginLeft = useMemo(() => {
+    if (!isDesktop) return 0;
+    return activeMenu ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
+  }, [activeMenu, isDesktop]);
 
   const isInsideScrollablePopup = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
@@ -80,8 +79,16 @@ const MainLayout: React.FC = () => {
         <Sidebar />
 
         <div
-          className="relative min-h-screen transition-all duration-300"
-          style={{ marginLeft: contentMarginLeft }}
+          className={[
+            "relative min-h-screen",
+            "transform-gpu",
+            "transition-[margin-left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            "will-change-[margin-left]",
+          ].join(" ")}
+          style={{
+            marginLeft: contentMarginLeft,
+            backfaceVisibility: "hidden",
+          }}
         >
           <Navbar />
           {themeSettings && <ThemeSettings />}

@@ -5,6 +5,7 @@ import { MdKeyboardArrowDown } from "react-icons/md";
 import { TooltipComponent } from "@syncfusion/ej2-react-popups";
 import { Notification, UserProfile } from ".";
 import { useStateContext } from "../../contexts/ContextProvider";
+import { useAuth } from "../../contexts/AuthContext";
 
 import { FiSearch } from "react-icons/fi";
 import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
@@ -73,6 +74,8 @@ const Navbar: React.FC = () => {
     toggleMode,
   } = useStateContext();
 
+  const { user, logout } = useAuth();
+
   const [profileError, setProfileError] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -89,32 +92,45 @@ const Navbar: React.FC = () => {
     }
   }, [screenSize, setActiveMenu]);
 
-  const handleActiveMenu = () => setActiveMenu(!activeMenu);
+  useEffect(() => {
+    setProfileError(false);
+  }, [user?.profile]);
+
+  const handleActiveMenu = () => {
+    setActiveMenu((prev) => !prev);
+  };
 
   const openGreenbone = () => {
     window.open("http://localhost:9392", "_blank", "noopener,noreferrer");
   };
 
-  const fallbackAvatar = useMemo(
+  const avatarFallback = useMemo(
     () =>
       "data:image/svg+xml;utf8," +
       encodeURIComponent(`
-        <svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'>
+        <svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>
           <defs>
             <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
               <stop offset='0%' stop-color='#dbeafe'/>
               <stop offset='100%' stop-color='#c4b5fd'/>
             </linearGradient>
           </defs>
-          <rect width='100%' height='100%' rx='14' ry='14' fill='url(#g)'/>
-          <circle cx='32' cy='24' r='10' fill='#475569'/>
-          <path d='M16 50c2-8 10-12 16-12s14 4 16 12' fill='#475569'/>
+          <rect width='100%' height='100%' rx='18' fill='url(#g)'/>
+          <circle cx='80' cy='62' r='24' fill='#475569'/>
+          <path d='M38 126c7-20 24-30 42-30s35 10 42 30' fill='#475569'/>
+          <text x='50%' y='150' dominant-baseline='middle' text-anchor='middle'
+            font-size='12' fill='#334155' font-family='Arial'>SEC OPS</text>
         </svg>
       `),
     []
   );
 
-  const avatarSrc = profileError ? fallbackAvatar : fallbackAvatar;
+  const profileSrc =
+    !profileError && user?.profile?.trim() ? user.profile : avatarFallback;
+
+  const fullName = `${user?.first_name || "Guest"} ${user?.last_name || "User"}`.trim();
+  const roleName = user?.role || "Viewer";
+  const email = user?.email || "guest@example.com";
 
   return (
     <header
@@ -155,7 +171,8 @@ const Navbar: React.FC = () => {
 
             <div
               className={[
-                "hidden h-11 w-full max-w-85 items-center rounded-full border border-gray-200 bg-[#f6f8fc] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:flex lg:max-w-115 xl:max-w-130",
+                "hidden h-11 w-full items-center rounded-full border border-gray-200 bg-[#f6f8fc] px-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:flex",
+                "max-w-60 lg:max-w-90 xl:max-w-130",
                 "dark:border-white/10 dark:bg-white/5 dark:shadow-none",
               ].join(" ")}
             >
@@ -172,7 +189,7 @@ const Navbar: React.FC = () => {
                 ].join(" ")}
                 aria-label="Search"
               />
-              <span className="ml-3 hidden whitespace-nowrap text-[11px] font-medium text-gray-400 dark:text-white/35 md:inline-flex">
+              <span className="ml-3 hidden whitespace-nowrap text-[11px] font-medium text-gray-400 dark:text-white/35 xl:inline-flex">
                 ⌘ + k
               </span>
             </div>
@@ -228,7 +245,7 @@ const Navbar: React.FC = () => {
                 >
                   <div className="relative shrink-0">
                     <img
-                      src={avatarSrc}
+                      src={profileSrc}
                       alt="profile"
                       className="h-9 w-9 rounded-full bg-white object-cover ring-1 ring-gray-200 dark:bg-white/10 dark:ring-white/15"
                       onError={() => setProfileError(true)}
@@ -241,7 +258,7 @@ const Navbar: React.FC = () => {
                       Profile
                     </span>
                     <span className="block max-w-24 truncate text-[13px] font-semibold text-gray-700 dark:text-white/85 md:max-w-30">
-                      My Account
+                      {fullName}
                     </span>
                   </div>
 
@@ -254,7 +271,17 @@ const Navbar: React.FC = () => {
       </div>
 
       {isClicked.notification && <Notification />}
-      {isClicked.userProfile && <UserProfile />}
+
+      {isClicked.userProfile && (
+        <UserProfile
+          profileSrc={profileSrc}
+          avatarFallback={avatarFallback}
+          fullName={fullName}
+          roleName={roleName}
+          email={email}
+          logout={logout}
+        />
+      )}
     </header>
   );
 };

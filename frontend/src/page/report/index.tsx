@@ -669,12 +669,12 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                 )}
               </div>
 
-              <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[12px] text-slate-500 dark:text-white/50">
                   Selected {selectedIDs.length} target(s)
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-2">
                   <button
                     type="button"
                     onClick={onClose}
@@ -724,7 +724,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-105 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#0f172a]">
+    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] sm:left-auto sm:right-0 sm:w-105 xl:w-120 dark:border-white/10 dark:bg-[#0f172a]">
       <div className="mb-2 flex items-center justify-between px-2 pt-1">
         <div>
           <p className="text-[12px] font-semibold text-slate-900 dark:text-white">
@@ -1000,18 +1000,18 @@ const ReportPreviewIndex: React.FC = () => {
 
   return (
     <div className="relative z-0 min-h-screen w-full bg-slate-100 text-slate-900 transition-colors dark:bg-[#07101d] dark:text-white/90">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-sm transition-colors sm:px-6 dark:border-cyan-400/10 dark:bg-[#08111f]/92 dark:shadow-[0_1px_0_rgba(34,211,238,0.08)]">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur-sm transition-colors sm:px-4 lg:px-6 dark:border-cyan-400/10 dark:bg-[#08111f]/92 dark:shadow-[0_1px_0_rgba(34,211,238,0.08)]">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-white/92">
+            <h1 className="text-base font-semibold text-slate-900 sm:text-lg dark:text-white/92">
               PDF Preview
             </h1>
-            <p className="text-sm text-slate-500 dark:text-white/50">
+            <p className="text-[13px] text-slate-500 sm:text-sm dark:text-white/50">
               Preview report, save as PDF, and send to LINE
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end">
             {showSuccess && (
               <div className="inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <FiCheckCircle className="text-[15px]" />
@@ -1022,17 +1022,17 @@ const ReportPreviewIndex: React.FC = () => {
             <button
               type="button"
               onClick={() => setOpenEditModal(true)}
-              className="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
+              className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
             >
               <FiImage className="text-[15px]" />
               <span>CHANGE LOGO</span>
             </button>
 
-            <div className="relative" ref={deviceMenuRef}>
+            <div className="relative w-full sm:w-auto" ref={deviceMenuRef}>
               <button
                 type="button"
                 onClick={() => setOpenDeviceMenu((prev) => !prev)}
-                className="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
               >
                 <FiHardDrive className="text-[15px]" />
                 <span>
@@ -1054,13 +1054,13 @@ const ReportPreviewIndex: React.FC = () => {
               />
             </div>
 
-            <div className="relative" ref={downloadMenuRef}>
+            <div className="relative w-full sm:w-auto" ref={downloadMenuRef}>
               <button
                 type="button"
                 onClick={() => setOpenDownloadMenu((prev) => !prev)}
                 disabled={actionBusy}
                 className={[
-                  "inline-flex min-w-42.5 items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98]",
+                  "inline-flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] sm:min-w-42.5 sm:w-auto",
                   "bg-cyan-600 hover:bg-cyan-700",
                   actionBusy ? "cursor-not-allowed opacity-80" : "",
                 ].join(" ")}
@@ -1080,7 +1080,7 @@ const ReportPreviewIndex: React.FC = () => {
               </button>
 
               {openDownloadMenu && !actionBusy ? (
-                <div className="absolute right-0 top-[calc(100%+8px)] z-30 min-w-52.5 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-[#0f172a]">
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.16)] sm:left-auto sm:right-0 sm:min-w-52.5 dark:border-white/10 dark:bg-[#0f172a]">
                   <button
                     type="button"
                     onClick={handleSaveAsPDF}
@@ -1108,7 +1108,7 @@ const ReportPreviewIndex: React.FC = () => {
         </div>
       </div>
 
-      <main className="px-3 py-4 sm:px-5">
+      <main className="px-2 py-3 sm:px-3 sm:py-4 lg:px-5">
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-cyan-400/10 dark:bg-[#0c1626] dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
           <Pdf
             refreshToken={reportRefreshToken}

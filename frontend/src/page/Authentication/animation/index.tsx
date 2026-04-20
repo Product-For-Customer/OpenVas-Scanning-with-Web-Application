@@ -524,33 +524,6 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
           animation: emphasisPulse 2.9s ease-in-out infinite;
         }
 
-        .logo-shine {
-          position: absolute;
-          inset: 0;
-          z-index: 7;
-          pointer-events: none;
-          overflow: hidden;
-          border-radius: 24px;
-        }
-
-        .logo-shine::before {
-          content: "";
-          position: absolute;
-          top: -10%;
-          left: -35%;
-          width: 36%;
-          height: 120%;
-          background: linear-gradient(
-            90deg,
-            rgba(255,255,255,0) 0%,
-            rgba(255,255,255,0.22) 45%,
-            rgba(255,255,255,0) 100%
-          );
-          transform: skewX(-18deg);
-          filter: blur(6px);
-          animation: logoSweep 3.6s ease-in-out infinite;
-        }
-
         .scan-lines {
           position: absolute;
           inset: 12% 8%;
@@ -1477,7 +1450,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
                   <path d="M30 36.5H41" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
               </div>
-              <div className="device-label">Server</div>
+              <div className="device-label">Virtual Machine</div>
               <div className="device-sub">asset node</div>
             </div>
           </div>
@@ -1493,7 +1466,7 @@ const Index: React.FC<Props> = ({ onFinished, duration = 1000 }) => {
                   <path d="M32 40V48" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
                 </svg>
               </div>
-              <div className="device-label">PC</div>
+              <div className="device-label">Device</div>
               <div className="device-sub">endpoint</div>
             </div>
           </div>

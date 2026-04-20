@@ -73,22 +73,22 @@ const DashboardIndex: React.FC = () => {
         <AverageEnrollment />
       </div>
 
-      <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 sm:gap-5 xl:grid-cols-12 xl:auto-rows-fr xl:items-stretch">
-        <div className="flex h-full min-h-0 w-full xl:col-span-4">
+      <div className="relative z-0 mb-4 grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-12 xl:auto-rows-fr xl:items-stretch">
+        <div className="flex h-full min-h-0 w-full md:col-span-2 xl:col-span-4">
           <TopVulnerability
             vulnerabilityData={vulnerabilityData}
             loading={loading}
           />
         </div>
 
-        <div className="flex h-full min-h-0 w-full xl:col-span-4">
+        <div className="flex h-full min-h-0 w-full md:col-span-1 xl:col-span-4">
           <DeliveryAnalysis
             vulnerabilityData={vulnerabilityData}
             loading={loading}
           />
         </div>
 
-        <div className="flex h-full min-h-0 w-full xl:col-span-4">
+        <div className="flex h-full min-h-0 w-full md:col-span-1 xl:col-span-4">
           <TopPerforming />
         </div>
       </div>

@@ -38,6 +38,11 @@ const Sidebar: React.FC = () => {
 
   const isExpanded = !!activeMenu;
 
+  const sidebarWidth = useMemo(() => {
+    if (!isDesktop) return "88vw";
+    return isExpanded ? `${EXPANDED_WIDTH}px` : `${COLLAPSED_WIDTH}px`;
+  }, [isDesktop, isExpanded]);
+
   const handleCloseSideBar = () => {
     if (typeof screenSize === "number" && screenSize <= DESKTOP_BREAKPOINT) {
       setActiveMenu(false);
@@ -139,8 +144,131 @@ const Sidebar: React.FC = () => {
 
   return (
     <>
+      <style>
+        {`
+          @keyframes argusLogoFloat {
+            0%, 100% {
+              transform: translateY(0px) scale(1);
+            }
+            50% {
+              transform: translateY(-3px) scale(1.01);
+            }
+          }
+
+          @keyframes argusLogoGlow {
+            0%, 100% {
+              opacity: 0.28;
+              transform: scale(0.96);
+            }
+            50% {
+              opacity: 0.60;
+              transform: scale(1.05);
+            }
+          }
+
+          @keyframes argusPulseRingOne {
+            0% {
+              opacity: 0;
+              transform: scale(0.74);
+            }
+            16% {
+              opacity: 0.42;
+            }
+            42% {
+              opacity: 0.24;
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.38);
+            }
+          }
+
+          @keyframes argusPulseRingTwo {
+            0% {
+              opacity: 0;
+              transform: scale(0.80);
+            }
+            18% {
+              opacity: 0.34;
+            }
+            46% {
+              opacity: 0.18;
+            }
+            100% {
+              opacity: 0;
+              transform: scale(1.52);
+            }
+          }
+
+          @keyframes argusScanLine {
+            0% {
+              opacity: 0;
+              transform: translateX(-16px) rotate(-16deg);
+            }
+            20% {
+              opacity: 0.42;
+            }
+            80% {
+              opacity: 0.12;
+            }
+            100% {
+              opacity: 0;
+              transform: translateX(16px) rotate(-16deg);
+            }
+          }
+
+          @keyframes argusHorizontalBeam {
+            0% {
+              opacity: 0;
+              transform: translateX(-10px) scaleX(0.85);
+            }
+            25% {
+              opacity: 0.35;
+            }
+            75% {
+              opacity: 0.16;
+            }
+            100% {
+              opacity: 0;
+              transform: translateX(10px) scaleX(1.05);
+            }
+          }
+
+          @keyframes argusInnerArc {
+            0%, 100% {
+              opacity: 0.18;
+              transform: scale(0.98) rotate(0deg);
+            }
+            50% {
+              opacity: 0.38;
+              transform: scale(1.03) rotate(8deg);
+            }
+          }
+
+          @keyframes argusDotTwinkle {
+            0%, 100% {
+              opacity: 0.18;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.9;
+              transform: scale(1.22);
+            }
+          }
+
+          @keyframes argusDotFloat {
+            0%, 100% {
+              transform: translateY(0px);
+            }
+            50% {
+              transform: translateY(-2px);
+            }
+          }
+        `}
+      </style>
+
       <div
-        className={`fixed inset-0 z-30 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-30 transition-opacity duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:hidden ${
           activeMenu ? "opacity-100" : "pointer-events-none opacity-0"
         } bg-[#020817]/35 dark:bg-black/45`}
         onClick={handleCloseSideBar}
@@ -148,19 +276,18 @@ const Sidebar: React.FC = () => {
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-40 h-screen transition-all duration-300",
-          "bg-transparent",
-          "dark:bg-transparent",
+          "fixed inset-y-0 left-0 z-40 h-screen",
+          "bg-transparent dark:bg-transparent",
+          "transform-gpu will-change-[width,transform]",
+          "transition-[width,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
         ].join(" ")}
         style={{
-          width: isDesktop
-            ? isExpanded
-              ? `${EXPANDED_WIDTH}px`
-              : `${COLLAPSED_WIDTH}px`
-            : "88vw",
+          width: sidebarWidth,
           maxWidth: isDesktop ? undefined : "320px",
           padding: isDesktop ? "10px" : "14px",
           paddingTop: "max(env(safe-area-inset-top), 12px)",
+          backfaceVisibility: "hidden",
+          transform: "translateZ(0)",
         }}
       >
         <div
@@ -175,7 +302,6 @@ const Sidebar: React.FC = () => {
             <div className="absolute bottom-0 -left-10 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
           </div>
 
-          {/* Header */}
           <div
             className={`relative z-10 flex items-center ${
               isExpanded
@@ -193,18 +319,97 @@ const Sidebar: React.FC = () => {
               }`}
               aria-label="Go to dashboard"
             >
-              <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden">
-                <img
-                  src={logo}
-                  alt="Logo"
-                  className="h-28 w-28 object-contain"
+              <div className="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-visible">
+                <span
+                  className="pointer-events-none absolute inset-2 rounded-full bg-cyan-400/15 blur-lg dark:bg-cyan-400/20"
+                  style={{
+                    animation: "argusLogoGlow 3.9s ease-in-out infinite",
+                  }}
                 />
+
+                <span
+                  className="pointer-events-none absolute inset-2.5 rounded-full border border-cyan-300/18 border-dashed"
+                  style={{
+                    animation: "argusInnerArc 3.4s ease-in-out infinite",
+                  }}
+                />
+
+                <span
+                  className="pointer-events-none absolute inset-1.25 rounded-full border border-cyan-400/40"
+                  style={{
+                    animation: "argusPulseRingOne 2.2s ease-out infinite",
+                  }}
+                />
+
+                <span
+                  className="pointer-events-none absolute inset-0.75 rounded-full border border-sky-300/28"
+                  style={{
+                    animation: "argusPulseRingTwo 2.2s ease-out 0.7s infinite",
+                  }}
+                />
+
+                <span
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-13 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-b from-transparent via-cyan-300/55 to-transparent blur-[5px]"
+                  style={{
+                    animation: "argusScanLine 2.4s ease-in-out infinite",
+                  }}
+                />
+
+                <span
+                  className="pointer-events-none absolute left-1/2 top-1/2 h-0.5 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-cyan-300/45 to-transparent blur-[1px]"
+                  style={{
+                    animation: "argusHorizontalBeam 2.8s ease-in-out infinite",
+                  }}
+                />
+
+                <span
+                  className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-cyan-300/90 blur-[1px]"
+                  style={{
+                    animation:
+                      "argusDotTwinkle 2s ease-in-out infinite, argusDotFloat 2.6s ease-in-out infinite",
+                  }}
+                />
+                <span
+                  className="pointer-events-none absolute bottom-2 left-2 h-1 w-1 rounded-full bg-sky-300/85 blur-[1px]"
+                  style={{
+                    animation:
+                      "argusDotTwinkle 2.2s ease-in-out 0.55s infinite, argusDotFloat 2.9s ease-in-out 0.2s infinite",
+                  }}
+                />
+                <span
+                  className="pointer-events-none absolute left-1 top-4 h-1.5 w-1.5 rounded-full bg-cyan-200/85 blur-[1px]"
+                  style={{
+                    animation:
+                      "argusDotTwinkle 2.4s ease-in-out 0.35s infinite, argusDotFloat 3s ease-in-out 0.4s infinite",
+                  }}
+                />
+                <span
+                  className="pointer-events-none absolute right-1 bottom-3 h-1 w-1 rounded-full bg-sky-200/90 blur-[1px]"
+                  style={{
+                    animation:
+                      "argusDotTwinkle 2.1s ease-in-out 0.8s infinite, argusDotFloat 2.7s ease-in-out 0.1s infinite",
+                  }}
+                />
+
+                <div
+                  className="relative z-10 flex h-16 w-16 items-center justify-center transition-transform duration-300 group-hover:scale-[1.04] group-hover:rotate-3"
+                  style={{
+                    animation: "argusLogoFloat 4.2s ease-in-out infinite",
+                    willChange: "transform",
+                  }}
+                >
+                  <img
+                    src={logo}
+                    alt="Logo"
+                    className="h-28 w-28 object-contain drop-shadow-[0_8px_18px_rgba(34,211,238,0.14)] transition-all duration-300 group-hover:drop-shadow-[0_10px_22px_rgba(34,211,238,0.22)]"
+                  />
+                </div>
               </div>
 
               {isExpanded && (
                 <div className="min-w-0">
                   <span className="block text-[16px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90">
-                    Argus Scanning
+                    Argus
                   </span>
                   <span className="block text-[10.5px] text-gray-500 dark:text-white/45">
                     Network Monitoring Panel
@@ -231,7 +436,6 @@ const Sidebar: React.FC = () => {
             )}
           </div>
 
-          {/* Menu Body */}
           <nav
             className={`relative z-10 flex-1 ${
               isExpanded
@@ -449,7 +653,6 @@ const Sidebar: React.FC = () => {
             </div>
           </nav>
 
-          {/* Footer - Logout */}
           <div
             className={`${
               isExpanded

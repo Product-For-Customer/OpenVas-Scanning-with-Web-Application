@@ -450,7 +450,7 @@ const RiskScoreGraph: React.FC = () => {
   return (
     <section
       className={[
-        "relative flex h-full flex-col overflow-hidden rounded-[22px] border p-3 shadow-sm sm:p-4 md:p-4.5",
+        "relative flex h-full flex-col overflow-hidden rounded-[22px] border p-3 shadow-sm sm:p-4 md:p-4",
         "border-gray-200/80 bg-white",
         "dark:border-white/10 dark:bg-white/5 dark:ring-1 dark:ring-white/10 dark:shadow-none",
       ].join(" ")}
@@ -462,35 +462,35 @@ const RiskScoreGraph: React.FC = () => {
 
       <div className="relative z-10 flex h-full flex-col">
         <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-2.5 py-1.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
-                  <FiActivity className="text-[13px]" />
+                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-2.5 py-1.5 text-[10px] sm:text-[11px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
+                  <FiActivity className="text-[12px]" />
                   Risk Score Graph
                 </div>
               </div>
 
-              <h3 className="text-[16px] font-semibold tracking-tight text-[#111827] dark:text-white">
+              <h3 className="text-[15px] md:text-[16px] font-semibold tracking-tight text-[#111827] dark:text-white">
                 Risk score comparison by target
               </h3>
 
-              <p className="mt-1 overflow-x-auto whitespace-nowrap text-[11px] leading-5 text-slate-500 dark:text-white/55">
+              <p className="mt-1 overflow-x-auto whitespace-nowrap text-[10px] md:text-[11px] leading-5 text-slate-500 dark:text-white/55">
                 {description}
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-2.5 xl:w-auto xl:min-w-65">
+            <div className="flex w-full flex-col gap-2.5 lg:w-auto lg:min-w-58 xl:min-w-65">
               <div
-                className="relative min-w-full sm:min-w-60"
+                className="relative min-w-full sm:min-w-56 md:min-w-0 lg:min-w-58 xl:min-w-60"
                 ref={queryDropdownRef}
               >
                 <button
                   type="button"
                   onClick={() => setQueryOpen((prev) => !prev)}
                   className={[
-                    "inline-flex min-h-9.5 w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left transition",
-                    "border-gray-200 bg-white text-[12px] font-semibold text-slate-700 shadow-sm hover:bg-gray-50",
+                    "inline-flex min-h-9 w-full items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-left transition",
+                    "border-gray-200 bg-white text-[11px] md:text-[12px] font-semibold text-slate-700 shadow-sm hover:bg-gray-50",
                     "dark:border-white/10 dark:bg-[#0B1220] dark:text-white/80 dark:hover:bg-white/10",
                   ].join(" ")}
                 >
@@ -508,7 +508,7 @@ const RiskScoreGraph: React.FC = () => {
                     <div className="p-3">
                       <div
                         className={[
-                          "flex h-9.5 items-center gap-2 rounded-[14px] border px-3",
+                          "flex h-9 items-center gap-2 rounded-[14px] border px-3",
                           "border-slate-200 bg-slate-50",
                           "dark:border-white/10 dark:bg-white/5",
                         ].join(" ")}
@@ -593,7 +593,7 @@ const RiskScoreGraph: React.FC = () => {
           <div className="flex flex-wrap items-center gap-2">
             <div
               className={[
-                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[9px] md:text-[10px] font-medium",
                 "border-violet-200/70 bg-violet-50 text-violet-700",
                 "dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300",
               ].join(" ")}
@@ -604,7 +604,7 @@ const RiskScoreGraph: React.FC = () => {
 
             <div
               className={[
-                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[9px] md:text-[10px] font-medium",
                 "border-cyan-200/70 bg-cyan-50 text-cyan-700",
                 "dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300",
               ].join(" ")}
@@ -616,7 +616,7 @@ const RiskScoreGraph: React.FC = () => {
             {selectedCount > 0 && (
               <div
                 className={[
-                  "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[10px] font-medium",
+                  "inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-[9px] md:text-[10px] font-medium",
                   "border-emerald-200/70 bg-emerald-50 text-emerald-700",
                   "dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300",
                 ].join(" ")}
@@ -629,7 +629,7 @@ const RiskScoreGraph: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-3.5 h-80 sm:h-96 lg:flex-1 lg:min-h-90">
+        <div className="mt-3.5 h-72 sm:h-80 md:h-95 lg:flex-1 lg:min-h-90">
           {loading ? (
             <div
               className={[
@@ -784,7 +784,9 @@ const RiskScoreGraph: React.FC = () => {
             ].join(" ")}
           >
             <FiBarChart2 className="text-[13px]" />
-            <span className="text-[11px] font-semibold">Y Axis = Risk Score</span>
+            <span className="text-[10px] md:text-[11px] font-semibold">
+              Y Axis = Risk Score
+            </span>
           </div>
 
           <div
@@ -795,7 +797,9 @@ const RiskScoreGraph: React.FC = () => {
             ].join(" ")}
           >
             <FiArrowRight className="text-[13px]" />
-            <span className="text-[11px] font-semibold">X Axis = Target</span>
+            <span className="text-[10px] md:text-[11px] font-semibold">
+              X Axis = Target
+            </span>
           </div>
         </div>
       </div>

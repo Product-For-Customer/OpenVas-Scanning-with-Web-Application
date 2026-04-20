@@ -68,12 +68,12 @@ const Target: React.FC = () => {
         <DeviceMap />
       </div>
 
-      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 sm:mb-5 sm:gap-5 xl:grid-cols-12">
-        <div className="h-full xl:col-span-7">
+      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 sm:mb-5 sm:gap-5 md:grid-cols-10">
+        <div className="h-full min-w-0 md:col-span-6">
           <RiskScoreGraph />
         </div>
 
-        <div className="h-full xl:col-span-5">
+        <div className="h-full min-w-0 md:col-span-4">
           <RiskScoreTable data={deviceRisks} loading={loadingDeviceRisks} />
         </div>
       </div>

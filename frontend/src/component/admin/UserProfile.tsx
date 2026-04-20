@@ -1,6 +1,6 @@
 import { MdOutlineCancel } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
-import { type JSX, useMemo, useState, useEffect } from "react";
+import { type JSX, useState, useEffect } from "react";
 import { useStateContext } from "../../contexts/ContextProvider";
 import {
   FiSettings,
@@ -10,7 +10,6 @@ import {
   FiChevronRight,
   FiServer,
 } from "react-icons/fi";
-import { useAuth } from "../../contexts/AuthContext";
 import { message } from "antd";
 
 type UserProfileItem = {
@@ -21,6 +20,15 @@ type UserProfileItem = {
   iconBg: string;
   link?: string;
   action?: "logout" | "navigate";
+};
+
+type UserProfileProps = {
+  profileSrc: string;
+  avatarFallback: string;
+  fullName: string;
+  roleName: string;
+  email: string;
+  logout: () => Promise<void>;
 };
 
 const userProfileData: UserProfileItem[] = [
@@ -52,9 +60,15 @@ const userProfileData: UserProfileItem[] = [
   },
 ];
 
-const UserProfile = () => {
+const UserProfile: React.FC<UserProfileProps> = ({
+  profileSrc,
+  avatarFallback,
+  fullName,
+  roleName,
+  email,
+  logout,
+}) => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
 
   const ctx = useStateContext() as any;
   const isClicked = ctx?.isClicked;
@@ -62,10 +76,15 @@ const UserProfile = () => {
 
   const [open, setOpen] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (isClicked?.userProfile) setOpen(true);
   }, [isClicked?.userProfile]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [profileSrc]);
 
   const close = () => {
     if (typeof setIsClicked === "function") {
@@ -74,31 +93,7 @@ const UserProfile = () => {
     setOpen(false);
   };
 
-  const avatarFallback = useMemo(
-    () =>
-      "data:image/svg+xml;utf8," +
-      encodeURIComponent(`
-        <svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'>
-          <defs>
-            <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
-              <stop offset='0%' stop-color='#dbeafe'/>
-              <stop offset='100%' stop-color='#c4b5fd'/>
-            </linearGradient>
-          </defs>
-          <rect width='100%' height='100%' rx='18' fill='url(#g)'/>
-          <circle cx='80' cy='62' r='24' fill='#475569'/>
-          <path d='M38 126c7-20 24-30 42-30s35 10 42 30' fill='#475569'/>
-          <text x='50%' y='150' dominant-baseline='middle' text-anchor='middle'
-            font-size='12' fill='#334155' font-family='Arial'>SEC OPS</text>
-        </svg>
-      `),
-    []
-  );
-
-  const profileSrc = user?.profile?.trim() ? user.profile : avatarFallback;
-  const fullName = `${user?.first_name || "Guest"} ${user?.last_name || "User"}`.trim();
-  const roleName = user?.role || "Viewer";
-  const email = user?.email || "guest@example.com";
+  const finalProfileSrc = !imageError && profileSrc ? profileSrc : avatarFallback;
 
   const handleLogout = async () => {
     try {
@@ -148,8 +143,7 @@ const UserProfile = () => {
         <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
       </div>
 
-      {/* Header */}
-      <div className="relative z-10 flex items-center justify-between px-3.5 py-3.5 border-b border-gray-200/80 dark:border-white/10">
+      <div className="relative z-10 flex items-center justify-between border-b border-gray-200/80 px-3.5 py-3.5 dark:border-white/10">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
             <FiUser className="text-[16px]" />
@@ -169,33 +163,30 @@ const UserProfile = () => {
           type="button"
           onClick={close}
           aria-label="Close user profile"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-2xl transition-colors text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-gray-600 transition-colors hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
         >
           <MdOutlineCancel className="text-[18px]" />
         </button>
       </div>
 
-      {/* Hero */}
       <div className="relative z-10 px-3.5 pt-3.5">
         <div className="relative overflow-hidden rounded-3xl border border-cyan-200/70 bg-linear-to-br from-cyan-50 via-white to-violet-50 p-3.5 dark:border-cyan-400/15 dark:from-cyan-500/10 dark:via-white/4 dark:to-violet-500/10">
           <div className="pointer-events-none absolute -right-10 -top-10 h-20 w-20 rounded-full bg-cyan-400/20 blur-3xl" />
           <div className="pointer-events-none absolute -left-10 bottom-0 h-20 w-20 rounded-full bg-violet-500/20 blur-3xl" />
 
-          <div className="relative flex gap-3 items-center">
+          <div className="relative flex items-center gap-3">
             <div className="relative shrink-0">
               <img
-                className="h-15 w-15 rounded-[20px] object-cover ring-1 ring-gray-200 bg-white dark:ring-white/10 dark:bg-white/10"
-                src={profileSrc}
+                className="h-15 w-15 rounded-[20px] bg-white object-cover ring-1 ring-gray-200 dark:bg-white/10 dark:ring-white/10"
+                src={finalProfileSrc}
                 alt="user-profile"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = avatarFallback;
-                }}
+                onError={() => setImageError(true)}
               />
               <span className="absolute -right-1 -bottom-1 h-3.5 w-3.5 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-[#08111f]" />
             </div>
 
             <div className="min-w-0">
-              <p className="text-[16px] font-semibold text-gray-900 dark:text-white/90 truncate">
+              <p className="truncate text-[16px] font-semibold text-gray-900 dark:text-white/90">
                 {fullName}
               </p>
 
@@ -210,7 +201,7 @@ const UserProfile = () => {
                 </span>
               </div>
 
-              <p className="mt-1.5 text-[11px] text-gray-500 dark:text-white/55 truncate">
+              <p className="mt-1.5 truncate text-[11px] text-gray-500 dark:text-white/55">
                 {email}
               </p>
             </div>
@@ -218,38 +209,37 @@ const UserProfile = () => {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="relative z-10 px-3.5 pb-3.5 pt-2.5">
-        <div className="rounded-3xl overflow-hidden border border-gray-200/80 bg-white dark:border-white/10 dark:bg-white/4">
+        <div className="overflow-hidden rounded-3xl border border-gray-200/80 bg-white dark:border-white/10 dark:bg-white/4">
           {userProfileData.map((item: UserProfileItem, idx: number) => (
             <button
               key={idx}
               onClick={() => void handleItemClick(item)}
               disabled={loggingOut}
               className={[
-                "w-full flex items-center gap-2.5 px-3.5 py-3 transition-colors text-left",
+                "w-full flex items-center gap-2.5 px-3.5 py-3 text-left transition-colors",
                 "hover:bg-gray-50 dark:hover:bg-white/6",
                 idx !== 0 ? "border-t border-gray-200/80 dark:border-white/10" : "",
-                loggingOut ? "opacity-70 cursor-not-allowed" : "",
+                loggingOut ? "cursor-not-allowed opacity-70" : "",
               ].join(" ")}
             >
               <span
-                className="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-[17px] shrink-0"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-[17px]"
                 style={{ color: item.iconColor, backgroundColor: item.iconBg }}
               >
                 {item.icon}
               </span>
 
-              <div className="text-left min-w-0 flex-1">
-                <p className="text-[12.5px] font-semibold text-gray-900 dark:text-white/85 truncate">
+              <div className="min-w-0 flex-1 text-left">
+                <p className="truncate text-[12.5px] font-semibold text-gray-900 dark:text-white/85">
                   {item.action === "logout" && loggingOut ? "Logging out..." : item.title}
                 </p>
-                <p className="text-[11px] text-gray-500 dark:text-white/55 truncate">
+                <p className="truncate text-[11px] text-gray-500 dark:text-white/55">
                   {item.desc}
                 </p>
               </div>
 
-              <FiChevronRight className="text-[14px] text-gray-400 dark:text-white/35 shrink-0" />
+              <FiChevronRight className="shrink-0 text-[14px] text-gray-400 dark:text-white/35" />
             </button>
           ))}
         </div>
