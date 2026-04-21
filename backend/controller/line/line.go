@@ -15,7 +15,6 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/asaskevich/govalidator"
-	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/lib/pq"
 )
@@ -428,32 +427,4 @@ func StartLineStatusListener() {
 			}
 		}
 	}
-}
-
-// =====================================================
-// Optional HTTP Endpoint for testing LINE push
-// GET /line/test?message=hello
-// =====================================================
-
-func TestSendLineHandler(c *gin.Context) {
-	message := strings.TrimSpace(c.Query("message"))
-	if message == "" {
-		message = "✅ Test message from OpenVAS backend"
-	}
-
-	if err := sendLinePushToAllNotifications(message); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"status":  "partial_or_error",
-			"message": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "LINE message sent to all AppNotification with alert = true",
-		"data": gin.H{
-			"text": message,
-		},
-	})
 }

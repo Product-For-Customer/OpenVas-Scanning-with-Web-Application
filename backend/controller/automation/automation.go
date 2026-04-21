@@ -691,17 +691,6 @@ func TriggerFeedUpdateHandler(c *gin.Context) {
 	}
 }
 
-func GetFeedUpdateStatusHandler(c *gin.Context) {
-	feedUpdateMu.Lock()
-	statusCopy := feedStatus
-	feedUpdateMu.Unlock()
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    statusCopy,
-	})
-}
-
 func parseFeedUpdateResult(output string) (resultType string, updated bool) {
 	lower := strings.ToLower(output)
 

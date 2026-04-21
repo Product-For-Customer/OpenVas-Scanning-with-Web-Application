@@ -10,7 +10,6 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/lib/pq v1.11.2
 	github.com/onsi/gomega v1.39.1
-	github.com/phpdave11/gofpdf v1.4.3
 	golang.org/x/crypto v0.48.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1

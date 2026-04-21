@@ -2,19 +2,11 @@
 set -uo pipefail
 
 COMPOSE_DIR="${OPENVAS_COMPOSE_WORKDIR:-/workspace}"
-LOG_DIR="${FEED_UPDATE_LOG_DIR:-/app/logs}"
-LOG_FILE="${LOG_DIR}/feed-update.log"
 FORCE_UPDATE="${FEED_FORCE_UPDATE:-false}"
-
-mkdir -p "${LOG_DIR}"
-
-# log ลงไฟล์ + แสดงออกหน้าจอ
-exec > >(tee -a "${LOG_FILE}") 2>&1
 
 echo "=================================================="
 echo "[$(date -Iseconds)] START feed update automation"
 echo "Using compose dir: ${COMPOSE_DIR}"
-echo "Using log file: ${LOG_FILE}"
 echo "Force update: ${FORCE_UPDATE}"
 
 # เช็ก compose file

@@ -12,7 +12,6 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/dto"
 	"github.com/Tawunchai/openvas/entity"
-	"github.com/Tawunchai/openvas/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -115,7 +114,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if !utils.CheckPasswordHash(input.Password, user.Password) {
+	if !config.CheckPasswordHash(input.Password, user.Password) {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid email or password",
 		})
@@ -327,7 +326,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 	}
 
 	// 5) hash password
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := config.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to hash password",

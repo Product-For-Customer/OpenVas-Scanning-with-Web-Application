@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
-	"github.com/Tawunchai/openvas/utils"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -119,7 +118,7 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, err := utils.HashPassword(password)
+	hashedPassword, err := config.HashPassword(password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 		return
@@ -324,7 +323,7 @@ func UpdateUserByID(c *gin.Context) {
 		user.AppRoleID = validateUser.AppRoleID
 	}
 	if input.Password != nil {
-		hashedPassword, err := utils.HashPassword(newPlainPassword)
+		hashedPassword, err := config.HashPassword(newPlainPassword)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to hash password"})
 			return
@@ -538,7 +537,7 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 	}
 
 	if input.Password != nil {
-		hashedPassword, err := utils.HashPassword(newPlainPassword)
+		hashedPassword, err := config.HashPassword(newPlainPassword)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": "failed to hash password",

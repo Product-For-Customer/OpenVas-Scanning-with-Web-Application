@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
-	"github.com/Tawunchai/openvas/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -128,7 +127,7 @@ func VerifyOTPAddUpdatePassword(c *gin.Context) {
 	}
 
 	// hash password ใหม่
-	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	hashedPassword, err := config.HashPassword(req.NewPassword)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "ไม่สามารถเข้ารหัสรหัสผ่านได้"})
 		return

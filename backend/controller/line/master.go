@@ -67,7 +67,7 @@ func CreateAppLineMaster(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "app line master name already exists"})
 		return
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master name"})
 		return
 	}
@@ -78,7 +78,7 @@ func CreateAppLineMaster(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "app line master token already exists"})
 		return
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master token"})
 		return
 	}
@@ -164,7 +164,7 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "app line master name already exists"})
 			return
 		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master name"})
 			return
 		}
@@ -177,7 +177,7 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "app line master token already exists"})
 			return
 		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing app line master token"})
 			return
 		}

@@ -136,6 +136,33 @@ const getViewportMode = (width: number): ViewportMode => {
   return "desktop";
 };
 
+const buildVisiblePageNumbers = (
+  currentPage: number,
+  totalPages: number
+): Array<number | "ellipsis-left" | "ellipsis-right"> => {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 4) {
+    return [1, 2, 3, 4, 5, "ellipsis-right", totalPages];
+  }
+
+  if (currentPage >= totalPages - 3) {
+    return [1, "ellipsis-left", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+  }
+
+  return [
+    1,
+    "ellipsis-left",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "ellipsis-right",
+    totalPages,
+  ];
+};
+
 const Pdf: React.FC<PdfProps> = ({
   refreshToken = 0,
   selectedTaskIDs = [],
@@ -220,17 +247,19 @@ const Pdf: React.FC<PdfProps> = ({
 
       let horizontalPadding = 32;
       let minScale = 0.84;
-      const maxScale = 1;
+      let maxScale = 1;
 
       if (nextViewportMode === "tablet") {
-        horizontalPadding = 12;
-        minScale = 0.1;
+        horizontalPadding = 14;
+        minScale = 0.56;
+        maxScale = 0.92;
       } else if (nextViewportMode === "mobile") {
-        horizontalPadding = 8;
-        minScale = 0.5;
+        horizontalPadding = 10;
+        minScale = 0.26;
+        maxScale = 0.5;
       }
 
-      const usableWidth = Math.max(frameWidth - horizontalPadding, 280);
+      const usableWidth = Math.max(frameWidth - horizontalPadding, 260);
       const fittedScale = usableWidth / PAGE_WIDTH;
       const nextScale = Math.min(maxScale, Math.max(minScale, fittedScale));
 
@@ -423,6 +452,10 @@ const Pdf: React.FC<PdfProps> = ({
   };
 
   const currentDescriptor = pageDescriptors[currentPage - 1];
+  const visiblePageNumbers = useMemo(
+    () => buildVisiblePageNumbers(currentPage, totalPages),
+    [currentPage, totalPages]
+  );
 
   const scaledWidth = PAGE_WIDTH * scale;
   const scaledHeight = PAGE_HEIGHT * scale;
@@ -680,10 +713,13 @@ const Pdf: React.FC<PdfProps> = ({
     }
   };
 
+  const isMobile = viewportMode === "mobile";
+  const isTablet = viewportMode === "tablet";
+
   return (
     <div className="min-h-screen w-full bg-slate-100 text-slate-900 transition-colors dark:bg-[#07101d] dark:text-white/90">
       <div className="w-full border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#08111f] dark:shadow-[0_0_0_1px_rgba(34,211,238,0.06),0_18px_50px_-28px_rgba(0,0,0,0.75)]">
-        <div className="mx-auto max-w-420 px-3 py-3 sm:px-4 sm:py-4 md:px-5 lg:px-6">
+        <div className="mx-auto max-w-420 px-2 py-2 sm:px-4 sm:py-4 md:px-5 lg:px-6">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 border border-slate-200 px-3 py-1 text-slate-700 transition-colors dark:border-cyan-400/15 dark:bg-[#0d1628] dark:text-white/80">
@@ -691,125 +727,193 @@ const Pdf: React.FC<PdfProps> = ({
                 <span className="text-[11px] font-medium">PDF Preview Mode</span>
               </div>
 
-              <h1 className="mt-3 text-[18px] font-semibold text-slate-900 dark:text-white/92 sm:text-[20px]">
+              <h1 className="mt-3 text-[16px] font-semibold text-slate-900 dark:text-white/92 sm:text-[20px]">
                 Network Vulnerability Assessment Report
               </h1>
 
-              <p className="mt-1 text-[12px] text-slate-500 dark:text-white/50 sm:text-[13px]">
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50 sm:text-[13px]">
                 Preview one page at a time before exporting or downloading.
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center lg:justify-between xl:w-auto xl:justify-end">
-              <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
-                <button
-                  type="button"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1 || prefetchLoading}
-                  className={[
-                    "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition",
-                    currentPage === 1 || prefetchLoading
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
-                  ].join(" ")}
-                >
-                  <FiChevronLeft className="text-[14px]" />
-                  Previous
-                </button>
+            {isMobile ? (
+              <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-cyan-400/12 dark:bg-[#0d1628]">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={goToPrevPage}
+                    disabled={currentPage === 1 || prefetchLoading}
+                    className={[
+                      "inline-flex h-9 min-w-23 items-center justify-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition",
+                      currentPage === 1 || prefetchLoading
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                    ].join(" ")}
+                  >
+                    <FiChevronLeft className="text-[14px]" />
+                    Prev
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages || prefetchLoading}
-                  className={[
-                    "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:hidden",
-                    currentPage === totalPages || prefetchLoading
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
-                  ].join(" ")}
-                >
-                  Next
-                  <FiChevronRight className="text-[14px]" />
-                </button>
-              </div>
-
-              <div className="flex w-full items-center gap-2 xl:w-auto">
-                <div className="-mx-0.5 flex-1 overflow-x-auto pb-1 xl:flex-none xl:overflow-visible xl:pb-0">
-                  <div className="flex w-max items-center border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#111a2d]">
-                    {pageDescriptors.map((item, index) => {
-                      const page = index + 1;
-                      const active = page === currentPage;
-
-                      return (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => goToPage(page)}
-                          disabled={prefetchLoading}
-                          className={[
-                            "inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-3 text-[12px] font-medium transition last:border-r-0 dark:border-cyan-400/12",
-                            prefetchLoading
-                              ? "cursor-not-allowed text-slate-400 dark:text-white/30"
-                              : active
-                              ? "bg-slate-900 text-white dark:bg-cyan-400 dark:text-slate-950"
-                              : "text-slate-700 hover:bg-slate-50 dark:text-white/78 dark:hover:bg-[#162238]",
-                          ].join(" ")}
-                          title={item.title}
-                        >
-                          {page}
-                        </button>
-                      );
-                    })}
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center dark:border-cyan-400/12 dark:bg-[#111a2d]">
+                    <div className="text-[11px] font-semibold text-slate-800 dark:text-white/85">
+                      {prefetchLoading ? "Loading..." : `Page ${currentPage} of ${totalPages}`}
+                    </div>
+                    <div className="mt-0.5 max-w-full truncate text-[10px] text-slate-500 dark:text-white/45">
+                      {prefetchLoading ? "Preparing report..." : currentDescriptor?.title ?? "-"}
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages || prefetchLoading}
+                    className={[
+                      "inline-flex h-9 min-w-23 items-center justify-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition",
+                      currentPage === totalPages || prefetchLoading
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                    ].join(" ")}
+                  >
+                    Next
+                    <FiChevronRight className="text-[14px]" />
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages || prefetchLoading}
-                  className={[
-                    "hidden h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:inline-flex",
-                    currentPage === totalPages || prefetchLoading
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
-                  ].join(" ")}
-                >
-                  Next
-                  <FiChevronRight className="text-[14px]" />
-                </button>
+                <div className="text-center text-[10px] text-slate-500 dark:text-white/45">
+                  Swipe left or right to preview the full PDF page
+                </div>
+              </div>
+            ) : (
+              <div className="flex w-full flex-col gap-2 lg:flex-row lg:items-center lg:justify-between xl:w-auto xl:justify-end">
+                <div className="flex flex-wrap items-center gap-2 lg:flex-nowrap">
+                  <button
+                    type="button"
+                    onClick={goToPrevPage}
+                    disabled={currentPage === 1 || prefetchLoading}
+                    className={[
+                      "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition",
+                      currentPage === 1 || prefetchLoading
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                    ].join(" ")}
+                  >
+                    <FiChevronLeft className="text-[14px]" />
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages || prefetchLoading}
+                    className={[
+                      "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:hidden",
+                      currentPage === totalPages || prefetchLoading
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                    ].join(" ")}
+                  >
+                    Next
+                    <FiChevronRight className="text-[14px]" />
+                  </button>
+                </div>
+
+                <div className="flex w-full items-center gap-2 xl:w-auto">
+                  <div className="-mx-0.5 flex-1 overflow-x-auto pb-1 xl:flex-none xl:overflow-visible xl:pb-0">
+                    <div className="flex w-max items-center border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#111a2d]">
+                      {visiblePageNumbers.map((item, index) => {
+                        if (item === "ellipsis-left" || item === "ellipsis-right") {
+                          return (
+                            <div
+                              key={`${item}-${index}`}
+                              className="inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-2 text-[12px] font-medium text-slate-400 last:border-r-0 dark:border-cyan-400/12 dark:text-white/35"
+                            >
+                              ...
+                            </div>
+                          );
+                        }
+
+                        const page = item;
+                        const active = page === currentPage;
+                        const descriptor = pageDescriptors[page - 1];
+
+                        return (
+                          <button
+                            key={descriptor?.key ?? page}
+                            type="button"
+                            onClick={() => goToPage(page)}
+                            disabled={prefetchLoading}
+                            className={[
+                              "inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-3 text-[12px] font-medium transition last:border-r-0 dark:border-cyan-400/12",
+                              prefetchLoading
+                                ? "cursor-not-allowed text-slate-400 dark:text-white/30"
+                                : active
+                                ? "bg-slate-900 text-white dark:bg-cyan-400 dark:text-slate-950"
+                                : "text-slate-700 hover:bg-slate-50 dark:text-white/78 dark:hover:bg-[#162238]",
+                            ].join(" ")}
+                            title={descriptor?.title ?? `Page ${page}`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={goToNextPage}
+                    disabled={currentPage === totalPages || prefetchLoading}
+                    className={[
+                      "hidden h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:inline-flex",
+                      currentPage === totalPages || prefetchLoading
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                    ].join(" ")}
+                  >
+                    Next
+                    <FiChevronRight className="text-[14px]" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!isMobile && (
+            <div className="mt-4 flex flex-col gap-2 border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600 dark:border-cyan-400/12 dark:bg-[#0d1628] dark:text-white/65 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+              <div className="min-w-0 wrap-break-word">
+                <span className="font-semibold text-slate-800 dark:text-white/85">
+                  Current:
+                </span>{" "}
+                {prefetchLoading
+                  ? "Preparing report data..."
+                  : currentDescriptor?.title ?? "-"}
+              </div>
+
+              <div className="shrink-0">
+                {prefetchLoading
+                  ? "Loading..."
+                  : `Page ${currentPage} of ${totalPages}`}
               </div>
             </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2 border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600 dark:border-cyan-400/12 dark:bg-[#0d1628] dark:text-white/65 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-            <div className="min-w-0 wrap-break-word">
-              <span className="font-semibold text-slate-800 dark:text-white/85">
-                Current:
-              </span>{" "}
-              {prefetchLoading
-                ? "Preparing report data..."
-                : currentDescriptor?.title ?? "-"}
-            </div>
-
-            <div className="shrink-0">
-              {prefetchLoading
-                ? "Loading..."
-                : `Page ${currentPage} of ${totalPages}`}
-            </div>
-          </div>
+          )}
 
           <div
             ref={previewFrameRef}
             className={[
-              "mt-5 border border-slate-200 bg-slate-200/70 dark:border-cyan-400/12 dark:bg-[#050b14]",
-              viewportMode === "desktop"
-                ? "overflow-hidden p-4"
-                : viewportMode === "tablet"
+              "mt-4 border border-slate-200 bg-slate-200/70 dark:border-cyan-400/12 dark:bg-[#050b14]",
+              isMobile
+                ? "overflow-x-auto overflow-y-hidden px-1.5 py-2"
+                : isTablet
                 ? "overflow-y-auto overflow-x-hidden px-2 py-3 sm:px-3 sm:py-4"
-                : "overflow-x-auto overflow-y-auto px-2 py-3 sm:px-3 sm:py-4",
+                : "overflow-hidden p-4",
             ].join(" ")}
           >
-            <div className="flex justify-center">
+            <div
+              className={[
+                "flex",
+                isMobile ? "justify-start" : "justify-center",
+              ].join(" ")}
+            >
               <div
                 style={{
                   width: scaledWidth,
@@ -830,6 +934,12 @@ const Pdf: React.FC<PdfProps> = ({
               </div>
             </div>
           </div>
+
+          {isMobile && (
+            <div className="mt-3 flex items-center justify-center text-center text-[10px] text-slate-500 dark:text-white/40">
+              PDF preview is optimized for horizontal swipe on mobile
+            </div>
+          )}
         </div>
       </div>
     </div>

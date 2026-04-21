@@ -8,6 +8,13 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - vt_data_vol:/mnt
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   notus-data:
     image: registry.community.greenbone.net/community/notus-data
@@ -15,6 +22,13 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - notus_data_vol:/mnt
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   scap-data:
     image: registry.community.greenbone.net/community/scap-data
@@ -22,6 +36,13 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - scap_data_vol:/mnt
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 30
+      start_period: 20m
 
   cert-bund-data:
     image: registry.community.greenbone.net/community/cert-bund-data
@@ -29,6 +50,13 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - cert_data_vol:/mnt
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   dfn-cert-data:
     image: registry.community.greenbone.net/community/dfn-cert-data
@@ -36,9 +64,16 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - cert_data_vol:/mnt
+    restart: on-failure
     depends_on:
       cert-bund-data:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   data-objects:
     image: registry.community.greenbone.net/community/data-objects
@@ -47,6 +82,13 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - data_objects_vol:/mnt
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   report-formats:
     image: registry.community.greenbone.net/community/report-formats
@@ -55,14 +97,22 @@ services:
       KEEP_ALIVE: 1
     volumes:
       - data_objects_vol:/mnt
+    restart: on-failure
     depends_on:
       data-objects:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -d /mnt && test -n \"$(find /mnt -type f 2>/dev/null | head -n 1)\""]
+      interval: 30s
+      timeout: 15s
+      retries: 20
+      start_period: 15m
 
   gpg-data:
     image: registry.community.greenbone.net/community/gpg-data
     volumes:
       - gpg_data_vol:/mnt
+    restart: on-failure
 
   redis-server:
     image: registry.community.greenbone.net/community/redis-server
@@ -240,7 +290,6 @@ services:
       - gvmd
       - ospd-openvas
 
-  # ================= DB INIT (สร้าง trigger ครั้งเดียวแล้วจบ) =================
   db-init:
     image: registry.community.greenbone.net/community/pg-gvm:stable
     depends_on:
@@ -255,7 +304,6 @@ services:
       "
     restart: "no"
 
-  # ================= LINE ALERT SERVICE =================
   backend:
     build: ./backend
     container_name: backend
@@ -266,35 +314,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./backend/scripts:/app/scripts:ro
       - .:/workspace:ro
-      - ./logs:/app/logs
       - ./backend/tmp/reports:/app/tmp/reports
     environment:
-      - DATABASE_URL=host=pg-gvm port=5432 user=pbi password=Pbi12345 dbname=gvmd sslmode=disable
-      - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
-      - LINE_USER_ID=${LINE_USER_ID}
-      - PORT=9000
+      - DATABASE_URL=${DATABASE_URL}
+      - PORT=${PORT}
       - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
-
-      - FRONTEND_CAPTURE_URL=http://frontend/capture
-      - REPORT_OUTPUT_DIR=/app/tmp/reports
-      - REPORT_PUBLIC_BASE_URL=https://2512-171-96-174-207.ngrok-free.app/public/reports
-
-      - REPORT_EMAIL_TO=tawunchaien@gmail.com
-      - REPORT_EMAIL_SUBJECT=OpenVAS Test Capture Report
-
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_FROM=b6534240@g.sut.ac.th
-      - SMTP_PASS=wkeg dbhx tllh mtif
-
-      - REPORT_SCHEDULE_HOUR=2
-      - REPORT_SCHEDULE_MINUTE=0
-
-      - CHROME_PATH=/usr/bin/chromium
-      - TZ=Asia/Bangkok
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_CAPTURE_URL=${FRONTEND_CAPTURE_URL}
+      - REPORT_OUTPUT_DIR=${REPORT_OUTPUT_DIR}
+      - REPORT_PUBLIC_BASE_URL=${REPORT_PUBLIC_BASE_URL}
+      - CHROME_PATH=${CHROME_PATH}
+      - TZ=${TZ}
     depends_on:
       - pg-gvm
-      
+
   frontend:
     build: ./frontend
     container_name: frontend
@@ -311,12 +344,12 @@ services:
     ports:
       - "5678:5678"
     environment:
-      - TZ=Asia/Bangkok
-      - GENERIC_TIMEZONE=Asia/Bangkok
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
+      - TZ=${TZ}
+      - GENERIC_TIMEZONE=${TZ}
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=${N8N_PORT}
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - WEBHOOK_URL=${WEBHOOK_URL}
       - N8N_BASIC_AUTH_ACTIVE=true
       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}

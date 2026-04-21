@@ -108,6 +108,7 @@ const COLORS = {
 
 const MOBILE_BREAKPOINT = 640;
 const IPAD_BREAKPOINT = 1280;
+const LARGE_DESKTOP_BREAKPOINT = 1680;
 
 const formatRisk = (value: number) => Number(value || 0).toFixed(2);
 
@@ -259,7 +260,10 @@ const getRiskHeatColor = (risk: number) => {
   return interpolateColor(orange, red, t);
 };
 
-const getVisibleTickIndexSet = (length: number, maxLabels: number): Set<number> => {
+const getVisibleTickIndexSet = (
+  length: number,
+  maxLabels: number
+): Set<number> => {
   if (length <= 0) return new Set<number>();
   if (length <= maxLabels) {
     return new Set(Array.from({ length }, (_, i) => i));
@@ -274,6 +278,32 @@ const getVisibleTickIndexSet = (length: number, maxLabels: number): Set<number> 
   }
 
   return set;
+};
+
+const buildPageNumbers = (currentPage: number, totalPages: number): number[] => {
+  if (totalPages <= 1) return [1];
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 3) return [1, 2, 3, 4, 5];
+  if (currentPage >= totalPages - 2) {
+    return [
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  return [
+    currentPage - 2,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    currentPage + 2,
+  ];
 };
 
 const CustomTooltip = ({
@@ -384,7 +414,10 @@ const CustomTooltip = ({
             ) : isDown ? (
               <MdTrendingDown className="text-[13px]" />
             ) : null}
-            Risk Change: {item.has_previous_record ? `${diff > 0 ? "+" : ""}${formatRisk(diff)}` : "0.00"}
+            Risk Change:{" "}
+            {item.has_previous_record
+              ? `${diff > 0 ? "+" : ""}${formatRisk(diff)}`
+              : "0.00"}
           </span>
         </div>
       </div>
@@ -620,6 +653,8 @@ const AverageEnrollment: React.FC = () => {
     return window.innerWidth;
   });
 
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -649,6 +684,13 @@ const AverageEnrollment: React.FC = () => {
 
   const isMobile = screenWidth < MOBILE_BREAKPOINT;
   const isIPad = screenWidth >= MOBILE_BREAKPOINT && screenWidth < IPAD_BREAKPOINT;
+  const isLargeDesktop = screenWidth >= LARGE_DESKTOP_BREAKPOINT;
+
+  const overviewPageSize = useMemo(() => {
+    if (isMobile) return 5;
+    if (isLargeDesktop) return 15;
+    return 10;
+  }, [isMobile, isLargeDesktop]);
 
   const overviewMaxVisibleLabels = useMemo(() => {
     if (isMobile) return 3;
@@ -798,8 +840,8 @@ const AverageEnrollment: React.FC = () => {
         rawPreviousCreationTime !== "" &&
         !Number.isNaN(Number(rawPreviousCreationTime));
 
-      const isEqual = hasPreviousRecord && latestRisk === previousRisk;
       const isIncrease = hasPreviousRecord && latestRisk > previousRisk;
+      const isEqual = hasPreviousRecord && latestRisk === previousRisk;
       const isEqualOrLower = !hasPreviousRecord || latestRisk <= previousRisk;
 
       const diffRisk = hasPreviousRecord ? latestRisk - previousRisk : 0;
@@ -881,7 +923,7 @@ const AverageEnrollment: React.FC = () => {
     );
   }, [mappedRows, selectedKeys]);
 
-  const chartData = useMemo<ChartRow[]>(() => {
+  const sortedChartRows = useMemo<ChartRow[]>(() => {
     const sorted = [...filteredMappedRows];
 
     if (sortBy === "Highest Latest Risk") {
@@ -900,8 +942,29 @@ const AverageEnrollment: React.FC = () => {
       );
     }
 
-    return sorted.slice(0, 12);
+    return sorted;
   }, [filteredMappedRows, sortBy]);
+
+  const totalPages = useMemo(() => {
+    const total = Math.ceil(sortedChartRows.length / overviewPageSize);
+    return Math.max(1, total);
+  }, [sortedChartRows.length, overviewPageSize]);
+
+  const paginatedChartData = useMemo<ChartRow[]>(() => {
+    const start = (currentPage - 1) * overviewPageSize;
+    const end = start + overviewPageSize;
+    return sortedChartRows.slice(start, end);
+  }, [sortedChartRows, currentPage, overviewPageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy, selectedKeys, overviewPageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const summary = useMemo(() => {
     const totalAssets = filteredMappedRows.length;
@@ -946,12 +1009,12 @@ const AverageEnrollment: React.FC = () => {
       return 10;
     }
 
-    const values = chartData.map(
+    const values = paginatedChartData.map(
       (item: ChartRow) => item.overlay_top_value || 0
     );
     const rawMax = Math.max(...values, 0);
     return Math.max(6, Math.ceil(rawMax + 1));
-  }, [chartData, detailMode]);
+  }, [paginatedChartData, detailMode]);
 
   const yTicks = useMemo(() => {
     if (detailMode) {
@@ -970,8 +1033,11 @@ const AverageEnrollment: React.FC = () => {
   }, [maxRisk, detailMode]);
 
   const overviewVisibleTickIndexSet = useMemo(() => {
-    return getVisibleTickIndexSet(chartData.length, overviewMaxVisibleLabels);
-  }, [chartData.length, overviewMaxVisibleLabels]);
+    return getVisibleTickIndexSet(
+      paginatedChartData.length,
+      overviewMaxVisibleLabels
+    );
+  }, [paginatedChartData.length, overviewMaxVisibleLabels]);
 
   const detailVisibleTickIndexSet = useMemo(() => {
     return getVisibleTickIndexSet(detailRows.length, detailMaxVisibleLabels);
@@ -989,6 +1055,10 @@ const AverageEnrollment: React.FC = () => {
     }
     return `${selectedCount} selected`;
   }, [selectedCount, filterOptions, selectedKeys]);
+
+  const pageNumbers = useMemo(() => {
+    return buildPageNumbers(currentPage, totalPages);
+  }, [currentPage, totalPages]);
 
   const toggleSelect = (key: string) => {
     setSelectedKeys((prev: string[]) =>
@@ -1294,7 +1364,7 @@ const AverageEnrollment: React.FC = () => {
 
         <CustomLegend detailMode={detailMode} />
 
-        <div className="min-h-105 flex-1">
+        <div className="min-h-105 flex flex-1 flex-col">
           {loading ? (
             <div className="flex h-105 items-center justify-center text-[13px] text-gray-500 dark:text-white/55">
               Loading...
@@ -1387,157 +1457,216 @@ const AverageEnrollment: React.FC = () => {
                 </BarChart>
               </ResponsiveContainer>
             )
-          ) : chartData.length === 0 ? (
+          ) : paginatedChartData.length === 0 ? (
             <div className="flex h-105 items-center justify-center text-[13px] text-gray-500 dark:text-white/55">
               No Data
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={420} minWidth={0}>
-              <BarChart
-                data={chartData}
-                margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
-                barCategoryGap="14%"
-                barGap="-100%"
-              >
-                <CartesianGrid
-                  stroke={isDarkMode() ? COLORS.gridDark : COLORS.gridLight}
-                  strokeDasharray="3 3"
-                  vertical={false}
-                />
-
-                <XAxis
-                  dataKey="axis_key"
-                  tick={
-                    <CustomXAxisTick visibleIndexSet={overviewVisibleTickIndexSet} />
-                  }
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                  height={42}
-                />
-
-                <YAxis
-                  tick={{
-                    fill: isDarkMode() ? COLORS.axisDark : COLORS.axisLight,
-                    fontSize: 11,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={38}
-                  domain={[0, maxRisk]}
-                  ticks={yTicks}
-                />
-
-                <Tooltip
-                  content={<CustomTooltip />}
-                  cursor={{
-                    fill: isDarkMode()
-                      ? "rgba(255,255,255,0.04)"
-                      : "rgba(148,163,184,0.08)",
-                  }}
-                />
-
-                <ReferenceLine
-                  y={Number(summary.avgLatestRisk.toFixed(2))}
-                  stroke={isDarkMode() ? COLORS.avgLineDark : COLORS.avgLineLight}
-                  strokeDasharray="5 5"
-                  ifOverflow="extendDomain"
-                />
-
-                <Bar
-                  dataKey="previous_for_nonincrease"
-                  name="Previous Risk"
-                  fill={COLORS.previous}
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={34}
-                  onClick={(payload) =>
-                    handleOverviewBarClick(payload as unknown as ChartRow)
-                  }
-                  style={{ cursor: "pointer" }}
+            <>
+              <ResponsiveContainer width="100%" height={420} minWidth={0}>
+                <BarChart
+                  data={paginatedChartData}
+                  margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
+                  barCategoryGap="14%"
+                  barGap="-100%"
                 >
-                  <LabelList
+                  <CartesianGrid
+                    stroke={isDarkMode() ? COLORS.gridDark : COLORS.gridLight}
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
+
+                  <XAxis
+                    dataKey="axis_key"
+                    tick={
+                      <CustomXAxisTick visibleIndexSet={overviewVisibleTickIndexSet} />
+                    }
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    height={42}
+                  />
+
+                  <YAxis
+                    tick={{
+                      fill: isDarkMode() ? COLORS.axisDark : COLORS.axisLight,
+                      fontSize: 11,
+                    }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={38}
+                    domain={[0, maxRisk]}
+                    ticks={yTicks}
+                  />
+
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{
+                      fill: isDarkMode()
+                        ? "rgba(255,255,255,0.04)"
+                        : "rgba(148,163,184,0.08)",
+                    }}
+                  />
+
+                  <ReferenceLine
+                    y={Number(summary.avgLatestRisk.toFixed(2))}
+                    stroke={isDarkMode() ? COLORS.avgLineDark : COLORS.avgLineLight}
+                    strokeDasharray="5 5"
+                    ifOverflow="extendDomain"
+                  />
+
+                  <Bar
                     dataKey="previous_for_nonincrease"
-                    position="top"
-                    formatter={(value: any) =>
-                      Number(value ?? 0) > 0 ? formatRisk(Number(value ?? 0)) : ""
+                    name="Previous Risk"
+                    fill={COLORS.previous}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) =>
+                      handleOverviewBarClick(payload as unknown as ChartRow)
                     }
-                    style={{
-                      fill: isDarkMode() ? "rgba(255,255,255,0.78)" : "#667085",
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}
-                  />
-                </Bar>
+                    style={{ cursor: "pointer" }}
+                  >
+                    <LabelList
+                      dataKey="previous_for_nonincrease"
+                      position="top"
+                      formatter={(value: any) =>
+                        Number(value ?? 0) > 0 ? formatRisk(Number(value ?? 0)) : ""
+                      }
+                      style={{
+                        fill: isDarkMode() ? "rgba(255,255,255,0.78)" : "#667085",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
+                  </Bar>
 
-                <Bar
-                  dataKey="previous_for_increase"
-                  name="Previous Risk"
-                  stackId="riskUp"
-                  fill={COLORS.previous}
-                  radius={[0, 0, 0, 0]}
-                  maxBarSize={34}
-                  onClick={(payload) =>
-                    handleOverviewBarClick(payload as unknown as ChartRow)
-                  }
-                  style={{ cursor: "pointer" }}
-                />
-
-                <Bar
-                  dataKey="latest_positive_diff"
-                  name="Latest Risk Increased"
-                  stackId="riskUp"
-                  fill={COLORS.latestUp}
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={34}
-                  onClick={(payload) =>
-                    handleOverviewBarClick(payload as unknown as ChartRow)
-                  }
-                  style={{ cursor: "pointer" }}
-                >
-                  <LabelList
-                    dataKey="latest_increase_label"
-                    position="top"
-                    formatter={(value: any) =>
-                      value !== null && value !== undefined && Number(value) > 0
-                        ? formatRisk(Number(value))
-                        : ""
+                  <Bar
+                    dataKey="previous_for_increase"
+                    name="Previous Risk"
+                    stackId="riskUp"
+                    fill={COLORS.previous}
+                    radius={[0, 0, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) =>
+                      handleOverviewBarClick(payload as unknown as ChartRow)
                     }
-                    style={{
-                      fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}
+                    style={{ cursor: "pointer" }}
                   />
-                </Bar>
 
-                <Bar
-                  dataKey="latest_overlay_equal_or_lower"
-                  name="Latest Risk"
-                  fill={COLORS.latestStable}
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={34}
-                  onClick={(payload) =>
-                    handleOverviewBarClick(payload as unknown as ChartRow)
-                  }
-                  style={{ cursor: "pointer" }}
-                >
-                  <LabelList
-                    dataKey="latest_equal_or_lower_label"
-                    position="top"
-                    formatter={(value: any) =>
-                      value !== null && value !== undefined && Number(value) >= 0
-                        ? formatRisk(Number(value))
-                        : ""
+                  <Bar
+                    dataKey="latest_positive_diff"
+                    name="Latest Risk Increased"
+                    stackId="riskUp"
+                    fill={COLORS.latestUp}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) =>
+                      handleOverviewBarClick(payload as unknown as ChartRow)
                     }
-                    style={{
-                      fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+                    style={{ cursor: "pointer" }}
+                  >
+                    <LabelList
+                      dataKey="latest_increase_label"
+                      position="top"
+                      formatter={(value: any) =>
+                        value !== null && value !== undefined && Number(value) > 0
+                          ? formatRisk(Number(value))
+                          : ""
+                      }
+                      style={{
+                        fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
+                  </Bar>
+
+                  <Bar
+                    dataKey="latest_overlay_equal_or_lower"
+                    name="Latest Risk"
+                    fill={COLORS.latestStable}
+                    radius={[8, 8, 0, 0]}
+                    maxBarSize={34}
+                    onClick={(payload) =>
+                      handleOverviewBarClick(payload as unknown as ChartRow)
+                    }
+                    style={{ cursor: "pointer" }}
+                  >
+                    <LabelList
+                      dataKey="latest_equal_or_lower_label"
+                      position="top"
+                      formatter={(value: any) =>
+                        value !== null && value !== undefined && Number(value) >= 0
+                          ? formatRisk(Number(value))
+                          : ""
+                      }
+                      style={{
+                        fill: isDarkMode() ? "rgba(255,255,255,0.86)" : "#475467",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              {totalPages > 1 && (
+                <div className="mt-3 flex justify-end">
+                  <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(1, prev - 1))
+                      }
+                      disabled={currentPage === 1}
+                      className={[
+                        "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
+                        currentPage === 1
+                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                      ].join(" ")}
+                    >
+                      Prev
+                    </button>
+
+                    {pageNumbers.map((page) => {
+                      const active = page === currentPage;
+                      return (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          className={[
+                            "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-semibold transition",
+                            active
+                              ? "border-cyan-400 bg-cyan-500 text-white shadow-sm"
+                              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                          ].join(" ")}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                      }
+                      disabled={currentPage === totalPages}
+                      className={[
+                        "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
+                        currentPage === totalPages
+                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
+                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                      ].join(" ")}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -35,6 +35,8 @@ interface TableTargetProps {
   loading: boolean;
 }
 
+const ROWS_PER_PAGE = 4;
+
 const clamp = (v: number, min: number, max: number) =>
   Math.max(min, Math.min(max, v));
 
@@ -138,10 +140,37 @@ const getRiskMeta = (risk: number) => {
   };
 };
 
+const buildPageNumbers = (currentPage: number, totalPages: number): number[] => {
+  if (totalPages <= 1) return [1];
+  if (totalPages <= 5) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  if (currentPage <= 3) return [1, 2, 3, 4, 5];
+  if (currentPage >= totalPages - 2) {
+    return [
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  return [
+    currentPage - 2,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    currentPage + 2,
+  ];
+};
+
 const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [openSort, setOpenSort] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const sortRef = useRef<HTMLDivElement | null>(null);
 
@@ -211,6 +240,31 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
     return filtered.map((r, i) => ({ ...r, no: i + 1 }));
   }, [baseRows, search, sortOrder]);
 
+  const totalPages = useMemo(() => {
+    const total = Math.ceil(rows.length / ROWS_PER_PAGE);
+    return Math.max(1, total);
+  }, [rows.length]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    const end = start + ROWS_PER_PAGE;
+    return rows.slice(start, end);
+  }, [rows, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    return buildPageNumbers(currentPage, totalPages);
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortOrder]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const stats = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
     const totalTargets = list.length;
@@ -225,8 +279,6 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
     return { totalTargets, totalVulns, highestRisk };
   }, [data]);
-
-  const shouldScrollTable = !loading && rows.length > 5;
 
   return (
     <section
@@ -254,7 +306,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
       </div>
 
       <div className="relative z-10">
-        <div className="flex flex-col gap-3 mb-4">
+        <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="mb-2.5 flex flex-wrap items-center gap-2">
@@ -314,16 +366,16 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                 </div>
               </div>
 
-              <h2 className="text-[16px] sm:text-[17px] font-semibold text-[#1f2240] dark:text-white/90">
+              <h2 className="text-[16px] font-semibold text-[#1f2240] dark:text-white/90 sm:text-[17px]">
                 Device Vulnerability Table
               </h2>
-              <p className="text-[11px] sm:text-[12px] text-gray-500 dark:text-white/55 mt-1">
+              <p className="mt-1 text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
                 Monitored targets, firmware details, vulnerability totals, and
                 live risk posture
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
               <div
                 className={[
                   "flex items-center gap-2 rounded-[14px] h-9 px-3 min-w-60",
@@ -331,13 +383,13 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                   "dark:border-white/10 dark:bg-white/5",
                 ].join(" ")}
               >
-                <FiSearch className="text-[13px] text-gray-400 dark:text-white/35 shrink-0" />
+                <FiSearch className="shrink-0 text-[13px] text-gray-400 dark:text-white/35" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search target, ip, firmware..."
-                  className="w-full bg-transparent outline-none text-[12px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                  className="w-full bg-transparent text-[12px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
                 />
               </div>
 
@@ -355,14 +407,14 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                     {sortOrder === "desc" ? "Highest Risk" : "Lowest Risk"}
                   </span>
                   <FiChevronDown
-                    className={`transition ${
+                    className={`text-[14px] text-gray-500 transition dark:text-white/55 ${
                       openSort ? "rotate-180" : ""
-                    } text-[14px] text-gray-500 dark:text-white/55`}
+                    }`}
                   />
                 </button>
 
                 {openSort && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+                  <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
                     <button
                       type="button"
                       onClick={() => {
@@ -397,36 +449,29 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
             "dark:border-white/10 dark:bg-white/3",
           ].join(" ")}
         >
-          <div
-            className={[
-              "overflow-x-auto",
-              shouldScrollTable
-                ? "max-h-92.5 overflow-y-auto"
-                : "overflow-y-visible",
-            ].join(" ")}
-          >
+          <div className="overflow-x-auto overflow-y-hidden">
             <table className="min-w-full">
               <thead className="sticky top-0 z-20 bg-white dark:bg-[#0B1220]">
                 <tr className="border-b border-gray-200/80 dark:border-white/10">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     No
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Target
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     IP Address
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Firmware
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Vulnerability
                   </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap min-w-52.5">
+                  <th className="min-w-52.5 whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Risk Progress
                   </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-white/50 whitespace-nowrap">
+                  <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Risk Score
                   </th>
                 </tr>
@@ -434,35 +479,35 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
               <tbody>
                 {loading ? (
-                  Array.from({ length: 6 }).map((_, i) => (
+                  Array.from({ length: ROWS_PER_PAGE }).map((_, i) => (
                     <tr
                       key={i}
                       className="border-b border-gray-100 dark:border-white/5"
                     >
                       <td className="px-4 py-3.5">
-                        <div className="h-3 w-5 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-3 w-5 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="h-3 w-28 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-3 w-28 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="h-3 w-20 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-3 w-20 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="h-3 w-36 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-3 w-36 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="h-3 w-14 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-3 w-14 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="h-2 w-full rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="h-2 w-full animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="ml-auto h-3 w-12 rounded bg-gray-200 dark:bg-white/10 animate-pulse" />
+                        <div className="ml-auto h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
                     </tr>
                   ))
-                ) : rows.length === 0 ? (
+                ) : paginatedRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan={7}
@@ -472,21 +517,21 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                     </td>
                   </tr>
                 ) : (
-                  rows.map((row) => {
+                  paginatedRows.map((row) => {
                     const { Icon, bg, fg, ring } = DEVICE_ICONS[row.iconIndex];
                     const riskMeta = getRiskMeta(row.riskScore);
 
                     return (
                       <tr
                         key={row.id}
-                        className="border-b border-gray-100 dark:border-white/5 hover:bg-gray-50/70 dark:hover:bg-white/3 transition-colors"
+                        className="border-b border-gray-100 transition-colors hover:bg-gray-50/70 dark:border-white/5 dark:hover:bg-white/3"
                       >
-                        <td className="px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/70 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/70">
                           {row.no}
                         </td>
 
-                        <td className="px-4 py-3.5 min-w-52.5">
-                          <div className="flex items-center gap-2.5 min-w-0">
+                        <td className="min-w-52.5 px-4 py-3.5">
+                          <div className="flex min-w-0 items-center gap-2.5">
                             <div
                               className={[
                                 "h-8 w-8 rounded-xl border flex items-center justify-center shrink-0",
@@ -515,23 +560,23 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                           </div>
                         </td>
 
-                        <td className="px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/65 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-[12px] text-gray-600 dark:text-white/65">
                           {row.ip}
                         </td>
 
-                        <td className="px-4 py-3.5 min-w-65">
+                        <td className="min-w-65 px-4 py-3.5">
                           <div className="truncate text-[12px] text-gray-600 dark:text-white/65">
                             {row.firmwareVersion}
                           </div>
                         </td>
 
-                        <td className="px-4 py-3.5 text-[12px] font-medium text-gray-700 dark:text-white/75 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-[12px] font-medium text-gray-700 dark:text-white/75">
                           {formatNumber(row.vulnerabilityTotal)}
                         </td>
 
-                        <td className="px-4 py-3.5 min-w-52.5">
+                        <td className="min-w-52.5 px-4 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="flex-1 h-2 rounded-full bg-[#eef0f6] dark:bg-white/10 overflow-hidden">
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#eef0f6] dark:bg-white/10">
                               <div
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{
@@ -543,13 +588,13 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                                 }}
                               />
                             </div>
-                            <span className="text-[10px] text-gray-400 dark:text-white/40 whitespace-nowrap">
+                            <span className="whitespace-nowrap text-[10px] text-gray-400 dark:text-white/40">
                               {formatRisk(row.riskScore)}
                             </span>
                           </div>
                         </td>
 
-                        <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-3.5 text-right">
                           <div
                             className={`text-[12px] font-semibold ${riskMeta.text}`}
                           >
@@ -564,6 +609,61 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
             </table>
           </div>
         </div>
+
+        {!loading && totalPages > 1 && (
+          <div className="mt-3 flex justify-end">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className={[
+                  "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
+                  currentPage === 1
+                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                ].join(" ")}
+              >
+                Prev
+              </button>
+
+              {pageNumbers.map((page) => {
+                const active = page === currentPage;
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={[
+                      "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-semibold transition",
+                      active
+                        ? "border-cyan-400 bg-cyan-500 text-white shadow-sm"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                    ].join(" ")}
+                  >
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+                className={[
+                  "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
+                  currentPage === totalPages
+                    ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                ].join(" ")}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
