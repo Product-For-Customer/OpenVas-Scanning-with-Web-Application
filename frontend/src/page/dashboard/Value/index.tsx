@@ -38,11 +38,17 @@ type StatCard = {
 type TargetOption = {
   key: string;
   label: string;
+  task_id: string;
+  task_name: string;
+  host: string;
 };
 
 type SummaryRow = {
   task_id: string;
   task_name: string;
+  host: string;
+  target_key: string;
+  target_label: string;
   critical: number;
   high: number;
   medium: number;
@@ -54,6 +60,29 @@ interface ValueProps {
   vulnerabilityData?: VulnerabilityLevelDTO[];
   loading?: boolean;
 }
+
+const getTargetHost = (item: any) => {
+  const host =
+    item?.host ??
+    item?.host_ip ??
+    item?.ip ??
+    item?.target_ip ??
+    item?.ip_host ??
+    item?.asset_ip ??
+    item?.target_host ??
+    item?.target ??
+    "";
+
+  return String(host).trim() || "-";
+};
+
+const getTargetKey = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()}__${String(host || "-").trim()}`;
+};
+
+const getTargetLabel = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()} - ${String(host || "-").trim()}`;
+};
 
 const Value: React.FC<ValueProps> = ({
   vulnerabilityData = [],
@@ -87,11 +116,17 @@ const Value: React.FC<ValueProps> = ({
         String((item as any)?.task_name ?? "").trim() || "Unknown";
 
       const taskID = String((item as any)?.task_id ?? "").trim();
+      const host = getTargetHost(item);
+      const targetKey = getTargetKey(taskName, host);
+      const targetLabel = getTargetLabel(taskName, host);
 
-      if (!map.has(taskName)) {
-        map.set(taskName, {
+      if (!map.has(targetKey)) {
+        map.set(targetKey, {
           task_id: taskID,
           task_name: taskName,
+          host,
+          target_key: targetKey,
+          target_label: targetLabel,
           critical: 0,
           high: 0,
           medium: 0,
@@ -100,7 +135,7 @@ const Value: React.FC<ValueProps> = ({
         });
       }
 
-      const row = map.get(taskName)!;
+      const row = map.get(targetKey)!;
       const total = Number(item?.total ?? 0);
 
       switch (item?.level) {
@@ -126,23 +161,35 @@ const Value: React.FC<ValueProps> = ({
   }, [vulnerabilityData]);
 
   const targetOptions = useMemo<TargetOption[]>(() => {
-    const names = rows
-      .map((r) => ({
-        key: String(r.task_name ?? "").trim(),
-        label: String(r.task_name ?? "").trim(),
-      }))
-      .filter((r) => r.key !== "");
+    const seen = new Set<string>();
+    const options: TargetOption[] = [];
 
-    const uniqueMap = new Map<string, TargetOption>();
+    for (const row of rows) {
+      const key = row.target_key;
+      if (!key || seen.has(key)) continue;
 
-    for (const item of names) {
-      if (!uniqueMap.has(item.key)) {
-        uniqueMap.set(item.key, item);
-      }
+      seen.add(key);
+      options.push({
+        key,
+        label: row.target_label,
+        task_id: row.task_id,
+        task_name: row.task_name,
+        host: row.host,
+      });
     }
 
-    return Array.from(uniqueMap.values());
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
   }, [rows]);
+
+  const selectedTargetOptions = useMemo(() => {
+    const selectedSet = new Set(selectedTargets);
+    return targetOptions.filter((option) => selectedSet.has(option.key));
+  }, [targetOptions, selectedTargets]);
+
+  const selectedTargetLabels = useMemo(() => {
+    return selectedTargetOptions.map((option) => option.label);
+  }, [selectedTargetOptions]);
 
   const filteredTargetOptions = useMemo(() => {
     const keyword = targetQuerySearch.trim().toLowerCase();
@@ -155,9 +202,9 @@ const Value: React.FC<ValueProps> = ({
 
   const filteredRows = useMemo(() => {
     if (selectedTargets.length === 0) return rows;
-    return rows.filter((r) =>
-      selectedTargets.includes(String(r.task_name ?? "").trim())
-    );
+
+    const selectedSet = new Set(selectedTargets);
+    return rows.filter((r) => selectedSet.has(r.target_key));
   }, [rows, selectedTargets]);
 
   const selectedTaskIDs = useMemo(() => {
@@ -171,6 +218,28 @@ const Value: React.FC<ValueProps> = ({
       )
     );
   }, [filteredRows, selectedTargets.length]);
+
+  const selectedTargetHosts = useMemo(() => {
+    if (selectedTargets.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        selectedTargetOptions
+          .map((row) => String(row.host ?? "").trim())
+          .filter((host) => host !== "")
+      )
+    );
+  }, [selectedTargetOptions, selectedTargets.length]);
+
+  const selectedTargetPairs = useMemo(() => {
+    return selectedTargetOptions.map((option) => ({
+      key: option.key,
+      label: option.label,
+      task_id: option.task_id,
+      task_name: option.task_name,
+      host: option.host,
+    }));
+  }, [selectedTargetOptions]);
 
   const totals = useMemo(() => {
     let critical = 0;
@@ -208,9 +277,11 @@ const Value: React.FC<ValueProps> = ({
   const selectedScopeLabel = useMemo(() => {
     if (loading) return "Loading scope...";
     if (selectedTargets.length === 0) return "All Targets";
-    if (selectedTargets.length === 1) return selectedTargets[0];
+    if (selectedTargets.length === 1) {
+      return selectedTargetLabels[0] || "1 Target Selected";
+    }
     return `${selectedTargets.length} Targets Selected`;
-  }, [loading, selectedTargets]);
+  }, [loading, selectedTargets.length, selectedTargetLabels]);
 
   const toggleTarget = (key: string) => {
     setSelectedTargets((prev) =>
@@ -243,9 +314,11 @@ const Value: React.FC<ValueProps> = ({
 
   const targetButtonLabel = useMemo(() => {
     if (selectedTargets.length === 0) return "Target Query";
-    if (selectedTargets.length === 1) return selectedTargets[0];
+    if (selectedTargets.length === 1) {
+      return selectedTargetLabels[0] || "1 selected";
+    }
     return `${selectedTargets.length} selected`;
-  }, [selectedTargets]);
+  }, [selectedTargets.length, selectedTargetLabels]);
 
   const stats: StatCard[] = useMemo(
     () => [
@@ -432,9 +505,17 @@ const Value: React.FC<ValueProps> = ({
     navigate("/admin/vulnerability-by-level", {
       state: {
         level,
-        scopeTask: selectedTargets.length > 0 ? selectedTargets : "all",
+        scopeTask: selectedTargets.length > 0 ? selectedTargetLabels : "all",
         task_id: selectedTaskIDs.length === 1 ? selectedTaskIDs[0] : undefined,
         task_ids: selectedTaskIDs.length > 0 ? selectedTaskIDs : undefined,
+
+        target_keys: selectedTargets.length > 0 ? selectedTargets : undefined,
+        target_labels:
+          selectedTargetLabels.length > 0 ? selectedTargetLabels : undefined,
+        target_hosts:
+          selectedTargetHosts.length > 0 ? selectedTargetHosts : undefined,
+        target_pairs:
+          selectedTargetPairs.length > 0 ? selectedTargetPairs : undefined,
       },
     });
   };
@@ -481,9 +562,9 @@ const Value: React.FC<ValueProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
-              <FiLayers className="text-[12px]" />
-              {selectedScopeLabel}
+            <span className="inline-flex max-w-[min(34rem,100%)] items-center gap-2 rounded-full border border-slate-200/80 bg-white px-3 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
+              <FiLayers className="shrink-0 text-[12px]" />
+              <span className="truncate">{selectedScopeLabel}</span>
             </span>
 
             <div className="relative" ref={targetRef}>
@@ -496,19 +577,21 @@ const Value: React.FC<ValueProps> = ({
                   "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
                 ].join(" ")}
               >
-                <FiShield className="text-[12px]" />
-                <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-35">
+                <FiShield className="shrink-0 text-[12px]" />
+                <span className="max-w-52 overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] font-medium">
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
-                  className={`ml-auto text-[12px] transition-transform ${openTargetQuery ? "rotate-180" : ""}`}
+                  className={`ml-auto shrink-0 text-[12px] transition-transform ${
+                    openTargetQuery ? "rotate-180" : ""
+                  }`}
                 />
               </button>
 
               {openTargetQuery && (
                 <div
                   className={[
-                    "absolute right-0 z-100 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
+                    "absolute right-0 z-100 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
                     "border border-gray-200 bg-white shadow-xl",
                     "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
                   ].join(" ")}
@@ -587,8 +670,8 @@ const Value: React.FC<ValueProps> = ({
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-cyan-500" />
-                                  <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
+                                  <span className="h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
+                                  <span className="truncate text-[11px] font-medium text-gray-700 dark:text-white/80">
                                     {opt.label}
                                   </span>
                                 </div>
@@ -611,12 +694,12 @@ const Value: React.FC<ValueProps> = ({
               item.title === "Critical"
                 ? totals.critical
                 : item.title === "High"
-                ? totals.high
-                : item.title === "Medium"
-                ? totals.medium
-                : item.title === "Low"
-                ? totals.low
-                : totals.info;
+                  ? totals.high
+                  : item.title === "Medium"
+                    ? totals.medium
+                    : item.title === "Low"
+                      ? totals.low
+                      : totals.info;
 
             const w = barWidth(rawNumber);
 
@@ -647,8 +730,10 @@ const Value: React.FC<ValueProps> = ({
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`h-1.5 w-1.5 rounded-full ${item.dot}`} />
-                          <h3 className="min-w-0 truncate text-[10px] md:text-[10.5px] xl:text-[10px] font-semibold leading-[1.1] tracking-wide dark:text-white">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${item.dot}`}
+                          />
+                          <h3 className="min-w-0 truncate text-[10px] md:text-[12px] xl:text-[13px] font-semibold leading-[1.35] tracking-wide dark:text-white">
                             {item.title}
                           </h3>
                         </div>
@@ -680,7 +765,6 @@ const Value: React.FC<ValueProps> = ({
                           {item.subtitle}
                         </p>
                       </div>
-                      
 
                       <span
                         className={[

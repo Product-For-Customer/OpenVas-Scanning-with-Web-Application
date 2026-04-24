@@ -155,6 +155,8 @@ func CORSMiddleware() gin.HandlerFunc {
 			// เพิ่มของเครื่องในวง LAN
 			"http://10.10.20.169:5173": true,
 			"http://10.10.20.169:5174": true,
+			"http://10.10.40.250:5173": true,
+			"http://10.10.40.250:5174": true,
 		}
 
 		if allowedOrigins[origin] {

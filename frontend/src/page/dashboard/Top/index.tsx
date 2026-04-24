@@ -16,6 +16,8 @@ import { ListAssetRisk, type AssetRiskDTO } from "../../../services";
 type TargetOption = {
   key: string;
   label: string;
+  task_name: string;
+  host: string;
 };
 
 const CARD_HEIGHT_CLASS = "min-h-[560px] xl:min-h-[620px]";
@@ -31,6 +33,39 @@ const formatNumber = (n: number) => {
 const formatRisk = (n: number) => {
   if (!Number.isFinite(n)) return "0.00";
   return n.toFixed(2);
+};
+
+const getTargetHost = (item: any) => {
+  const host =
+    item?.host ??
+    item?.host_ip ??
+    item?.ip ??
+    item?.target_ip ??
+    item?.ip_host ??
+    item?.asset_ip ??
+    item?.target_host ??
+    item?.target ??
+    "";
+
+  return String(host).trim() || "-";
+};
+
+const getTargetName = (item: any) => {
+  return String(item?.task_name ?? "").trim() || "Unknown";
+};
+
+const getTargetKey = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()}__${String(host || "-").trim()}`;
+};
+
+const getTargetLabel = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()} - ${String(host || "-").trim()}`;
+};
+
+const getItemTargetKey = (item: any) => {
+  const taskName = getTargetName(item);
+  const host = getTargetHost(item);
+  return getTargetKey(taskName, host);
 };
 
 const getRiskTone = (risk: number) => {
@@ -144,6 +179,7 @@ const TopPerforming: React.FC = () => {
         if (isMountedRef.current) {
           setLoading(false);
         }
+
         isFetchingRef.current = false;
       }
     };
@@ -154,6 +190,7 @@ const TopPerforming: React.FC = () => {
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
       if (!targetRef.current) return;
+
       if (!targetRef.current.contains(e.target as Node)) {
         setOpenTargetQuery(false);
       }
@@ -165,23 +202,29 @@ const TopPerforming: React.FC = () => {
 
   const targetOptions = useMemo<TargetOption[]>(() => {
     const list = Array.isArray(data) ? data : [];
+    const seen = new Set<string>();
+    const options: TargetOption[] = [];
 
-    const names = list
-      .map((item) => ({
-        key: String((item as any).task_name ?? "").trim(),
-        label: String((item as any).task_name ?? "").trim(),
-      }))
-      .filter((item) => item.key !== "");
+    for (const item of list) {
+      const taskName = getTargetName(item);
+      const host = getTargetHost(item);
+      const key = getTargetKey(taskName, host);
 
-    const uniqueMap = new Map<string, TargetOption>();
+      if (!key || seen.has(key)) continue;
 
-    for (const item of names) {
-      if (!uniqueMap.has(item.key)) {
-        uniqueMap.set(item.key, item);
-      }
+      seen.add(key);
+
+      options.push({
+        key,
+        label: getTargetLabel(taskName, host),
+        task_name: taskName,
+        host,
+      });
     }
 
-    return Array.from(uniqueMap.values());
+    options.sort((a, b) => a.label.localeCompare(b.label));
+
+    return options;
   }, [data]);
 
   const filteredTargetOptions = useMemo(() => {
@@ -197,9 +240,9 @@ const TopPerforming: React.FC = () => {
     const list = Array.isArray(data) ? data : [];
     if (selectedTargets.length === 0) return list;
 
-    return list.filter((item) =>
-      selectedTargets.includes(String((item as any).task_name ?? "").trim())
-    );
+    const selectedSet = new Set(selectedTargets);
+
+    return list.filter((item) => selectedSet.has(getItemTargetKey(item)));
   }, [data, selectedTargets]);
 
   const summary = useMemo(() => {
@@ -239,9 +282,9 @@ const TopPerforming: React.FC = () => {
 
   const targetButtonLabel = useMemo(() => {
     if (selectedTargets.length === 0) return "Target Query";
-    if (selectedTargets.length === 1) return selectedTargets[0];
+    if (selectedTargets.length === 1) return "1 target selected";
     return `${selectedTargets.length} targets selected`;
-  }, [selectedTargets]);
+  }, [selectedTargets.length]);
 
   const toggleTarget = (key: string) => {
     setSelectedTargets((prev) =>
@@ -338,12 +381,12 @@ const TopPerforming: React.FC = () => {
                   "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
                 ].join(" ")}
               >
-                <FiShield className="text-[12px]" />
-                <span className="overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] font-medium">
+                <FiShield className="shrink-0 text-[12px]" />
+                <span className="max-w-52 overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] font-medium">
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
-                  className={`ml-auto text-[12px] transition-transform ${
+                  className={`ml-auto shrink-0 text-[12px] transition-transform ${
                     openTargetQuery ? "rotate-180" : ""
                   }`}
                 />
@@ -352,7 +395,7 @@ const TopPerforming: React.FC = () => {
               {openTargetQuery && (
                 <div
                   className={[
-                    "absolute right-0 z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
+                    "absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
                     "border border-gray-200 bg-white shadow-xl",
                     "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
                   ].join(" ")}
@@ -430,7 +473,7 @@ const TopPerforming: React.FC = () => {
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-cyan-500" />
+                                  <span className="h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
                                   <span className="truncate text-[11px] font-medium text-gray-700 dark:text-white/80">
                                     {opt.label}
                                   </span>
@@ -524,7 +567,11 @@ const TopPerforming: React.FC = () => {
                     outerRadius="100%"
                     barSize={18}
                   >
-                    <PolarAngleAxis type="number" domain={[0, 10]} tick={false} />
+                    <PolarAngleAxis
+                      type="number"
+                      domain={[0, 10]}
+                      tick={false}
+                    />
                     <RadialBar
                       background={{ fill: "rgba(148,163,184,0.12)" }}
                       dataKey="value"

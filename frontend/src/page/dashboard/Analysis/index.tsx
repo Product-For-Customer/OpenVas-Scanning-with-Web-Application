@@ -20,11 +20,17 @@ type SeverityItem = {
 type TargetOption = {
   key: string;
   label: string;
+  task_id: string;
+  task_name: string;
+  host: string;
 };
 
 type SummaryRow = {
   task_id: string;
   task_name: string;
+  host: string;
+  target_key: string;
+  target_label: string;
   critical: number;
   high: number;
   medium: number;
@@ -48,6 +54,29 @@ const COLORS: Record<SeverityKey, string> = {
 const CARD_HEIGHT_CLASS = "min-h-[560px] xl:min-h-[620px]";
 
 const formatPercent = (percent: number) => `${(percent * 100).toFixed(2)}%`;
+
+const getTargetHost = (item: any) => {
+  const host =
+    item?.host ??
+    item?.host_ip ??
+    item?.ip ??
+    item?.target_ip ??
+    item?.ip_host ??
+    item?.asset_ip ??
+    item?.target_host ??
+    item?.target ??
+    "";
+
+  return String(host).trim() || "-";
+};
+
+const getTargetKey = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()}__${String(host || "-").trim()}`;
+};
+
+const getTargetLabel = (taskName: string, host: string) => {
+  return `${String(taskName || "-").trim()} - ${String(host || "-").trim()}`;
+};
 
 type CustomTooltipProps = {
   active?: boolean;
@@ -117,11 +146,17 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
       const taskName =
         String((item as any)?.task_name ?? "").trim() || "Unknown";
       const taskID = String((item as any)?.task_id ?? "").trim();
+      const host = getTargetHost(item);
+      const targetKey = getTargetKey(taskName, host);
+      const targetLabel = getTargetLabel(taskName, host);
 
-      if (!map.has(taskName)) {
-        map.set(taskName, {
+      if (!map.has(targetKey)) {
+        map.set(targetKey, {
           task_id: taskID,
           task_name: taskName,
+          host,
+          target_key: targetKey,
+          target_label: targetLabel,
           critical: 0,
           high: 0,
           medium: 0,
@@ -130,7 +165,7 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
         });
       }
 
-      const row = map.get(taskName)!;
+      const row = map.get(targetKey)!;
       const total = Number(item?.total ?? 0);
 
       switch (item?.level) {
@@ -156,23 +191,58 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
   }, [vulnerabilityData]);
 
   const targetOptions = useMemo<TargetOption[]>(() => {
-    const names = rows
-      .map((r) => ({
-        key: String(r.task_name ?? "").trim(),
-        label: String(r.task_name ?? "").trim(),
-      }))
-      .filter((r) => r.key !== "");
+    const seen = new Set<string>();
+    const options: TargetOption[] = [];
 
-    const uniqueMap = new Map<string, TargetOption>();
+    for (const row of rows) {
+      const key = row.target_key;
+      if (!key || seen.has(key)) continue;
 
-    for (const item of names) {
-      if (!uniqueMap.has(item.key)) {
-        uniqueMap.set(item.key, item);
-      }
+      seen.add(key);
+
+      options.push({
+        key,
+        label: row.target_label,
+        task_id: row.task_id,
+        task_name: row.task_name,
+        host: row.host,
+      });
     }
 
-    return Array.from(uniqueMap.values());
+    options.sort((a, b) => a.label.localeCompare(b.label));
+    return options;
   }, [rows]);
+
+  const selectedTargetOptions = useMemo(() => {
+    const selectedSet = new Set(selectedTargets);
+    return targetOptions.filter((option) => selectedSet.has(option.key));
+  }, [targetOptions, selectedTargets]);
+
+  const selectedTargetLabels = useMemo(() => {
+    return selectedTargetOptions.map((option) => option.label);
+  }, [selectedTargetOptions]);
+
+  const selectedTargetHosts = useMemo(() => {
+    if (selectedTargets.length === 0) return [];
+
+    return Array.from(
+      new Set(
+        selectedTargetOptions
+          .map((option) => String(option.host ?? "").trim())
+          .filter((host) => host !== "")
+      )
+    );
+  }, [selectedTargetOptions, selectedTargets.length]);
+
+  const selectedTargetPairs = useMemo(() => {
+    return selectedTargetOptions.map((option) => ({
+      key: option.key,
+      label: option.label,
+      task_id: option.task_id,
+      task_name: option.task_name,
+      host: option.host,
+    }));
+  }, [selectedTargetOptions]);
 
   const filteredTargetOptions = useMemo(() => {
     const keyword = targetQuerySearch.trim().toLowerCase();
@@ -185,9 +255,9 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
 
   const filteredRows = useMemo(() => {
     if (selectedTargets.length === 0) return rows;
-    return rows.filter((r) =>
-      selectedTargets.includes(String(r.task_name ?? "").trim())
-    );
+
+    const selectedSet = new Set(selectedTargets);
+    return rows.filter((r) => selectedSet.has(r.target_key));
   }, [rows, selectedTargets]);
 
   const selectedTaskIDs = useMemo(() => {
@@ -239,9 +309,9 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
 
   const targetButtonLabel = useMemo(() => {
     if (selectedTargets.length === 0) return "Target Query";
-    if (selectedTargets.length === 1) return selectedTargets[0];
+    if (selectedTargets.length === 1) return "1 target selected";
     return `${selectedTargets.length} targets selected`;
-  }, [selectedTargets]);
+  }, [selectedTargets.length]);
 
   const toggleTarget = (key: string) => {
     setSelectedTargets((prev) =>
@@ -276,9 +346,17 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
     navigate("/admin/vulnerability-by-level", {
       state: {
         level,
-        scopeTask: selectedTargets.length > 0 ? selectedTargets : "all",
+        scopeTask: selectedTargets.length > 0 ? selectedTargetLabels : "all",
         task_id: selectedTaskIDs.length === 1 ? selectedTaskIDs[0] : undefined,
         task_ids: selectedTaskIDs.length > 0 ? selectedTaskIDs : undefined,
+
+        target_keys: selectedTargets.length > 0 ? selectedTargets : undefined,
+        target_labels:
+          selectedTargetLabels.length > 0 ? selectedTargetLabels : undefined,
+        target_hosts:
+          selectedTargetHosts.length > 0 ? selectedTargetHosts : undefined,
+        target_pairs:
+          selectedTargetPairs.length > 0 ? selectedTargetPairs : undefined,
       },
     });
   };
@@ -349,12 +427,12 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
                   "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
                 ].join(" ")}
               >
-                <FiShield className="text-[12px]" />
-                <span className="text-[10.5px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                <FiShield className="shrink-0 text-[12px]" />
+                <span className="max-w-52 overflow-hidden text-ellipsis whitespace-nowrap text-[10.5px] font-medium">
                   {targetButtonLabel}
                 </span>
                 <FiChevronDown
-                  className={`ml-auto text-[12px] transition-transform ${
+                  className={`ml-auto shrink-0 text-[12px] transition-transform ${
                     openTargetQuery ? "rotate-180" : ""
                   }`}
                 />
@@ -363,7 +441,7 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
               {openTargetQuery && (
                 <div
                   className={[
-                    "absolute right-0 z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
+                    "absolute right-0 z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl",
                     "border border-gray-200 bg-white shadow-xl",
                     "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
                   ].join(" ")}
@@ -441,8 +519,8 @@ const DeliveryAnalysis: React.FC<DeliveryAnalysisProps> = ({
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-cyan-500" />
-                                  <span className="text-[11px] font-medium text-gray-700 dark:text-white/80 truncate">
+                                  <span className="h-2 w-2 shrink-0 rounded-full bg-cyan-500" />
+                                  <span className="truncate text-[11px] font-medium text-gray-700 dark:text-white/80">
                                     {opt.label}
                                   </span>
                                 </div>

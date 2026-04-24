@@ -6,7 +6,7 @@ import { TooltipComponent } from "@syncfusion/ej2-react-popups";
 import { Notification, UserProfile } from ".";
 import { useStateContext } from "../../contexts/ContextProvider";
 import { useAuth } from "../../contexts/AuthContext";
-
+import { pathOpenVas } from "../../services/api";
 import { FiSearch } from "react-icons/fi";
 import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
 import greenboneIcon from "../../assets/logo-light.svg";
@@ -210,7 +210,7 @@ const Navbar: React.FC = () => {
   };
 
   const openGreenbone = () => {
-    window.open("http://10.10.20.169:9392", "_blank", "noopener,noreferrer");
+    window.open(pathOpenVas, "_blank", "noopener,noreferrer");
   };
 
   const avatarFallback = useMemo(

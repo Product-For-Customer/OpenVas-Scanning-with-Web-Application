@@ -482,7 +482,9 @@ type DeviceRiskDTO struct {
 // - ใช้ ip_host + task_name เป็น asset identity
 // - หา latest report ต่อ ip_host + task_name
 // - ใช้เฉพาะ results ของ host นั้นใน report นั้นจริง ๆ
-// - VulnerabilityTotal = จำนวน findings ทั้งหมด
+// - ไม่เอา vulnerability ที่ severity ติดลบมาคิด
+// - ใช้ COALESCE(r.severity, 0) เพื่อให้ NULL ถูกนับเป็น Info
+// - VulnerabilityTotal = จำนวน findings ทั้งหมดที่ severity >= 0
 // - RiskScore = AVG(severity) เฉพาะ severity > 0
 func ListDeviceRiskForReport(c *gin.Context) {
 	db := config.DB()
@@ -534,6 +536,7 @@ LatestReportPerHostTask AS (
 -- =========================================================
 -- 2) latest results ของ host นั้นใน report นั้นจริง ๆ
 --    ใช้ COALESCE(severity, 0) เพื่อให้ NULL ถูกนับเป็น Info
+--    และตัด severity ติดลบออก ไม่เอามาคิดใน vulnerability_total / risk_score
 -- =========================================================
 LatestResults AS (
   SELECT
@@ -548,6 +551,7 @@ LatestResults AS (
    AND r.host = lrht.ip_address
   WHERE r.host IS NOT NULL
     AND BTRIM(r.host) <> ''
+    AND COALESCE(r.severity, 0) >= 0
 ),
 
 -- =========================================================
@@ -581,7 +585,10 @@ DeviceInfo AS (
 ),
 
 -- =========================================================
--- 4) fact สำหรับ aggregate final
+-- 4) aggregate final
+--    vulnerability_total = นับเฉพาะ records ที่ผ่าน LatestResults แล้ว
+--    ดังนั้น severity ติดลบจะไม่ถูกนับ
+--    risk_score = AVG เฉพาะ severity > 0
 -- =========================================================
 RiskAgg AS (
   SELECT
@@ -651,6 +658,7 @@ ORDER BY
 `
 
 	out := make([]DeviceRiskDTO, 0)
+
 	if err := db.Raw(query, taskIDRaw).Scan(&out).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

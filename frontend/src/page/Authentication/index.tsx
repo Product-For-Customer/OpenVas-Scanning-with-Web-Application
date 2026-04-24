@@ -24,6 +24,7 @@ import {
   SendOTP,
   ListEmailAndPhoneNumber,
 } from "../../services";
+import { pathOpenVas } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import ModalOTPSignUp from "../../Model/ModalOTPSignUp";
 import ModalOTP from "../../Model/ModalOTP";
@@ -100,7 +101,7 @@ const Index: React.FC = () => {
   });
 
   const openGreenbone = () => {
-    window.open("http://10.10.20.169:9392", "_blank", "noopener,noreferrer");
+    window.open(pathOpenVas, "_blank", "noopener,noreferrer");
   };
 
   const [signupForm, setSignupForm] = useState<SignUpFormData>({

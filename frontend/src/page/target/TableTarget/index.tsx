@@ -4,7 +4,8 @@ import {
   FiChevronDown,
   FiShield,
   FiRadio,
-  FiActivity,
+  FiCheck,
+  FiX,
 } from "react-icons/fi";
 import {
   MdRouter,
@@ -23,11 +24,21 @@ type Row = {
   taskID: string;
   name: string;
   ip: string;
+  targetKey: string;
+  targetLabel: string;
   firmwareVersion: string;
   vulnerabilityTotal: number;
   progressPercent: number;
   riskScore: number;
   iconIndex: number;
+};
+
+type TargetOption = {
+  key: string;
+  label: string;
+  taskID: string;
+  name: string;
+  ip: string;
 };
 
 interface TableTargetProps {
@@ -50,6 +61,18 @@ const clampRiskToTen = (risk: number) => clamp(risk || 0, 0, 10);
 
 const getProgressPercentFromRisk = (risk: number) =>
   (clampRiskToTen(risk) / 10) * 100;
+
+const buildTargetKey = (taskName: string, ip: string) => {
+  const safeTask = String(taskName || "-").trim() || "-";
+  const safeIp = String(ip || "-").trim() || "-";
+  return `${safeTask}__${safeIp}`;
+};
+
+const buildTargetLabel = (taskName: string, ip: string) => {
+  const safeTask = String(taskName || "-").trim() || "-";
+  const safeIp = String(ip || "-").trim() || "-";
+  return `${safeTask} - ${safeIp}`;
+};
 
 const DEVICE_ICONS = [
   {
@@ -147,6 +170,7 @@ const buildPageNumbers = (currentPage: number, totalPages: number): number[] => 
   }
 
   if (currentPage <= 3) return [1, 2, 3, 4, 5];
+
   if (currentPage >= totalPages - 2) {
     return [
       totalPages - 4,
@@ -172,12 +196,23 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
   const [openSort, setOpenSort] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [openTargetQuery, setOpenTargetQuery] = useState(false);
+  const [targetQuerySearch, setTargetQuerySearch] = useState("");
+  const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
+
   const sortRef = useRef<HTMLDivElement | null>(null);
+  const targetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+
+      if (sortRef.current && !sortRef.current.contains(target)) {
         setOpenSort(false);
+      }
+
+      if (targetRef.current && !targetRef.current.contains(target)) {
+        setOpenTargetQuery(false);
       }
     };
 
@@ -196,17 +231,23 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
       const taskID = String(x?.task_id ?? "").trim();
       const name = String(x?.task_name ?? "").trim() || "-";
       const ip = String(x?.ip_address ?? "").trim() || "-";
+      const targetKey = buildTargetKey(name, ip);
+      const targetLabel = buildTargetLabel(name, ip);
+
       const fw =
         String(x?.firmware_version ?? "Unknown Device").trim() ||
         "Unknown Device";
+
       const iconIndex = stableIconIndex(`${taskID}-${ip}-${name}-${fw}`);
 
       return {
-        id: `${taskID || "task"}-${ip}-${idx}`,
+        id: `${targetKey}-${taskID || "task"}-${idx}`,
         no: idx + 1,
         taskID,
         name,
         ip,
+        targetKey,
+        targetLabel,
         firmwareVersion: fw,
         vulnerabilityTotal: vuln,
         progressPercent: clamp(progressPercent, 0, 100),
@@ -218,8 +259,43 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
     return mapped;
   }, [data]);
 
+  const targetOptions = useMemo<TargetOption[]>(() => {
+    const seen = new Set<string>();
+    const options: TargetOption[] = [];
+
+    for (const row of baseRows) {
+      if (!row.targetKey || seen.has(row.targetKey)) continue;
+
+      seen.add(row.targetKey);
+
+      options.push({
+        key: row.targetKey,
+        label: row.targetLabel,
+        taskID: row.taskID,
+        name: row.name,
+        ip: row.ip,
+      });
+    }
+
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [baseRows]);
+
+  const filteredTargetOptions = useMemo(() => {
+    const keyword = targetQuerySearch.trim().toLowerCase();
+    if (!keyword) return targetOptions;
+
+    return targetOptions.filter((opt) =>
+      opt.label.toLowerCase().includes(keyword)
+    );
+  }, [targetOptions, targetQuerySearch]);
+
   const rows: Row[] = useMemo(() => {
     let filtered = [...baseRows];
+
+    if (selectedTargets.length > 0) {
+      const selectedSet = new Set(selectedTargets);
+      filtered = filtered.filter((r) => selectedSet.has(r.targetKey));
+    }
 
     const q = search.trim().toLowerCase();
     if (q.length > 0) {
@@ -227,6 +303,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
         return (
           r.name.toLowerCase().includes(q) ||
           r.ip.toLowerCase().includes(q) ||
+          r.targetLabel.toLowerCase().includes(q) ||
           r.firmwareVersion.toLowerCase().includes(q)
         );
       });
@@ -238,7 +315,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
     });
 
     return filtered.map((r, i) => ({ ...r, no: i + 1 }));
-  }, [baseRows, search, sortOrder]);
+  }, [baseRows, search, sortOrder, selectedTargets]);
 
   const totalPages = useMemo(() => {
     const total = Math.ceil(rows.length / ROWS_PER_PAGE);
@@ -257,7 +334,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, sortOrder]);
+  }, [search, sortOrder, selectedTargets]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -266,19 +343,55 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
   }, [currentPage, totalPages]);
 
   const stats = useMemo(() => {
-    const list = Array.isArray(data) ? data : [];
-    const totalTargets = list.length;
-    const totalVulns = list.reduce(
-      (sum, x) => sum + (Number(x?.vulnerability_total) || 0),
+    const source = selectedTargets.length > 0 ? rows : baseRows;
+
+    const totalTargets = source.length;
+    const totalVulns = source.reduce(
+      (sum, x) => sum + (Number(x?.vulnerabilityTotal) || 0),
       0
     );
-    const highestRisk = list.reduce(
-      (m, x) => Math.max(m, Number(x?.risk_score) || 0),
+    const highestRisk = source.reduce(
+      (m, x) => Math.max(m, Number(x?.riskScore) || 0),
       0
     );
 
     return { totalTargets, totalVulns, highestRisk };
-  }, [data]);
+  }, [baseRows, rows, selectedTargets.length]);
+
+  const targetButtonLabel = useMemo(() => {
+    if (selectedTargets.length === 0) return "Target Filter";
+    if (selectedTargets.length === 1) return "1 target selected";
+    return `${selectedTargets.length} targets selected`;
+  }, [selectedTargets.length]);
+
+  const toggleTarget = (key: string) => {
+    setSelectedTargets((prev) =>
+      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
+    );
+  };
+
+  const handleSelectAllVisibleTargets = () => {
+    const visibleKeys = filteredTargetOptions.map((x) => x.key);
+
+    setSelectedTargets((prev) => {
+      const prevSet = new Set(prev);
+      const allVisibleSelected = visibleKeys.every((key) => prevSet.has(key));
+
+      if (allVisibleSelected) {
+        return prev.filter((key) => !visibleKeys.includes(key));
+      }
+
+      return Array.from(new Set([...prev, ...visibleKeys]));
+    });
+  };
+
+  const clearAllTargets = () => {
+    setSelectedTargets([]);
+  };
+
+  const allVisibleTargetsSelected =
+    filteredTargetOptions.length > 0 &&
+    filteredTargetOptions.every((opt) => selectedTargets.includes(opt.key));
 
   return (
     <section
@@ -345,21 +458,6 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                     "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
                   ].join(" ")}
                 >
-                  <FiActivity className="text-[11px] text-violet-500" />
-                  <span className="text-[10px] font-medium">
-                    {loading
-                      ? "Loading telemetry..."
-                      : `${stats.totalVulns.toLocaleString()} total vulns`}
-                  </span>
-                </div>
-
-                <div
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                    "bg-slate-50 text-slate-600 border border-slate-200/80",
-                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                  ].join(" ")}
-                >
                   <span className="text-[10px] font-medium">
                     Peak risk {formatRisk(stats.highestRisk)}/10
                   </span>
@@ -369,6 +467,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
               <h2 className="text-[16px] font-semibold text-[#1f2240] dark:text-white/90 sm:text-[17px]">
                 Device Vulnerability Table
               </h2>
+
               <p className="mt-1 text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
                 Monitored targets, firmware details, vulnerability totals, and
                 live risk posture
@@ -376,6 +475,147 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
             </div>
 
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <div className="relative" ref={targetRef}>
+                <button
+                  type="button"
+                  onClick={() => setOpenTargetQuery((prev) => !prev)}
+                  className={[
+                    "h-9 px-3.5 rounded-[14px] inline-flex items-center justify-between gap-2 transition text-left min-w-40 sm:min-w-44",
+                    "border border-gray-200/80 bg-white text-[12px] font-medium text-[#1f2240] hover:bg-gray-50",
+                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  <span className="truncate">{targetButtonLabel}</span>
+
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {selectedTargets.length > 0 && (
+                      <span className="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-1 text-[9px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                        {selectedTargets.length}
+                      </span>
+                    )}
+
+                    <FiChevronDown
+                      className={`text-[14px] text-gray-500 transition dark:text-white/55 ${
+                        openTargetQuery ? "rotate-180" : ""
+                      }`}
+                    />
+                  </div>
+                </button>
+
+                {openTargetQuery && (
+                  <div
+                    className={[
+                      "fixed left-3 right-3 top-20 z-100 overflow-hidden rounded-[18px]",
+                      "border border-gray-200 bg-white shadow-xl",
+                      "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]",
+                      "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(20rem,calc(100vw-2rem))]",
+                      "md:w-[min(20rem,calc(100vw-2rem))]",
+                      "lg:w-[min(20rem,calc(100vw-2rem))]",
+                      "xl:w-[min(20rem,calc(100vw-2rem))]",
+                    ].join(" ")}
+                  >
+                    <div className="border-b border-gray-100 p-2 dark:border-white/10">
+                      <div
+                        className={[
+                          "flex h-8 items-center gap-2 rounded-xl px-2.5",
+                          "bg-slate-50 border border-slate-200/80",
+                          "dark:bg-white/5 dark:border-white/10",
+                        ].join(" ")}
+                      >
+                        <FiSearch className="shrink-0 text-[12px] text-gray-400 dark:text-white/40" />
+
+                        <input
+                          type="text"
+                          value={targetQuerySearch}
+                          onChange={(e) => setTargetQuerySearch(e.target.value)}
+                          placeholder="Search target or ip..."
+                          className="w-full bg-transparent text-[10.5px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
+                        />
+
+                        {targetQuerySearch.trim() !== "" && (
+                          <button
+                            type="button"
+                            onClick={() => setTargetQuerySearch("")}
+                            className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
+                            aria-label="Clear target search"
+                          >
+                            <FiX className="text-[11px]" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-1.5 flex items-center justify-between gap-2 px-0.5">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllVisibleTargets}
+                          className="text-[9.5px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+                        >
+                          {allVisibleTargetsSelected
+                            ? "Unselect visible"
+                            : "Select visible"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={clearAllTargets}
+                          className="text-[9.5px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-[min(17rem,calc(100vh-9rem))] overflow-y-auto p-1.5 sm:max-h-60">
+                      {filteredTargetOptions.length === 0 ? (
+                        <div className="px-3 py-5 text-center text-[10px] text-gray-500 dark:text-white/50">
+                          No matching targets
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {filteredTargetOptions.map((opt) => {
+                            const checked = selectedTargets.includes(opt.key);
+
+                            return (
+                              <button
+                                key={opt.key}
+                                type="button"
+                                onClick={() => toggleTarget(opt.key)}
+                                className={[
+                                  "flex w-full items-start gap-2 rounded-xl px-2 py-1.5 text-left transition",
+                                  checked
+                                    ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
+                                    : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <span
+                                  className={[
+                                    "mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-md border transition",
+                                    checked
+                                      ? "bg-cyan-500 border-cyan-500 text-white"
+                                      : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
+                                  ].join(" ")}
+                                >
+                                  <FiCheck className="text-[8px]" />
+                                </span>
+
+                                <span className="min-w-0 flex-1">
+                                  <span
+                                    className="block text-[10px] font-medium leading-4 text-gray-700 dark:text-white/80"
+                                    style={{ wordBreak: "break-word" }}
+                                  >
+                                    {opt.label}
+                                  </span>
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div
                 className={[
                   "flex items-center gap-2 rounded-[14px] h-9 px-3 min-w-60",
@@ -384,6 +624,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                 ].join(" ")}
               >
                 <FiSearch className="shrink-0 text-[13px] text-gray-400 dark:text-white/35" />
+
                 <input
                   type="text"
                   value={search}
@@ -406,6 +647,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                   <span>
                     {sortOrder === "desc" ? "Highest Risk" : "Lowest Risk"}
                   </span>
+
                   <FiChevronDown
                     className={`text-[14px] text-gray-500 transition dark:text-white/55 ${
                       openSort ? "rotate-180" : ""
@@ -425,6 +667,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                     >
                       Highest Risk Score
                     </button>
+
                     <button
                       type="button"
                       onClick={() => {
@@ -456,21 +699,27 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                   <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     No
                   </th>
+
                   <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Target
                   </th>
+
                   <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     IP Address
                   </th>
+
                   <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Firmware
                   </th>
+
                   <th className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Vulnerability
                   </th>
+
                   <th className="min-w-52.5 whitespace-nowrap px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Risk Progress
                   </th>
+
                   <th className="whitespace-nowrap px-4 py-3 text-right text-[11px] font-semibold text-gray-500 dark:text-white/50">
                     Risk Score
                   </th>
@@ -487,21 +736,27 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                       <td className="px-4 py-3.5">
                         <div className="h-3 w-5 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="h-3 w-28 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="h-3 w-20 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="h-3 w-36 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="h-3 w-14 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="h-2 w-full animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
+
                       <td className="px-4 py-3.5">
                         <div className="ml-auto h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-white/10" />
                       </td>
@@ -546,6 +801,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                               <div className="truncate text-[12px] font-semibold text-[#1f2240] dark:text-white/85">
                                 {row.name}
                               </div>
+
                               <div className="mt-1">
                                 <span
                                   className={[
@@ -588,6 +844,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                                 }}
                               />
                             </div>
+
                             <span className="whitespace-nowrap text-[10px] text-gray-400 dark:text-white/40">
                               {formatRisk(row.riskScore)}
                             </span>
@@ -629,6 +886,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
               {pageNumbers.map((page) => {
                 const active = page === currentPage;
+
                 return (
                   <button
                     key={page}
