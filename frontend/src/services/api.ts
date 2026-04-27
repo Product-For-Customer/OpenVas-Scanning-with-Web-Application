@@ -1,12 +1,10 @@
 import axios from "axios";
+import { VITE_BACKEND_URL, VITE_OPENVAS_URL } from "../config/runtimeConfig";
 
-const envBackendUrl = import.meta.env.VITE_BACKEND_URL;
-const envOpenVasUrl = import.meta.env.VITE_OPENVAS_URL;
-
-export const apiUrl: string = envBackendUrl || "http://localhost:9000";
+export const apiUrl: string = VITE_BACKEND_URL || "http://localhost:9000";
 
 export const pathOpenVas: string =
-  envOpenVasUrl || "http://localhost:9392";
+  VITE_OPENVAS_URL || "http://localhost:9392";
 
 export const defaultHeaders = {
   "Content-Type": "application/json",
@@ -14,14 +12,10 @@ export const defaultHeaders = {
 };
 
 console.groupCollapsed("API CONFIG DEBUG");
-console.log("MODE:", import.meta.env.MODE);
-console.log("DEV:", import.meta.env.DEV);
-console.log("PROD:", import.meta.env.PROD);
-console.log("VITE_BACKEND_URL from env:", envBackendUrl);
-console.log("VITE_OPENVAS_URL from env:", envOpenVasUrl);
+console.log("Runtime VITE_BACKEND_URL:", VITE_BACKEND_URL);
+console.log("Runtime VITE_OPENVAS_URL:", VITE_OPENVAS_URL);
 console.log("Final apiUrl:", apiUrl);
 console.log("Final pathOpenVas:", pathOpenVas);
-console.log("All import.meta.env:", import.meta.env);
 console.groupEnd();
 
 export const baseApi = axios.create({

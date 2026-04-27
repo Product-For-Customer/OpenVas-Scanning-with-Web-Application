@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/auth"
@@ -31,8 +32,10 @@ func main() {
 		port = "9000"
 	}
 
+	allowedOrigins := parseAllowedOrigins(os.Getenv("ALLOWED_ORIGINS"))
+
 	r := gin.Default()
-	r.Use(CORSMiddleware())
+	r.Use(CORSMiddleware(allowedOrigins))
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "API RUNNING... PORT: %s", port)
@@ -55,7 +58,7 @@ func main() {
 	r.POST("/automation/feed/update", automation.TriggerFeedUpdateHandler)
 	r.POST("/line/webhook/notification", line.CreateAppNotificationByLine)
 
-	//==== Report Data for Frontend =====
+	// ==== Report Data for Frontend =====
 	r.GET("/summary-vulnerability-report", vulnerability.ListTaskVulnSummary)
 	r.GET("/critical-report", report.ListCriticalForReport)
 	r.GET("/devices/risk-report", report.ListDeviceRiskForReport)
@@ -146,20 +149,36 @@ func main() {
 	}
 }
 
-func CORSMiddleware() gin.HandlerFunc {
+func parseAllowedOrigins(raw string) map[string]bool {
+	origins := map[string]bool{}
+
+	defaultOrigins := []string{
+		"http://localhost:5173",
+		"http://localhost:5174",
+		"http://frontend",
+	}
+
+	for _, origin := range defaultOrigins {
+		origins[origin] = true
+	}
+
+	if strings.TrimSpace(raw) == "" {
+		return origins
+	}
+
+	for _, origin := range strings.Split(raw, ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			origins[origin] = true
+		}
+	}
+
+	return origins
+}
+
+func CORSMiddleware(allowedOrigins map[string]bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.Request.Header.Get("Origin")
-
-		allowedOrigins := map[string]bool{
-			"http://localhost:5174":           true,
-			"http://localhost:5173":           true,
-			"http://frontend":                 true,
-			"https://openvaswebv1.vercel.app": true,
-			"http://192.168.0.134:5173":        true,
-			"http://192.168.0.134:5174":        true,		
-			"http://10.10.40.250:5173":        true,
-			"http://10.10.40.250:5174":        true,
-		}
 
 		if allowedOrigins[origin] {
 			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)

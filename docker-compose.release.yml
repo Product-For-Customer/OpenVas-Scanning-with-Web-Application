@@ -1,4 +1,4 @@
-name: greenbone-community-edition
+name: greenbone-customer-edition
 
 services:
   vulnerability-tests:
@@ -120,9 +120,16 @@ services:
     volumes:
       - redis_socket_vol:/run/redis/
 
+  pg-gvm-migrator:
+    image: registry.community.greenbone.net/community/pg-gvm-migrator:stable
+    restart: "no"
+    volumes:
+      - psql_data_vol:/var/lib/postgresql
+      - psql_socket_vol:/var/run/postgresql
+
   pg-gvm:
     image: registry.community.greenbone.net/community/pg-gvm:stable
-    restart: on-failure:10
+    restart: unless-stopped
     ports:
       - "15432:5432"
     volumes:
@@ -131,13 +138,6 @@ services:
     depends_on:
       pg-gvm-migrator:
         condition: service_completed_successfully
-
-  pg-gvm-migrator:
-    image: registry.community.greenbone.net/community/pg-gvm-migrator:stable
-    restart: "no"
-    volumes:
-      - psql_data_vol:/var/lib/postgresql
-      - psql_socket_vol:/var/run/postgresql
 
   gvmd:
     image: registry.community.greenbone.net/community/gvmd:stable
@@ -259,7 +259,7 @@ services:
         "--notus-feed-dir",
         "/var/lib/notus/advisories",
         "-m",
-        "666",
+        "666"
       ]
     volumes:
       - gpg_data_vol:/etc/openvas/gnupg
@@ -305,40 +305,30 @@ services:
     restart: "no"
 
   backend:
-    build: ./backend
+    image: myscanner-backend:1.0.0
     container_name: backend
     restart: unless-stopped
     ports:
       - "9000:9000"
+    env_file:
+      - .env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./backend/scripts:/app/scripts:ro
-      - .:/workspace:ro
-      - ./backend/tmp/reports:/app/tmp/reports
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PORT=${PORT}
-      - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
-      - JWT_SECRET=${JWT_SECRET}
-      - FRONTEND_CAPTURE_URL=${FRONTEND_CAPTURE_URL}
-      - REPORT_OUTPUT_DIR=${REPORT_OUTPUT_DIR}
-      - REPORT_PUBLIC_BASE_URL=${REPORT_PUBLIC_BASE_URL}
-      - CHROME_PATH=${CHROME_PATH}
-      - PATH_API_URL=${PATH_API_URL}
-      - TZ=${TZ}
+      - reports_data:/app/tmp/reports
     depends_on:
       - pg-gvm
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_BACKEND_URL: ${VITE_BACKEND_URL}
-        VITE_OPENVAS_URL: ${VITE_OPENVAS_URL}
+    image: myscanner-frontend:1.0.0
     container_name: frontend
     restart: unless-stopped
     ports:
       - "5173:80"
+    env_file:
+      - .env
+    environment:
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL}
+      - VITE_OPENVAS_URL=${VITE_OPENVAS_URL}
     depends_on:
       - backend
 
@@ -348,16 +338,11 @@ services:
     restart: unless-stopped
     ports:
       - "5678:5678"
+    env_file:
+      - .env
     environment:
-      - TZ=${TZ}
-      - GENERIC_TIMEZONE=${TZ}
-      - N8N_HOST=${N8N_HOST}
-      - N8N_PORT=${N8N_PORT}
-      - N8N_PROTOCOL=${N8N_PROTOCOL}
-      - WEBHOOK_URL=${WEBHOOK_URL}
       - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD}
+      - GENERIC_TIMEZONE=${TZ}
     volumes:
       - n8n_data:/home/node/.n8n
     depends_on:
@@ -379,3 +364,4 @@ volumes:
   openvas_data_vol:
   openvas_log_data_vol:
   n8n_data:
+  reports_data:
