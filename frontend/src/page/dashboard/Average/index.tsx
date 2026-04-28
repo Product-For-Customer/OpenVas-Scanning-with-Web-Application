@@ -1352,32 +1352,41 @@ const AverageEnrollment: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-            <div className="rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-white/55">
-                <FiShield className="text-[13px] text-cyan-500" />
-                {detailMode ? "Data Points" : "Total Assets"}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-3 py-3 shadow-sm dark:border-white/10 dark:bg-white/6 sm:px-3 lg:px-4">
+              <div className="mb-2 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[clamp(10px,2.4vw,12px)] font-medium leading-none tracking-[-0.02em] text-gray-500 dark:text-white/55">
+                <FiShield className="shrink-0 text-[13px] text-cyan-500" />
+                <span className="min-w-0 whitespace-nowrap">
+                  {detailMode ? "Data Points" : "Total Assets"}
+                </span>
               </div>
+
               <div className="text-[20px] font-semibold text-[#1f2240] dark:text-white/92">
                 {detailMode ? detailRows.length : summary.totalAssets}
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-white/55">
-                <FiActivity className="text-[12px] text-violet-500" />
-                Average Risk Score / Max CVSS
+            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-3 py-3 shadow-sm dark:border-white/10 dark:bg-white/6 sm:px-3 lg:px-4">
+              <div className="mb-2 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[clamp(9px,2.2vw,12px)] font-medium leading-none tracking-[-0.04em] text-gray-500 dark:text-white/55">
+                <FiActivity className="shrink-0 text-[12px] text-violet-500" />
+                <span className="min-w-0 whitespace-nowrap">
+                  Average Risk Score (CVSS Rating Score)
+                </span>
               </div>
+
               <div className="text-[20px] font-semibold text-[#1f2240] dark:text-white/92">
                 {formatRisk(detailMode ? detailAvgRisk : summary.avgLatestRisk)} / 10.00
               </div>
             </div>
 
-            <div className="rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-gray-500 dark:text-white/55">
-                <FiAlertCircle className="text-[13px] text-rose-500" />
-                {detailMode ? "Risk Range" : "Increased / Decreased"}
+            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-3 py-3 shadow-sm dark:border-white/10 dark:bg-white/6 sm:px-3 lg:px-4">
+              <div className="mb-2 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[clamp(10px,2.4vw,12px)] font-medium leading-none tracking-[-0.02em] text-gray-500 dark:text-white/55">
+                <FiAlertCircle className="shrink-0 text-[13px] text-rose-500" />
+                <span className="min-w-0 whitespace-nowrap">
+                  {detailMode ? "Risk Range" : "Increased / Decreased"}
+                </span>
               </div>
+
               <div className="text-[20px] font-semibold text-[#1f2240] dark:text-white/92">
                 {detailMode
                   ? "0.00 - 10.00"
