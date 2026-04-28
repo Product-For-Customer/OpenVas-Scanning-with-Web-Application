@@ -327,7 +327,7 @@ func buildAppNotificationWelcomeMessage(notification entity.AppNotification, lin
 		lineMasterName = "Auto Bot"
 	}
 
-	return fmt.Sprintf(`สวัสดีคุณ %s 👋
+	return fmt.Sprintf(`สวัสดี %s 👋
 ผมคือ %s
 
 ขอบคุณที่เชื่อมต่อกับระบบแจ้งเตือนอัตโนมัติผ่าน LINE
