@@ -258,9 +258,9 @@ const AverageRiskGauge: React.FC<GaugeCardProps> = ({ score }) => {
           <text
             x="18"
             y="82"
-            fontSize="9"
+            fontSize="11"
             fill="#64748b"
-            fontWeight="600"
+            fontWeight="700"
             textAnchor="middle"
           >
             0
@@ -268,9 +268,9 @@ const AverageRiskGauge: React.FC<GaugeCardProps> = ({ score }) => {
           <text
             x="126"
             y="82"
-            fontSize="9"
+            fontSize="11"
             fill="#64748b"
-            fontWeight="600"
+            fontWeight="700"
             textAnchor="middle"
           >
             10
@@ -449,7 +449,7 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
     return (
       <li
         key={`${device.task_id}-${device.ip_address || "no-ip"}-${absoluteIndex}`}
-        className="px-4 py-3 sm:px-5"
+        className="px-4 py-3.5 sm:px-5"
         style={{
           breakInside: "avoid-page",
           pageBreakInside: "avoid",
@@ -457,28 +457,28 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
       >
         <div className="flex items-start gap-3">
           <div className="flex min-w-0 flex-1 items-start gap-3">
-            <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 px-1 text-[10px] font-bold text-slate-700">
+            <span className="mt-0.5 inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-slate-200 px-1 text-[11.5px] font-bold text-slate-700">
               {absoluteIndex + 1}
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-medium leading-5 text-slate-900">
+              <p className="text-[13.5px] font-semibold leading-5 text-slate-900">
                 {device.task_name || "-"}
               </p>
 
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-5 text-slate-600">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.25px] leading-5 text-slate-600">
                 <span>
-                  <span className="font-medium text-slate-700">IP:</span>{" "}
+                  <span className="font-semibold text-slate-700">IP:</span>{" "}
                   {device.ip_address || "-"}
                 </span>
 
                 <span>
-                  <span className="font-medium text-slate-700">Risk:</span>{" "}
+                  <span className="font-semibold text-slate-700">Risk:</span>{" "}
                   {formatRiskScore(device.risk_score)}
                 </span>
 
                 <span>
-                  <span className="font-medium text-slate-700">
+                  <span className="font-semibold text-slate-700">
                     Vulnerabilities:
                   </span>{" "}
                   {formatVulnerabilityTotal(device.vulnerability_total)}
@@ -486,7 +486,7 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
               </div>
 
               {device.firmware_version ? (
-                <p className="mt-1 text-[10.5px] leading-5 text-slate-500">
+                <p className="mt-1 text-[11.75px] leading-5 text-slate-500">
                   Firmware: {truncateText(device.firmware_version, 95)}
                 </p>
               ) : null}
@@ -549,15 +549,15 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
         <div className="px-5 py-6 md:px-6">
           {showOuterHeader ? (
             <>
-              <h3 className="text-[17px] font-semibold text-slate-900">
+              <h3 className="text-[19px] font-semibold text-slate-900">
                 Device Risk List
               </h3>
-              <p className="mt-2 text-[13px] leading-6 text-slate-600">
+              <p className="mt-2 text-[14px] leading-6 text-slate-600">
                 ไม่พบข้อมูลอุปกรณ์สำหรับรายงานรอบนี้
               </p>
             </>
           ) : (
-            <p className="text-[13px] leading-6 text-slate-600">No Data</p>
+            <p className="text-[14px] leading-6 text-slate-600">No Data</p>
           )}
         </div>
       </section>
@@ -569,22 +569,21 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
       <div className="px-5 py-5 md:px-6">
         {showOuterHeader ? (
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-
             <div className="border border-slate-200 bg-slate-50 px-4 py-3.5">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 items-start gap-3">
                   <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                    <FiCpu className="text-[17px]" />
+                    <FiCpu className="text-[18px]" />
                   </span>
 
                   <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
+                    <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-slate-600">
                       Total Devices
                     </p>
-                    <p className="mt-1 text-[17px] font-bold text-slate-900">
+                    <p className="mt-1 text-[20px] font-bold text-slate-900">
                       {formatNumber(totalTargets)}
                     </p>
-                    <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                    <p className="mt-1 text-[12.25px] leading-5 text-slate-600">
                       {effectiveTaskMode === "all"
                         ? "Devices assessed in the latest scan cycle."
                         : "Devices assessed in the selected task scope."}
@@ -628,19 +627,19 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
                   <span
                     className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${averageTone.iconWrap}`}
                   >
-                    <FiActivity className="text-[17px]" />
+                    <FiActivity className="text-[18px]" />
                   </span>
 
                   <div className="min-w-0">
                     <p
-                      className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${averageTone.label}`}
+                      className={`text-[11.5px] font-semibold uppercase tracking-[0.14em] ${averageTone.label}`}
                     >
                       Average Risk Score (max 10.00)
                     </p>
-                    <p className={`mt-1 text-[17px] font-bold ${averageTone.value}`}>
+                    <p className={`mt-1 text-[20px] font-bold ${averageTone.value}`}>
                       {formatRiskScore(averageRiskScore)}
                     </p>
-                    <p className={`mt-1 text-[11px] leading-5 ${averageTone.desc}`}>
+                    <p className={`mt-1 text-[12.25px] leading-5 ${averageTone.desc}`}>
                       {effectiveTaskMode === "all"
                         ? "Average risk level across assessed devices."
                         : "Average risk level across selected devices."}
@@ -682,7 +681,7 @@ const TopDeviceRiskReport: React.FC<TopDeviceRiskReportProps> = ({
           ) : null}
         </div>
 
-        <p className="mt-3 text-[11px] leading-5 text-slate-500">
+        <p className="mt-3 text-[12.25px] leading-5 text-slate-500">
           Note: The list is ordered by risk score in descending order and shown
           20 devices per page.
         </p>

@@ -22,10 +22,11 @@ import {
 } from "../../services/report";
 import type { DeviceRiskForReportDTO } from "../../services/report";
 
-const sectionHeadingClass =
-  "mt-1 text-[16px] font-bold leading-[1.2] text-slate-900";
-const sectionDescClass =
-  "mt-1.5 max-w-full text-[10.5px] leading-[1.6] text-slate-600";
+const HeadingClass =
+  "mt-1 text-[22px] font-bold leading-[1.25] text-slate-900";
+
+const DescClass =
+  "mt-2 max-w-full text-[15.5px] leading-[1.85] text-slate-600";
 
 const PAGE_WIDTH = 1120;
 const PAGE_HEIGHT = 1620;
@@ -147,7 +148,15 @@ const buildVisiblePageNumbers = (
   }
 
   if (currentPage >= totalPages - 3) {
-    return [1, "ellipsis-left", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [
+      1,
+      "ellipsis-left",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
   }
 
   return [
@@ -489,8 +498,8 @@ const Pdf: React.FC<PdfProps> = ({
             <main className="flex-1 px-8 pt-6 pb-8">
               <section className="mt-0">
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={sectionHeadingClass}>Total Severity</h1>
-                  <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
+                  <h1 className={HeadingClass}>Total Severity</h1>
+                  <p className={DescClass}>
                     แสดงสรุปผลการสแกนล่าสุด พร้อมจำนวนช่องโหว่ที่พบ
                     แยกตามระดับความรุนแรง
                   </p>
@@ -506,10 +515,12 @@ const Pdf: React.FC<PdfProps> = ({
 
               <section className="mt-5">
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={sectionHeadingClass}>
+                  <h1 className={HeadingClass}>
                     Severity Distribution Overview
                   </h1>
-                  <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
+                  <p
+                    className={`${DescClass}`}
+                  >
                     แสดงจำนวนช่องโหว่ในแต่ละระดับความรุนแรงในรูปแบบกราฟ
                   </p>
                 </div>
@@ -535,8 +546,10 @@ const Pdf: React.FC<PdfProps> = ({
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <div className="flex items-end justify-between gap-4">
                     <div>
-                      <h1 className={sectionHeadingClass}>Critical Highlights</h1>
-                      <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
+                      <h1 className={HeadingClass}>Critical Highlights</h1>
+                      <p
+                        className={`${DescClass}`}
+                      >
                         สรุปช่องโหว่ระดับวิกฤตที่ควรติดตามก่อน
                         พร้อมผลกระทบ รายละเอียด และแนวทางแก้ไข
                       </p>
@@ -576,12 +589,15 @@ const Pdf: React.FC<PdfProps> = ({
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <div className="flex items-end justify-between gap-4">
                     <div>
-                      <h1 className={sectionHeadingClass}>
+                      <h1 className={HeadingClass}>
                         Top Device Risk Report
                       </h1>
-                      <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
+                      <p
+                        className={`${DescClass}`}
+                      >
                         แสดงรายการอุปกรณ์ที่มีความเสี่ยงสูงจากผลการประเมินล่าสุด
-                        โดยเรียงตามค่า Risk Score เพื่อช่วยติดตามอุปกรณ์ที่ควรจัดการก่อน
+                        โดยเรียงลำดับตามค่า Risk Score
+                        เพื่อช่วยให้ติดตามอุปกรณ์ที่ควรได้รับการจัดการก่อน
                       </p>
                     </div>
 
@@ -623,8 +639,12 @@ const Pdf: React.FC<PdfProps> = ({
                 }}
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={sectionHeadingClass}>Top 10 Risk Score Comparison</h1>
-                  <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`} >
+                  <h1 className={HeadingClass}>
+                    Top 10 Risk Score Comparison
+                  </h1>
+                  <p
+                    className={`${DescClass}`}
+                  >
                     เปรียบเทียบค่า Latest Risk และ Previous Risk ของแต่ละเป้าหมาย
                     เพื่อให้เห็นแนวโน้มความเสี่ยงล่าสุด
                   </p>
@@ -644,10 +664,12 @@ const Pdf: React.FC<PdfProps> = ({
                 }}
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={sectionHeadingClass}>
+                  <h1 className={HeadingClass}>
                     Monthly Risk Score Overview
                   </h1>
-                  <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
+                  <p
+                    className={`${DescClass}`}
+                  >
                     แสดงจำนวนช่องโหว่และค่า Risk Score รายเดือนของปี
                     พร้อมตารางสรุปสำหรับใช้ตรวจสอบรายงาน
                   </p>
@@ -676,13 +698,13 @@ const Pdf: React.FC<PdfProps> = ({
                 }}
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={sectionHeadingClass}>
+                  <h1 className={HeadingClass}>
                     Final Conclusion and Executive Summary
                   </h1>
-                  <p className={`${sectionDescClass} text-base md:text-[12.5px] leading-relaxed`}>
-                    สรุปภาพรวมของรายงานทั้งหมดในหน้าเดียว
-                    โดยรวบรวมตัวเลขสำคัญ การกระจายความรุนแรง
-                    ความเสี่ยงของเป้าหมายหลัก และข้อสังเกตสำหรับการตัดสินใจเชิงปฏิบัติการ
+                  <p
+                    className={`${DescClass}`}
+                  >
+                    สรุปภาพรวมรายงานในหน้าเดียว พร้อมตัวเลขสำคัญ ระดับความรุนแรง ความเสี่ยงหลัก และข้อสังเกตเพื่อการตัดสินใจ
                   </p>
                 </div>
 
@@ -710,7 +732,9 @@ const Pdf: React.FC<PdfProps> = ({
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 border border-slate-200 px-3 py-1 text-slate-700 transition-colors dark:border-cyan-400/15 dark:bg-[#0d1628] dark:text-white/80">
                 <FiFileText className="text-[13px]" />
-                <span className="text-[11px] font-medium">PDF Preview Mode</span>
+                <span className="text-[11px] font-medium">
+                  PDF Preview Mode
+                </span>
               </div>
 
               <h1 className="mt-3 text-[16px] font-semibold text-slate-900 dark:text-white/92 sm:text-[20px]">
@@ -742,10 +766,14 @@ const Pdf: React.FC<PdfProps> = ({
 
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center dark:border-cyan-400/12 dark:bg-[#111a2d]">
                     <div className="text-[11px] font-semibold text-slate-800 dark:text-white/85">
-                      {prefetchLoading ? "Loading..." : `Page ${currentPage} of ${totalPages}`}
+                      {prefetchLoading
+                        ? "Loading..."
+                        : `Page ${currentPage} of ${totalPages}`}
                     </div>
                     <div className="mt-0.5 max-w-full truncate text-[10px] text-slate-500 dark:text-white/45">
-                      {prefetchLoading ? "Preparing report..." : currentDescriptor?.title ?? "-"}
+                      {prefetchLoading
+                        ? "Preparing report..."
+                        : currentDescriptor?.title ?? "-"}
                     </div>
                   </div>
 
@@ -807,7 +835,10 @@ const Pdf: React.FC<PdfProps> = ({
                   <div className="-mx-0.5 flex-1 overflow-x-auto pb-1 xl:flex-none xl:overflow-visible xl:pb-0">
                     <div className="flex w-max items-center border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#111a2d]">
                       {visiblePageNumbers.map((item, index) => {
-                        if (item === "ellipsis-left" || item === "ellipsis-right") {
+                        if (
+                          item === "ellipsis-left" ||
+                          item === "ellipsis-right"
+                        ) {
                           return (
                             <div
                               key={`${item}-${index}`}

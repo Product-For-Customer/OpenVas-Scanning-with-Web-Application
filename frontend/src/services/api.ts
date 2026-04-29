@@ -3,10 +3,10 @@ import axios from "axios";
 const envBackendUrl = import.meta.env.VITE_BACKEND_URL;
 const envOpenVasUrl = import.meta.env.VITE_OPENVAS_URL;
 
-export const apiUrl: string = envBackendUrl || "http://10.10.20.87:9000";
+export const apiUrl: string = envBackendUrl || "http://localhost:9000";
 
 export const pathOpenVas: string =
-  envOpenVasUrl || "http://10.10.20.87:9392";
+  envOpenVasUrl || "http://localhost:9392";
 
 export const defaultHeaders = {
   "Content-Type": "application/json",

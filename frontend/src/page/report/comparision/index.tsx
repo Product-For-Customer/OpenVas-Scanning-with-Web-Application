@@ -65,14 +65,17 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
   return (
     <div className="min-w-55 rounded-lg border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-      <p className="text-[12px] font-semibold text-slate-900">{row.taskName}</p>
-      <p className="mt-0.5 break-all text-[10.5px] text-slate-500">
+      <p className="text-[13.5px] font-semibold text-slate-900">
+        {row.taskName}
+      </p>
+
+      <p className="mt-0.5 break-all text-[12px] text-slate-500">
         Device: {row.host || "-"}
       </p>
 
       <div className="my-2 h-px bg-slate-200" />
 
-      <div className="space-y-1.5 text-[11px]">
+      <div className="space-y-1.5 text-[12.25px]">
         <div className="flex items-center justify-between gap-3">
           <span className="text-slate-500">Latest Risk</span>
           <span className="font-semibold text-slate-900">
@@ -94,7 +97,9 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
         <div className="flex items-center justify-between gap-3">
           <span className="text-slate-500">Previous Total</span>
-          <span className="font-medium text-slate-900">{row.previousTotal}</span>
+          <span className="font-medium text-slate-900">
+            {row.previousTotal}
+          </span>
         </div>
 
         <div className="flex items-start justify-between gap-3">
@@ -292,7 +297,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
         }}
       >
         <div className="py-2">
-          <p className="text-[12px] leading-6 text-slate-600">
+          <p className="text-[14px] leading-6 text-slate-600">
             ไม่พบข้อมูลสำหรับแสดงกราฟในรายงานรอบนี้
           </p>
         </div>
@@ -312,14 +317,15 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
           <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3">
             <div className="flex items-start gap-3">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                <FiCpu className="text-[15px]" />
+                <FiCpu className="text-[17px]" />
               </span>
 
               <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   Devices
                 </p>
-                <p className="mt-1 text-[15px] font-semibold text-slate-900">
+
+                <p className="mt-1 text-[19px] font-semibold text-slate-900">
                   {totalDevices}
                 </p>
               </div>
@@ -329,14 +335,15 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
           <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-3">
             <div className="flex items-start gap-3">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-white text-violet-700">
-                <FiTrendingUp className="text-[15px]" />
+                <FiTrendingUp className="text-[17px]" />
               </span>
 
               <div className="min-w-0">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-violet-700">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
                   Highest Latest Risk (MAX 10.00)
                 </p>
-                <p className="mt-1 text-[15px] font-semibold text-slate-900">
+
+                <p className="mt-1 text-[19px] font-semibold text-slate-900">
                   {highestLatestRisk.toFixed(2)}
                 </p>
               </div>
@@ -344,7 +351,7 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
           </div>
         </div>
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10.5px] text-slate-600">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-slate-600">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-4 rounded-full bg-violet-500" />
             <span>Latest Risk</span>
@@ -369,22 +376,25 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
                 margin={{ top: 8, right: 14, left: 18, bottom: 12 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   tickLine={false}
                   axisLine={{ stroke: "#cbd5e1" }}
                   interval={0}
-                  height={34}
+                  height={36}
                 />
+
                 <YAxis
                   domain={[0, 10]}
-                  tick={{ fontSize: 10, fill: "#64748b" }}
+                  tick={{ fontSize: 12, fill: "#64748b" }}
                   tickLine={false}
                   axisLine={{ stroke: "#cbd5e1" }}
-                  width={42}
+                  width={44}
                   tickMargin={10}
                 />
+
                 <Tooltip content={<CustomTooltip />} />
 
                 <Area
@@ -418,8 +428,9 @@ const ComparisonReport: React.FC<ComparisonReportProps> = ({
           </div>
         </div>
 
-        <p className="mt-2 text-[10.5px] leading-5 text-slate-500">
-          Note: Only the Top 10 targets with the highest Latest Risk are displayed, sorted in descending order.
+        <p className="mt-2 text-[12.25px] leading-5 text-slate-500">
+          Note: Only the Top 10 targets with the highest Latest Risk are
+          displayed, sorted in descending order.
         </p>
       </div>
     </section>

@@ -62,12 +62,6 @@ const formatCount = (value?: number) => {
   return value.toLocaleString("en-US");
 };
 
-// จัดระดับสีใหม่ให้เหมาะกับคะแนนเต็ม 10
-// 0 = no data
-// 0.01 - <4 = low  -> green
-// 4 - <7    = medium -> yellow
-// 7 - <9    = high -> orange
-// 9 - 10    = critical -> red
 const getRiskLevel = (score: number) => {
   if (score >= 9) return "critical";
   if (score >= 7) return "high";
@@ -81,15 +75,15 @@ const getBarColor = (score: number) => {
 
   switch (level) {
     case "critical":
-      return "#dc2626"; // red
+      return "#dc2626";
     case "high":
-      return "#f97316"; // orange
+      return "#f97316";
     case "medium":
-      return "#eab308"; // yellow
+      return "#eab308";
     case "low":
-      return "#22c55e"; // green
+      return "#22c55e";
     default:
-      return "#cbd5e1"; // slate
+      return "#cbd5e1";
   }
 };
 
@@ -163,11 +157,11 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
   return (
     <div className="min-w-56 rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-      <p className="text-[12px] font-semibold text-slate-900">
+      <p className="text-[13.5px] font-semibold text-slate-900">
         {row.month} {currentYear}
       </p>
 
-      <div className="mt-2 space-y-1.5 text-[11px]">
+      <div className="mt-2 space-y-1.5 text-[12.25px]">
         <div>
           <span className="font-medium text-slate-700">Vulnerabilities:</span>{" "}
           <span className="text-slate-600">
@@ -206,8 +200,8 @@ const RiskScoreLabel: React.FC<RiskScoreLabelProps> = (props) => {
       y={y - 6}
       fill="#0f172a"
       textAnchor="middle"
-      fontSize={9}
-      fontWeight={600}
+      fontSize={11}
+      fontWeight={700}
     >
       {value.toFixed(2)}
     </text>
@@ -323,9 +317,9 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
   onReady,
   selectedTaskIDs = [],
 }) => {
-  const [apiData, setApiData] = useState<ReportVulnerabilityMonthResponse[] | null>(
-    null
-  );
+  const [apiData, setApiData] = useState<
+    ReportVulnerabilityMonthResponse[] | null
+  >(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   const normalizedSelectedTaskIDs = useMemo(
@@ -417,14 +411,15 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
             <div className="border border-slate-200 bg-slate-50 px-3 py-2.5">
               <div className="flex items-start gap-2.5">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                  <FiCpu className="text-[13px]" />
+                  <FiCpu className="text-[15px]" />
                 </span>
 
                 <div>
-                  <p className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                     Total Device
                   </p>
-                  <p className="mt-0.5 text-[14px] font-semibold text-slate-900">
+
+                  <p className="mt-0.5 text-[18px] font-semibold text-slate-900">
                     {formatCount(totalDevice)}
                   </p>
                 </div>
@@ -436,21 +431,28 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
                 <span
                   className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-white ${highestRiskCard.icon}`}
                 >
-                  <FiBarChart2 className="text-[13px]" />
+                  <FiBarChart2 className="text-[15px]" />
                 </span>
 
                 <div>
                   <p
-                    className={`text-[8.5px] font-semibold uppercase tracking-[0.12em] ${highestRiskCard.label}`}
+                    className={`text-[10.5px] font-semibold uppercase tracking-[0.12em] ${highestRiskCard.label}`}
                   >
                     Highest AVG Risk (MAX 10.00)
                   </p>
-                  <p className="mt-0.5 text-[14px] font-semibold">
-                    <span className={getTextRiskColor(summary.highestAvgRiskScore)}>
+
+                  <p className="mt-0.5 text-[18px] font-semibold">
+                    <span
+                      className={getTextRiskColor(
+                        summary.highestAvgRiskScore
+                      )}
+                    >
                       {formatRiskScore(summary.highestAvgRiskScore)}
                     </span>
+
                     <span className="mx-1 text-slate-400">-</span>
-                    <span className="font-medium text-slate-600 text-[12px]">
+
+                    <span className="text-[13px] font-medium text-slate-600">
                       {summary.highestAvgRiskMonth === "-"
                         ? "No month data"
                         : `${summary.highestAvgRiskMonth} ${currentYear}`}
@@ -463,14 +465,15 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
             <div className="border border-sky-200 bg-sky-50 px-3 py-2.5">
               <div className="flex items-start gap-2.5">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-sky-200 bg-white text-sky-700">
-                  <FiShield className="text-[13px]" />
+                  <FiShield className="text-[15px]" />
                 </span>
 
                 <div>
-                  <p className="text-[8.5px] font-semibold uppercase tracking-[0.12em] text-sky-700">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-sky-700">
                     Total Vulnerabilities
                   </p>
-                  <p className="mt-0.5 text-[14px] font-semibold text-slate-900">
+
+                  <p className="mt-0.5 text-[18px] font-semibold text-slate-900">
                     {formatCount(summary.totalVulnerabilities)}
                   </p>
                 </div>
@@ -481,10 +484,11 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
 
         <div className="px-3 py-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Monthly AVG Risk Score Trend
             </p>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-medium text-slate-600">
+
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               Year {currentYear}
             </span>
           </div>
@@ -502,23 +506,35 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
                 margin={{ top: 18, right: 8, left: 2, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 9, fill: "#64748b" }}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
                   tickLine={false}
                   axisLine={{ stroke: "#cbd5e1" }}
                 />
+
                 <YAxis
                   domain={[0, 10]}
-                  tick={{ fontSize: 9, fill: "#64748b" }}
+                  tick={{ fontSize: 11, fill: "#64748b" }}
                   tickLine={false}
                   axisLine={{ stroke: "#cbd5e1" }}
-                  width={34}
+                  width={36}
                   tickMargin={6}
                 />
+
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="avgRiskScore" radius={[4, 4, 0, 0]} maxBarSize={24}>
-                  <LabelList dataKey="avgRiskScore" content={<RiskScoreLabel />} />
+
+                <Bar
+                  dataKey="avgRiskScore"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={24}
+                >
+                  <LabelList
+                    dataKey="avgRiskScore"
+                    content={<RiskScoreLabel />}
+                  />
+
                   {chartData.map((entry, index) => (
                     <Cell
                       key={`cell-${entry.monthNo}-${index}`}
@@ -542,13 +558,15 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
             <table className="w-full border-collapse">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="border-b border-slate-200 px-3 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-slate-600">
+                  <th className="border-b border-slate-200 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">
                     Month
                   </th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center text-[9px] font-semibold uppercase tracking-widest text-slate-600">
+
+                  <th className="border-b border-slate-200 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-widest text-slate-600">
                     Vulnerabilities
                   </th>
-                  <th className="border-b border-slate-200 px-3 py-2 text-center text-[9px] font-semibold uppercase tracking-widest text-slate-600">
+
+                  <th className="border-b border-slate-200 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-widest text-slate-600">
                     AVG Risk Score
                   </th>
                 </tr>
@@ -560,15 +578,20 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
                     key={row.monthNo}
                     className="odd:bg-white even:bg-slate-50/50"
                   >
-                    <td className="border-b border-slate-200 px-3 py-2 text-[10.5px] font-medium text-slate-900">
+                    <td className="border-b border-slate-200 px-3 py-2 text-[12.25px] font-medium text-slate-900">
                       {row.month}
                     </td>
-                    <td className="border-b border-slate-200 px-3 py-2 text-center text-[10.5px] text-slate-700">
+
+                    <td className="border-b border-slate-200 px-3 py-2 text-center text-[12.25px] text-slate-700">
                       {loading ? "0" : formatCount(row.vulnerabilityCount)}
                     </td>
+
                     <td
-                      className={`border-b border-slate-200 px-3 py-2 text-center text-[10.5px] font-semibold ${loading ? "text-slate-900" : getTextRiskColor(row.avgRiskScore)
-                        }`}
+                      className={`border-b border-slate-200 px-3 py-2 text-center text-[12.25px] font-semibold ${
+                        loading
+                          ? "text-slate-900"
+                          : getTextRiskColor(row.avgRiskScore)
+                      }`}
                     >
                       {loading ? "0.00" : formatRiskScore(row.avgRiskScore)}
                     </td>
@@ -578,9 +601,9 @@ const Section6MonthlyRiskReport: React.FC<Section6MonthlyRiskReportProps> = ({
             </table>
           </div>
 
-          <p className="mt-2 text-[10px] leading-4.5 text-slate-500">
-            Note: This section presents the monthly AVG risk score together
-            with the corresponding vulnerability counts observed in each month.
+          <p className="mt-2 text-[12px] leading-4.5 text-slate-500">
+            Note: This section presents the monthly AVG risk score together with
+            the corresponding vulnerability counts observed in each month.
           </p>
         </div>
       </div>

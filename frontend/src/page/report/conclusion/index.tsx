@@ -204,8 +204,8 @@ const RiskScoreLabel: React.FC<any> = (props) => {
       y={Math.max(y - 6, 12)}
       fill="#0f172a"
       textAnchor="middle"
-      fontSize={9}
-      fontWeight={600}
+      fontSize={11}
+      fontWeight={700}
     >
       {value.toFixed(2)}
     </text>
@@ -307,10 +307,16 @@ const Conclusion: React.FC<ConclusionProps> = ({
 }) => {
   const initialQuery = useMemo(() => readTaskIDsFromQuery(), []);
 
-  const [summaryRows, setSummaryRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
+  const [summaryRows, setSummaryRows] = useState<
+    TaskVulnSummaryForReportResponse[]
+  >([]);
   const [deviceRows, setDeviceRows] = useState<DeviceRiskForReportDTO[]>([]);
-  const [criticalRows, setCriticalRows] = useState<CriticalForReportResponse[]>([]);
-  const [monthlyRows, setMonthlyRows] = useState<ReportVulnerabilityMonthResponse[]>([]);
+  const [criticalRows, setCriticalRows] = useState<CriticalForReportResponse[]>(
+    []
+  );
+  const [monthlyRows, setMonthlyRows] = useState<
+    ReportVulnerabilityMonthResponse[]
+  >([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   const normalizedSelectedTaskIDs = useMemo(
@@ -345,6 +351,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
 
   useEffect(() => {
     isMountedRef.current = true;
+
     return () => {
       isMountedRef.current = false;
     };
@@ -366,6 +373,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
       if (isMountedRef.current) {
         setLoading(true);
       }
+
       onReady?.(false);
 
       const requestTaskIds =
@@ -401,6 +409,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
       if (isMountedRef.current) {
         setLoading(false);
       }
+
       onReady?.(true);
       isFetchingRef.current = false;
     }
@@ -545,6 +554,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
 
         const dateA = new Date(a.detected_date || "").getTime();
         const dateB = new Date(b.detected_date || "").getTime();
+
         if (!Number.isNaN(dateA) && !Number.isNaN(dateB) && dateB !== dateA) {
           return dateB - dateA;
         }
@@ -582,11 +592,11 @@ const Conclusion: React.FC<ConclusionProps> = ({
 
     return (
       <div className="min-w-56 rounded-md border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-        <p className="text-[12px] font-semibold text-slate-900">
+        <p className="text-[13.5px] font-semibold text-slate-900">
           {row.month} {currentYear}
         </p>
 
-        <div className="mt-2 space-y-1.5 text-[11px]">
+        <div className="mt-2 space-y-1.5 text-[12.25px]">
           <div>
             <span className="font-medium text-slate-700">Vulnerabilities:</span>{" "}
             <span className="text-slate-600">
@@ -628,13 +638,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
       <div className="border-b border-slate-200 bg-linear-to-r from-white via-slate-50 to-white px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[8px] font-semibold uppercase tracking-normal text-slate-500">
+            <p className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">
               Executive Conclusion
             </p>
-            <h3 className="mt-1 text-[14px] font-bold leading-[1.2] text-slate-900">
+
+            <h3 className="mt-1 text-[18px] font-bold leading-tight text-slate-900">
               Consolidated Risk Summary and Final Observation
             </h3>
-            <p className="mt-1 max-w-full text-[9px] leading-normal text-slate-600">
+
+            <p className="mt-1.5 max-w-full text-[12.25px] leading-[1.55] text-slate-600">
               สรุปภาพรวมของรายงานทั้งหมดในหน้าเดียว โดยใช้กราฟรายเดือนสำหรับการเปรียบเทียบ
               และสรุปมุมมองระดับความรุนแรงร่วมกับแนวโน้ม Risk Score ของเป้าหมายสำคัญ
             </p>
@@ -646,16 +658,19 @@ const Conclusion: React.FC<ConclusionProps> = ({
         <div className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2.5">
           <div className="flex items-start gap-2.5">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-violet-200 bg-white text-violet-700">
-              <FiShield className="text-[13px]" />
+              <FiShield className="text-[15px]" />
             </span>
+
             <div>
-              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-violet-500">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-500">
                 Total Findings
               </p>
-              <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
+
+              <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
                 {formatNumber(totalFindings)}
               </p>
-              <p className="mt-1 text-[8.5px] leading-[1.35] text-slate-600">
+
+              <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
                 จำนวนผลการค้นพบรวม
               </p>
             </div>
@@ -665,16 +680,19 @@ const Conclusion: React.FC<ConclusionProps> = ({
         <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
           <div className="flex items-start gap-2.5">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700">
-              <FiTarget className="text-[13px]" />
+              <FiTarget className="text-[15px]" />
             </span>
+
             <div>
-              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Total Devices
               </p>
-              <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
+
+              <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
                 {formatNumber(totalTargets)}
               </p>
-              <p className="mt-1 text-[8.5px] leading-[1.35] text-slate-600">
+
+              <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
                 จำนวน device ทั้งหมด
               </p>
             </div>
@@ -684,16 +702,19 @@ const Conclusion: React.FC<ConclusionProps> = ({
         <div className="rounded-md border border-orange-200 bg-orange-50 px-3 py-2.5">
           <div className="flex items-start gap-2.5">
             <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-white text-orange-700">
-              <FiActivity className="text-[13px]" />
+              <FiActivity className="text-[15px]" />
             </span>
+
             <div>
-              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-orange-700">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700">
                 Average Risk (0-10)
               </p>
-              <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
+
+              <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
                 {formatRiskScore(averageRiskScore)}
               </p>
-              <p className="mt-1 text-[8.5px] leading-[1.35] text-slate-600">
+
+              <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
                 ค่าเฉลี่ย Risk Score
               </p>
             </div>
@@ -705,16 +726,19 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <span
               className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-current bg-white ${priorityTone.iconClass}`}
             >
-              <FiAlertTriangle className="text-[13px]" />
+              <FiAlertTriangle className="text-[15px]" />
             </span>
+
             <div>
-              <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">
                 Highest Priority (0-10)
               </p>
-              <p className="mt-1 text-[16px] font-bold leading-none text-slate-900">
+
+              <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
                 {formatRiskScore(highestRiskScore)}
               </p>
-              <p className="mt-1 text-[8.5px] leading-[1.35] text-slate-700">
+
+              <p className="mt-1 text-[11px] leading-[1.4] text-slate-700">
                 เป้าหมายที่ควรติดตามก่อน
               </p>
             </div>
@@ -727,15 +751,16 @@ const Conclusion: React.FC<ConclusionProps> = ({
           <div className="px-3 py-3">
             <div className="mb-2 flex items-center justify-between">
               <div>
-                <h4 className="text-[11px] font-semibold text-slate-900">
+                <h4 className="text-[14.5px] font-semibold text-slate-900">
                   Monthly Comparison Overview
                 </h4>
-                <p className="text-[8.5px] leading-[1.35] text-slate-600">
+
+                <p className="text-[11.5px] leading-[1.4] text-slate-600">
                   เปรียบเทียบ Risk Score ตลอดปี {currentYear}
                 </p>
               </div>
 
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-medium text-slate-600">
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                 Year {currentYear}
               </span>
             </div>
@@ -753,23 +778,28 @@ const Conclusion: React.FC<ConclusionProps> = ({
                   margin={{ top: 18, right: 8, left: 2, bottom: 0 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
                   <XAxis
                     dataKey="month"
-                    tick={{ fontSize: 9, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
                     tickLine={false}
                     axisLine={{ stroke: "#cbd5e1" }}
                   />
+
                   <YAxis
                     domain={[0, 10]}
-                    tick={{ fontSize: 9, fill: "#64748b" }}
+                    tick={{ fontSize: 11, fill: "#64748b" }}
                     tickLine={false}
                     axisLine={{ stroke: "#cbd5e1" }}
-                    width={34}
+                    width={36}
                     tickMargin={6}
                   />
+
                   <Tooltip content={<MonthlyTooltip />} />
+
                   <Bar dataKey="riskScore" radius={[4, 4, 0, 0]} maxBarSize={24}>
                     <LabelList dataKey="riskScore" content={<RiskScoreLabel />} />
+
                     {monthlyChartData.map((entry, index) => (
                       <Cell
                         key={`cell-${entry.monthNo}-${index}`}
@@ -781,8 +811,9 @@ const Conclusion: React.FC<ConclusionProps> = ({
               </ResponsiveContainer>
             </div>
 
-            <p className="mt-2 text-[10px] leading-4.5 text-slate-500">
-              Note: This section presents the monthly AVG risk score across the year 2026.
+            <p className="mt-2 text-[12px] leading-4.5 text-slate-500">
+              Note: This section presents the monthly AVG risk score across the
+              year 2026.
             </p>
           </div>
         </div>
@@ -794,13 +825,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <div className="border-b border-slate-200 bg-slate-50/80 px-3.5 py-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                  <FiPieChart className="text-[12px]" />
+                  <FiPieChart className="text-[14px]" />
                 </span>
+
                 <div>
-                  <h4 className="text-[11px] font-semibold text-slate-900">
+                  <h4 className="text-[14px] font-semibold text-slate-900">
                     Total Severity
                   </h4>
-                  <p className="text-[8.5px] leading-[1.35] text-slate-600">
+
+                  <p className="text-[11px] leading-[1.4] text-slate-600">
                     สัดส่วนผลการค้นพบตามระดับความรุนแรง
                   </p>
                 </div>
@@ -810,13 +843,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <div className="flex flex-1 flex-col p-3">
               <div className="relative h-43.75">
                 <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center">
-                  <p className="text-[7px] font-semibold uppercase tracking-normal text-slate-500">
+                  <p className="text-[9.5px] font-semibold uppercase tracking-normal text-slate-500">
                     Total
                   </p>
-                  <p className="mt-1 text-[18px] font-bold leading-none text-slate-900">
+
+                  <p className="mt-1 text-[21px] font-bold leading-none text-slate-900">
                     {formatNumber(totalFindings)}
                   </p>
-                  <p className="mt-1 text-[7px] text-slate-500">Findings</p>
+
+                  <p className="mt-1 text-[9.5px] text-slate-500">Findings</p>
                 </div>
 
                 <ResponsiveContainer width="100%" height="100%">
@@ -838,6 +873,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
+
                     <Tooltip formatter={severityTooltipFormatter} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -847,15 +883,19 @@ const Conclusion: React.FC<ConclusionProps> = ({
                 {severityData.map((item) => (
                   <div
                     key={item.name}
-                    className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[8px]"
+                    className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[10.5px]"
                   >
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span
                         className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span className="font-medium text-slate-700">{item.name}</span>
+
+                      <span className="font-medium text-slate-700">
+                        {item.name}
+                      </span>
                     </div>
+
                     <div className="flex shrink-0 items-center gap-1.5 text-slate-600">
                       <span>{formatNumber(item.value)}</span>
                       <span>({item.share.toFixed(2)}%)</span>
@@ -872,13 +912,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <div className="border-b border-slate-200 bg-slate-50/80 px-3.5 py-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                  <FiTrendingUp className="text-[12px]" />
+                  <FiTrendingUp className="text-[14px]" />
                 </span>
+
                 <div>
-                  <h4 className="text-[11px] font-semibold text-slate-900">
+                  <h4 className="text-[14px] font-semibold text-slate-900">
                     Top 3 Device Risk
                   </h4>
-                  <p className="text-[8.5px] leading-[1.35] text-slate-600">
+
+                  <p className="text-[11px] leading-[1.4] text-slate-600">
                     แสดงเฉพาะ Top 3 เป้าหมายที่มี risk score สูงสุดจริง
                   </p>
                 </div>
@@ -892,26 +934,38 @@ const Conclusion: React.FC<ConclusionProps> = ({
                     data={topThreeLineData}
                     margin={{ top: 8, right: 8, left: -18, bottom: 0 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e2e8f0"
+                      vertical={false}
+                    />
+
                     <XAxis
                       dataKey="rank"
-                      tick={{ fontSize: 8, fill: "#64748b" }}
+                      tick={{ fontSize: 10, fill: "#64748b" }}
                       tickLine={false}
                       axisLine={{ stroke: "#cbd5e1" }}
                     />
+
                     <YAxis
                       domain={[0, 10]}
-                      tick={{ fontSize: 8, fill: "#64748b" }}
+                      tick={{ fontSize: 10, fill: "#64748b" }}
                       tickLine={false}
                       axisLine={{ stroke: "#cbd5e1" }}
-                      width={26}
+                      width={28}
                     />
+
                     <Tooltip
                       formatter={(value, name, item) => {
                         const row = item?.payload as DeviceTrendRow | undefined;
+
                         if (String(name) === "riskScore") {
-                          return [formatRiskScore(Number(value || 0)), "Risk Score"];
+                          return [
+                            formatRiskScore(Number(value || 0)),
+                            "Risk Score",
+                          ];
                         }
+
                         return [
                           row ? formatNumber(row.vulnerabilities) : "0",
                           "Vulnerabilities",
@@ -922,9 +976,10 @@ const Conclusion: React.FC<ConclusionProps> = ({
                         borderRadius: 8,
                         borderColor: "#e2e8f0",
                         boxShadow: "0 6px 20px rgba(15,23,42,0.08)",
-                        fontSize: "11px",
+                        fontSize: "12px",
                       }}
                     />
+
                     <Line
                       type="monotone"
                       dataKey="riskScore"
@@ -944,7 +999,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
               </div>
 
               <div className="mt-2 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
-                <p className="text-[7.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Target List
                 </p>
 
@@ -955,40 +1010,43 @@ const Conclusion: React.FC<ConclusionProps> = ({
                         key={`${item.rankNumber}-${item.target}-${item.ip}`}
                         className="grid grid-cols-[44px_minmax(0,1fr)_72px_58px] items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-2"
                       >
-                        <div className="text-[8px] font-semibold text-slate-500">
+                        <div className="text-[10px] font-semibold text-slate-500">
                           #{item.rankNumber}
                         </div>
 
                         <div className="min-w-0">
-                          <p className="truncate text-[8.5px] font-semibold text-slate-900">
+                          <p className="truncate text-[11px] font-semibold text-slate-900">
                             {item.target}
                           </p>
-                          <p className="truncate text-[7.5px] text-slate-500">
+
+                          <p className="truncate text-[10px] text-slate-500">
                             {item.ip}
                           </p>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-[7px] uppercase tracking-widest text-slate-500">
+                          <p className="text-[9px] uppercase tracking-widest text-slate-500">
                             Risk
                           </p>
-                          <p className="text-[8.5px] font-semibold text-slate-900">
+
+                          <p className="text-[11px] font-semibold text-slate-900">
                             {formatRiskScore(item.riskScore)}
                           </p>
                         </div>
 
                         <div className="text-right">
-                          <p className="text-[7px] uppercase tracking-widest text-slate-500">
+                          <p className="text-[9px] uppercase tracking-widest text-slate-500">
                             Vulns
                           </p>
-                          <p className="text-[8.5px] font-semibold text-slate-900">
+
+                          <p className="text-[11px] font-semibold text-slate-900">
                             {formatNumber(item.vulnerabilities)}
                           </p>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-[8.5px] text-slate-500">
+                    <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-[11px] text-slate-500">
                       No target data available
                     </div>
                   )}
@@ -1005,13 +1063,15 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <div className="border-b border-slate-200 bg-slate-50/80 px-3.5 py-2.5">
               <div className="flex items-center gap-2">
                 <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700">
-                  <FiAlertTriangle className="text-[12px]" />
+                  <FiAlertTriangle className="text-[14px]" />
                 </span>
+
                 <div>
-                  <h4 className="text-[11px] font-semibold text-slate-900">
+                  <h4 className="text-[14px] font-semibold text-slate-900">
                     Critical Observation
                   </h4>
-                  <p className="text-[8.5px] leading-[1.35] text-slate-600">
+
+                  <p className="text-[11px] leading-[1.4] text-slate-600">
                     ช่องโหว่สำคัญที่ควรติดตามเป็นลำดับต้น
                   </p>
                 </div>
@@ -1023,25 +1083,29 @@ const Conclusion: React.FC<ConclusionProps> = ({
                 <div className="space-y-2">
                   {topCriticalObservations.map((item, index) => {
                     const severity = Number(item.severity || 0);
+
                     return (
                       <div
-                        key={`${item.task_id || "task"}-${item.vulnerability_name || "vuln"}-${index}`}
+                        key={`${item.task_id || "task"}-${
+                          item.vulnerability_name || "vuln"
+                        }-${index}`}
                         className="border-b border-slate-200 pb-2 last:border-b-0 last:pb-0"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex min-w-0 items-center gap-2.5">
                             <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700">
-                              <FiAlertTriangle className="text-[12px]" />
+                              <FiAlertTriangle className="text-[14px]" />
                             </span>
 
                             <div className="min-w-0">
-                              <h5 className="truncate text-[10px] font-semibold leading-[1.35] text-slate-900">
+                              <h5 className="truncate text-[12px] font-semibold leading-[1.4] text-slate-900">
                                 {normalizeText(item.vulnerability_name) || "-"}
                               </h5>
 
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[7.5px] text-slate-600">
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-600">
                                 <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 font-medium text-violet-700">
-                                  {normalizeText(item.solution_type) || "VendorFix"}
+                                  {normalizeText(item.solution_type) ||
+                                    "VendorFix"}
                                 </span>
 
                                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-700">
@@ -1049,7 +1113,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
                                 </span>
                               </div>
 
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[7.5px] text-slate-600">
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
                                 <span>
                                   Severity:{" "}
                                   <span className="font-semibold text-slate-800">
@@ -1069,35 +1133,44 @@ const Conclusion: React.FC<ConclusionProps> = ({
                                   <span className="font-semibold text-slate-800">
                                     {item.detected_date
                                       ? (() => {
-                                        const raw = String(item.detected_date ?? "").trim();
-                                        if (!raw) return "-";
+                                          const raw = String(
+                                            item.detected_date ?? ""
+                                          ).trim();
 
-                                        let d: Date | null = null;
+                                          if (!raw) return "-";
 
-                                        if (/^\d+$/.test(raw)) {
-                                          const num = Number(raw);
-                                          d = new Date(num < 1e12 ? num * 1000 : num);
-                                        } else {
-                                          d = new Date(raw);
-                                          if (Number.isNaN(d.getTime())) {
-                                            d = new Date(raw.replace(" ", "T"));
+                                          let d: Date | null = null;
+
+                                          if (/^\d+$/.test(raw)) {
+                                            const num = Number(raw);
+                                            d = new Date(
+                                              num < 1e12 ? num * 1000 : num
+                                            );
+                                          } else {
+                                            d = new Date(raw);
+                                            if (Number.isNaN(d.getTime())) {
+                                              d = new Date(raw.replace(" ", "T"));
+                                            }
                                           }
-                                        }
 
-                                        if (!d || Number.isNaN(d.getTime())) return raw;
+                                          if (!d || Number.isNaN(d.getTime())) {
+                                            return raw;
+                                          }
 
-                                        const bangkokTime = new Date(d.getTime() + 7 * 60 * 60 * 1000);
+                                          const bangkokTime = new Date(
+                                            d.getTime() + 7 * 60 * 60 * 1000
+                                          );
 
-                                        return new Intl.DateTimeFormat("en-GB", {
-                                          day: "2-digit",
-                                          month: "2-digit",
-                                          year: "numeric",
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                          second: "2-digit",
-                                          hour12: false,
-                                        }).format(bangkokTime);
-                                      })()
+                                          return new Intl.DateTimeFormat("en-GB", {
+                                            day: "2-digit",
+                                            month: "2-digit",
+                                            year: "numeric",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            second: "2-digit",
+                                            hour12: false,
+                                          }).format(bangkokTime);
+                                        })()
                                       : "-"}
                                   </span>
                                 </span>
@@ -1105,8 +1178,12 @@ const Conclusion: React.FC<ConclusionProps> = ({
                                 <span>
                                   Age:{" "}
                                   <span className="font-semibold text-slate-800">
-                                    {typeof getDetectedDays(item.detected_date) === "number"
-                                      ? `${getDetectedDays(item.detected_date)} days`
+                                    {typeof getDetectedDays(
+                                      item.detected_date
+                                    ) === "number"
+                                      ? `${getDetectedDays(
+                                          item.detected_date
+                                        )} days`
                                       : "-"}
                                   </span>
                                 </span>
@@ -1119,7 +1196,7 @@ const Conclusion: React.FC<ConclusionProps> = ({
                   })}
                 </div>
               ) : (
-                <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[8px] text-slate-500">
+                <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-500">
                   No critical observation found.
                 </div>
               )}
@@ -1130,10 +1207,11 @@ const Conclusion: React.FC<ConclusionProps> = ({
         <div className="col-span-5">
           <div className="flex h-full flex-col rounded-lg border border-slate-200 bg-white">
             <div className="border-b border-slate-200 bg-slate-50/80 px-3.5 py-2.5">
-              <h4 className="text-[11px] font-semibold text-slate-900">
+              <h4 className="text-[14px] font-semibold text-slate-900">
                 Recommended actions
               </h4>
-              <p className="text-[8.5px] leading-[1.35] text-slate-600">
+
+              <p className="text-[11px] leading-[1.4] text-slate-600">
                 ข้อเสนอแนะเชิงปฏิบัติการสำหรับรอบถัดไป
               </p>
             </div>
@@ -1141,30 +1219,33 @@ const Conclusion: React.FC<ConclusionProps> = ({
             <div className="flex flex-1 flex-col justify-center p-3">
               <div className="space-y-2">
                 <div className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-800">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
                     1. Immediate
                   </p>
-                  <p className="mt-1 text-[8px] leading-[1.55] text-slate-600">
+
+                  <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
                     Prioritize remediation for the highest-risk devices and close
                     critical vulnerabilities first.
                   </p>
                 </div>
 
                 <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-800">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
                     2. Near-term
                   </p>
-                  <p className="mt-1 text-[8px] leading-[1.55] text-slate-600">
+
+                  <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
                     Review Medium and High findings in sequence and verify that
                     affected systems are patched or mitigated.
                   </p>
                 </div>
 
                 <div className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5">
-                  <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-800">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
                     3. Continuous
                   </p>
-                  <p className="mt-1 text-[8px] leading-[1.55] text-slate-600">
+
+                  <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
                     Reassess risk trends monthly and compare future scan results
                     against the current baseline.
                   </p>

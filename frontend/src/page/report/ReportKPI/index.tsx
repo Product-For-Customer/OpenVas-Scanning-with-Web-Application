@@ -225,7 +225,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
           effectiveTaskMode === "all"
             ? "Total findings identified across all scanned devices"
             : `Total findings identified across ${summary.taskCount.toLocaleString()} selected device task(s)`,
-        icon: <MdOutlineReportProblem className="text-[13px]" />,
+        icon: <MdOutlineReportProblem className="text-[15px]" />,
         iconWrapClass: "bg-slate-100 text-slate-700",
         labelClass: "text-slate-700",
         level: "total",
@@ -235,7 +235,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
         label: "Critical",
         value: loading ? "..." : summary.critical.toLocaleString(),
         hint: "Critical vulnerabilities requiring immediate remediation",
-        icon: <FiAlertOctagon className="text-[12px]" />,
+        icon: <FiAlertOctagon className="text-[14px]" />,
         iconWrapClass: "bg-rose-50 text-rose-700",
         labelClass: "text-rose-700",
         level: "critical",
@@ -245,7 +245,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
         label: "High",
         value: loading ? "..." : summary.high.toLocaleString(),
         hint: "High-risk vulnerabilities with significant impact potential",
-        icon: <FiAlertTriangle className="text-[12px]" />,
+        icon: <FiAlertTriangle className="text-[14px]" />,
         iconWrapClass: "bg-orange-50 text-orange-700",
         labelClass: "text-orange-700",
         level: "high",
@@ -254,8 +254,8 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
         id: 4,
         label: "Medium",
         value: loading ? "..." : summary.medium.toLocaleString(),
-        hint: "Medium-severity findings that should be addressed in due course",
-        icon: <FiInfo className="text-[12px]" />,
+        hint: "Medium-risk issues to address soon",
+        icon: <FiInfo className="text-[14px]" />,
         iconWrapClass: "bg-amber-50 text-amber-700",
         labelClass: "text-amber-700",
         level: "medium",
@@ -265,7 +265,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
         label: "Low",
         value: loading ? "..." : summary.low.toLocaleString(),
         hint: "Low-severity findings with limited immediate impact",
-        icon: <FiMinusCircle className="text-[12px]" />,
+        icon: <FiMinusCircle className="text-[14px]" />,
         iconWrapClass: "bg-emerald-50 text-emerald-700",
         labelClass: "text-emerald-700",
         level: "low",
@@ -275,7 +275,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
         label: "Info",
         value: loading ? "..." : summary.info.toLocaleString(),
         hint: "Informational observations and security-related notices",
-        icon: <FiShield className="text-[12px]" />,
+        icon: <FiShield className="text-[14px]" />,
         iconWrapClass: "bg-sky-50 text-sky-700",
         labelClass: "text-sky-700",
         level: "info",
@@ -286,18 +286,18 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
 
   return (
     <section className="border border-slate-300 bg-white">
-      <div className="border-b border-slate-300 px-5 py-3.5">
+      <div className="border-b border-slate-300 px-5 py-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">
+            <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
               Security Risk Summary
             </p>
-            <h3 className="mt-1 text-[16px] font-bold leading-tight text-slate-900">
+            <h3 className="mt-1 text-[18.5px] font-bold leading-tight text-slate-900">
               Vulnerability Severity Overview
             </h3>
           </div>
 
-          <div className="text-right text-[10.5px] leading-[1.45] text-slate-500">
+          <div className="text-right text-[12px] leading-normal text-slate-500">
             {effectiveTaskMode === "all"
               ? "Consolidated findings by severity level"
               : `Filtered by ${summary.taskCount.toLocaleString()} selected task(s)`}
@@ -314,7 +314,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
             <div
               key={item.id}
               className={[
-                "min-h-28 bg-white px-4 py-3",
+                "min-h-32 bg-white px-4 py-3.5",
                 !isLastColumn ? "border-r border-slate-300" : "",
                 !isLastRow ? "border-b border-slate-300" : "",
               ].join(" ")}
@@ -323,7 +323,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
                 <div className="flex min-w-0 items-center gap-2">
                   <span
                     className={[
-                      "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
+                      "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
                       item.iconWrapClass,
                     ].join(" ")}
                   >
@@ -333,7 +333,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
                   <div className="min-w-0">
                     <p
                       className={[
-                        "truncate text-[9px] font-semibold uppercase tracking-[0.12em]",
+                        "truncate text-[10.5px] font-semibold uppercase tracking-[0.12em]",
                         item.labelClass,
                       ].join(" ")}
                     >
@@ -344,7 +344,7 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
 
                 <span
                   className={[
-                    "inline-flex shrink-0 items-center border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-normal",
+                    "inline-flex shrink-0 items-center border px-2 py-0.5 text-[11px] font-bold uppercase tracking-normal",
                     levelBadgeClassMap[item.level],
                   ].join(" ")}
                 >
@@ -353,11 +353,11 @@ const ReportKPI: React.FC<ReportKPIProps> = ({
               </div>
 
               <div className="mt-3">
-                <p className="text-[22px] font-bold leading-none text-slate-900">
+                <p className="text-[27px] font-bold leading-none text-slate-900">
                   {item.value}
                 </p>
 
-                <p className="mt-2 text-[10.5px] leading-normal text-slate-600">
+                <p className="mt-2 text-[12.25px] leading-[1.45] text-slate-600">
                   {item.hint}
                 </p>
               </div>
