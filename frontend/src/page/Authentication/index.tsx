@@ -1295,7 +1295,6 @@ const Index: React.FC = () => {
   const renderSignUpForm = () => (
     <div className="w-full max-w-110">
       <div className="text-center">
-        {renderSectionBadge("Provisioning")}
         <h2 className={`${panelTitleClass} text-[29px] tracking-[-0.04em]`}>
           Create Account
         </h2>
