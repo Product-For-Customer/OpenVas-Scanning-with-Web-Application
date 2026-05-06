@@ -49,6 +49,7 @@ FEED_SERVICES=(
   dfn-cert-data
   report-formats
   data-objects
+  gpg-data
 )
 
 # map image แบบชัดเจน เลิก parse YAML ด้วย awk
@@ -60,6 +61,7 @@ declare -A SERVICE_IMAGE=(
   [dfn-cert-data]="registry.community.greenbone.net/community/dfn-cert-data"
   [report-formats]="registry.community.greenbone.net/community/report-formats"
   [data-objects]="registry.community.greenbone.net/community/data-objects"
+  [gpg-data]="registry.community.greenbone.net/community/gpg-data"
 )
 
 declare -A IMAGE_ID_BEFORE

@@ -439,7 +439,7 @@ func TriggerFeedUpdateHandler(c *gin.Context) {
 	// =========================
 	scriptPath := "/app/scripts/update-feed.sh"
 
-	ctx, cancel := context.WithTimeout(context.Background(), 65*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 125*time.Minute)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "bash", scriptPath)
@@ -1002,4 +1002,113 @@ func getEnv(key, fallback string) string {
 		return fallback
 	}
 	return v
+}
+
+func StartDailyFeedUpdateScheduler() {
+	tzName := strings.TrimSpace(os.Getenv("TZ"))
+	if tzName == "" {
+		tzName = "Asia/Bangkok"
+	}
+
+	location, err := time.LoadLocation(tzName)
+	if err != nil {
+		log.Printf("⚠️ cannot load TZ=%s, fallback to Asia/Bangkok: %v\n", tzName, err)
+		location = time.FixedZone("Asia/Bangkok", 7*60*60)
+	}
+
+	log.Printf("🕑 Daily feed update scheduler started with TZ=%s\n", tzName)
+
+	for {
+		now := time.Now().In(location)
+
+		nextRun := time.Date(
+			now.Year(),
+			now.Month(),
+			now.Day(),
+			2,
+			0,
+			0,
+			0,
+			location,
+		)
+
+		if !nextRun.After(now) {
+			nextRun = nextRun.Add(24 * time.Hour)
+		}
+
+		waitDuration := time.Until(nextRun)
+
+		log.Printf(
+			"🕑 Next daily feed update: %s, wait=%s\n",
+			nextRun.Format("2006-01-02 15:04:05 MST"),
+			waitDuration.String(),
+		)
+
+		timer := time.NewTimer(waitDuration)
+		<-timer.C
+
+		runDailyFeedUpdateRequest()
+	}
+}
+
+func runDailyFeedUpdateRequest() {
+	requiredToken := strings.TrimSpace(os.Getenv("AUTOMATION_TOKEN"))
+	if requiredToken == "" {
+		log.Println("⚠️ daily feed update skipped: AUTOMATION_TOKEN is empty")
+		return
+	}
+
+	port := getEnv("PORT", "9000")
+	updateURL := fmt.Sprintf("http://127.0.0.1:%s/automation/feed/update", port)
+
+	payload := FeedUpdateRequest{
+		TriggeredBy: "system",
+		Source:      "daily_2am_scheduler",
+		Force:       false,
+	}
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("❌ daily feed update marshal error:", err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Println("❌ daily feed update request create error:", err)
+		return
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Automation-Token", requiredToken)
+
+	client := &http.Client{
+		Timeout: 130 * time.Minute,
+	}
+
+	log.Println("🕑 daily feed update started by scheduler:", updateURL)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println("❌ daily feed update request error:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf(
+			"❌ daily feed update failed: status=%s response=%s\n",
+			resp.Status,
+			string(body),
+		)
+		return
+	}
+
+	log.Printf(
+		"✅ daily feed update finished: status=%s response=%s\n",
+		resp.Status,
+		string(body),
+	)
 }

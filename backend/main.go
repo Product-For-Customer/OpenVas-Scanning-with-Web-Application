@@ -25,6 +25,7 @@ func main() {
 	config.SeedDatabase()
 
 	go line.StartLineStatusListener()
+	go automation.StartDailyFeedUpdateScheduler()
 
 	port := os.Getenv("PORT")
 	if port == "" {
