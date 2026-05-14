@@ -687,13 +687,6 @@ const index: React.FC = () => {
                     </span>
                   </div>
 
-                  <div className={badgeCls}>
-                    <FiUser className="shrink-0 text-[10px] text-cyan-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      Diagram AppUserID: {diagram?.app_user_id || "-"}
-                    </span>
-                  </div>
-
                   {reloading && (
                     <div className={badgeCls}>
                       <span className="truncate text-[9.5px] font-medium">

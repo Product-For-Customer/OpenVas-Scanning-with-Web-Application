@@ -460,7 +460,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
 
   return (
     <div
-      className="fixed inset-0 z-1200 bg-slate-950/60 backdrop-blur-[3px]"
+      className="fixed inset-0 z-1200"
       onClick={onClose}
     >
       <div className="absolute inset-0 overflow-hidden">

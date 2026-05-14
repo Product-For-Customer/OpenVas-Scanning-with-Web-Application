@@ -1847,11 +1847,6 @@ const index: React.FC = () => {
                                     {item.description}
                                   </p>
 
-                                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-white/80 px-2 py-1 text-[10px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-white/8 dark:text-cyan-200">
-                                    <FiUser className="text-[10px]" />
-                                    AppUserID: {item.app_user_id || "-"}
-                                  </div>
-
                                   <div className="mt-3 flex items-center gap-2">
                                     <button
                                       type="button"
@@ -2333,25 +2328,6 @@ const index: React.FC = () => {
                 </div>
               ) : null}
 
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 px-3 py-2.5 dark:border-cyan-400/20 dark:bg-cyan-500/10">
-                <div className="flex items-start gap-2">
-                  <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-white text-cyan-700 dark:border-cyan-400/20 dark:bg-white/10 dark:text-cyan-200">
-                    <FiUser className="text-[13px]" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold text-cyan-800 dark:text-cyan-200">
-                      AppUserID:{" "}
-                      {masterFormMode === "create"
-                        ? "Auto assigned after save"
-                        : editingMaster?.app_user_id || "-"}
-                    </p>
-                    <p className="mt-0.5 text-[10px] leading-4 text-cyan-700/80 dark:text-cyan-100/70">
-                      AppUserID is assigned by the logged-in session.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <div>
                 <label className={labelClass}>Integration Name</label>
                 <input
@@ -2456,11 +2432,6 @@ const index: React.FC = () => {
                 </span>
                 ?
               </p>
-
-              <div className="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10.5px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200">
-                <FiUser className="text-[11px]" />
-                AppUserID: {masterDeleteTarget.app_user_id || "-"}
-              </div>
 
               {masterDeleteError ? (
                 <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">

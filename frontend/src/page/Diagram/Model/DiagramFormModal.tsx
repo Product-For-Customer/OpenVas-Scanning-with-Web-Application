@@ -10,8 +10,6 @@ import {
   FiX,
   FiFileText,
   FiEye,
-  FiUser,
-  FiShield,
 } from "react-icons/fi";
 import { message } from "antd";
 import {
@@ -166,18 +164,6 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
       ? "Create a new diagram and upload its image"
       : "Edit diagram information and replace image if needed";
   }, [mode]);
-
-  const appUserIDText = useMemo(() => {
-    if (mode === "create") {
-      return "Auto assigned after save";
-    }
-
-    if (!initialData?.app_user_id) {
-      return "-";
-    }
-
-    return String(initialData.app_user_id);
-  }, [initialData?.app_user_id, mode]);
 
   const isFormChanged = useMemo(() => {
     if (mode !== "edit") return true;
@@ -390,7 +376,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     submitting || loading || (mode === "edit" && !isFormChanged);
 
   return (
-    <div className="fixed inset-0 z-1200 flex items-center justify-center bg-slate-950/60 backdrop-blur-[3px] p-2.5">
+    <div className="fixed inset-0 z-1200 flex items-center justify-center  p-2.5">
       <div className="w-full max-w-105 rounded-[20px] overflow-hidden border border-gray-200/80 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:bg-[#0B1220] dark:border-white/10 dark:shadow-none">
         <div className="relative border-b border-gray-100 dark:border-white/10 px-3.5 py-3">
           <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-r from-cyan-50 via-transparent to-violet-50 dark:from-cyan-500/10 dark:to-violet-500/10 pointer-events-none" />
@@ -432,32 +418,6 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             </div>
           ) : (
             <>
-              <div className="rounded-2xl border border-cyan-200/80 bg-cyan-50/70 p-3 dark:border-cyan-400/20 dark:bg-cyan-500/10">
-                <div className="flex items-start gap-2">
-                  <div className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white text-cyan-700 shadow-sm dark:bg-white/10 dark:text-cyan-300">
-                    <FiUser className="text-[12px]" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <p className="text-[10px] font-semibold text-cyan-800 dark:text-cyan-200">
-                        App User ID
-                      </p>
-
-                      <span className="rounded-lg border border-cyan-200 bg-white px-2 py-0.5 text-[9px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-white/10 dark:text-cyan-200">
-                        {appUserIDText}
-                      </span>
-                    </div>
-
-                    <p className="mt-1 text-[9.5px] leading-4 text-cyan-700/80 dark:text-cyan-100/70">
-                      AppUserID is not sent from this form. The backend will use
-                      the currently logged-in user when creating or updating this
-                      diagram.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
                 <label className={sectionTitleCls}>
                   <FiType className="text-[11px] text-cyan-600 dark:text-cyan-300" />
@@ -554,21 +514,6 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
                         <p className="mt-1 text-[9.5px]">No preview image</p>
                       </div>
                     )}
-                  </div>
-
-                  <div className="mt-2 rounded-lg border border-gray-200/80 bg-gray-50/80 p-2 dark:bg-white/3 dark:border-white/10">
-                    <p className="text-[10.5px] font-semibold text-[#1f2240] dark:text-white/90 line-clamp-2">
-                      {form.name.trim() || "Untitled Diagram"}
-                    </p>
-
-                    <p className="mt-1 text-[9.5px] leading-4.5 text-gray-500 dark:text-white/55 line-clamp-2">
-                      {form.description.trim() || "No description"}
-                    </p>
-
-                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[9px] font-medium text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
-                      <FiShield className="text-[9px]" />
-                      AppUserID: {appUserIDText}
-                    </div>
                   </div>
                 </div>
               </div>
