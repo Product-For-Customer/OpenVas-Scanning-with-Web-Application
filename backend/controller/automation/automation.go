@@ -258,9 +258,6 @@ func notifyFeedUpdateToAllNotifications(resultType string, message string, outpu
 
 func TriggerFeedUpdateHandler(c *gin.Context) {
 	requiredToken := strings.TrimSpace(os.Getenv("AUTOMATION_TOKEN"))
-	if requiredToken == "" {
-		requiredToken = "dev-automation-token"
-	}
 	gotToken := c.GetHeader("X-Automation-Token")
 
 	var req FeedUpdateRequest
@@ -1163,7 +1160,8 @@ func calculateNextDailyFeedRun(now time.Time, location *time.Location) time.Time
 func runDailyFeedUpdateRequest() {
 	requiredToken := strings.TrimSpace(os.Getenv("AUTOMATION_TOKEN"))
 	if requiredToken == "" {
-		requiredToken = "dev-automation-token"
+		log.Println("⚠️ daily feed update skipped: AUTOMATION_TOKEN is empty")
+		return
 	}
 
 	port := getEnv("PORT", "9000")
