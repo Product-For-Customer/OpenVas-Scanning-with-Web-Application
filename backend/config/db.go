@@ -91,16 +91,14 @@ func SetupDatabase() {
 		&entity.AppHistoryNotify{},
 		&entity.AppDiagram{},
 		&entity.AppDiagramNode{},
-		&entity.AppGroup{},
 		&entity.AppLocation{},
-		&entity.AppGroupLocation{},
 		&entity.AppReport{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
 
-	fmt.Println("✅ AutoMigrate completed (AppGroup, AppLineMaster, Notification)")
+	fmt.Println("✅ AutoMigrate completed")
 }
 
 // =========================
