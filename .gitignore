@@ -1,5 +1,6 @@
 # ===== Release =====
-release/
+release/.env
+release/images/
 
 # ===== Frontend =====
 frontend/node_modules/
