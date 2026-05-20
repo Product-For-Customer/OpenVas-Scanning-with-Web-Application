@@ -35,10 +35,6 @@ const (
 	defaultWaitBefore   = 1200 * time.Millisecond
 	defaultReadyTimeout = 45 * time.Second
 	defaultPDFTimeout   = 120 * time.Second
-
-	// fallback เดิม: ยังใช้ได้กรณีไม่ส่ง app_notification_id มา
-	fixedLineChannelAccessToken = "G4crCc/2gMnvX+hZErxIhg7WcI0ML+MRLlAj086lTtrdL7VYURieWPRXKd6/9Zl8RxcaME5vQ3I1BW82d1/ZYezvWklVMUk+EGGfXRmI4jwtA28iaHU8MkneAGQSibyr/yp0eetvASPPtplCXWrb7gdB04t89/1O/w1cDnyilFU="
-	fixedLineUserID             = "U3af93a2f92b1048757172584d47571c8"
 )
 
 type linePushRequest struct {
@@ -388,19 +384,6 @@ func pushLineTextMessageToTarget(token string, to string, text string) error {
 	return nil
 }
 
-// fallback เดิม: ใช้กรณีไม่ได้ส่ง app_notification_id มา
-func pushLineTextMessage(text string) error {
-	if strings.TrimSpace(fixedLineChannelAccessToken) == "" {
-		return fmt.Errorf("fixedLineChannelAccessToken is empty")
-	}
-
-	if strings.TrimSpace(fixedLineUserID) == "" {
-		return fmt.Errorf("fixedLineUserID is empty")
-	}
-
-	return pushLineTextMessageToTarget(fixedLineChannelAccessToken, fixedLineUserID, text)
-}
-
 func listAppNotificationsByIDs(ids []uint) ([]entity.AppNotification, error) {
 	if len(ids) == 0 {
 		return []entity.AppNotification{}, nil
@@ -491,19 +474,10 @@ func SendPDFToLine(c *gin.Context) {
 	)
 
 	if len(requestedIDs) == 0 {
-		if err := pushLineTextMessage(msg); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":      fmt.Sprintf("send line message failed: %v", err),
-				"file_path":  filePath,
-				"public_url": publicURL,
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, sendPDFToLineResponse{
-			Message:   "PDF generated/sent to LINE successfully",
-			FilePath:  filePath,
-			PublicURL: publicURL,
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":      "app_notification_id is required",
+			"file_path":  filePath,
+			"public_url": publicURL,
 		})
 		return
 	}

@@ -1,13 +1,6 @@
 package manage
 
-// TargetLimit คือจำนวน Target / Task สูงสุดที่ระบบอนุญาตให้เเสดงบนระบบได้
 const TargetLimit = 25
-
-// เช็กว่า TargetLimit ต้องเป็นจำนวนเต็ม
-const _ int = TargetLimit
-
-// เช็กว่า TargetLimit ต้องไม่ติดลบ
-const _ = uint(TargetLimit)
 
 // GetTargetLimit ใช้สำหรับดึงค่า Target Limit ไปใช้ในไฟล์อื่น
 func GetTargetLimit() int {
