@@ -46,6 +46,8 @@ Copy-Item (Join-Path $Root "scripts\install.ps1") (Join-Path $ReleaseScriptsDir 
 Copy-Item (Join-Path $Root "scripts\start.ps1") (Join-Path $ReleaseScriptsDir "start.ps1") -Force
 Copy-Item (Join-Path $Root "scripts\status.ps1") (Join-Path $ReleaseScriptsDir "status.ps1") -Force
 Copy-Item (Join-Path $Root "scripts\stop.ps1") (Join-Path $ReleaseScriptsDir "stop.ps1") -Force
+Copy-Item (Join-Path $Root "scripts\logs.ps1") (Join-Path $ReleaseScriptsDir "logs.ps1") -Force
+Copy-Item (Join-Path $Root "scripts\reset.ps1") (Join-Path $ReleaseScriptsDir "reset.ps1") -Force
 
 Write-Host ""
 Write-Host "Build release completed." -ForegroundColor Green
