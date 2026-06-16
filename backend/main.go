@@ -10,10 +10,12 @@ import (
 	"github.com/Tawunchai/openvas/controller/auth"
 	"github.com/Tawunchai/openvas/controller/automation"
 	"github.com/Tawunchai/openvas/controller/diagram"
+	"github.com/Tawunchai/openvas/controller/gmp"
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
 	"github.com/Tawunchai/openvas/controller/report"
+	"github.com/Tawunchai/openvas/controller/threat"
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
 	middlewares "github.com/Tawunchai/openvas/middleware"
@@ -25,8 +27,9 @@ func main() {
 	config.SetupDatabase() // สร้างตารางและข้อมูลเริ่มต้น
 	config.SeedDatabase() // เติมข้อมูลเริ่มต้นเพิ่มเติม
 
-	go line.StartLineStatusListener() // เริ่มฟังก์ชันฟังสถานะ Line Notify เพื่อเเจ้งเตือนสถานะ
-	go automation.StartDailyFeedUpdateScheduler() // เริ่มฟังก์ชันตั้งเวลาทำงานอัตโนมัติสำหรับอัปเดตข้อมูลช่องโหว่รายวัน
+	go line.StartLineStatusListener()
+	go automation.StartDailyFeedUpdateScheduler()
+	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -134,11 +137,32 @@ func main() {
 		authorized.DELETE("/delete-diagrams/:id", diagram.DeleteDiagramByID) 
 
 		// ===== Diagram Node Management =====
-		authorized.GET("/diagram-nodes", diagram.ListAppDiagramNodes) // complete
-		authorized.GET("/diagram-nodes/:id", diagram.ListAppDiagramNodeByID) // complete
-		authorized.POST("/create-diagram-nodes", diagram.CreateAppDiagramNode)  // complete
-		authorized.PATCH("/update-diagram-nodes/:id", diagram.UpdateAppDiagramNodeByID) // complete
-		authorized.DELETE("/delete-diagram-nodes/:id", diagram.DeleteAppDiagramNodeByID) // complete
+		authorized.GET("/diagram-nodes", diagram.ListAppDiagramNodes)
+		authorized.GET("/diagram-nodes/:id", diagram.ListAppDiagramNodeByID)
+		authorized.POST("/create-diagram-nodes", diagram.CreateAppDiagramNode)
+		authorized.PATCH("/update-diagram-nodes/:id", diagram.UpdateAppDiagramNodeByID)
+		authorized.DELETE("/delete-diagram-nodes/:id", diagram.DeleteAppDiagramNodeByID)
+
+		// ===== Threat Intelligence (KEV + NVD) =====
+		authorized.GET("/threats/kev", threat.ListKEVCatalog)
+		authorized.GET("/threats/kev/check", threat.CheckKEVByCVEIDs)
+		authorized.GET("/threats/kev/summary", threat.GetKEVSummary)
+		authorized.GET("/threats/kev/status", threat.GetKEVSyncStatus)
+		authorized.POST("/threats/kev/sync", threat.TriggerKEVSync)
+		authorized.GET("/threats/cve/enrich", threat.EnrichCVEs)
+
+		// ===== GMP Scan Management =====
+		authorized.GET("/gmp/status", gmp.GetGMPStatus)
+		authorized.GET("/gmp/tasks", gmp.ListGMPTasks)
+		authorized.POST("/gmp/tasks", gmp.CreateGMPTask)
+		authorized.POST("/gmp/tasks/:id/start", gmp.StartGMPTask)
+		authorized.POST("/gmp/tasks/:id/stop", gmp.StopGMPTask)
+		authorized.DELETE("/gmp/tasks/:id", gmp.DeleteGMPTask)
+		authorized.GET("/gmp/targets", gmp.ListGMPTargets)
+		authorized.POST("/gmp/targets", gmp.CreateGMPTarget)
+		authorized.DELETE("/gmp/targets/:id", gmp.DeleteGMPTarget)
+		authorized.GET("/gmp/scanners", gmp.ListGMPScanners)
+		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)
 	}
 
 	log.Printf("✅ Server starting on port %s\n", port)

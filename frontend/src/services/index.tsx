@@ -2,6 +2,8 @@ import axios from "axios";
 export * from "./auth";
 export * from "./user";
 export * from "./line";
+export * from "./threat";
+export * from "./gmp";
 import { apiUrl } from "./api";
 
 // =======================

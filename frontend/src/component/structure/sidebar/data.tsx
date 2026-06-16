@@ -5,6 +5,8 @@ import {
   FiBell,
   FiFileText,
   FiUsers,
+  FiZap,
+  FiSettings,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiCustomerService2Line } from "react-icons/ri";
@@ -43,15 +45,25 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
   ];
 
   if (isAdmin) {
-    baseLinks.push({
-      title: "Management",
-      icon: <MdAdminPanelSettings  />,
-      links: [
-        { name: "line notification", icon: <FiBell /> },
-        { name: "report", icon: <FiFileText /> },
-        { name: "user", icon: <FiUsers /> },
-      ],
-    });
+    baseLinks.push(
+      {
+        title: "Threat Intelligence",
+        icon: <FiZap />,
+        links: [
+          { name: "threat-intelligence", icon: <FiZap /> },
+          { name: "scan-management", icon: <FiSettings /> },
+        ],
+      },
+      {
+        title: "Management",
+        icon: <MdAdminPanelSettings />,
+        links: [
+          { name: "line notification", icon: <FiBell /> },
+          { name: "report", icon: <FiFileText /> },
+          { name: "user", icon: <FiUsers /> },
+        ],
+      }
+    );
   }
 
   return baseLinks;

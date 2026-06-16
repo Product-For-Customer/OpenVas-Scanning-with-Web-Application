@@ -315,6 +315,7 @@ services:
       - ./backend/scripts:/app/scripts:ro
       - .:/workspace:ro
       - ./backend/tmp/reports:/app/tmp/reports
+      - gvmd_socket_vol:/run/gvmd
     environment:
       - PORT=${PORT}
       - PATH_API_URL=${PATH_API_URL}

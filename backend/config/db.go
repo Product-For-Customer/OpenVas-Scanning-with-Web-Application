@@ -93,6 +93,8 @@ func SetupDatabase() {
 		&entity.AppDiagramNode{},
 		&entity.AppLocation{},
 		&entity.AppReport{},
+		&entity.AppKEVCache{},
+		&entity.AppNVDCache{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)

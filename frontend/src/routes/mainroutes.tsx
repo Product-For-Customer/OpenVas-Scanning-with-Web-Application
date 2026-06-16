@@ -19,6 +19,9 @@ const VulnerabilityDetail = Loadable(lazy(() => import("../page/Vulnerability/Li
 const Report = Loadable(lazy(() => import("../page/Report/index")));
 const Diagram = Loadable(lazy(() => import("../page/Diagram/index")));
 const DiagramNode = Loadable(lazy(() => import("../page/Diagram/Node/index")));
+const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
+const ThreatIntelligenceDetail = Loadable(lazy(() => import("../page/ThreatIntelligence/Detail/index")));
+const ScanManagement = Loadable(lazy(() => import("../page/ScanManagement/index")));
 
 // ===== Login Pages =====
 const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
@@ -55,6 +58,9 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "diagrams", element: <Diagram /> },
       { path: "diagram-node", element: <DiagramNode /> },
       { path: "status-target-data", element: <StatusTargetData /> },
+      { path: "threat-intelligence", element: <ThreatIntelligence /> },
+      { path: "threat-intelligence/detail/:hostIp", element: <ThreatIntelligenceDetail /> },
+      { path: "scan-management", element: <ScanManagement /> },
     ],
   },
   { path: "logo-animation", element: <LogoAnimation/> },
