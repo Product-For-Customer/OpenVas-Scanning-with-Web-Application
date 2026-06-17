@@ -9,13 +9,15 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/auth"
 	"github.com/Tawunchai/openvas/controller/automation"
+	"github.com/Tawunchai/openvas/controller/compliance"
 	"github.com/Tawunchai/openvas/controller/diagram"
 	"github.com/Tawunchai/openvas/controller/gmp"
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
 	"github.com/Tawunchai/openvas/controller/report"
-	"github.com/Tawunchai/openvas/controller/threat"
+	"github.com/Tawunchai/openvas/controller/risk"
+"github.com/Tawunchai/openvas/controller/threat"
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
 	middlewares "github.com/Tawunchai/openvas/middleware"
@@ -30,6 +32,8 @@ func main() {
 	go line.StartLineStatusListener()
 	go automation.StartDailyFeedUpdateScheduler()
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
+	go risk.StartEPSSSyncScheduler()
+	middlewares.StartRateLimitCleanup()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -38,6 +42,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(CORSMiddleware())
+	r.Use(middlewares.RateLimiter())
 
 	r.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "API RUNNING... PORT: %s", port)
@@ -163,6 +168,24 @@ func main() {
 		authorized.DELETE("/gmp/targets/:id", gmp.DeleteGMPTarget)
 		authorized.GET("/gmp/scanners", gmp.ListGMPScanners)
 		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)
+
+		// ===== Risk Score Engine =====
+		authorized.GET("/risk/summary", risk.GetRiskSummary)
+		authorized.GET("/risk/epss/status", risk.GetEPSSStatus)
+		authorized.POST("/risk/epss/sync", risk.TriggerEPSSSync)
+		authorized.GET("/risk/asset-criticality", risk.ListAssetCriticality)
+		authorized.GET("/risk/asset-criticality/:id", risk.GetAssetCriticality)
+		authorized.POST("/risk/asset-criticality", risk.CreateAssetCriticality)
+		authorized.PATCH("/risk/asset-criticality/:id", risk.UpdateAssetCriticality)
+		authorized.DELETE("/risk/asset-criticality/:id", risk.DeleteAssetCriticality)
+
+		// ===== Compliance Framework =====
+		authorized.GET("/compliance/report", compliance.GetComplianceReport)
+		authorized.GET("/compliance/violations", compliance.GetComplianceViolations)
+
+		// ===== Vulnerability Delta Enhanced =====
+		authorized.GET("/vulnerabilities/delta/enhanced", vulnerability.ListVulnerabilityDelta)
+
 	}
 
 	log.Printf("✅ Server starting on port %s\n", port)

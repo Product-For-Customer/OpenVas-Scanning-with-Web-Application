@@ -1,9 +1,10 @@
 package auth
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"net/smtp"
 	"strings"
@@ -440,8 +441,12 @@ func SendOTPForSignUp(c *gin.Context) {
 
 	db := config.DB()
 
-	rand.Seed(time.Now().UnixNano())
-	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
+	n, randErr := rand.Int(rand.Reader, big.NewInt(1000000))
+	if randErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้าง OTP ไม่สำเร็จ"})
+		return
+	}
+	otp := fmt.Sprintf("%06d", n.Int64())
 	expires := time.Now().Add(5 * time.Minute).Unix()
 
 	// ลบ OTP เดิมของ email นี้ก่อน

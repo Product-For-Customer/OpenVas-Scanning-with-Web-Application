@@ -7,6 +7,9 @@ import {
   FiUsers,
   FiZap,
   FiSettings,
+  FiBarChart2,
+  FiCpu,
+  FiGitMerge,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiCustomerService2Line } from "react-icons/ri";
@@ -62,7 +65,16 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
           { name: "report", icon: <FiFileText /> },
           { name: "user", icon: <FiUsers /> },
         ],
-      }
+      },
+      {
+        title: "Analytics",
+        icon: <FiBarChart2 />,
+        links: [
+          { name: "risk", icon: <FiCpu /> },
+          { name: "compliance", icon: <FiShield /> },
+          { name: "vulnerability-delta", icon: <FiGitMerge /> },
+        ],
+      },
     );
   }
 

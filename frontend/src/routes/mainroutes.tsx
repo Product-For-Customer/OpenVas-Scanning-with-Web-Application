@@ -22,6 +22,9 @@ const DiagramNode = Loadable(lazy(() => import("../page/Diagram/Node/index")));
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
 const ThreatIntelligenceDetail = Loadable(lazy(() => import("../page/ThreatIntelligence/Detail/index")));
 const ScanManagement = Loadable(lazy(() => import("../page/ScanManagement/index")));
+const Risk = Loadable(lazy(() => import("../page/Risk/index")));
+const Compliance = Loadable(lazy(() => import("../page/Compliance/index")));
+const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Delta/index")));
 
 // ===== Login Pages =====
 const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
@@ -61,6 +64,9 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "threat-intelligence", element: <ThreatIntelligence /> },
       { path: "threat-intelligence/detail/:hostIp", element: <ThreatIntelligenceDetail /> },
       { path: "scan-management", element: <ScanManagement /> },
+      { path: "risk", element: <Risk /> },
+      { path: "compliance", element: <Compliance /> },
+      { path: "vulnerability-delta", element: <VulnerabilityDelta /> },
     ],
   },
   { path: "logo-animation", element: <LogoAnimation/> },

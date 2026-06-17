@@ -1,8 +1,9 @@
 package otp
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"net/http"
 	"net/smtp"
 	"time"
@@ -34,7 +35,12 @@ func SendOTP(c *gin.Context) {
 		return
 	}
 
-	otp := fmt.Sprintf("%06d", rand.Intn(1000000))
+	n, randErr := rand.Int(rand.Reader, big.NewInt(1000000))
+	if randErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "สร้าง OTP ไม่สำเร็จ"})
+		return
+	}
+	otp := fmt.Sprintf("%06d", n.Int64())
 	expires := time.Now().Add(5 * time.Minute).Unix()
 
 	// ลบ OTP เดิมก่อน

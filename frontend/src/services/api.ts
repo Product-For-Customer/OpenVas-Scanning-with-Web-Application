@@ -13,16 +13,6 @@ export const defaultHeaders = {
   "ngrok-skip-browser-warning": "true",
 };
 
-console.groupCollapsed("API CONFIG DEBUG");
-console.log("MODE:", import.meta.env.MODE);
-console.log("DEV:", import.meta.env.DEV);
-console.log("PROD:", import.meta.env.PROD);
-console.log("VITE_BACKEND_URL from env:", envBackendUrl);
-console.log("VITE_OPENVAS_URL from env:", envOpenVasUrl);
-console.log("Final apiUrl:", apiUrl);
-console.log("Final pathOpenVas:", pathOpenVas);
-console.log("All import.meta.env:", import.meta.env);
-console.groupEnd();
 
 export const baseApi = axios.create({
   baseURL: apiUrl,
