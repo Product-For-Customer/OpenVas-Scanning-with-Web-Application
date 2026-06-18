@@ -6,6 +6,8 @@ import { message } from "antd";
 import { GetPasswordPolicy, UpdatePasswordPolicy, type PasswordPolicy } from "../../services/passwordpolicy";
 import { useAuth } from "../../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useStateContext } from "../../contexts/ProviderContext";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 // ─────────────────────────────────────────────────────────────
 // Default
@@ -62,6 +64,10 @@ const ToggleRow: React.FC<{
 const PasswordPolicyPage: React.FC = () => {
   const { isAdmin } = useAuth() as any;
   const navigate    = useNavigate();
+  const { currentColor } = useStateContext();
+  const { t } = useLanguage();
+
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [policy, setPolicy]       = useState<PasswordPolicy>(DEFAULT);
   const [draft, setDraft]         = useState<PasswordPolicy>(DEFAULT);
@@ -112,43 +118,62 @@ const PasswordPolicyPage: React.FC = () => {
   }
 
   return (
-    <div className="w-full space-y-5 py-3 sm:py-4">
+    <div className="w-full space-y-5 py-0 sm:py-0">
 
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">
-              Password Policy
-            </h1>
-            <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-              Admin only
-            </span>
-          </div>
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
-            Set password requirements for all user accounts
-          </p>
+      {/* ── Header card ── */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:mb-5 sm:p-6 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
         </div>
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-13 sm:w-13"
+              style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
+            >
+              <FiLock className="text-[20px] sm:text-[22px]" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
+                  MANAGEMENT · SECURITY
+                </p>
+              </div>
+              <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
+                {t("passwordpolicy.title")}
+              </h1>
+              <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
+                {t("passwordpolicy.subtitle")}
+              </p>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={!hasChanges || saving}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60"
-          >
-            <FiRefreshCw className="text-[11px]" />
-            Reset
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!hasChanges || saving}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[11px] font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white/15 dark:hover:bg-white/20"
-          >
-            {saving ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiSave className="text-[11px]" />}
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
+          {/* Action buttons inline with header */}
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={!hasChanges || saving}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60"
+            >
+              <FiRefreshCw className="text-[11px]" />
+              <span className="hidden sm:inline">{t("passwordpolicy.reset")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={!hasChanges || saving}
+              className="flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ background: accentGrad }}
+            >
+              {saving ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiSave className="text-[11px]" />}
+              <span className="hidden sm:inline">{saving ? t("passwordpolicy.saving") : t("passwordpolicy.saveChanges")}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -157,7 +182,7 @@ const PasswordPolicyPage: React.FC = () => {
         <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/8">
           <FiAlertTriangle className="shrink-0 text-[13px] text-amber-500" />
           <p className="text-[11.5px] font-medium text-amber-700 dark:text-amber-300">
-            You have unsaved changes. Click Save Changes to apply.
+            {t("passwordpolicy.unsavedChanges")}
           </p>
         </div>
       )}

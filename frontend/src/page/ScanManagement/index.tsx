@@ -1,32 +1,52 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
-  FiPlay,
-  FiSquare,
-  FiTrash2,
-  FiPlus,
-  FiRefreshCw,
-  FiSettings,
-  FiTarget,
-  FiAlertTriangle,
-  FiCheckCircle,
-  FiWifi,
+  FiPlay, FiSquare, FiTrash2, FiPlus, FiRefreshCw,
+  FiSettings, FiTarget, FiAlertTriangle, FiCheckCircle,
+  FiWifi, FiClock, FiCalendar, FiX, FiRepeat,
 } from "react-icons/fi";
 import { message, Modal, Spin } from "antd";
 import {
-  GetGMPStatus,
-  ListGMPTasks,
-  ListGMPTargets,
-  CreateGMPTarget,
-  StartGMPTask,
-  StopGMPTask,
-  DeleteGMPTask,
-  DeleteGMPTarget,
+  GetGMPStatus, ListGMPTasks, ListGMPTargets, CreateGMPTarget,
+  StartGMPTask, StopGMPTask, DeleteGMPTask, DeleteGMPTarget,
   getTaskStatusBg,
-  type GMPStatusResponse,
-  type GMPTaskDTO,
-  type GMPTargetDTO,
+  ListScanSchedules, CreateScanSchedule, UpdateScanSchedule, DeleteScanSchedule,
+  type GMPStatusResponse, type GMPTaskDTO, type GMPTargetDTO,
+  type AutoScanScheduleDTO, type ScheduleFrequency,
 } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useStateContext } from "../../contexts/ProviderContext";
+
+// ─────────────────────────────────────────────────────────────
+// Auto Scan Schedule — helpers (API-backed, no localStorage)
+// ─────────────────────────────────────────────────────────────
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+function fmtNextRun(iso: string | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" })
+    + " " + d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+}
+
+function freqBadge(s: AutoScanScheduleDTO): string {
+  if (s.frequency === "once" && s.schedule_at)    return `Once · ${s.schedule_at}`;
+  if (s.frequency === "monthly" && s.day_of_month) return `Monthly · Day ${s.day_of_month}`;
+  if (s.frequency === "yearly" && s.month && s.day)
+    return `Yearly · ${MONTHS[s.month - 1]} ${s.day}`;
+  return s.frequency;
+}
+
+const FREQ_COLOR: Record<ScheduleFrequency, { bg: string; text: string }> = {
+  once:    { bg: "#EDE9FE", text: "#5B21B6" },
+  monthly: { bg: "#DBEAFE", text: "#1E40AF" },
+  yearly:  { bg: "#D1FAE5", text: "#065F46" },
+};
 
 // ─────────────────────────────────────────────────────────────
 // GMP Status Badge
@@ -365,6 +385,9 @@ const ICON_COLOR: Record<string, string> = {
 
 const ScanManagement: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
   const [gmpStatus, setGmpStatus]     = useState<GMPStatusResponse | null>(null);
   const [tasks, setTasks]             = useState<GMPTaskDTO[]>([]);
   const [targets, setTargets]         = useState<GMPTargetDTO[]>([]);
@@ -372,8 +395,63 @@ const ScanManagement: React.FC = () => {
   const [loadingTasks, setLoadingTasks]     = useState(true);
   const [loadingTargets, setLoadingTargets] = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
-  const [activeTab, setActiveTab]     = useState<"tasks" | "targets">("tasks");
+  const [activeTab, setActiveTab]     = useState<"tasks" | "targets" | "schedule">("tasks");
   const [showCreateTarget, setShowCreateTarget] = useState(false);
+
+  // ── Auto-scan schedule state (API-backed) ────────────────────────────
+  const [schedules,         setSchedules]         = useState<AutoScanScheduleDTO[]>([]);
+  const [loadingSchedules,  setLoadingSchedules]  = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [schedForm, setSchedForm] = useState<{
+    taskId: string; frequency: ScheduleFrequency;
+    time: string; date: string; dayOfMonth: number; month: number; day: number;
+  }>({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
+
+  const fetchSchedules = useCallback(async () => {
+    setLoadingSchedules(true);
+    const list = await ListScanSchedules();
+    setSchedules(list);
+    setLoadingSchedules(false);
+  }, []);
+
+  const handleAddSchedule = useCallback(async () => {
+    const task = tasks.find(t2 => t2.id === schedForm.taskId);
+    if (!task) { message.warning(t("scan.selectTask")); return; }
+    if (schedForm.frequency === "once" && !schedForm.date) {
+      message.warning(t("scan.selectDate")); return;
+    }
+    try {
+      await CreateScanSchedule({
+        task_id:     schedForm.taskId,
+        task_name:   task.name,
+        frequency:   schedForm.frequency,
+        scan_time:   schedForm.time,
+        schedule_at: schedForm.frequency === "once"    ? schedForm.date        : undefined,
+        day_of_month: schedForm.frequency === "monthly" ? schedForm.dayOfMonth  : undefined,
+        month:       schedForm.frequency === "yearly"  ? schedForm.month        : undefined,
+        day:         schedForm.frequency === "yearly"  ? schedForm.day          : undefined,
+      });
+      message.success(t("scan.scheduleCreated"));
+      setShowScheduleModal(false);
+      setSchedForm({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
+      void fetchSchedules();
+    } catch { message.error(t("common.noResults")); }
+  }, [schedForm, tasks, fetchSchedules, t]);
+
+  const toggleSchedule = useCallback(async (id: number, enabled: boolean) => {
+    try {
+      await UpdateScanSchedule(id, !enabled);
+      void fetchSchedules();
+    } catch { message.error(t("common.noResults")); }
+  }, [fetchSchedules, t]);
+
+  const deleteSchedule = useCallback(async (id: number) => {
+    try {
+      await DeleteScanSchedule(id);
+      message.success(t("scan.scheduleDeleted"));
+      void fetchSchedules();
+    } catch { message.error(t("common.noResults")); }
+  }, [fetchSchedules, t]);
 
   const hasFetched = useRef(false);
 
@@ -386,7 +464,8 @@ const ScanManagement: React.FC = () => {
     if (hasFetched.current) return;
     hasFetched.current = true;
     void fetchAll();
-  }, []);
+    void fetchSchedules();
+  }, [fetchSchedules]);
 
   const handleRefresh = async () => { setRefreshing(true); await fetchAll(); setRefreshing(false); };
 
@@ -463,35 +542,49 @@ const ScanManagement: React.FC = () => {
   ];
 
   return (
-    <div className="w-full space-y-5 py-3 sm:py-4">
+    <div className="w-full space-y-5 py-0 sm:py-0">
 
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">
-              Scan Management
-            </h1>
-            <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-              OpenVAS GMP
-            </span>
-          </div>
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
-            Start, Stop &amp; Delete scan tasks
-          </p>
+      {/* ── Header card ── */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:mb-5 sm:p-6 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
         </div>
-
-        <div className="flex items-center gap-2">
-          <GMPStatusBadge status={gmpStatus} loading={loadingStatus} />
-          <button
-            type="button"
-            onClick={() => void handleRefresh()}
-            disabled={refreshing}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:bg-white/5 dark:text-white/50"
-            title={t("common.refresh")}
-          >
-            <FiRefreshCw className={`text-[13px] ${refreshing ? "animate-spin" : ""}`} />
-          </button>
+        <div className="relative z-10 flex items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-13 sm:w-13"
+              style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
+            >
+              <FiSettings className="text-[20px] sm:text-[22px]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
+                THREAT INTELLIGENCE · SCANNER
+              </p>
+              <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
+                {t("scan.title")}
+              </h1>
+              <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
+                Start, stop &amp; schedule scan tasks via OpenVAS GMP
+              </p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <GMPStatusBadge status={gmpStatus} loading={loadingStatus} />
+            <button
+              type="button"
+              onClick={() => void handleRefresh()}
+              disabled={refreshing}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:bg-white/5 dark:text-white/50"
+              title={t("common.refresh")}
+            >
+              <FiRefreshCw className={`text-[13px] ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -533,36 +626,64 @@ const ScanManagement: React.FC = () => {
         ))}
       </div>
 
-      {/* ── Tabs + New Target button ── */}
+      {/* ── Tabs + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
-          {(["tasks", "targets"] as const).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={[
-                "rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
-                activeTab === tab
-                  ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/10"
-                  : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
-              ].join(" ")}
-            >
-              {tab === "tasks" ? `Scan Tasks (${tasks.length})` : `Targets (${targets.length})`}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {/* Tasks tab */}
+          <button type="button" onClick={() => setActiveTab("tasks")}
+            className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+              activeTab === "tasks"
+                ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/10"
+                : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+            ].join(" ")}>
+            {`${t("scan.tasks")} (${tasks.length})`}
+          </button>
+          {/* Targets tab */}
+          <button type="button" onClick={() => setActiveTab("targets")}
+            className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+              activeTab === "targets"
+                ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/10"
+                : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+            ].join(" ")}>
+            {`${t("scan.targets")} (${targets.length})`}
+          </button>
+          {/* Auto Schedule tab */}
+          <button type="button" onClick={() => setActiveTab("schedule")}
+            style={activeTab === "schedule" ? { background: accentGrad } : undefined}
+            className={["flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+              activeTab === "schedule"
+                ? "border-transparent text-white"
+                : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+            ].join(" ")}>
+            <FiClock className="text-[12px]" />
+            {t("scan.autoSchedule")}
+            {schedules.length > 0 && (
+              <span className={["ml-0.5 min-w-4.5 rounded-full px-1.5 py-0.5 text-center text-[9.5px] font-bold",
+                activeTab === "schedule" ? "bg-white/25 text-white" : "bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-white/50"
+              ].join(" ")}>
+                {schedules.length}
+              </span>
+            )}
+          </button>
         </div>
 
-        {activeTab === "targets" && (
-          <button
-            type="button"
-            onClick={() => setShowCreateTarget(true)}
-            className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8"
-          >
-            <FiPlus className="text-[13px]" />
-            New Target
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {activeTab === "targets" && (
+            <button type="button" onClick={() => setShowCreateTarget(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8">
+              <FiPlus className="text-[13px]" />
+              {t("scan.addTarget")}
+            </button>
+          )}
+          {activeTab === "schedule" && (
+            <button type="button" onClick={() => setShowScheduleModal(true)}
+              style={{ background: accentGrad }}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
+              <FiPlus className="text-[13px]" />
+              {t("scan.newSchedule")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Tasks Tab ── */}
@@ -657,11 +778,265 @@ const ScanManagement: React.FC = () => {
         </div>
       )}
 
+      {/* ── Auto Schedule Tab ── */}
+      {activeTab === "schedule" && (
+        <div className="space-y-3">
+
+          {/* Info note */}
+          <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/3">
+            <FiClock className="mt-0.5 shrink-0 text-[12px] text-slate-400 dark:text-white/30" />
+            <p className="text-[11px] text-slate-500 dark:text-white/40">
+              {t("scan.scheduleLocalNote")} · {t("common.refresh")} เพื่ออัปเดต status
+            </p>
+          </div>
+
+          {/* Empty state */}
+          {loadingSchedules ? (
+            <div className="flex h-32 items-center justify-center">
+              <FiRefreshCw className="animate-spin text-[18px] text-slate-400 dark:text-white/30" />
+            </div>
+          ) : schedules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-200/70 bg-white py-16 dark:border-white/8 dark:bg-white/3">
+              <div className="grid h-14 w-14 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25">
+                <FiRepeat className="text-[22px]" />
+              </div>
+              <p className="text-[13px] font-semibold text-slate-500 dark:text-white/50">{t("scan.noSchedules")}</p>
+              <button type="button" onClick={() => setShowScheduleModal(true)}
+                style={{ background: accentGrad }}
+                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:opacity-90">
+                <FiPlus className="text-[13px]" />
+                {t("scan.newSchedule")}
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
+              {schedules.map((s, idx) => {
+                const fc = FREQ_COLOR[s.frequency];
+                return (
+                  <div key={s.id}
+                    className={["flex flex-wrap items-center gap-3 px-5 py-4 transition-colors",
+                      idx < schedules.length - 1 ? "border-b border-slate-100 dark:border-white/6" : "",
+                      !s.enabled ? "opacity-50" : "",
+                    ].join(" ")}
+                  >
+                    {/* Left: icon */}
+                    <div
+                      className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:flex"
+                      style={{ backgroundColor: `${currentColor}12`, color: currentColor }}
+                    >
+                      <FiRepeat className="text-[15px]" />
+                    </div>
+
+                    {/* Task + freq */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-white/88">{s.task_name}</p>
+                        <span
+                          className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold"
+                          style={{ backgroundColor: fc.bg, color: fc.text }}
+                        >
+                          {freqBadge(s)}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-white/35">
+                        <FiClock className="text-[10px]" />
+                        <span>{t("scan.nextRun")}: <strong className="text-slate-600 dark:text-white/55">{fmtNextRun(s.next_run_at)}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Enabled toggle */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="hidden text-[10.5px] text-slate-400 dark:text-white/30 sm:block">
+                        {s.enabled ? t("scan.scheduleEnabled") : t("scan.scheduleDisabled")}
+                      </span>
+                      <button type="button" onClick={() => void toggleSchedule(s.id, s.enabled)}
+                        aria-label="toggle schedule"
+                        className="relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
+                        style={{ backgroundColor: s.enabled ? currentColor : "#e2e8f0" }}
+                      >
+                        <span className="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
+                          style={{ transform: s.enabled ? "translateX(18px)" : "translateX(2px)" }} />
+                      </button>
+                    </div>
+
+                    {/* Delete */}
+                    <button type="button" onClick={() => void deleteSchedule(s.id)}
+                      className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                      <FiTrash2 className="text-[12px]" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       <CreateTargetModal
         open={showCreateTarget}
         onClose={() => setShowCreateTarget(false)}
         onCreated={() => void fetchTargets()}
       />
+
+      {/* ── New Schedule Modal ── */}
+      {showScheduleModal && createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={() => setShowScheduleModal(false)} />
+          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+            style={{ boxShadow: `0 24px 64px -12px ${currentColor}40, 0 8px 24px rgba(0,0,0,.18)` }}>
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
+                  style={{ background: accentGrad }}>
+                  <FiRepeat className="text-[14px]" />
+                </span>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                    AUTO SCAN
+                  </p>
+                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scan.newSchedule")}</h3>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowScheduleModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8 focus:outline-none">
+                <FiX className="text-[15px]" />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="space-y-4 px-5 py-5">
+
+              {/* Select task */}
+              <div>
+                <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                  {t("scan.selectTask")}
+                </label>
+                <select
+                  value={schedForm.taskId}
+                  onChange={e => setSchedForm(p => ({ ...p, taskId: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
+                >
+                  <option value="">— {t("scan.selectTask")} —</option>
+                  {tasks.map(tk => <option key={tk.id} value={tk.id}>{tk.name}</option>)}
+                </select>
+              </div>
+
+              {/* Frequency */}
+              <div>
+                <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                  {t("scan.scheduleType")}
+                </label>
+                <div className="flex gap-2">
+                  {(["once", "monthly", "yearly"] as ScheduleFrequency[]).map(freq => (
+                    <button key={freq} type="button"
+                      onClick={() => setSchedForm(p => ({ ...p, frequency: freq }))}
+                      style={schedForm.frequency === freq ? { background: accentGrad } : undefined}
+                      className={["flex-1 rounded-lg border py-2 text-[11.5px] font-semibold transition-all",
+                        schedForm.frequency === freq
+                          ? "border-transparent text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55",
+                      ].join(" ")}
+                    >
+                      {t(`scan.${freq}` as "scan.once" | "scan.monthly" | "scan.yearly")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date / day config */}
+              {schedForm.frequency === "once" && (
+                <div>
+                  <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                    {t("scan.selectDate")}
+                  </label>
+                  <input type="date" value={schedForm.date}
+                    onChange={e => setSchedForm(p => ({ ...p, date: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                </div>
+              )}
+
+              {schedForm.frequency === "monthly" && (
+                <div>
+                  <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                    {t("scan.dayOfMonth")} (1–31)
+                  </label>
+                  <input type="number" min={1} max={31} value={schedForm.dayOfMonth}
+                    onChange={e => setSchedForm(p => ({ ...p, dayOfMonth: parseInt(e.target.value) || 1 }))}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                </div>
+              )}
+
+              {schedForm.frequency === "yearly" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                      {t("scan.scheduleMonth")}
+                    </label>
+                    <select value={schedForm.month}
+                      onChange={e => setSchedForm(p => ({ ...p, month: parseInt(e.target.value) }))}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none dark:border-white/8 dark:bg-white/5 dark:text-white/80">
+                      {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                      {t("scan.scheduleDay")}
+                    </label>
+                    <input type="number" min={1} max={31} value={schedForm.day}
+                      onChange={e => setSchedForm(p => ({ ...p, day: parseInt(e.target.value) || 1 }))}
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                  </div>
+                </div>
+              )}
+
+              {/* Time */}
+              <div>
+                <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                  {t("scan.scheduleTime")}
+                </label>
+                <input type="time" value={schedForm.time}
+                  onChange={e => setSchedForm(p => ({ ...p, time: e.target.value }))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+              </div>
+
+              {/* Next run preview */}
+              {schedForm.taskId && (
+                <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
+                  <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                    {t("scan.nextRun")}:&nbsp;
+                    <span className="font-semibold text-slate-700 dark:text-white/70">
+                      {schedForm.frequency === "once" && schedForm.date
+                        ? `${schedForm.date} ${schedForm.time}`
+                        : schedForm.frequency === "monthly" && schedForm.dayOfMonth
+                        ? `Day ${schedForm.dayOfMonth} of each month at ${schedForm.time}`
+                        : schedForm.frequency === "yearly" && schedForm.month && schedForm.day
+                        ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time}`
+                        : "—"}
+                    </span>
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setShowScheduleModal(false)}
+                  className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
+                  {t("common.cancel")}
+                </button>
+                <button type="button" onClick={handleAddSchedule}
+                  style={{ background: accentGrad }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 focus:outline-none">
+                  <FiCalendar className="text-[13px]" />
+                  {t("scan.newSchedule")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

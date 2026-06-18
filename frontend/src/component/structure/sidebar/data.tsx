@@ -11,12 +11,17 @@ import {
   FiGitMerge,
   FiLock,
   FiServer,
+  FiActivity,
+  FiDatabase,
+  FiSliders,
+  FiTrash2,
 } from "react-icons/fi";
 import { AiOutlineUser } from "react-icons/ai";
 import { RiCustomerService2Line } from "react-icons/ri";
 import type { JSX } from "react/jsx-dev-runtime";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
+import { BsCalendar3 } from "react-icons/bs";
 import type { TranslationKey } from "../../../locales";
 
 export type SidebarLink = {
@@ -47,7 +52,16 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
         { name: "dashboard",     icon: <MdSpaceDashboard />,   labelKey: "nav.dashboard" },
         { name: "vulnerability", icon: <FiShield />,            labelKey: "nav.vulnerability" },
         { name: "target",        icon: <FiTarget />,            labelKey: "nav.target" },
-        { name: "diagrams",      icon: <FaProjectDiagram />,    labelKey: "nav.diagrams" },
+      ],
+    },
+    {
+      title: "Apps",
+      titleKey: "section.apps",
+      icon: <BsCalendar3 />,
+      links: [
+        { name: "calendar",     icon: <BsCalendar3 />,      labelKey: "nav.calendar" },
+        { name: "diagrams",     icon: <FaProjectDiagram />, labelKey: "nav.diagrams" },
+        { name: "recycle-bin",  icon: <FiTrash2 />,         labelKey: "nav.recycleBin" },
       ],
     },
   ];
@@ -59,8 +73,10 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
         titleKey: "section.threatIntelligence",
         icon: <FiZap />,
         links: [
-          { name: "threat-intelligence", icon: <FiZap />,      labelKey: "nav.threatIntelligence" },
-          { name: "scan-management",     icon: <FiSettings />, labelKey: "nav.scanManagement" },
+          { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog" },
+          { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus" },
+          { name: "threat-config",        icon: <FiSliders />, labelKey: "nav.threatConfig" },
+          { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement" },
         ],
       },
       {

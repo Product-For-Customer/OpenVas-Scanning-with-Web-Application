@@ -25,6 +25,7 @@ import {
   UpdateAppReportByID,
   ListAppReport,
   DownloadPDFFile,
+  SendPDFToEmail,
 } from "../../services/report";
 import { useLanguage } from "../../contexts/LanguageContext";
 import {
@@ -826,6 +827,7 @@ const ReportPreviewIndex: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [sendingToLine, setSendingToLine] = useState(false);
   const [savingPdf, setSavingPdf] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [reportRefreshToken, setReportRefreshToken] = useState(0);
 
   const [assetRiskItems, setAssetRiskItems] = useState<AssetRiskDTO[]>([]);
@@ -971,6 +973,19 @@ const ReportPreviewIndex: React.FC = () => {
     [selectedTaskIDs]
   );
 
+  const handleSendToEmail = useCallback(async () => {
+    try {
+      setSendingEmail(true);
+      setOpenDownloadMenu(false);
+      const res = await SendPDFToEmail(selectedTaskIDs);
+      message.success(res?.message || t("report.emailSent"));
+    } catch (error: any) {
+      message.error(error?.response?.data?.error || t("report.emailFailed"));
+    } finally {
+      setSendingEmail(false);
+    }
+  }, [selectedTaskIDs, t]);
+
   const handleSaveAsPDF = useCallback(async () => {
     try {
       setSavingPdf(true);
@@ -1100,6 +1115,16 @@ const ReportPreviewIndex: React.FC = () => {
                   >
                     <FiSend className="text-[14px]" />
                     <span>{t("report.sendToLine")}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleSendToEmail()}
+                    disabled={sendingEmail}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50 dark:text-white/80 dark:hover:bg-white/10"
+                  >
+                    <FiUpload className="text-[14px]" />
+                    <span>{sendingEmail ? t("report.sendingEmail") : t("report.sendToEmail")}</span>
                   </button>
                 </div>
               ) : null}

@@ -5,6 +5,7 @@ export * from "./line";
 export * from "./threat";
 export * from "./gmp";
 export * from "./compliance";
+export * from "./schedule";
 import { apiUrl } from "./api";
 
 // =======================

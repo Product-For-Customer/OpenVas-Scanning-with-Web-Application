@@ -21,6 +21,7 @@ import {
   type KEVSyncStatusDTO,
 } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 
 // ─────────────────────────────────────────────────────────────
 // Micro-components
@@ -236,7 +237,9 @@ const HostScanRow: React.FC<{
 
 const ThreatIntelligence: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
   const navigate = useNavigate();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [summary, setSummary]         = useState<KEVSummaryDTO | null>(null);
   const [syncStatus, setSyncStatus]   = useState<KEVSyncStatusDTO | null>(null);
@@ -297,41 +300,57 @@ const ThreatIntelligence: React.FC = () => {
   const kevByHostList = summary?.kev_by_host ?? [];
 
   return (
-    <div className="w-full space-y-5 py-3 sm:py-4">
+    <div className="w-full space-y-5 py-0 sm:py-0">
 
-      {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">
-              {t("threat.title")}
-            </h1>
-            <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-              CISA KEV Catalog
-            </span>
-          </div>
-          <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
-            Known Exploited Vulnerabilities
-          </p>
+      {/* ── Header card ── */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:mb-5 sm:p-6 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
         </div>
-
-        {!loadingSummary && (summary?.total_kev_in_scans ?? 0) > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10.5px] font-semibold text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
-              <span className="relative flex h-1.5 w-1.5 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-              </span>
-              {summary!.total_kev_in_scans} Actively Exploited — ต้องแก้ไขโดยด่วน
-            </span>
-            {summary!.ransomware_related > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[10.5px] font-semibold text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300">
-                <FiZap className="text-[10px]" />
-                {summary!.ransomware_related} Ransomware Related
-              </span>
-            )}
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-13 sm:w-13"
+              style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
+            >
+              <FiShield className="text-[20px] sm:text-[22px]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
+                THREAT INTELLIGENCE · KEV
+              </p>
+              <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
+                {t("threat.title")}
+              </h1>
+              <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
+                CISA Known Exploited Vulnerabilities Catalog
+              </p>
+            </div>
           </div>
-        )}
+
+          {/* Alert chips */}
+          {!loadingSummary && (summary?.total_kev_in_scans ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-[10.5px] font-semibold text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                </span>
+                {summary!.total_kev_in_scans} Actively Exploited
+              </span>
+              {summary!.ransomware_related > 0 && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[10.5px] font-semibold text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300">
+                  <FiZap className="text-[10px]" />
+                  {summary!.ransomware_related} Ransomware
+                </span>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Summary Cards ── */}

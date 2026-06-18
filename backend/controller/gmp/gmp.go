@@ -84,10 +84,32 @@ type gmpGetTargetsResponse struct {
 }
 
 type GMPTarget struct {
-	ID      string `xml:"id,attr"`
-	Name    string `xml:"name"`
-	Comment string `xml:"comment"`
-	Hosts   string `xml:"hosts"`
+	ID       string `xml:"id,attr"`
+	Name     string `xml:"name"`
+	Comment  string `xml:"comment"`
+	Hosts    string `xml:"hosts"`
+	MaxHosts int    `xml:"max_hosts"`
+	PortList struct {
+		ID   string `xml:"id,attr"`
+		Name string `xml:"name"`
+	} `xml:"port_list"`
+	SSHCredential struct {
+		ID   string `xml:"id,attr"`
+		Name string `xml:"name"`
+		Port string `xml:"port"`
+	} `xml:"ssh_credential"`
+	SMBCredential struct {
+		ID   string `xml:"id,attr"`
+		Name string `xml:"name"`
+	} `xml:"smb_credential"`
+	ESXiCredential struct {
+		ID   string `xml:"id,attr"`
+		Name string `xml:"name"`
+	} `xml:"esxi_credential"`
+	SNMPCredential struct {
+		ID   string `xml:"id,attr"`
+		Name string `xml:"name"`
+	} `xml:"snmp_credential"`
 }
 
 // Scanners
@@ -115,7 +137,79 @@ type GMPConfig struct {
 	Name string `xml:"name"`
 }
 
-// Create responses
+// Feeds
+type gmpGetFeedsResponse struct {
+	XMLName xml.Name       `xml:"get_feeds_response"`
+	gmpResponse
+	Feeds []GMPFeedEntry `xml:"feed"`
+}
+
+type GMPFeedEntry struct {
+	Type             string `xml:"type"`
+	Name             string `xml:"name"`
+	Version          string `xml:"version"`
+	Description      string `xml:"description"`
+	CurrentlySyncing *struct {
+		Timestamp string `xml:"timestamp"`
+	} `xml:"currently_syncing"`
+}
+
+// ── Port Lists ────────────────────────────────────────────────
+type gmpGetPortListsResponse struct {
+	XMLName   xml.Name       `xml:"get_port_lists_response"`
+	gmpResponse
+	PortLists []GMPPortList `xml:"port_list"`
+}
+
+type GMPPortList struct {
+	ID        string `xml:"id,attr"`
+	Name      string `xml:"name"`
+	Comment   string `xml:"comment"`
+	PortCount struct {
+		All int `xml:"all"`
+		TCP int `xml:"tcp"`
+		UDP int `xml:"udp"`
+	} `xml:"port_count"`
+}
+
+type gmpCreatePortListResponse struct {
+	XMLName xml.Name `xml:"create_port_list_response"`
+	gmpResponse
+	ID string `xml:"id,attr"`
+}
+
+type gmpDeletePortListResponse struct {
+	XMLName xml.Name `xml:"delete_port_list_response"`
+	gmpResponse
+}
+
+// ── Credentials ───────────────────────────────────────────────
+type gmpGetCredentialsResponse struct {
+	XMLName     xml.Name         `xml:"get_credentials_response"`
+	gmpResponse
+	Credentials []GMPCredential `xml:"credential"`
+}
+
+type GMPCredential struct {
+	ID      string `xml:"id,attr"`
+	Name    string `xml:"name"`
+	Type    string `xml:"type"`
+	Login   string `xml:"login"`
+	Comment string `xml:"comment"`
+}
+
+type gmpCreateCredentialResponse struct {
+	XMLName xml.Name `xml:"create_credential_response"`
+	gmpResponse
+	ID string `xml:"id,attr"`
+}
+
+type gmpDeleteCredentialResponse struct {
+	XMLName xml.Name `xml:"delete_credential_response"`
+	gmpResponse
+}
+
+// ── Create responses ──────────────────────────────────────────
 type gmpCreateResponse struct {
 	gmpResponse
 	ID string `xml:"id,attr"`
@@ -389,10 +483,85 @@ func GetScanConfigs() ([]GMPConfig, error) {
 	return resp.Configs, nil
 }
 
+// CreateTargetParams holds all parameters for creating an OpenVAS target
+type CreateTargetParams struct {
+	Name         string
+	Comment      string
+	Hosts        string
+	ExcludeHosts string
+	PortListID   string
+	AliveTest    string // "" | "Consider Alive" | "ICMP Ping" | ...
+	MultipleIPs  bool
+	SSHCredID    string
+	SSHPort      string // default "22"
+	SMBCredID    string
+	ESXiCredID   string
+	SNMPCredID   string
+	ReverseLookup bool
+	ReverseUnify  bool
+}
+
 func CreateTarget(name, hosts, comment string) (string, error) {
+	return CreateTargetFull(CreateTargetParams{Name: name, Hosts: hosts, Comment: comment})
+}
+
+func CreateTargetFull(p CreateTargetParams) (string, error) {
+	aliveTest := p.AliveTest
+	if aliveTest == "" {
+		aliveTest = "Scan Config Default"
+	}
+
+	multiIPs := "0"
+	if p.MultipleIPs {
+		multiIPs = "1"
+	}
+
+	excludePart := ""
+	if p.ExcludeHosts != "" {
+		excludePart = fmt.Sprintf(`<exclude_hosts>%s</exclude_hosts>`, xmlEscape(p.ExcludeHosts))
+	}
+
+	portListPart := ""
+	if p.PortListID != "" {
+		portListPart = fmt.Sprintf(`<port_list id="%s"/>`, xmlEscape(p.PortListID))
+	}
+
+	sshPart := ""
+	if p.SSHCredID != "" {
+		port := p.SSHPort
+		if port == "" {
+			port = "22"
+		}
+		sshPart = fmt.Sprintf(`<ssh_credential id="%s"><port>%s</port></ssh_credential>`, xmlEscape(p.SSHCredID), xmlEscape(port))
+	}
+	smbPart := ""
+	if p.SMBCredID != "" {
+		smbPart = fmt.Sprintf(`<smb_credential id="%s"/>`, xmlEscape(p.SMBCredID))
+	}
+	esxiPart := ""
+	if p.ESXiCredID != "" {
+		esxiPart = fmt.Sprintf(`<esxi_credential id="%s"/>`, xmlEscape(p.ESXiCredID))
+	}
+	snmpPart := ""
+	if p.SNMPCredID != "" {
+		snmpPart = fmt.Sprintf(`<snmp_credential id="%s"/>`, xmlEscape(p.SNMPCredID))
+	}
+
+	rlOnly := "0"
+	if p.ReverseLookup {
+		rlOnly = "1"
+	}
+	rlUnify := "0"
+	if p.ReverseUnify {
+		rlUnify = "1"
+	}
+
 	cmd := fmt.Sprintf(
-		`<create_target><name>%s</name><hosts>%s</hosts><comment>%s</comment><alive_tests>Consider Alive</alive_tests></create_target>`,
-		xmlEscape(name), xmlEscape(hosts), xmlEscape(comment),
+		`<create_target><name>%s</name><comment>%s</comment><hosts>%s</hosts>%s<alive_tests>%s</alive_tests><allow_simultaneous_ips>%s</allow_simultaneous_ips>%s%s%s%s%s<reverse_lookup_only>%s</reverse_lookup_only><reverse_lookup_unify>%s</reverse_lookup_unify></create_target>`,
+		xmlEscape(p.Name), xmlEscape(p.Comment), xmlEscape(p.Hosts),
+		excludePart, xmlEscape(aliveTest), multiIPs,
+		portListPart, sshPart, smbPart, esxiPart, snmpPart,
+		rlOnly, rlUnify,
 	)
 
 	data, err := GetClient().Execute(cmd)
@@ -501,6 +670,366 @@ func DeleteTask(taskID string) error {
 	}
 
 	return nil
+}
+
+// ── Port List operations ──────────────────────────────────────
+
+func GetPortLists() ([]GMPPortList, error) {
+	data, err := GetClient().Execute(`<get_port_lists filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetPortListsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_port_lists parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_port_lists failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.PortLists, nil
+}
+
+func CreatePortList(name, comment, portRange string) (string, error) {
+	cmd := fmt.Sprintf(
+		`<create_port_list><name>%s</name><comment>%s</comment><port_range>%s</port_range></create_port_list>`,
+		xmlEscape(name), xmlEscape(comment), xmlEscape(portRange),
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return "", err
+	}
+	var resp gmpCreatePortListResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("gmp create_port_list parse error: %w", err)
+	}
+	if resp.Status != "201" {
+		return "", fmt.Errorf("gmp create_port_list failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.ID, nil
+}
+
+func DeletePortList(id string) error {
+	cmd := fmt.Sprintf(`<delete_port_list port_list_id="%s" ultimate="0"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeletePortListResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_port_list parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_port_list failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// ── Credential operations ─────────────────────────────────────
+
+func GetCredentials() ([]GMPCredential, error) {
+	data, err := GetClient().Execute(`<get_credentials filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetCredentialsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_credentials parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_credentials failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.Credentials, nil
+}
+
+type CreateCredentialParams struct {
+	Name             string
+	Comment          string
+	Type             string // up | usk | snmp | smime | pgp | pw | cc
+	Login            string
+	Password         string
+	PrivateKey       string
+	Passphrase       string
+	Community        string
+	AuthAlgorithm    string // md5 | sha1
+	PrivacyAlgorithm string // aes | des | none
+	PrivacyPassword  string
+	Certificate      string
+	PublicPGPKey     string
+	CCPrivateKey     string
+	CCPassphrase     string
+}
+
+func CreateCredential(p CreateCredentialParams) (string, error) {
+	var body string
+
+	switch p.Type {
+	case "up":
+		body = fmt.Sprintf(
+			`<login>%s</login><password>%s</password>`,
+			xmlEscape(p.Login), xmlEscape(p.Password),
+		)
+	case "usk":
+		keyPart := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.PrivateKey))
+		if p.Passphrase != "" {
+			keyPart += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.Passphrase))
+		}
+		keyPart += `</key>`
+		body = fmt.Sprintf(`<login>%s</login>%s`, xmlEscape(p.Login), keyPart)
+
+	case "snmp":
+		authAlgo := p.AuthAlgorithm
+		if authAlgo == "" {
+			authAlgo = "sha1"
+		}
+		privAlgo := p.PrivacyAlgorithm
+		if privAlgo == "" {
+			privAlgo = "aes"
+		}
+		body = fmt.Sprintf(
+			`<community>%s</community><login>%s</login><password>%s</password><privacy_password>%s</privacy_password><auth_algorithm>%s</auth_algorithm><privacy_algorithm>%s</privacy_algorithm>`,
+			xmlEscape(p.Community), xmlEscape(p.Login), xmlEscape(p.Password),
+			xmlEscape(p.PrivacyPassword), xmlEscape(authAlgo), xmlEscape(privAlgo),
+		)
+
+	case "smime":
+		body = fmt.Sprintf(`<certificate>%s</certificate>`, xmlEscape(p.Certificate))
+
+	case "pgp":
+		body = fmt.Sprintf(`<key><public>%s</public></key>`, xmlEscape(p.PublicPGPKey))
+
+	case "pw":
+		body = fmt.Sprintf(`<password>%s</password>`, xmlEscape(p.Password))
+
+	case "cc":
+		keyPart := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.CCPrivateKey))
+		if p.CCPassphrase != "" {
+			keyPart += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.CCPassphrase))
+		}
+		keyPart += `</key>`
+		body = fmt.Sprintf(`<certificate>%s</certificate>%s`, xmlEscape(p.Certificate), keyPart)
+
+	default:
+		return "", fmt.Errorf("unsupported credential type: %s", p.Type)
+	}
+
+	cmd := fmt.Sprintf(
+		`<create_credential><name>%s</name><comment>%s</comment><type>%s</type>%s</create_credential>`,
+		xmlEscape(p.Name), xmlEscape(p.Comment), xmlEscape(p.Type), body,
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return "", err
+	}
+	var resp gmpCreateCredentialResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("gmp create_credential parse error: %w", err)
+	}
+	if resp.Status != "201" {
+		return "", fmt.Errorf("gmp create_credential failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.ID, nil
+}
+
+func DeleteCredential(id string) error {
+	cmd := fmt.Sprintf(`<delete_credential credential_id="%s" ultimate="0"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeleteCredentialResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_credential parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_credential failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// ── Trash / Trashcan ─────────────────────────────────────────
+
+type gmpRestoreResponse struct {
+	XMLName xml.Name `xml:"restore_response"`
+	gmpResponse
+}
+
+type gmpEmptyTrashcanResponse struct {
+	XMLName xml.Name `xml:"empty_trashcan_response"`
+	gmpResponse
+}
+
+func GetTrashTasks() ([]GMPTask, error) {
+	data, err := GetClient().Execute(`<get_tasks trash="1" filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetTasksResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_tasks trash parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_tasks trash failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.Tasks, nil
+}
+
+func GetTrashTargets() ([]GMPTarget, error) {
+	data, err := GetClient().Execute(`<get_targets trash="1" filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetTargetsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_targets trash parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_targets trash failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.Targets, nil
+}
+
+func GetTrashCredentials() ([]GMPCredential, error) {
+	data, err := GetClient().Execute(`<get_credentials trash="1" filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetCredentialsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_credentials trash parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_credentials trash failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.Credentials, nil
+}
+
+func GetTrashPortLists() ([]GMPPortList, error) {
+	data, err := GetClient().Execute(`<get_port_lists trash="1" filter="rows=-1"/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetPortListsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_port_lists trash parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_port_lists trash failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.PortLists, nil
+}
+
+// RestoreFromTrash restores any item from trash by ID (GMP figures out the type).
+func RestoreFromTrash(id string) error {
+	cmd := fmt.Sprintf(`<restore id="%s"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpRestoreResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp restore parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp restore failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// EmptyTrashcan permanently deletes all items in the GMP trashcan.
+func EmptyTrashcan() error {
+	data, err := GetClient().Execute(`<empty_trashcan/>`)
+	if err != nil {
+		return err
+	}
+	var resp gmpEmptyTrashcanResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp empty_trashcan parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp empty_trashcan failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// Permanent deletes (ultimate=1)
+func DeleteTaskPermanent(id string) error {
+	cmd := fmt.Sprintf(`<delete_task task_id="%s" ultimate="1"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeleteTaskResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_task (permanent) parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_task (permanent) failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+func DeleteTargetPermanent(id string) error {
+	cmd := fmt.Sprintf(`<delete_target target_id="%s" ultimate="1"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeleteTargetResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_target (permanent) parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_target (permanent) failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+func DeleteCredentialPermanent(id string) error {
+	cmd := fmt.Sprintf(`<delete_credential credential_id="%s" ultimate="1"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeleteCredentialResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_credential (permanent) parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_credential (permanent) failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+func DeletePortListPermanent(id string) error {
+	cmd := fmt.Sprintf(`<delete_port_list port_list_id="%s" ultimate="1"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeletePortListResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_port_list (permanent) parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_port_list (permanent) failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// GetFeeds ดึงข้อมูล OpenVAS feed status จาก gvmd
+func GetFeeds() ([]GMPFeedEntry, error) {
+	data, err := GetClient().Execute(`<get_feeds/>`)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetFeedsResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_feeds parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_feeds failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.Feeds, nil
 }
 
 func DeleteTarget(targetID string) error {

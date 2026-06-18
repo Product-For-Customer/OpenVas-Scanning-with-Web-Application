@@ -26,6 +26,10 @@ const Compliance      = Loadable(lazy(() => import("../page/Compliance/index")))
 const PasswordPolicy  = Loadable(lazy(() => import("../page/PasswordPolicy/index")));
 const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Delta/index")));
 const HostDetail = Loadable(lazy(() => import("../page/HostDetail/index")));
+const CalendarPage   = Loadable(lazy(() => import("../page/Calendar/index")));
+const FeedStatus     = Loadable(lazy(() => import("../page/FeedStatus/index")));
+const ThreatConfig   = Loadable(lazy(() => import("../page/ThreatConfig/index")));
+const RecycleBin     = Loadable(lazy(() => import("../page/RecycleBin/index")));
 
 // ===== Login Pages =====
 const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
@@ -70,6 +74,10 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "password-policy", element: <PasswordPolicy /> },
       { path: "vulnerability-delta", element: <VulnerabilityDelta /> },
       { path: "host/:ip", element: <HostDetail /> },
+      { path: "calendar", element: <CalendarPage /> },
+      { path: "feed-status", element: <FeedStatus /> },
+      { path: "threat-config", element: <ThreatConfig /> },
+      { path: "recycle-bin",   element: <RecycleBin /> },
     ],
   },
   { path: "logo-animation", element: <LogoAnimation/> },
@@ -98,6 +106,7 @@ const UserRoutes = (): RouteObject[] => [
       { path: "diagrams", element: <Diagram /> },
       { path: "diagram-node", element: <DiagramNode /> },
       { path: "host/:ip", element: <HostDetail /> },
+      { path: "calendar", element: <CalendarPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/admin" replace /> },

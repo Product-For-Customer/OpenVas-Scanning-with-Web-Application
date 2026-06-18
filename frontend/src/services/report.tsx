@@ -576,6 +576,21 @@ export const DownloadPDFFile = async (
   window.URL.revokeObjectURL(url);
 };
 
+// =======================
+// API: GET /send-pdf-to-email  (protected — sends PDF to current user's email)
+// =======================
+export const SendPDFToEmail = async (
+  taskIDs?: Array<string | number>
+): Promise<{ message: string; email: string }> => {
+  const params: Record<string, string> = {};
+  const normalized = normalizeTaskIDs(taskIDs);
+  if (normalized.length > 0) {
+    params.task_id = normalized.join(",");
+  }
+  const response = await protectedReportApi.get("/send-pdf-to-email", { params });
+  return response.data as { message: string; email: string };
+};
+
 const reportService = {
   ListTaskVulnSummaryForReport,
   ListCriticalForReport,

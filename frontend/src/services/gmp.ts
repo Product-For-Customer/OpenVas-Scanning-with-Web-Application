@@ -43,6 +43,18 @@ export type GMPTargetDTO = {
   name: string;
   hosts: string;
   comment: string;
+  max_hosts: number;
+  port_list_id: string;
+  port_list_name: string;
+  ssh_cred_id: string;
+  ssh_cred_name: string;
+  ssh_cred_port: string;
+  smb_cred_id: string;
+  smb_cred_name: string;
+  esxi_cred_id: string;
+  esxi_cred_name: string;
+  snmp_cred_id: string;
+  snmp_cred_name: string;
 };
 
 export type GMPScannerDTO = {
@@ -56,10 +68,91 @@ export type GMPConfigDTO = {
   name: string;
 };
 
+export type GMPFeedDTO = {
+  type: string;
+  name: string;
+  version: string;
+  description: string;
+  currently_syncing: boolean;
+  status: string;
+};
+
+// ── Port Lists ────────────────────────────────────────────────
+export type GMPPortListDTO = {
+  id: string;
+  name: string;
+  comment: string;
+  total: number;
+  tcp: number;
+  udp: number;
+};
+
+export type CreatePortListRequest = {
+  name: string;
+  comment?: string;
+  port_range: string; // e.g. "T:1-5,7,9,U:1-3,5,7,9"
+};
+
+// ── Credentials ───────────────────────────────────────────────
+export type GMPCredentialType = "up" | "usk" | "snmp" | "smime" | "pgp" | "pw" | "cc";
+
+export const CREDENTIAL_TYPE_LABELS: Record<GMPCredentialType, string> = {
+  up:    "Username + Password",
+  usk:   "Username + SSH Key",
+  snmp:  "SNMP",
+  smime: "S/MIME Certificate",
+  pgp:   "PGP Encryption Key",
+  pw:    "Password only",
+  cc:    "Client Certificate",
+};
+
+export type GMPCredentialDTO = {
+  id: string;
+  name: string;
+  type: GMPCredentialType;
+  login: string;
+  comment: string;
+};
+
+export type CreateCredentialRequest = {
+  name: string;
+  comment?: string;
+  type: GMPCredentialType;
+  // up
+  login?: string;
+  password?: string;
+  // usk
+  private_key?: string;
+  passphrase?: string;
+  // snmp
+  community?: string;
+  auth_algorithm?: string;    // md5 | sha1
+  privacy_algorithm?: string; // aes | des | none
+  privacy_password?: string;
+  // smime
+  certificate?: string;
+  // pgp
+  public_pgp_key?: string;
+  // cc
+  cc_private_key?: string;
+  cc_passphrase?: string;
+};
+
 export type CreateTargetRequest = {
   name: string;
   hosts: string;
   comment?: string;
+  exclude_hosts?: string;
+  port_list_id?: string;
+  alive_test?: string;
+  multiple_ips?: boolean;
+  ssh_cred_id?: string;
+  ssh_port?: string;
+  smb_cred_id?: string;
+  esxi_cred_id?: string;
+  snmp_cred_id?: string;
+  reverse_lookup?: boolean;
+  reverse_unify?: boolean;
 };
 
 export type CreateTaskRequest = {
@@ -73,6 +166,80 @@ export type CreateTaskRequest = {
 // ===========================
 // GMP API
 // ===========================
+
+// ── Port List API ─────────────────────────────────────────────
+export const ListGMPPortLists = async (): Promise<GMPPortListDTO[]> => {
+  try {
+    const res = await gmpApi.get("/gmp/port-lists");
+    const data = res.data?.data ?? res.data;
+    return Array.isArray(data) ? (data as GMPPortListDTO[]) : [];
+  } catch (e) { console.error("ListGMPPortLists error:", e); return []; }
+};
+
+export const CreateGMPPortList = async (req: CreatePortListRequest): Promise<{ id: string }> => {
+  const res = await gmpApi.post("/gmp/port-lists", req);
+  return res.data;
+};
+
+export const DeleteGMPPortList = async (id: string): Promise<void> => {
+  await gmpApi.delete(`/gmp/port-lists/${id}`);
+};
+
+// ── Credential API ────────────────────────────────────────────
+export const ListGMPCredentials = async (): Promise<GMPCredentialDTO[]> => {
+  try {
+    const res = await gmpApi.get("/gmp/credentials");
+    const data = res.data?.data ?? res.data;
+    return Array.isArray(data) ? (data as GMPCredentialDTO[]) : [];
+  } catch (e) { console.error("ListGMPCredentials error:", e); return []; }
+};
+
+export const CreateGMPCredential = async (req: CreateCredentialRequest): Promise<{ id: string }> => {
+  const res = await gmpApi.post("/gmp/credentials", req);
+  return res.data;
+};
+
+export const DeleteGMPCredential = async (id: string): Promise<void> => {
+  await gmpApi.delete(`/gmp/credentials/${id}`);
+};
+
+// ── Trash / Recycle Bin ───────────────────────────────────────
+export type GMPTrashDTO = {
+  tasks:       GMPTaskDTO[];
+  targets:     GMPTargetDTO[];
+  credentials: GMPCredentialDTO[];
+  port_lists:  GMPPortListDTO[];
+  warnings?:   string[];
+};
+
+export const GetGMPTrash = async (): Promise<GMPTrashDTO> => {
+  const res = await gmpApi.get("/gmp/trash");
+  return res.data as GMPTrashDTO;
+};
+
+export const RestoreGMPTrash = async (id: string): Promise<void> => {
+  await gmpApi.post(`/gmp/trash/restore/${id}`);
+};
+
+export const EmptyGMPTrash = async (): Promise<void> => {
+  await gmpApi.delete("/gmp/trash");
+};
+
+export const DeleteGMPTrashTask       = async (id: string): Promise<void> => { await gmpApi.delete(`/gmp/trash/task/${id}`); };
+export const DeleteGMPTrashTarget     = async (id: string): Promise<void> => { await gmpApi.delete(`/gmp/trash/target/${id}`); };
+export const DeleteGMPTrashCredential = async (id: string): Promise<void> => { await gmpApi.delete(`/gmp/trash/credential/${id}`); };
+export const DeleteGMPTrashPortList   = async (id: string): Promise<void> => { await gmpApi.delete(`/gmp/trash/portlist/${id}`); };
+
+export const GetGMPFeeds = async (): Promise<GMPFeedDTO[]> => {
+  try {
+    const response = await gmpApi.get("/gmp/feeds");
+    const data = response.data?.data ?? response.data;
+    return Array.isArray(data) ? (data as GMPFeedDTO[]) : [];
+  } catch (err) {
+    console.error("GetGMPFeeds error:", err);
+    return [];
+  }
+};
 
 export const GetGMPStatus = async (): Promise<GMPStatusResponse> => {
   try {

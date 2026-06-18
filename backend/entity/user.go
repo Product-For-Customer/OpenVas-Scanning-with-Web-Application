@@ -22,4 +22,8 @@ type AppUser struct {
 
 	AppRoleID uint     `valid:"required~AppRoleID is required"`
 	AppRole   *AppRole `gorm:"foreignKey:AppRoleID" valid:"-"`
+
+	// TOTP (Authenticator App)
+	TOTPSecret   string `gorm:"column:totp_secret"   valid:"-"`
+	TOTPEnabled  bool   `gorm:"column:totp_enabled;default:false" valid:"-"`
 }

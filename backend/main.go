@@ -19,7 +19,10 @@ import (
 	"github.com/Tawunchai/openvas/controller/otp"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
+	"github.com/Tawunchai/openvas/controller/schedule"
 	"github.com/Tawunchai/openvas/controller/threat"
+	totpctrl "github.com/Tawunchai/openvas/controller/totp"
+	"github.com/Tawunchai/openvas/controller/feedschedule"
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
 	middlewares "github.com/Tawunchai/openvas/middleware"
@@ -35,6 +38,8 @@ func main() {
 	go automation.StartDailyFeedUpdateScheduler()
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
 	go risk.StartEPSSSyncScheduler()
+	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
+	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
 	middlewares.StartRateLimitCleanup()
 
 	port := os.Getenv("PORT")
@@ -159,6 +164,24 @@ func main() {
 
 		// ===== GMP Scan Management =====
 		authorized.GET("/gmp/status", gmp.GetGMPStatus)
+		authorized.GET("/gmp/feeds", gmp.GetGMPFeeds)
+		// Trash / Recycle Bin
+		authorized.GET("/gmp/trash",                     gmp.GetGMPTrash)
+		authorized.POST("/gmp/trash/restore/:id",        gmp.RestoreGMPTrash)
+		authorized.DELETE("/gmp/trash",                  gmp.EmptyGMPTrash)
+		authorized.DELETE("/gmp/trash/task/:id",         gmp.DeleteGMPTrashTask)
+		authorized.DELETE("/gmp/trash/target/:id",       gmp.DeleteGMPTrashTarget)
+		authorized.DELETE("/gmp/trash/credential/:id",   gmp.DeleteGMPTrashCredential)
+		authorized.DELETE("/gmp/trash/portlist/:id",     gmp.DeleteGMPTrashPortList)
+
+		// Port Lists
+		authorized.GET("/gmp/port-lists", gmp.ListGMPPortLists)
+		authorized.POST("/gmp/port-lists", gmp.CreateGMPPortList)
+		authorized.DELETE("/gmp/port-lists/:id", gmp.DeleteGMPPortList)
+		// Credentials
+		authorized.GET("/gmp/credentials", gmp.ListGMPCredentials)
+		authorized.POST("/gmp/credentials", gmp.CreateGMPCredential)
+		authorized.DELETE("/gmp/credentials/:id", gmp.DeleteGMPCredential)
 		authorized.GET("/gmp/tasks", gmp.ListGMPTasks)
 		authorized.POST("/gmp/tasks", gmp.CreateGMPTask)
 		authorized.POST("/gmp/tasks/:id/start", gmp.StartGMPTask)
@@ -169,6 +192,12 @@ func main() {
 		authorized.DELETE("/gmp/targets/:id", gmp.DeleteGMPTarget)
 		authorized.GET("/gmp/scanners", gmp.ListGMPScanners)
 		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)
+
+		// ===== Auto Scan Schedule =====
+		authorized.GET("/scan-schedules", schedule.ListSchedules)
+		authorized.POST("/scan-schedules", schedule.CreateSchedule)
+		authorized.PATCH("/scan-schedules/:id", schedule.UpdateSchedule)
+		authorized.DELETE("/scan-schedules/:id", schedule.DeleteSchedule)
 
 		// ===== Risk Score Engine =====
 		authorized.GET("/risk/summary", risk.GetRiskSummary)
@@ -183,6 +212,20 @@ func main() {
 		// ===== Compliance Framework =====
 		authorized.GET("/compliance/report", compliance.GetComplianceReport)
 		authorized.GET("/compliance/violations", compliance.GetComplianceViolations)
+
+		// ===== Send PDF to Email =====
+		authorized.GET("/send-pdf-to-email", report.SendPDFToEmail)
+
+		// ===== Feed Update Schedules (configurable) =====
+		authorized.GET("/feed-schedules", feedschedule.ListSchedules)
+		authorized.PUT("/feed-schedules/:feed_type", feedschedule.UpdateSchedule)
+		authorized.POST("/feed-schedules/:feed_type/trigger", feedschedule.TriggerFeedNow)
+
+		// ===== TOTP (Authenticator App) =====
+		authorized.GET("/auth/totp/status", totpctrl.GetTOTPStatus)
+		authorized.POST("/auth/totp/init",   totpctrl.InitTOTPSetup)
+		authorized.POST("/auth/totp/verify", totpctrl.VerifyTOTPSetup)
+		authorized.DELETE("/auth/totp",      totpctrl.DisableTOTP)
 
 		// ===== Password Policy =====
 		authorized.GET("/password-policy", passwordpolicy.GetPolicy)

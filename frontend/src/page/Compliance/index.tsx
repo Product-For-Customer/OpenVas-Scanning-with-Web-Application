@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FiCheckCircle, FiXCircle, FiAlertTriangle, FiRefreshCw } from "react-icons/fi";
+import { FiCheckCircle, FiXCircle, FiAlertTriangle, FiRefreshCw, FiShield } from "react-icons/fi";
 import { GetComplianceReport, type ComplianceReportDTO, type FrameworkScore } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 
 // ===========================
 // Helpers
@@ -123,10 +124,13 @@ const FrameworkCard: React.FC<{
 // ===========================
 const Compliance: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
   const [report, setReport] = useState<ComplianceReportDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedFW, setExpandedFW] = useState<string>("PCI_DSS");
   const hasFetched = useRef(false);
+
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -142,22 +146,40 @@ const Compliance: React.FC = () => {
   const toggleFW = (fw: string) => setExpandedFW(p => p === fw ? "" : fw);
 
   return (
-    <div className="w-full py-3 sm:py-4">
+    <div className="w-full py-0 sm:py-0">
 
-      {/* Header */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">{t("compliance.title")}</h1>
-            <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-              PCI-DSS · ISO 27001 · NIST CSF · CIS Controls
-            </span>
+      {/* ── Header card ── */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:mb-5 sm:p-6 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
+        </div>
+        <div className="relative z-10 flex items-center gap-3 sm:gap-4">
+          <div
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-13 sm:w-13"
+            style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
+          >
+            <FiShield className="text-[20px] sm:text-[22px]" />
           </div>
-          {report && (
-            <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
-              Generated: {new Date(report.generated_at).toLocaleDateString("en-GB")}
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
+              ANALYTICS · COMPLIANCE
             </p>
-          )}
+            <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
+              {t("compliance.title")}
+            </h1>
+            <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
+              {t("compliance.subtitle")}
+              {report && (
+                <span className="ml-2 text-slate-400 dark:text-white/30">
+                  · {t("compliance.generated")}: {new Date(report.generated_at).toLocaleDateString("en-GB")}
+                </span>
+              )}
+            </p>
+          </div>
         </div>
       </div>
 

@@ -101,6 +101,8 @@ func SetupDatabase() {
 		&entity.AppAPIKey{},
 		&entity.AppAuditLog{},
 		&entity.SystemConfig{},
+		&entity.AutoScanSchedule{},
+		&entity.FeedUpdateSchedule{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)

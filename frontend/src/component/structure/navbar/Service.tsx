@@ -41,12 +41,64 @@ const Toggle: React.FC<{
 );
 
 // ─────────────────────────────────────────────────────────────
+// OTP Sub-option row (checkbox-style toggle)
+// ─────────────────────────────────────────────────────────────
+
+const OtpOptionRow: React.FC<{
+  label: string;
+  desc: string;
+  checked: boolean;
+  onChange: () => void;
+  color: string;
+}> = ({ label, desc, checked, onChange, color }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white/70 px-4 py-3 text-left transition-all hover:bg-white dark:bg-white/3 dark:hover:bg-white/6 focus:outline-none"
+    style={{ borderColor: checked ? `${color}35` : "transparent" }}
+  >
+    <div className="flex items-center gap-3 min-w-0">
+      {/* Custom checkbox */}
+      <span
+        className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all"
+        style={
+          checked
+            ? { borderColor: color, backgroundColor: color }
+            : { borderColor: "#cbd5e1", backgroundColor: "transparent" }
+        }
+      >
+        {checked && (
+          <svg viewBox="0 0 12 10" fill="none" className="h-3 w-3">
+            <path d="M1 5l3.5 3.5L11 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <div className="min-w-0">
+        <p className="text-[12.5px] font-semibold text-slate-800 dark:text-white/85">{label}</p>
+        <p className="text-[11px] text-slate-400 dark:text-white/40">{desc}</p>
+      </div>
+    </div>
+    {checked && (
+      <span
+        className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold"
+        style={{ backgroundColor: `${color}15`, color }}
+      >
+        ON
+      </span>
+    )}
+  </button>
+);
+
+// ─────────────────────────────────────────────────────────────
 // Service Page
 // ─────────────────────────────────────────────────────────────
 
-const MAINT_KEY = "argus_maintenance_mode";
-const TOTP_KEY  = "argus_totp_enabled";
-const FA2_KEY   = "argus_2fa_enabled";
+const MAINT_KEY        = "argus_maintenance_mode";
+const TOTP_KEY         = "argus_totp_enabled";
+const FA2_KEY          = "argus_2fa_enabled";
+const OTP_LOGIN_KEY    = "argus_otp_login";
+const OTP_REG_KEY      = "argus_otp_register";
+const OTP_RESET_KEY    = "argus_otp_reset_password";
 
 const Service: React.FC = () => {
   const { currentColor } = useStateContext();
@@ -63,9 +115,14 @@ const Service: React.FC = () => {
   const [showPass,      setShowPass]      = useState(false);
 
   // ── Toggle state (localStorage-backed) ───────────────────
-  const [twoFA,       setTwoFA]       = useState(() => localStorage.getItem(FA2_KEY) === "true");
-  const [totpEnabled, setTotpEnabled] = useState(() => localStorage.getItem(TOTP_KEY) === "true");
+  const [twoFA,       setTwoFA]       = useState(() => localStorage.getItem(FA2_KEY)   === "true");
+  const [totpEnabled, setTotpEnabled] = useState(() => localStorage.getItem(TOTP_KEY)  === "true");
   const [maintenance, setMaintenance] = useState(() => localStorage.getItem(MAINT_KEY) === "true");
+
+  // OTP sub-options (only active when twoFA is on)
+  const [otpLogin,    setOtpLogin]    = useState(() => localStorage.getItem(OTP_LOGIN_KEY) !== "false");
+  const [otpRegister, setOtpRegister] = useState(() => localStorage.getItem(OTP_REG_KEY)   === "true");
+  const [otpReset,    setOtpReset]    = useState(() => localStorage.getItem(OTP_RESET_KEY)  === "true");
 
   const hasFetched = useRef(false);
   const isMounted  = useRef(false);
@@ -135,6 +192,22 @@ const Service: React.FC = () => {
     message.success(next ? t("service.enabled") : t("service.disabled"));
   };
 
+  const toggleOtpLogin = () => {
+    const next = !otpLogin;
+    setOtpLogin(next);
+    localStorage.setItem(OTP_LOGIN_KEY, String(next));
+  };
+  const toggleOtpRegister = () => {
+    const next = !otpRegister;
+    setOtpRegister(next);
+    localStorage.setItem(OTP_REG_KEY, String(next));
+  };
+  const toggleOtpReset = () => {
+    const next = !otpReset;
+    setOtpReset(next);
+    localStorage.setItem(OTP_RESET_KEY, String(next));
+  };
+
   const toggleTotp = () => {
     const next = !totpEnabled;
     setTotpEnabled(next);
@@ -188,24 +261,17 @@ const Service: React.FC = () => {
       </div>
 
       {/* ── Email & Security Settings ── */}
-      <div
-        className="overflow-hidden rounded-[22px] bg-white/95 shadow-sm dark:bg-[#0d0b1a]/80"
-        style={{ border: `1px solid ${currentColor}18` }}
-      >
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
+
         {/* Section header */}
-        <div className="border-b px-5 py-4" style={{ borderColor: `${currentColor}18` }}>
+        <div className="border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex items-center gap-2.5">
-            <div
-              className="inline-flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${currentColor}15` }}
-            >
-              <FiLock className="text-[15px]" style={{ color: currentColor }} />
-            </div>
+            <FiLock className="text-[14px] text-slate-400 dark:text-white/35" />
             <div>
-              <h2 className="text-[14px] font-semibold text-slate-800 dark:text-white/90">
+              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
                 {t("service.emailSecurityTitle")}
               </h2>
-              <p className="text-[11px] text-slate-400 dark:text-white/40">
+              <p className="text-[11px] text-slate-400 dark:text-white/35">
                 {t("service.emailSecuritySubtitle")}
               </p>
             </div>
@@ -214,7 +280,6 @@ const Service: React.FC = () => {
 
         <div className="p-5 space-y-3">
           {loading ? (
-            /* Skeleton */
             <div className="space-y-2.5">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-16 animate-pulse rounded-xl border border-slate-100 bg-slate-50 dark:border-white/8 dark:bg-white/4" />
@@ -231,18 +296,16 @@ const Service: React.FC = () => {
           ) : (
             <>
               {/* Email row */}
-              <div
-                className="rounded-[18px] border p-4 space-y-3"
-                style={{ borderColor: `${currentColor}20`, backgroundColor: `${currentColor}06` }}
-              >
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4 space-y-3 dark:border-white/8 dark:bg-white/3">
+
                 {/* Top: email info + edit button */}
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-2xl shrink-0"
-                      style={{ backgroundColor: `${currentColor}15`, color: currentColor }}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl shrink-0"
+                      style={{ backgroundColor: `${currentColor}12`, color: currentColor }}
                     >
-                      <FiMail className="text-[16px]" />
+                      <FiMail className="text-[15px]" />
                     </div>
                     <div>
                       <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
@@ -260,8 +323,7 @@ const Service: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => editingEmail ? cancelEdit() : setEditingEmail(true)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-3.5 py-2 text-[12px] font-semibold transition hover:bg-slate-50 dark:bg-transparent dark:hover:bg-white/6"
-                    style={{ borderColor: `${currentColor}30`, color: currentColor }}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8"
                   >
                     {editingEmail
                       ? <><FiX className="text-[11px]" />{t("service.cancel")}</>
@@ -272,10 +334,8 @@ const Service: React.FC = () => {
 
                 {/* Inline edit form */}
                 {editingEmail && (
-                  <div
-                    className="rounded-xl border bg-white p-4 space-y-3 dark:bg-white/5"
-                    style={{ borderColor: `${currentColor}25` }}
-                  >
+                  <div className="rounded-xl border border-slate-200/70 bg-white p-4 space-y-3 dark:border-white/8 dark:bg-white/5">
+
                     {/* Email field */}
                     <div>
                       <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: currentColor }}>
@@ -337,64 +397,110 @@ const Service: React.FC = () => {
                   </div>
                 )}
 
-                {/* Two-Step Verification */}
-                <div
-                  className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-white/3"
-                  style={{ borderColor: `${currentColor}18` }}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors"
-                      style={twoFA
-                        ? { backgroundColor: `${currentColor}18`, color: currentColor }
-                        : { backgroundColor: "#f1f5f9", color: "#9ca3af" }
-                      }
-                    >
-                      <FiShield className="text-[15px]" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="whitespace-nowrap text-[13px] font-semibold text-slate-800 dark:text-white/90">
-                          {t("service.twoStep")}
-                        </p>
-                        <span
-                          className="flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
-                          style={twoFA
-                            ? { borderColor: `${currentColor}40`, backgroundColor: `${currentColor}10`, color: currentColor }
-                            : { borderColor: "#e2e8f0", color: "#94a3b8" }
-                          }
-                        >
-                          {twoFA ? <><FiCheckCircle size={9} />{t("service.enabled")}</> : t("service.enable")}
-                        </span>
-                        <span
-                          className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold"
-                          style={{ borderColor: `${currentColor}30`, backgroundColor: `${currentColor}08`, color: currentColor }}
-                        >
-                          <FiZap size={8} />{t("service.strongAccess")}
-                        </span>
+                {/* Two-Step Verification + OTP sub-options */}
+                <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-white/3 transition-all">
+
+                  {/* Main toggle row */}
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
+                        style={twoFA
+                          ? { backgroundColor: `${currentColor}15`, color: currentColor }
+                          : { backgroundColor: "#f1f5f9", color: "#9ca3af" }
+                        }
+                      >
+                        <FiShield className="text-[14px]" />
                       </div>
-                      <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/40">
-                        {t("service.twoStepDesc")}
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="whitespace-nowrap text-[13px] font-semibold text-slate-800 dark:text-white/90">
+                            {t("service.twoStep")}
+                          </p>
+                          <span
+                            className="flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold"
+                            style={twoFA
+                              ? { borderColor: `${currentColor}40`, backgroundColor: `${currentColor}10`, color: currentColor }
+                              : { borderColor: "#e2e8f0", color: "#94a3b8" }
+                            }
+                          >
+                            {twoFA ? <><FiCheckCircle size={9} />{t("service.enabled")}</> : t("service.enable")}
+                          </span>
+                          <span
+                            className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                            style={{ borderColor: `${currentColor}30`, backgroundColor: `${currentColor}08`, color: currentColor }}
+                          >
+                            <FiZap size={8} />{t("service.strongAccess")}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/40">
+                          {t("service.twoStepDesc")}
+                        </p>
+                      </div>
+                    </div>
+                    <Toggle checked={twoFA} onChange={toggleTwoFA} color={currentColor} />
+                  </div>
+
+                  {/* OTP sub-options — slide in when twoFA is on */}
+                  <div
+                    className="overflow-hidden transition-all duration-300"
+                    style={{ maxHeight: twoFA ? "360px" : "0px", opacity: twoFA ? 1 : 0 }}
+                  >
+                    <div className="border-t border-dashed border-slate-200 px-4 pb-4 pt-3 space-y-2 dark:border-white/8">
+                      {/* Sub-section label */}
+                      <div className="flex items-center gap-2 pb-1">
+                        <div
+                          className="inline-flex h-6 w-6 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: `${currentColor}15` }}
+                        >
+                          <FiShield className="text-[11px]" style={{ color: currentColor }} />
+                        </div>
+                        <div>
+                          <p className="text-[11.5px] font-bold text-slate-700 dark:text-white/80">
+                            {t("service.otpSettings")}
+                          </p>
+                          <p className="text-[10px] text-slate-400 dark:text-white/35">
+                            {t("service.otpSettingsDesc")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <OtpOptionRow
+                        label={t("service.otpLogin")}
+                        desc={t("service.otpLoginDesc")}
+                        checked={otpLogin}
+                        onChange={toggleOtpLogin}
+                        color={currentColor}
+                      />
+                      <OtpOptionRow
+                        label={t("service.otpRegister")}
+                        desc={t("service.otpRegisterDesc")}
+                        checked={otpRegister}
+                        onChange={toggleOtpRegister}
+                        color={currentColor}
+                      />
+                      <OtpOptionRow
+                        label={t("service.otpResetPassword")}
+                        desc={t("service.otpResetPasswordDesc")}
+                        checked={otpReset}
+                        onChange={toggleOtpReset}
+                        color={currentColor}
+                      />
                     </div>
                   </div>
-                  <Toggle checked={twoFA} onChange={toggleTwoFA} color={currentColor} />
                 </div>
 
                 {/* TOTP */}
-                <div
-                  className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 dark:bg-white/3"
-                  style={{ borderColor: `${currentColor}18` }}
-                >
+                <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/3">
                   <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors"
+                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors"
                       style={totpEnabled
                         ? { backgroundColor: "#e0f2fe", color: "#0891b2" }
                         : { backgroundColor: "#f1f5f9", color: "#9ca3af" }
                       }
                     >
-                      <FiKey className="text-[15px]" />
+                      <FiKey className="text-[14px]" />
                     </div>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -429,20 +535,16 @@ const Service: React.FC = () => {
       </div>
 
       {/* ── Maintenance Mode ── */}
-      <div
-        className="overflow-hidden rounded-[22px] bg-white/95 shadow-sm dark:bg-[#0d0b1a]/80"
-        style={{ border: `1px solid ${currentColor}18` }}
-      >
-        <div className="border-b px-5 py-4" style={{ borderColor: `${currentColor}18` }}>
+      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
+
+        <div className="border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex items-center gap-2.5">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
-              <FiTool className="text-[15px] text-amber-500" />
-            </div>
+            <FiTool className="text-[14px] text-amber-500" />
             <div>
-              <h2 className="text-[14px] font-semibold text-slate-800 dark:text-white/90">
+              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
                 {t("service.maintenanceMode")}
               </h2>
-              <p className="text-[11px] text-slate-400 dark:text-white/40">
+              <p className="text-[11px] text-slate-400 dark:text-white/35">
                 {t("service.maintenanceModeSubtitle")}
               </p>
             </div>
@@ -450,20 +552,17 @@ const Service: React.FC = () => {
         </div>
 
         <div className="p-5">
-          <div
-            className="flex items-center justify-between rounded-[18px] border p-4"
-            style={{ borderColor: `${currentColor}15`, backgroundColor: `${currentColor}05` }}
-          >
+          <div className="flex items-center justify-between rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3.5 dark:border-white/8 dark:bg-white/3">
             <div className="flex items-center gap-3">
               <div
                 className={[
-                  "inline-flex h-10 w-10 items-center justify-center rounded-2xl transition-colors",
+                  "inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
                   maintenance
                     ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
                     : "bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-white/30",
                 ].join(" ")}
               >
-                <FiTool className="text-[16px]" />
+                <FiTool className="text-[14px]" />
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90">
