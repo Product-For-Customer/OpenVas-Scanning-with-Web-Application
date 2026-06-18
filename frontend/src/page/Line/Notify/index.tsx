@@ -48,6 +48,7 @@ import {
   type AppNotificationResponse,
   type AppLineMasterResponse,
 } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type SortKey = "Newest" | "Alert: On First" | "Alert: Off First";
 type FormMode = "create" | "edit";
@@ -271,43 +272,43 @@ const typeBadgeClass = (isGroup: boolean) => {
 };
 
 const cardGlowClass = [
-  "relative h-full overflow-hidden rounded-2xl p-4 sm:p-5",
-  "border border-slate-200/80 bg-white shadow-sm",
-  "dark:border-white/10 dark:bg-[#08111f]/95 dark:shadow-none",
+  "h-full p-4 sm:p-5",
+  "rounded-xl border border-slate-200/70 bg-white",
+  "dark:border-white/8 dark:bg-[#0d0b1a]/80",
   "flex flex-col",
 ].join(" ");
 
 const inputClass = [
-  "h-10 w-full rounded-xl px-3 text-[12px] outline-none transition",
-  "border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100",
-  "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:border-violet-400/30 dark:focus:ring-violet-400/10",
+  "h-10 w-full rounded-lg px-3 text-[12px] outline-none transition",
+  "border border-slate-200/70 bg-white text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100",
+  "dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/30 dark:focus:border-blue-400/30 dark:focus:ring-blue-400/10",
 ].join(" ");
 
 const textareaClass = [
-  "w-full min-h-24 rounded-xl px-3 py-2.5 text-[12px] outline-none transition resize-none",
-  "border border-slate-200 bg-white text-slate-800 placeholder:text-slate-400 focus:border-violet-300 focus:ring-2 focus:ring-violet-100",
-  "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:border-violet-400/30 dark:focus:ring-violet-400/10",
+  "w-full min-h-24 rounded-lg px-3 py-2.5 text-[12px] outline-none transition resize-none",
+  "border border-slate-200/70 bg-white text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:ring-2 focus:ring-blue-100",
+  "dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/30 dark:focus:border-blue-400/30 dark:focus:ring-blue-400/10",
 ].join(" ");
 
 const labelClass =
-  "mb-1.5 block text-[11px] font-medium text-slate-700 dark:text-white/75";
+  "mb-1.5 block text-[11px] font-medium text-slate-700 dark:text-white/70";
 
 const modalBackdropClass =
   "absolute inset-0 z-[300] flex items-center justify-center bg-slate-900/0 p-4";
 
 const modalCardClass =
-  "relative w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.38)] dark:border-white/10 dark:bg-[#08111f]";
+  "relative w-full overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]";
 
 const sectionChipClass =
-  "inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300";
+  "inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40";
 
 const panelClass =
-  "rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]";
+  "rounded-xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/8 dark:bg-white/3";
 
 const createGradientBtn = [
-  "inline-flex h-8 items-center justify-center gap-2 rounded-full",
-  "bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-3.5",
-  "text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700",
+  "flex h-8 items-center justify-center gap-1.5 rounded-lg px-3.5",
+  "bg-slate-900 text-[11px] font-medium text-white transition hover:bg-slate-800",
+  "dark:bg-white/15 dark:hover:bg-white/20",
 ].join(" ");
 
 const editGradientIconBtn = [
@@ -570,7 +571,7 @@ const LineMasterSelector: React.FC<{
         onClick={() => !disabled && setOpen((prev) => !prev)}
         disabled={disabled}
         className={[
-          "group w-full min-h-11 rounded-[22px] px-3 text-left transition-all duration-200",
+          "group w-full min-h-11 rounded-xl px-3 text-left transition-all duration-200",
           "border border-slate-300 bg-white",
           "hover:border-cyan-300 hover:bg-cyan-50/40",
           "focus:outline-none focus:ring-4 focus:ring-cyan-100/80",
@@ -602,7 +603,7 @@ const LineMasterSelector: React.FC<{
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.14)] dark:border-[#22304a] dark:bg-[#101a2c] dark:shadow-[0_22px_50px_rgba(0,0,0,0.45)]">
+        <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
           <div className="border-b border-slate-100 px-3 py-2 dark:border-white/8">
             <span className="text-[10px] font-medium text-slate-500 dark:text-white/45">
               Select integration
@@ -714,6 +715,7 @@ const LineMasterSelector: React.FC<{
 };
 
 const index: React.FC = () => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("Newest");
   const [openSort, setOpenSort] = useState(false);
@@ -1544,7 +1546,7 @@ const index: React.FC = () => {
     if (notifications.length === 0) {
       return (
         <div className="flex min-h-75 items-center justify-center rounded-2xl border border-dashed border-slate-200 text-[12px] text-slate-500 dark:border-white/10 dark:text-white/45">
-          No notification data
+          {t("common.noResults")}
         </div>
       );
     }
@@ -1714,38 +1716,19 @@ const index: React.FC = () => {
   return (
     <div className="relative">
       <section className={cardGlowClass}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-12 right-6 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-            <div
-              className="h-full w-full text-slate-500 dark:text-white/15"
-              style={{
-                backgroundImage: `
-                  linear-gradient(to right, currentColor 1px, transparent 1px),
-                  linear-gradient(to bottom, currentColor 1px, transparent 1px)
-                `,
-                backgroundSize: "24px 24px",
-              }}
-            />
-          </div>
-        </div>
 
-        <div className="relative z-10 flex h-full flex-col">
+        <div className="flex h-full flex-col">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <div className={sectionChipClass}>
-                <FiBell className="text-[10px]" />
-                Notification Center
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                  {t("line.notificationDestinations")}
+                </h2>
+                <span className={sectionChipClass}>
+                  <FiBell className="text-[10px]" />
+                  Notification Center
+                </span>
               </div>
-
-              <h2 className="mt-2 text-[18px] font-semibold tracking-tight text-slate-900 dark:text-white">
-                Line Notification & Integration
-              </h2>
-
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55">
-                Manage receivers and connected integrations in one place.
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1915,7 +1898,7 @@ const index: React.FC = () => {
                       <input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search notify..."
+                        placeholder={t("line.searchNotification")}
                         className="h-10 w-55 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-[12px] outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:border-violet-400/30 dark:focus:ring-violet-400/10"
                       />
                     </div>

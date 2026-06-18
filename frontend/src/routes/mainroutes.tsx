@@ -22,9 +22,10 @@ const DiagramNode = Loadable(lazy(() => import("../page/Diagram/Node/index")));
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
 const ThreatIntelligenceDetail = Loadable(lazy(() => import("../page/ThreatIntelligence/Detail/index")));
 const ScanManagement = Loadable(lazy(() => import("../page/ScanManagement/index")));
-const Risk = Loadable(lazy(() => import("../page/Risk/index")));
-const Compliance = Loadable(lazy(() => import("../page/Compliance/index")));
+const Compliance      = Loadable(lazy(() => import("../page/Compliance/index")));
+const PasswordPolicy  = Loadable(lazy(() => import("../page/PasswordPolicy/index")));
 const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Delta/index")));
+const HostDetail = Loadable(lazy(() => import("../page/HostDetail/index")));
 
 // ===== Login Pages =====
 const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
@@ -64,9 +65,11 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "threat-intelligence", element: <ThreatIntelligence /> },
       { path: "threat-intelligence/detail/:hostIp", element: <ThreatIntelligenceDetail /> },
       { path: "scan-management", element: <ScanManagement /> },
-      { path: "risk", element: <Risk /> },
+
       { path: "compliance", element: <Compliance /> },
+      { path: "password-policy", element: <PasswordPolicy /> },
       { path: "vulnerability-delta", element: <VulnerabilityDelta /> },
+      { path: "host/:ip", element: <HostDetail /> },
     ],
   },
   { path: "logo-animation", element: <LogoAnimation/> },
@@ -94,6 +97,7 @@ const UserRoutes = (): RouteObject[] => [
       { path: "vulnerability-by-level", element: <VulnerabilityByLevel /> },
       { path: "diagrams", element: <Diagram /> },
       { path: "diagram-node", element: <DiagramNode /> },
+      { path: "host/:ip", element: <HostDetail /> },
     ],
   },
   { path: "*", element: <Navigate to="/admin" replace /> },

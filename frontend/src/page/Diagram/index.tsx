@@ -15,9 +15,7 @@ import {
   FiEdit2,
   FiTrash2,
   FiRefreshCw,
-  FiLayers,
   FiCalendar,
-  FiCheck,
   FiEye,
 } from "react-icons/fi";
 import {
@@ -26,6 +24,7 @@ import {
   ListDiagrams,
   type DiagramResponse,
 } from "../../services/diagram";
+import { useLanguage } from "../../contexts/LanguageContext";
 import DiagramFormModal from "./Model/DiagramFormModal";
 import DiagramDeleteModal from "./Model/DiagramDeleteModal";
 import message from "antd/es/message";
@@ -66,6 +65,7 @@ const safeTime = (value?: string) => {
 };
 
 const index: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const auth = useAuth() as any;
 
@@ -327,104 +327,64 @@ const index: React.FC = () => {
   }, [deleteTarget, deleting, loadDiagrams, isUserRole]);
 
   const shell = [
-    "relative overflow-hidden rounded-[18px]",
-    "bg-white border border-gray-200/80 shadow-sm",
-    "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
+    "rounded-xl border border-slate-200/70 bg-white",
+    "dark:border-white/8 dark:bg-[#0d0b1a]/80",
   ].join(" ");
 
   const inputCls = [
-    "h-10 rounded-xl border px-3 text-[12px] outline-none transition w-full",
-    "border-gray-200/80 bg-white text-[#1f2240] focus:ring-2 focus:ring-cyan-200",
-    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10",
+    "h-9 rounded-lg border px-3 text-[12px] outline-none transition w-full",
+    "border-slate-200/70 bg-white text-slate-700 focus:ring-2 focus:ring-blue-200",
+    "dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/30 dark:focus:ring-white/10",
   ].join(" ");
 
   const dropdownBtn = [
-    "h-8 px-3 rounded-xl inline-flex items-center justify-between gap-2 transition min-w-0",
-    "bg-white border border-gray-200/80 text-[11px] font-medium text-gray-600 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
+    "h-8 px-3 rounded-lg inline-flex items-center justify-between gap-1.5 transition min-w-0",
+    "bg-white border border-slate-200/70 text-[10.5px] font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50",
+    "dark:bg-white/5 dark:border-white/8 dark:text-white/60 dark:hover:bg-white/8",
   ].join(" ");
 
   const primaryGradientBtn = [
-    "inline-flex h-8 items-center justify-center gap-2 rounded-full px-3.5",
-    "text-white text-[11px] font-medium shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600",
-    "hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700",
-    "focus:outline-none focus:ring-2 focus:ring-cyan-200",
-    "dark:focus:ring-cyan-500/30",
+    "inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3.5",
+    "bg-slate-900 text-white text-[11px] font-medium transition-all duration-200",
+    "hover:bg-slate-800 focus:outline-none dark:bg-white/15 dark:hover:bg-white/20",
   ].join(" ");
 
   const editGradientBtn = [
-    "inline-flex h-8 items-center justify-center gap-2 rounded-full px-3.5",
-    "text-white text-[11px] font-medium shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-sky-400 via-blue-400 to-indigo-500",
-    "hover:from-sky-500 hover:via-blue-500 hover:to-indigo-600",
-    "focus:outline-none focus:ring-2 focus:ring-sky-200",
-    "dark:focus:ring-sky-500/30",
+    "inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3.5",
+    "border border-blue-200 bg-blue-50 text-blue-700 text-[11px] font-medium transition-all duration-200",
+    "hover:bg-blue-100 focus:outline-none dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15",
   ].join(" ");
 
   const deleteGradientBtn = [
-    "inline-flex h-8 items-center justify-center gap-2 rounded-full px-3.5",
-    "text-white text-[11px] font-medium shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-rose-400 via-red-400 to-rose-500",
-    "hover:from-rose-500 hover:via-red-500 hover:to-rose-600",
-    "focus:outline-none focus:ring-2 focus:ring-red-200",
-    "dark:focus:ring-red-500/30",
+    "inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3.5",
+    "border border-red-200 bg-red-50 text-red-700 text-[11px] font-medium transition-all duration-200",
+    "hover:bg-red-100 focus:outline-none dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15",
   ].join(" ");
 
   const secondaryBtn = [
-    "h-9 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[11px] font-semibold",
-    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
+    "h-8 px-3 rounded-lg inline-flex items-center justify-center gap-2 transition text-[11px] font-medium",
+    "bg-white border border-slate-200/70 text-slate-600 hover:bg-slate-50",
+    "dark:bg-white/5 dark:border-white/8 dark:text-white/65 dark:hover:bg-white/8",
   ].join(" ");
 
   return (
     <div className="w-full">
       <section className={shell}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-12 -right-8 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute -bottom-12 -left-8 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-        </div>
-
-        <div className="relative z-10">
-          <div className="border-b border-gray-100 px-3 py-3 dark:border-white/10 sm:px-4 sm:py-3.5">
+        <div>
+          <div className="border-b border-slate-100 px-4 py-4 dark:border-white/8 sm:px-5">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-cyan-200/80 bg-cyan-50 px-2 py-1 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-                    <FiLayers className="shrink-0 text-[10px]" />
-                    <span className="truncate text-[9.5px] font-semibold tracking-wide">
-                      Diagram Management
-                    </span>
-                  </div>
-
-                  <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
-                    <FiImage className="shrink-0 text-[10px] text-cyan-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      {summary.total} diagrams
-                    </span>
-                  </div>
-
-                  <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
-                    <FiCheck className="shrink-0 text-[10px] text-emerald-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      {summary.withImage} with image
-                    </span>
-                  </div>
-
-                  <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50 px-2 py-1 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/65">
-                    <FiRefreshCw className="shrink-0 text-[10px] text-violet-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      {summary.updatedToday} updated today
-                    </span>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    {t("diagram.title")}
+                  </h2>
+                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                    {summary.total} total
+                  </span>
+                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                    {summary.withImage} with image
+                  </span>
                 </div>
-
-                <h2 className="wrap-break-word text-[14px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90 sm:text-[16px]">
-                  Diagrams
-                </h2>
-                <p className="mt-1 text-[10px] leading-4.5 text-gray-500 dark:text-white/55 sm:text-[11px]">
-                  Manage diagram images, names, descriptions, and updates
-                </p>
               </div>
 
               <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between lg:w-auto lg:flex-col lg:items-end xl:flex-row xl:flex-wrap xl:items-center">
@@ -433,7 +393,7 @@ const index: React.FC = () => {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search diagrams."
+                    placeholder={t("diagram.searchDiagram")}
                     className={["w-full pl-8 pr-3 sm:w-56", inputCls].join(" ")}
                   />
                 </div>
@@ -456,32 +416,27 @@ const index: React.FC = () => {
                     </button>
 
                     {openSort && (
-                      <div className="absolute right-0 z-20 mt-2 w-[min(13rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                        <div className="py-1">
-                          {[
-                            { key: "latest", label: "Latest" },
-                            { key: "oldest", label: "Oldest" },
-                            { key: "name_asc", label: "Name A-Z" },
-                            { key: "name_desc", label: "Name Z-A" },
-                          ].map((opt) => (
-                            <button
-                              key={opt.key}
-                              type="button"
-                              onClick={() => {
-                                setSortMode(opt.key as SortMode);
-                                setOpenSort(false);
-                              }}
-                              className={[
-                                "w-full px-3 py-2 text-left text-[11px] transition",
-                                sortMode === opt.key
-                                  ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-300"
-                                  : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
-                              ].join(" ")}
-                            >
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="absolute right-0 z-20 mt-1.5 w-[min(12rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                        {[
+                          { key: "latest", label: "Latest" },
+                          { key: "oldest", label: "Oldest" },
+                          { key: "name_asc", label: "Name A-Z" },
+                          { key: "name_desc", label: "Name Z-A" },
+                        ].map((opt) => (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => { setSortMode(opt.key as SortMode); setOpenSort(false); }}
+                            className={[
+                              "w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium transition",
+                              sortMode === opt.key
+                                ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
+                            ].join(" ")}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -493,7 +448,7 @@ const index: React.FC = () => {
                       className={primaryGradientBtn}
                     >
                       <FiPlus className="text-[12px]" />
-                      <span className="text-[11px] font-medium">Add Diagram</span>
+                      <span className="text-[11px] font-medium">{t("diagram.createDiagram")}</span>
                     </button>
                   )}
 
@@ -504,8 +459,8 @@ const index: React.FC = () => {
                       className={[
                         "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition",
                         view === "list"
-                          ? "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200"
-                          : "border-gray-200/80 bg-white text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          : "border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8",
                       ].join(" ")}
                     >
                       <FiList className="text-[13px]" />
@@ -517,8 +472,8 @@ const index: React.FC = () => {
                       className={[
                         "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition",
                         view === "grid"
-                          ? "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-200"
-                          : "border-gray-200/80 bg-white text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          : "border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8",
                       ].join(" ")}
                     >
                       <FiGrid className="text-[13px]" />
@@ -554,27 +509,25 @@ const index: React.FC = () => {
 
             {!loading && !error && filteredItems.length === 0 && (
               <div className="px-3 py-4 text-[11px] text-gray-500 dark:text-white/55 sm:px-4">
-                No Data
+                {t("diagram.noDiagrams")}
               </div>
             )}
 
             {!loading && !error && filteredItems.length > 0 && (
               <>
                 {view === "list" ? (
-                  <div className="min-h-105 max-h-105 divide-y divide-gray-100 overflow-y-auto dark:divide-white/10">
+                  <div className="min-h-105 max-h-105 divide-y divide-slate-100 overflow-y-auto dark:divide-white/8">
                     {filteredItems.map((item) => {
                       const imageSrc = getImageSrc(item.image_base64);
 
                       return (
                         <div
                           key={item.id}
-                          className="relative px-3 py-3 sm:px-4 sm:py-3.5"
+                          className="px-4 py-3.5 sm:px-5"
                         >
-                          <div className="pointer-events-none absolute right-0 top-0 h-full w-24 bg-cyan-400/10 opacity-50 blur-3xl" />
-
                           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex min-w-0 items-start gap-3">
-                              <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-gray-200/80 bg-slate-50 dark:border-white/10 dark:bg-white/5 sm:h-18 sm:w-28">
+                              <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl border border-slate-200/70 bg-slate-50 dark:border-white/8 dark:bg-white/5 sm:h-18 sm:w-28">
                                 {imageSrc ? (
                                   <img
                                     src={imageSrc}
@@ -590,7 +543,7 @@ const index: React.FC = () => {
 
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="inline-flex items-center rounded-full border border-cyan-200/70 bg-cyan-50 px-2 py-0.5 text-[9px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                                  <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-slate-50 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
                                     Diagram
                                   </span>
                                 </div>
@@ -668,12 +621,10 @@ const index: React.FC = () => {
                         return (
                           <div
                             key={item.id}
-                            className="relative overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:ring-1 dark:ring-white/10 dark:shadow-none"
+                            className="rounded-xl border border-slate-200/70 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/8 dark:bg-white/4"
                           >
-                            <div className="pointer-events-none absolute -right-8 -top-8 h-20 w-20 rounded-full bg-cyan-400/10 blur-3xl" />
-
-                            <div className="relative">
-                              <div className="h-40 w-full overflow-hidden rounded-xl border border-gray-200/80 bg-slate-50 dark:border-white/10 dark:bg-white/5">
+                            <div>
+                              <div className="h-40 w-full overflow-hidden rounded-xl border border-slate-200/70 bg-slate-50 dark:border-white/8 dark:bg-white/5">
                                 {imageSrc ? (
                                   <img
                                     src={imageSrc}
@@ -688,11 +639,10 @@ const index: React.FC = () => {
                               </div>
 
                               <div className="mt-3 flex items-center justify-between gap-2">
-                                <span className="inline-flex h-6 items-center rounded-lg border border-cyan-200/70 bg-cyan-50 px-2 text-[10px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
+                                <span className="inline-flex h-6 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-2 text-[10px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
                                   Diagram
                                 </span>
-
-                                <span className="inline-flex h-6 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-2 text-[10px] font-semibold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-white/70">
+                                <span className="inline-flex h-6 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-2 text-[10px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
                                   ID: {item.id}
                                 </span>
                               </div>

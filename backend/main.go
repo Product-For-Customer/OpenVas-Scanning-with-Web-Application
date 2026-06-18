@@ -11,13 +11,15 @@ import (
 	"github.com/Tawunchai/openvas/controller/automation"
 	"github.com/Tawunchai/openvas/controller/compliance"
 	"github.com/Tawunchai/openvas/controller/diagram"
+	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/controller/gmp"
+	"github.com/Tawunchai/openvas/controller/host"
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
-"github.com/Tawunchai/openvas/controller/threat"
+	"github.com/Tawunchai/openvas/controller/threat"
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
 	middlewares "github.com/Tawunchai/openvas/middleware"
@@ -91,7 +93,6 @@ func main() {
 		authorized.GET("/vulnerabilities/:task_id", vulnerability.ListVulnerabilityByTaskID) // complete
 		authorized.GET("/target-differ", vulnerability.ListTargetDiffer) // complete
 		authorized.GET("/vulnerabilities/level/:level", vulnerability.ListVulnerabilityByLevel) // complete
-		authorized.GET("/tasks/summary-vulnerability", vulnerability.ListTaskVulnSummary) //complete ไม่ได้ใช้งานแล้ว
 		authorized.GET("/all-targets", vulnerability.ListALLTarget) // complete
 
 		// ===== Location =====
@@ -183,8 +184,17 @@ func main() {
 		authorized.GET("/compliance/report", compliance.GetComplianceReport)
 		authorized.GET("/compliance/violations", compliance.GetComplianceViolations)
 
+		// ===== Password Policy =====
+		authorized.GET("/password-policy", passwordpolicy.GetPolicy)
+		authorized.PATCH("/password-policy", passwordpolicy.UpdatePolicy)
+
 		// ===== Vulnerability Delta Enhanced =====
 		authorized.GET("/vulnerabilities/delta/enhanced", vulnerability.ListVulnerabilityDelta)
+
+		// ===== Host 360° Summary =====
+		authorized.GET("/host/:ip/summary", host.GetHostSummary)
+		authorized.GET("/vulnerabilities/sla-breaches", host.GetSLABreaches)
+		authorized.GET("/attack-surface/matrix", host.GetAttackSurfaceMatrix)
 
 	}
 

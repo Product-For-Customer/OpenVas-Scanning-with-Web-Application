@@ -1,4 +1,125 @@
 @import "tailwindcss";
 
-/* ✅ Tailwind v4: กำหนด dark variant ให้ใช้ class .dark */
+/* Tailwind v4: class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Register --accent as a Tailwind color token → bg-accent / text-accent / border-accent etc. */
+@theme {
+  --color-accent: var(--accent);
+}
+
+/* ── Accent CSS variable — overridden by JS whenever user changes color ── */
+:root {
+  --accent: #1A97F5;
+  --accent-hover: color-mix(in srgb, var(--accent) 80%, black);
+  --accent-light: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+/* ── Smooth theme transitions ─────────────────────────────────────────── */
+html {
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--accent, #1A97F5);
+  border-radius: 40px;
+  opacity: 0.6;
+}
+::-webkit-scrollbar-track { background-color: transparent; }
+
+/* ── Outline button: accent border + text ─────────────────────────────── */
+.accent-outline {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent) !important;
+  color: var(--accent) !important;
+}
+.accent-outline:hover {
+  background-color: color-mix(in srgb, var(--accent) 10%, white) !important;
+}
+.dark .accent-outline:hover {
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent) !important;
+}
+
+/* ── Sidebar icon hover: subtle accent bg ─────────────────────────────── */
+.accent-hover-icon:hover {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+  color: var(--accent) !important;
+}
+.dark .accent-hover-icon:hover {
+  background-color: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+  color: var(--accent) !important;
+}
+
+/* ── Sidebar nav link hover: accent gradient ──────────────────────────── */
+.accent-hover:hover {
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in srgb, var(--accent) 70%, #9333ea)
+  ) !important;
+  color: white !important;
+}
+
+/* ── Auth page dynamic theming ────────────────────────────────────────── */
+.auth-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent) !important;
+  outline: none !important;
+}
+.dark .auth-input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+.auth-icon { color: var(--accent) !important; }
+.dark .auth-icon { color: color-mix(in srgb, var(--accent) 80%, white) !important; }
+.auth-title {
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 55%, #a855f7));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.auth-btn {
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #a855f7)) !important;
+  box-shadow: 0 18px 34px color-mix(in srgb, var(--accent) 28%, transparent) !important;
+}
+.auth-btn:hover:not(:disabled) {
+  box-shadow: 0 20px 36px color-mix(in srgb, var(--accent) 34%, transparent) !important;
+}
+.auth-badge {
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  background-color: color-mix(in srgb, var(--accent) 8%, white);
+  color: var(--accent);
+}
+.dark .auth-badge {
+  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, white);
+}
+.auth-circle-icon {
+  background-color: color-mix(in srgb, var(--accent) 12%, white);
+  color: var(--accent);
+}
+.dark .auth-circle-icon {
+  background-color: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, white);
+}
+.auth-accent-text { color: var(--accent) !important; }
+.dark .auth-accent-text { color: color-mix(in srgb, var(--accent) 80%, white) !important; }
+.auth-link-hover:hover { color: var(--accent) !important; }
+.dark .auth-link-hover:hover { color: color-mix(in srgb, var(--accent) 80%, white) !important; }
+.auth-divider { background-color: color-mix(in srgb, var(--accent) 18%, transparent) !important; }
+.auth-policy-card {
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent) !important;
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+.dark .auth-policy-card {
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent) !important;
+}
+.auth-policy-inner-border {
+  border-color: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+.auth-policy-title { color: var(--accent) !important; }
+.auth-policy-arrow {
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent) !important;
+}

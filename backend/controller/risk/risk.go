@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -394,14 +395,9 @@ LIMIT 500`
 		})
 	}
 
-	// Sort by risk score desc
-	for i := 0; i < len(scored)-1; i++ {
-		for j := i + 1; j < len(scored); j++ {
-			if scored[j].RiskScore > scored[i].RiskScore {
-				scored[i], scored[j] = scored[j], scored[i]
-			}
-		}
-	}
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].RiskScore > scored[j].RiskScore
+	})
 
 	summary := RiskSummaryDTO{LastCalculated: time.Now().Format(time.RFC3339)}
 	for _, s := range scored {

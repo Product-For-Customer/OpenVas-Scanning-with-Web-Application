@@ -12,9 +12,6 @@ import {
   FiMapPin,
   FiExternalLink,
   FiNavigation,
-  FiShield,
-  FiRadio,
-  FiActivity,
   FiTrash2,
   FiX,
   FiHome,
@@ -32,6 +29,7 @@ import {
   type UpdateLocationInput,
   type AllTargetDTO,
 } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import ModalCreateAndUpdate from "./modal/ModalCreateAndUpdate";
 import ModalDelete from "./modal/ModalDelete";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -182,13 +180,7 @@ const MapPopupCard: React.FC<{
 }> = ({ device, onClose }) => {
   return (
     <div className="absolute bottom-3 left-3 right-3 z-120 md:right-auto md:w-85">
-      <div
-        className={[
-          "overflow-hidden rounded-2xl backdrop-blur",
-          "border border-white/70 bg-white/92 shadow-xl",
-          "dark:border-white/10 dark:bg-[#0d1524]/92 dark:shadow-none",
-        ].join(" ")}
-      >
+      <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/8 dark:bg-[#0d0b1a]">
         <div className="border-b border-slate-200 px-3 py-2 dark:border-white/10">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -222,7 +214,7 @@ const MapPopupCard: React.FC<{
         </div>
 
         <div className="space-y-2 p-3">
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+          <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiNavigation />
               IP Address
@@ -232,7 +224,7 @@ const MapPopupCard: React.FC<{
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+          <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiMapPin />
               Location
@@ -242,7 +234,7 @@ const MapPopupCard: React.FC<{
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+          <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiHome />
               Building / Floor
@@ -252,7 +244,7 @@ const MapPopupCard: React.FC<{
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-2.5 dark:border-white/10 dark:bg-white/5">
+          <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiCalendar />
               Detected Time
@@ -278,6 +270,7 @@ const MapPopupCard: React.FC<{
 };
 
 const MapDevice: React.FC = () => {
+  const { t } = useLanguage();
   const mapRef = useRef<MapRef | null>(null);
   const { user } = useAuth();
 
@@ -780,96 +773,30 @@ const MapDevice: React.FC = () => {
 
   return (
     <div className="relative w-full">
-      <section
-        className={[
-          "relative overflow-hidden rounded-[22px]",
-          "bg-white border border-gray-200/80 shadow-[0_14px_34px_-24px_rgba(15,23,42,0.30)]",
-          "dark:bg-[#08111f]/90 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
-        ].join(" ")}
-      >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-14 -right-10 h-32 w-32 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute -bottom-14 -left-10 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
-          <div className="absolute inset-0 opacity-[0.035] dark:opacity-[0.055]">
-            <div
-              className="h-full w-full"
-              style={{
-                backgroundImage: `
-                  linear-gradient(to right, currentColor 1px, transparent 1px),
-                  linear-gradient(to bottom, currentColor 1px, transparent 1px)
-                `,
-                backgroundSize: "24px 24px",
-              }}
-            />
-          </div>
-        </div>
-
-        <div className="relative z-10 overflow-hidden rounded-[22px]">
-          <div className="border-b border-slate-200 px-3.5 py-3.5 dark:border-white/10 sm:px-4 md:px-4.5">
+      <section className="rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+        <div>
+          <div className="border-b border-slate-100 px-4 py-4 dark:border-white/8 sm:px-5">
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
-                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                    <div
-                      className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
-                        "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
-                        "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
-                      ].join(" ")}
-                    >
-                      <FiShield className="text-[11px]" />
-                      <span className="text-[10.5px] font-semibold tracking-wide">
-                        Target Map Console
-                      </span>
-                    </div>
-
-                    <div
-                      className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
-                        "bg-slate-50 text-slate-600 border border-slate-200/80",
-                        "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                      ].join(" ")}
-                    >
-                      <FiRadio className="text-[11px] text-cyan-500" />
-                      <span className="text-[10.5px] font-medium">
-                        {rows.length} targets loaded
-                      </span>
-                    </div>
-
-                    <div
-                      className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
-                        "bg-sky-50 text-sky-700 border border-sky-200/80",
-                        "dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-400/20",
-                      ].join(" ")}
-                    >
-                      <FiActivity className="text-[11px] text-sky-500" />
-                      <span className="text-[10.5px] font-medium">
-                        Live location telemetry
-                      </span>
-                    </div>
-
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                      {t("target.map")}
+                    </h2>
+                    <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                      {rows.length} targets
+                    </span>
                     {!isUserRole && (
                       <button
                         type="button"
                         onClick={handleOpenCreateModal}
-                        className="inline-flex h-8 items-center justify-center gap-2 rounded-full bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-3.5 text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
+                        className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[11px] font-medium text-white transition hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20"
                       >
                         <FiPlus className="text-[12px]" />
-                        <span className="text-[11px] font-medium">
-                          Create Location
-                        </span>
+                        Create Location
                       </button>
                     )}
                   </div>
-
-                  <h2 className="text-[17px] font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[19px]">
-                    Device Location Map
-                  </h2>
-                  <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55 sm:text-[12px]">
-                    Display the device location from the Location and Task
-                    information.
-                  </p>
                 </div>
               </div>
 
@@ -879,14 +806,10 @@ const MapDevice: React.FC = () => {
                     <FiSearch className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/40" />
                     <input
                       type="text"
-                      placeholder="Search device / IP / building / location / task..."
+                      placeholder={t("common.search")}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className={[
-                        "h-9 w-full rounded-2xl pl-9 pr-3.5 text-[12px] outline-none transition-all duration-200",
-                        "border border-slate-200 bg-white text-slate-700 focus:border-sky-400",
-                        "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/35 dark:focus:border-cyan-400/50",
-                      ].join(" ")}
+                      className="h-9 w-full rounded-lg border border-slate-200/70 bg-white pl-9 pr-3.5 text-[12px] text-slate-700 outline-none transition focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/30"
                     />
                   </div>
                 </div>

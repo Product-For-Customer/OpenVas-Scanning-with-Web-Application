@@ -56,7 +56,7 @@ type vulnCounts struct {
 	LastScan  string
 }
 
-func getVulnCounts(db interface{}) vulnCounts {
+func getVulnCounts() vulnCounts {
 	gdb := config.DB()
 	var counts vulnCounts
 
@@ -99,8 +99,8 @@ func getVulnCounts(db interface{}) vulnCounts {
 	gdb.Raw(`
 		SELECT COUNT(DISTINCT k.cve_id)::int
 		FROM app_kev_caches k
-		JOIN public.vt_refs vtr ON UPPER(vtr.ref_id) = k.cve_id AND vtr.type = 'cve'
-		JOIN public.results r ON r.nvt = vtr.oid
+		JOIN public.vt_refs vtr ON UPPER(BTRIM(vtr.ref_id)) = k.cve_id AND LOWER(BTRIM(vtr.type)) = 'cve'
+		JOIN public.results r ON r.nvt = vtr.vt_oid
 		JOIN public.reports rp ON rp.id = r.report
 		WHERE rp.id IN (
 			SELECT DISTINCT ON (task) id FROM public.reports
@@ -340,7 +340,7 @@ func intStr(n int) string {
 // ===========================
 
 func GetComplianceReport(c *gin.Context) {
-	counts := getVulnCounts(nil)
+	counts := getVulnCounts()
 
 	pciDSS := buildPCIDSS(counts)
 	iso27001 := buildISO27001(counts)
@@ -371,7 +371,7 @@ func GetComplianceReport(c *gin.Context) {
 
 func GetComplianceViolations(c *gin.Context) {
 	framework := c.Query("framework")
-	counts := getVulnCounts(nil)
+	counts := getVulnCounts()
 
 	allFrameworks := []FrameworkScore{
 		buildPCIDSS(counts),

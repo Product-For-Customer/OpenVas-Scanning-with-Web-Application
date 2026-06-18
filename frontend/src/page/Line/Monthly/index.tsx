@@ -9,6 +9,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { type HistoryNotifyResponse } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type MonthRow = {
   key: number;
@@ -39,15 +40,15 @@ const MONTHS = [
 ];
 
 const cardClass = [
-  "relative h-full overflow-hidden rounded-[18px] p-3 sm:p-3.5",
-  "bg-white border border-gray-200/80 shadow-[0_12px_28px_-24px_rgba(15,23,42,0.18)]",
-  "dark:bg-[#08111f]/95 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
+  "h-full p-4 sm:p-5",
+  "rounded-xl border border-slate-200/70 bg-white",
+  "dark:border-white/8 dark:bg-[#0d0b1a]/80",
   "flex flex-col",
 ].join(" ");
 
 const panelClass = [
-  "overflow-hidden rounded-[18px] border border-gray-200/80 bg-white/90",
-  "dark:border-white/10 dark:bg-white/[0.03]",
+  "rounded-xl border border-slate-200/70 bg-slate-50/50",
+  "dark:border-white/8 dark:bg-white/3",
   "flex-1 flex flex-col",
 ].join(" ");
 
@@ -102,6 +103,7 @@ const Index: React.FC<CountProps> = ({
   loading,
   error,
 }) => {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
 
   const [openYearSelect, setOpenYearSelect] = useState(false);
@@ -211,24 +213,7 @@ const Index: React.FC<CountProps> = ({
 
   return (
     <section className={cardClass}>
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-12 right-5 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-          <div
-            className="h-full w-full"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, currentColor 1px, transparent 1px),
-                linear-gradient(to bottom, currentColor 1px, transparent 1px)
-              `,
-              backgroundSize: "24px 24px",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="relative z-10 flex h-full flex-col">
+      <div className="flex h-full flex-col">
         <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[10px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
@@ -237,7 +222,7 @@ const Index: React.FC<CountProps> = ({
             </div>
 
             <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
-              Monthly Notifications Massage
+              {t("line.monthlyStatistics")}
             </h2>
 
             <p className="mt-1 text-[10.5px] text-slate-500 sm:text-[11px] dark:text-white/55">

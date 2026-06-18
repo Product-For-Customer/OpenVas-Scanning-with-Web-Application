@@ -2,19 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MdOutlineCancel, MdKeyboardArrowDown } from "react-icons/md";
 import { FiLogOut } from "react-icons/fi";
-import { getLinks, type SidebarSection } from "./data";
+import { getLinks, type SidebarSection, type SidebarLink } from "./data";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import logo from "../../../assets/argus-logo-real.png";
 import argusWordmark from "../../../assets/argus-font-sidebar.png";
 import { message } from "antd";
 import { RiDoorOpenLine } from "react-icons/ri";
-
-type SidebarLink = {
-  name: string;
-  icon?: React.ReactNode;
-  badge?: string;
-};
 
 type TooltipPosition =
   | "Top"
@@ -68,13 +63,12 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
 
   const { logout, isAdmin } = useAuth();
-  const { activeMenu, setActiveMenu, screenSize } = useStateContext();
+  const { activeMenu, setActiveMenu, screenSize, currentColor } = useStateContext();
+  const { t } = useLanguage();
 
   const [menuLinks, setMenuLinks] = useState<SidebarSection[]>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
-  const [activeMiniSection, setActiveMiniSection] = useState<string | null>(
-    null
-  );
+  const [activeMiniSection, setActiveMiniSection] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const miniCloseTimerRef = useRef<number | null>(null);
@@ -85,18 +79,6 @@ const Sidebar: React.FC = () => {
   const isDesktop = currentScreen > DESKTOP_BREAKPOINT;
   const isTablet = currentScreen >= TABLET_MIN && currentScreen <= TABLET_MAX;
   const isExpanded = !!activeMenu;
-
-  const sidebarShellRadiusClass = isExpanded
-    ? "rounded-[28px]"
-    : "rounded-[18px]";
-
-  const sidebarInnerRingRadiusClass = isExpanded
-    ? "rounded-[27px]"
-    : "rounded-[17px]";
-
-  const collapsedButtonRadiusClass = isExpanded
-    ? "rounded-2xl"
-    : "rounded-[14px]";
 
   const collapsedIconRadiusClass = isExpanded
     ? "rounded-xl"
@@ -198,29 +180,19 @@ const Sidebar: React.FC = () => {
   const isLinkActive = (linkName: string) =>
     isSamePath(location.pathname, getAdminLinkPath(linkName));
 
-  const formatLabel = useMemo(
-    () => (value: string) => {
-      if (!value) return "";
-      return value
-        .replace(/[-_]+/g, " ")
-        .replace(/\b\w/g, (s) => s.toUpperCase());
-    },
-    []
-  );
-
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
       clearMiniCloseTimer();
       setActiveMiniSection(null);
       await logout();
-      message.success("logout success");
+      message.success(t("sidebar.logoutSuccess"));
       handleCloseSideBar();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout failed:", error);
-      message.error("logout failed");
+      message.error(t("sidebar.logoutFailed"));
       navigate("/", { replace: true });
     } finally {
       setLoggingOut(false);
@@ -234,147 +206,12 @@ const Sidebar: React.FC = () => {
       <style>
         {`
           @keyframes argusLogoFloat {
-            0%, 100% {
-              transform: translateY(0px) scale(1);
-            }
-            50% {
-              transform: translateY(-3px) scale(1.01);
-            }
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-3px) scale(1.01); }
           }
-
-          @keyframes argusLogoGlow {
-            0%, 100% {
-              opacity: 0.28;
-              transform: scale(0.96);
-            }
-            50% {
-              opacity: 0.58;
-              transform: scale(1.05);
-            }
-          }
-
-          @keyframes argusPulseRingOne {
-            0% {
-              opacity: 0;
-              transform: scale(0.74);
-            }
-            18% {
-              opacity: 0.34;
-            }
-            46% {
-              opacity: 0.16;
-            }
-            100% {
-              opacity: 0;
-              transform: scale(1.36);
-            }
-          }
-
-          @keyframes argusPulseRingTwo {
-            0% {
-              opacity: 0;
-              transform: scale(0.82);
-            }
-            20% {
-              opacity: 0.24;
-            }
-            44% {
-              opacity: 0.12;
-            }
-            100% {
-              opacity: 0;
-              transform: scale(1.48);
-            }
-          }
-
-          @keyframes argusScanLine {
-            0% {
-              opacity: 0;
-              transform: translateX(-16px) rotate(-16deg);
-            }
-            20% {
-              opacity: 0.34;
-            }
-            80% {
-              opacity: 0.12;
-            }
-            100% {
-              opacity: 0;
-              transform: translateX(16px) rotate(-16deg);
-            }
-          }
-
-          @keyframes argusHorizontalBeam {
-            0% {
-              opacity: 0;
-              transform: translateX(-10px) scaleX(0.85);
-            }
-            25% {
-              opacity: 0.26;
-            }
-            75% {
-              opacity: 0.10;
-            }
-            100% {
-              opacity: 0;
-              transform: translateX(10px) scaleX(1.06);
-            }
-          }
-
-          @keyframes argusInnerArc {
-            0%, 100% {
-              opacity: 0.16;
-              transform: scale(0.98) rotate(0deg);
-            }
-            50% {
-              opacity: 0.34;
-              transform: scale(1.03) rotate(8deg);
-            }
-          }
-
-          @keyframes argusDotTwinkle {
-            0%, 100% {
-              opacity: 0.18;
-              transform: scale(1);
-            }
-            50% {
-              opacity: 0.82;
-              transform: scale(1.2);
-            }
-          }
-
-          @keyframes argusDotFloat {
-            0%, 100% {
-              transform: translateY(0px);
-            }
-            50% {
-              transform: translateY(-2px);
-            }
-          }
-
-          @keyframes sidebarShimmer {
-            0% {
-              transform: translateX(-120%);
-              opacity: 0;
-            }
-            22% {
-              opacity: 0.26;
-            }
-            100% {
-              transform: translateX(130%);
-              opacity: 0;
-            }
-          }
-
           @keyframes sidebarMiniModalIn {
-            0% {
-              opacity: 0;
-              transform: translateX(-8px) scale(0.96);
-            }
-            100% {
-              opacity: 1;
-              transform: translateX(0px) scale(1);
-            }
+            0% { opacity: 0; transform: translateX(-8px) scale(0.96); }
+            100% { opacity: 1; transform: translateX(0px) scale(1); }
           }
         `}
       </style>
@@ -417,30 +254,8 @@ const Sidebar: React.FC = () => {
         }}
       >
         <div
-          className={[
-            "relative flex h-full max-h-full min-h-0 flex-col",
-            sidebarShellRadiusClass,
-            "overflow-visible",
-            "border border-gray-200/80 bg-white/92 shadow-[0_18px_44px_-24px_rgba(15,23,42,0.35)] backdrop-blur",
-            "dark:border-white/10 dark:bg-[#08111f]/88 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
-          ].join(" ")}
+          className="relative flex h-full max-h-full min-h-0 flex-col overflow-visible rounded-xl border border-slate-200/70 bg-white shadow-sm dark:border-white/8 dark:bg-[#0d0b1a]"
         >
-          <div
-            className={[
-              "pointer-events-none absolute inset-0 overflow-hidden",
-              sidebarShellRadiusClass,
-            ].join(" ")}
-          >
-            <div className="absolute inset-x-5 top-0 h-px bg-linear-to-r from-transparent via-cyan-400/55 to-transparent" />
-            <div
-              className={[
-                "absolute inset-px ring-1 ring-white/45 dark:ring-white/5",
-                sidebarInnerRingRadiusClass,
-              ].join(" ")}
-            />
-            <div className="absolute -top-12 right-0 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="absolute bottom-0 -left-10 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
-          </div>
 
           <div
             className={`relative z-10 flex shrink-0 items-center ${
@@ -462,89 +277,16 @@ const Sidebar: React.FC = () => {
               aria-label="Go to dashboard"
             >
               <div
-                className={`group relative flex shrink-0 items-center justify-center overflow-visible ${
-                  isTablet ? "h-13 w-13" : "h-16 w-16"
+                className={`relative flex shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-50 to-sky-50 dark:from-cyan-500/10 dark:to-sky-500/10 ${
+                  isTablet ? "h-12 w-12" : "h-14 w-14"
                 }`}
+                style={{ animation: "argusLogoFloat 4.2s ease-in-out infinite", willChange: "transform" }}
               >
-                <span
-                  className="pointer-events-none absolute inset-2 rounded-full bg-cyan-400/15 blur-lg dark:bg-cyan-400/20"
-                  style={{
-                    animation: "argusLogoGlow 3.9s ease-in-out infinite",
-                  }}
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className={`object-contain ${isTablet ? "h-10 w-10" : "h-12 w-12"}`}
                 />
-
-                <span
-                  className="pointer-events-none absolute inset-2.5 rounded-full border border-cyan-300/18 border-dashed"
-                  style={{
-                    animation: "argusInnerArc 3.4s ease-in-out infinite",
-                  }}
-                />
-
-                <span
-                  className="pointer-events-none absolute inset-1.25 rounded-full border border-cyan-400/32"
-                  style={{
-                    animation: "argusPulseRingOne 2.2s ease-out infinite",
-                  }}
-                />
-
-                <span
-                  className="pointer-events-none absolute inset-0.75 rounded-full border border-sky-300/22"
-                  style={{
-                    animation: "argusPulseRingTwo 2.2s ease-out 0.7s infinite",
-                  }}
-                />
-
-                <span
-                  className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-b from-transparent via-cyan-300/45 to-transparent blur-[5px] ${
-                    isTablet ? "h-9 w-2.5" : "h-11 w-3"
-                  }`}
-                  style={{
-                    animation: "argusScanLine 2.4s ease-in-out infinite",
-                  }}
-                />
-
-                <span
-                  className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-linear-to-r from-transparent via-cyan-300/34 to-transparent blur-[1px] ${
-                    isTablet ? "h-0.5 w-9" : "h-0.5 w-11"
-                  }`}
-                  style={{
-                    animation: "argusHorizontalBeam 2.8s ease-in-out infinite",
-                  }}
-                />
-
-                <span
-                  className="pointer-events-none absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-cyan-300/90 blur-[1px]"
-                  style={{
-                    animation:
-                      "argusDotTwinkle 2s ease-in-out infinite, argusDotFloat 2.6s ease-in-out infinite",
-                  }}
-                />
-
-                <span
-                  className="pointer-events-none absolute bottom-2 left-2 h-1 w-1 rounded-full bg-sky-300/85 blur-[1px]"
-                  style={{
-                    animation:
-                      "argusDotTwinkle 2.2s ease-in-out 0.55s infinite, argusDotFloat 2.9s ease-in-out 0.2s infinite",
-                  }}
-                />
-
-                <div
-                  className={`relative z-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-[1.04] group-hover:rotate-3 ${
-                    isTablet ? "h-13 w-13" : "h-16 w-16"
-                  }`}
-                  style={{
-                    animation: "argusLogoFloat 4.2s ease-in-out infinite",
-                    willChange: "transform",
-                  }}
-                >
-                  <img
-                    src={logo}
-                    alt="Logo"
-                    className={`object-contain drop-shadow-[0_8px_18px_rgba(34,211,238,0.14)] transition-all duration-300 group-hover:drop-shadow-[0_10px_22px_rgba(34,211,238,0.22)] ${
-                      isTablet ? "h-18 w-18" : "h-24 w-24"
-                    }`}
-                  />
-                </div>
               </div>
 
               {isExpanded && (
@@ -560,14 +302,14 @@ const Sidebar: React.FC = () => {
                       isTablet ? "text-[10px]" : "text-[10.5px]"
                     }`}
                   >
-                    Vulnerability Monitoring
+                    {t("sidebar.vulnerabilityMonitoring")}
                   </span>
                 </div>
               )}
             </Link>
 
             {isExpanded && !isDesktop && (
-              <SimpleTooltip content="Close menu" position="BottomCenter">
+              <SimpleTooltip content={t("sidebar.closeMenu")} position="BottomCenter">
                 <button
                   type="button"
                   onClick={() => setActiveMenu(false)}
@@ -579,7 +321,7 @@ const Sidebar: React.FC = () => {
                     "dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15",
                     "focus:outline-none focus:ring-0",
                   ].join(" ")}
-                  aria-label="Close menu"
+                  aria-label={t("sidebar.closeMenu")}
                 >
                   <MdOutlineCancel
                     className={isTablet ? "text-[20px]" : "text-xl"}
@@ -622,21 +364,29 @@ const Sidebar: React.FC = () => {
                   <span className="h-2.5 w-2.5 rounded-full bg-current opacity-70" />
                 );
 
+                const sectionLabel = t(section.titleKey);
+
                 if (isExpanded) {
                   return (
                     <div key={section.title} className="space-y-1">
                       <button
                         type="button"
                         onClick={() => toggleSection(section.title)}
-                        style={{ WebkitTapHighlightColor: "transparent" }}
+                        style={{
+                          WebkitTapHighlightColor: "transparent",
+                          ...(isOpen ? {
+                            background: `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 60%, #9333ea))`,
+                            boxShadow: `0 10px 20px -16px ${currentColor}90`,
+                          } : {}),
+                        }}
                         className={[
-                          "flex w-full items-center justify-between rounded-2xl text-left transition-all duration-200",
-                          isTablet ? "px-3 py-2" : "px-3.5 py-2.75",
+                          "flex w-full items-center justify-between rounded-xl text-left transition-all duration-200",
+                          isTablet ? "px-3 py-2" : "px-3.5 py-2.5",
                           isOpen
-                            ? "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-[0_12px_24px_-18px_rgba(56,189,248,0.88)]"
+                            ? "text-white"
                             : hasActiveChild
-                              ? "bg-white text-[#1f2937] shadow-[0_8px_18px_-16px_rgba(15,23,42,0.22)] dark:bg-white/5 dark:text-white/90"
-                              : "bg-transparent text-[#4b4f63] hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
+                              ? "bg-slate-100 text-slate-800 dark:bg-white/5 dark:text-white/90"
+                              : "bg-transparent text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/8",
                           "focus:outline-none focus:ring-0",
                         ].join(" ")}
                         aria-expanded={isOpen}
@@ -645,14 +395,12 @@ const Sidebar: React.FC = () => {
                           <span
                             className={[
                               "inline-flex items-center justify-center rounded-xl transition-all duration-200",
-                              isTablet
-                                ? "h-7 w-7 text-[14px]"
-                                : "h-8 w-8 text-[15px]",
+                              isTablet ? "h-7 w-7 text-[14px]" : "h-8 w-8 text-[15px]",
                               isOpen
-                                ? "bg-white/18 text-white ring-1 ring-white/18"
+                                ? "bg-white/15 text-white"
                                 : hasActiveChild
-                                  ? "bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-400/10"
-                                  : "bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-white/55",
+                                  ? "bg-slate-200 text-slate-700 dark:bg-white/10 dark:text-white/80"
+                                  : "bg-slate-100 text-slate-500 dark:bg-white/5 dark:text-white/55",
                             ].join(" ")}
                           >
                             {sectionIcon}
@@ -664,7 +412,7 @@ const Sidebar: React.FC = () => {
                                 isTablet ? "text-[13px]" : "text-[14px]"
                               }`}
                             >
-                              {formatLabel(section.title)}
+                              {sectionLabel}
                             </span>
 
                             <span
@@ -676,7 +424,7 @@ const Sidebar: React.FC = () => {
                                   : "text-slate-400 dark:text-white/34",
                               ].join(" ")}
                             >
-                              {section.links?.length ?? 0} items
+                              {section.links?.length ?? 0} {t("sidebar.items")}
                             </span>
                           </div>
                         </div>
@@ -717,16 +465,23 @@ const Sidebar: React.FC = () => {
                                 to={getAdminLinkPath(link.name)}
                                 key={`${section.title}-${link.name}`}
                                 onClick={handleCloseSideBar}
+                                style={active ? {
+                                  backgroundColor: `color-mix(in srgb, ${currentColor} 10%, white)`,
+                                  color: currentColor,
+                                } : undefined}
                                 className={[
                                   "group relative flex items-center justify-between gap-2 overflow-hidden rounded-xl transition-all duration-200",
                                   isTablet ? "px-2.5 py-1.75" : "px-3 py-2.25",
                                   active
-                                    ? "bg-cyan-50 font-semibold text-cyan-700 ring-1 ring-cyan-100 dark:bg-cyan-500/10 dark:text-cyan-300 dark:ring-cyan-400/10"
+                                    ? "font-semibold dark:bg-white/8"
                                     : "text-[#585b6b] hover:bg-white hover:text-[#2b2f45] dark:text-white/60 dark:hover:bg-white/8 dark:hover:text-white/85",
                                 ].join(" ")}
                               >
                                 {active && (
-                                  <span className="absolute inset-y-1.5 left-0 w-1 rounded-full bg-linear-to-b from-cyan-500 to-violet-500" />
+                                  <span
+                                    className="absolute inset-y-1.5 left-0 w-1 rounded-full"
+                                    style={{ background: `linear-gradient(to bottom, ${currentColor}, color-mix(in srgb, ${currentColor} 60%, #9333ea))` }}
+                                  />
                                 )}
 
                                 <div className="min-w-0 flex items-center gap-2.5">
@@ -753,7 +508,7 @@ const Sidebar: React.FC = () => {
                                         : "truncate text-[13px]"
                                     }
                                   >
-                                    {formatLabel(link.name)}
+                                    {t(link.labelKey)}
                                   </span>
                                 </div>
 
@@ -791,16 +546,22 @@ const Sidebar: React.FC = () => {
                         toggleMiniSection(section.title);
                       }}
                       onFocus={() => openMiniSection(section.title)}
-                      style={{ WebkitTapHighlightColor: "transparent" }}
+                      style={{
+                        WebkitTapHighlightColor: "transparent",
+                        ...(isMiniOpen || hasActiveChild ? {
+                          background: `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 60%, #9333ea))`,
+                          boxShadow: `0 8px 16px -12px ${currentColor}90`,
+                          borderColor: `color-mix(in srgb, ${currentColor} 40%, transparent)`,
+                        } : {}),
+                      }}
                       className={[
-                        "flex h-12 w-full items-center justify-center border transition-all duration-200",
-                        collapsedButtonRadiusClass,
+                        "flex h-12 w-full items-center justify-center rounded-xl border transition-all duration-200",
                         isMiniOpen || hasActiveChild
-                          ? "border-cyan-200/70 bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-[0_10px_18px_-14px_rgba(56,189,248,0.85)] dark:border-cyan-400/20"
-                          : "border-transparent bg-[#eef3f8] text-gray-500 hover:border-slate-200 hover:bg-gray-50 dark:bg-white/8 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/10",
+                          ? "text-white"
+                          : "border-transparent bg-slate-100 text-slate-500 hover:border-slate-200 hover:bg-slate-200 dark:bg-white/8 dark:text-white/60 dark:hover:bg-white/12",
                         "focus:outline-none focus:ring-0",
                       ].join(" ")}
-                      aria-label={formatLabel(section.title)}
+                      aria-label={sectionLabel}
                       aria-expanded={isMiniOpen}
                     >
                       <span
@@ -830,27 +591,18 @@ const Sidebar: React.FC = () => {
                       >
                         <div className="absolute -left-3 top-0 h-full w-3 bg-transparent" />
 
-                        <div className="overflow-hidden rounded-[18px] border border-gray-200 bg-white shadow-[0_18px_42px_-22px_rgba(15,23,42,0.5)] ring-1 ring-white/70 backdrop-blur dark:border-white/10 dark:bg-[#0B1220] dark:ring-white/5 dark:shadow-none">
-                          <div className="relative overflow-hidden bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 px-4 py-3 text-white">
-                            <span
-                              className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-linear-to-r from-white/18 to-transparent skew-x-[-20deg]"
-                              style={{
-                                animation:
-                                  "sidebarShimmer 2.8s ease-in-out infinite",
-                              }}
-                            />
-
-                            <div className="relative flex items-center gap-3">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/16 text-[16px] ring-1 ring-white/15">
+                        <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/8 dark:bg-[#0d0b1a]">
+                          <div className="border-b border-slate-100 px-4 py-3 dark:border-white/8">
+                            <div className="flex items-center gap-3">
+                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/70 bg-slate-50 text-[15px] text-slate-600 dark:border-white/8 dark:bg-white/5 dark:text-white/70">
                                 {sectionIcon}
                               </span>
-
                               <div className="min-w-0">
-                                <span className="block truncate text-[14px] font-semibold">
-                                  {formatLabel(section.title)}
+                                <span className="block truncate text-[13px] font-semibold text-slate-800 dark:text-white/85">
+                                  {sectionLabel}
                                 </span>
-                                <span className="block text-[10px] text-white/72">
-                                  {section.links?.length ?? 0} menu items
+                                <span className="block text-[10px] text-slate-400 dark:text-white/35">
+                                  {section.links?.length ?? 0} {t("sidebar.menuItems")}
                                 </span>
                               </div>
                             </div>
@@ -870,10 +622,14 @@ const Sidebar: React.FC = () => {
                                       setActiveMiniSection(null);
                                       handleCloseSideBar();
                                     }}
+                                    style={active ? {
+                                      backgroundColor: `color-mix(in srgb, ${currentColor} 10%, white)`,
+                                      color: currentColor,
+                                    } : undefined}
                                     className={[
                                       "group flex items-center justify-between gap-2 px-4 py-2.5 text-[13px] transition-colors",
                                       active
-                                        ? "bg-cyan-50 font-semibold text-cyan-700 dark:bg-white/8 dark:text-cyan-300"
+                                        ? "font-semibold dark:bg-white/8"
                                         : "text-[#4f5366] hover:bg-gray-50 dark:text-white/65 dark:hover:bg-white/8",
                                     ].join(" ")}
                                   >
@@ -892,7 +648,7 @@ const Sidebar: React.FC = () => {
                                       </span>
 
                                       <span className="truncate">
-                                        {formatLabel(link.name)}
+                                        {t(link.labelKey)}
                                       </span>
                                     </div>
 
@@ -906,7 +662,7 @@ const Sidebar: React.FC = () => {
                               })
                             ) : (
                               <div className="px-4 py-5 text-center text-[12px] text-slate-400 dark:text-white/45">
-                                No menu items
+                                {t("sidebar.noMenuItems")}
                               </div>
                             )}
                           </div>
@@ -929,37 +685,25 @@ const Sidebar: React.FC = () => {
             }`}
           >
             {isExpanded ? (
-              <div className="rounded-2xl bg-linear-to-r from-cyan-500/14 via-sky-500/8 to-violet-500/14 p-px">
-                <button
+              <button
                   type="button"
                   onClick={() => void handleLogout()}
                   disabled={loggingOut}
                   style={{ WebkitTapHighlightColor: "transparent" }}
                   className={[
-                    "group relative flex w-full items-center justify-between overflow-hidden rounded-[15px] transition-all duration-300",
-                    isTablet ? "px-2.5 py-2" : "px-3 py-2.25",
-                    "bg-white text-[#303446] hover:bg-slate-50 dark:bg-[#0b1322] dark:text-white/82 dark:hover:bg-[#101a2d]",
+                    "group flex w-full items-center justify-between rounded-xl border border-slate-200/70 transition-all duration-200",
+                    isTablet ? "px-2.5 py-2" : "px-3 py-2.5",
+                    "bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/8",
                     loggingOut ? "cursor-not-allowed opacity-70" : "",
                     "focus:outline-none focus:ring-0",
                   ].join(" ")}
-                  aria-label="Logout"
+                  aria-label={t("sidebar.logout")}
                 >
-                  <span
-                    className="pointer-events-none absolute inset-y-0 left-[-20%] w-[34%] bg-linear-to-r from-transparent via-cyan-200/35 to-transparent opacity-0 skew-x-[-18deg] transition-opacity duration-300 group-hover:opacity-100 dark:via-cyan-300/10"
-                    style={{
-                      animation: loggingOut
-                        ? "none"
-                        : "sidebarShimmer 2.8s ease-in-out infinite",
-                    }}
-                  />
-
                   <div
-                    className={`relative z-10 flex items-center ${
-                      isTablet ? "gap-2" : "gap-2.5"
-                    }`}
+                    className={`flex items-center ${isTablet ? "gap-2" : "gap-2.5"}`}
                   >
                     <span
-                      className={`inline-flex items-center justify-center rounded-xl bg-linear-to-br from-cyan-500 to-violet-500 text-white shadow-[0_10px_18px_-14px_rgba(59,130,246,0.85)] transition-transform duration-300 group-hover:scale-[1.03] ${
+                      className={`inline-flex items-center justify-center rounded-xl border border-slate-200/70 bg-slate-100 text-slate-500 dark:border-white/8 dark:bg-white/8 dark:text-white/55 ${
                         isTablet ? "h-7 w-7" : "h-8 w-8"
                       }`}
                     >
@@ -974,28 +718,27 @@ const Sidebar: React.FC = () => {
                           isTablet ? "text-[11.5px]" : "text-[12.5px]"
                         }`}
                       >
-                        {loggingOut ? "Logging out..." : "Logout"}
+                        {loggingOut ? t("sidebar.loggingOut") : t("sidebar.logout")}
                       </span>
                       <span
                         className={`block text-slate-500 dark:text-white/45 ${
                           isTablet ? "text-[8.5px]" : "text-[9.5px]"
                         }`}
                       >
-                        End session
+                        {t("sidebar.endSession")}
                       </span>
                     </div>
                   </div>
 
                   <FiLogOut
-                    className={`relative z-10 text-slate-400 transition-colors duration-300 group-hover:text-cyan-600 dark:text-white/45 dark:group-hover:text-cyan-300 ${
+                    className={`text-slate-400 transition-colors duration-200 group-hover:text-slate-600 dark:text-white/40 dark:group-hover:text-white/65 ${
                       isTablet ? "text-[13px]" : "text-[14px]"
                     }`}
                   />
                 </button>
-              </div>
             ) : (
               <SimpleTooltip
-                content={loggingOut ? "Logging out..." : "Logout"}
+                content={loggingOut ? t("sidebar.loggingOut") : t("sidebar.logout")}
                 position="RightCenter"
               >
                 <button
@@ -1004,14 +747,13 @@ const Sidebar: React.FC = () => {
                   disabled={loggingOut}
                   style={{ WebkitTapHighlightColor: "transparent" }}
                   className={[
-                    "flex h-12 w-full items-center justify-center border transition-all duration-200",
-                    "rounded-[14px]",
-                    "border-transparent bg-[#eef3f8] text-gray-500 hover:border-cyan-100 hover:bg-linear-to-r hover:from-cyan-50 hover:to-violet-50 hover:text-cyan-700",
-                    "dark:bg-white/8 dark:text-white/60 dark:hover:border-white/10 dark:hover:bg-white/10 dark:hover:text-cyan-300",
+                    "flex h-12 w-full items-center justify-center rounded-xl border transition-all duration-200",
+                    "border-transparent bg-slate-100 text-slate-500 hover:border-slate-200 hover:bg-slate-200",
+                    "dark:bg-white/8 dark:text-white/55 dark:hover:bg-white/12",
                     loggingOut ? "cursor-not-allowed opacity-70" : "",
                     "focus:outline-none focus:ring-0",
                   ].join(" ")}
-                  aria-label="Logout"
+                  aria-label={t("sidebar.logout")}
                 >
                   <FiLogOut className="text-[18px]" />
                 </button>

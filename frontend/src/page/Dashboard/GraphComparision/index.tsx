@@ -13,10 +13,6 @@ import {
 } from "recharts";
 import { MdTrendingUp, MdTrendingDown } from "react-icons/md";
 import {
-  FiActivity,
-  FiAlertCircle,
-  FiShield,
-  FiBarChart2,
   FiChevronDown,
   FiCheck,
   FiSearch,
@@ -29,6 +25,7 @@ import {
   ListALLReportByTaskID,
   type TargetDifferDTO,
 } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type SortType = "Latest Updated" | "Highest Latest Risk";
 type ViewMode = "By Page" | "Summary";
@@ -758,61 +755,42 @@ const DetailXAxisTick = (props: {
   );
 };
 
-const CustomLegend = ({ detailMode = false }: { detailMode?: boolean }) => {
-  if (detailMode) {
-    return (
-      <div className="mb-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 dark:border-emerald-400/15 dark:bg-emerald-400/10">
-          <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
-            Low Risk
-          </span>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 dark:border-amber-400/15 dark:bg-amber-400/10">
-          <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
-          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300">
-            Medium Risk
-          </span>
-        </div>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50 px-2.5 py-1 dark:border-rose-400/15 dark:bg-rose-400/10">
-          <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
-          <span className="text-[11px] font-medium text-rose-700 dark:text-rose-300">
-            High Risk
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-3 flex flex-wrap items-center gap-2.5 sm:gap-3">
-      <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/70 bg-violet-50 px-2.5 py-1 dark:border-violet-400/15 dark:bg-violet-400/10">
-        <span className="inline-block h-2 w-2 rounded-full bg-[#8B7CFF]" />
-        <span className="text-[11px] font-medium text-violet-700 dark:text-violet-300">
-          Previous Risk
+const MinimalLegend = ({ detailMode = false, avgRisk = 0 }: { detailMode?: boolean; avgRisk?: number }) => (
+  <div className="mt-2 flex flex-wrap items-center gap-4">
+    {detailMode ? (
+      <>
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />Low Risk
         </span>
-      </div>
-
-      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/70 bg-cyan-50 px-2.5 py-1 dark:border-cyan-400/15 dark:bg-cyan-400/10">
-        <span className="inline-block h-2 w-2 rounded-full bg-[#39C6F4]" />
-        <span className="text-[11px] font-medium text-cyan-700 dark:text-cyan-300">
-          Latest Risk
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-amber-400" />Medium Risk
         </span>
-      </div>
-
-      <div className="inline-flex items-center gap-2 rounded-full border border-rose-200/70 bg-rose-50 px-2.5 py-1 dark:border-rose-400/15 dark:bg-rose-400/10">
-        <span className="inline-block h-2 w-2 rounded-full bg-[#FF6B88]" />
-        <span className="text-[11px] font-medium text-rose-700 dark:text-rose-300">
-          Latest Risk Increased
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-rose-400" />High Risk
         </span>
-      </div>
-    </div>
-  );
-};
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/25">
+          <span className="inline-block h-px w-4 border-t border-dashed border-slate-400 dark:border-white/30" />
+          Avg: {avgRisk.toFixed(2)}
+        </span>
+      </>
+    ) : (
+      <>
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-[#8B7CFF]" />Previous Risk
+        </span>
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-[#39C6F4]" />Latest Risk
+        </span>
+        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+          <span className="h-2 w-2 rounded-full bg-[#FF6B88]" />Risk Increased
+        </span>
+      </>
+    )}
+  </div>
+);
 
 const index: React.FC = () => {
+  const { t } = useLanguage();
   const sectionRef = useRef<HTMLElement | null>(null);
 
   const [containerWidth, setContainerWidth] = useState<number>(() => {
@@ -1472,77 +1450,36 @@ const index: React.FC = () => {
     void fetchDetailByTaskID(row.latest_task_id, row.task_name);
   };
 
-  const deviceDropdownWidth = isMobile ? "min(92vw, 420px)" : "420px";
-  const normalDropdownWidth = isMobile ? "min(92vw, 300px)" : "260px";
-
   return (
     <section
       ref={sectionRef}
-      className={[
-        "relative flex h-full w-full min-w-0 max-w-none flex-col overflow-visible rounded-[18px] p-2.5 sm:p-3 md:p-3.5",
-        "border border-gray-200/80 bg-white shadow-sm",
-        "dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:ring-1 dark:ring-white/10",
-      ].join(" ")}
+      className="rounded-xl border border-slate-200/70 bg-white p-4 h-full flex flex-col dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5"
     >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -right-8 -top-12 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -bottom-12 -left-8 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 flex h-full min-w-0 flex-col">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="grid min-w-0 grid-cols-1 gap-3">
             <div className="min-w-0">
               {detailMode ? (
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
-                    <FiBarChart2 className="text-[16px]" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[17px] font-semibold tracking-tight text-[#1f2240] dark:text-white/92 sm:text-[19px]">
-                      Risk Score Timeline
-                      {detailTaskName ? ` • ${detailTaskName}` : ""}
-                    </h2>
-
-                    <p className="text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
-                      แสดง Risk Score ของ target ที่เลือกตาม Date-Time
-                    </p>
-                  </div>
+                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    {t("dashboard.graphComparison")}
+                    {detailTaskName ? ` · ${detailTaskName}` : ""}
+                  </h2>
                 </div>
               ) : (
-                <>
-                  <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                    <div
-                      className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                        "border border-cyan-200/80 bg-cyan-50 text-cyan-700",
-                        "dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300",
-                      ].join(" ")}
-                    >
-                      <FiActivity className="text-[10px]" />
-                      <span className="text-[10px] font-semibold tracking-wide">
-                        Risk Score Graph
-                      </span>
-                    </div>
-
-                    {summaryMode && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300">
-                        Summary
-                      </span>
-                    )}
-                  </div>
-
-                  <h2 className="max-w-full text-[18px] font-semibold leading-snug tracking-tight text-[#1f2240] dark:text-white/90 sm:text-[20px] lg:text-[21px] min-[760px]:whitespace-nowrap">
-                    Target Risk Comparison
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    {t("dashboard.graphComparison")}
                   </h2>
-
-                  <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-gray-500 dark:text-white/50 sm:text-[13px] min-[760px]:max-w-4xl">
-                    {summaryMode
-                      ? "Summary mode shows all filtered targets in one chart without pagination."
-                      : "Compare previous and latest risk scores across monitored targets."}
-                  </p>
-                </>
+                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                    {loading ? t("common.loadingShort") : `${summary.totalAssets} targets`}
+                  </span>
+                  {summaryMode && (
+                    <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                      Summary
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1556,58 +1493,28 @@ const index: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setViewModeOpen((prev) => !prev)}
-                    className={[
-                      "inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl px-3.5 text-left transition",
-                      "border border-gray-200/80 bg-white text-[13px] font-medium text-gray-600 hover:bg-gray-50",
-                      "dark:border-white/10 dark:bg-white/6 dark:text-white/75 dark:hover:bg-white/10",
-                    ].join(" ")}
+                    className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
                     <span className="truncate">{viewMode}</span>
-
-                    <FiChevronDown
-                      className={`shrink-0 text-[15px] transition-transform ${
-                        viewModeOpen ? "rotate-180" : ""
-                      }`}
-                    />
+                    <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${viewModeOpen ? "rotate-180" : ""}`} />
                   </button>
 
                   {viewModeOpen && (
-                    <div
-                      style={{ width: normalDropdownWidth }}
-                      className="absolute left-0 z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]"
-                    >
-                      <div className="p-2">
-                        {VIEW_MODE_OPTIONS.map((option) => {
-                          const checked = viewMode === option;
-
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => {
-                                setViewMode(option);
-                                setViewModeOpen(false);
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/6"
-                            >
-                              <span className="text-[12px] font-medium text-gray-700 dark:text-white/85">
-                                {option}
-                              </span>
-
-                              <div
-                                className={[
-                                  "flex h-5 w-5 items-center justify-center rounded-md border",
-                                  checked
-                                    ? "border-cyan-400 bg-cyan-500 text-white"
-                                    : "border-gray-300 bg-white text-transparent dark:border-white/15 dark:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <FiCheck className="text-[11px]" />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="absolute left-0 z-50 mt-1.5 w-44 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                      {VIEW_MODE_OPTIONS.map((option) => {
+                        const checked = viewMode === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => { setViewMode(option); setViewModeOpen(false); }}
+                            className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
+                          >
+                            <span>{option}</span>
+                            {checked && <FiCheck className="text-[11px]" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1619,114 +1526,67 @@ const index: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setOpen((prev: boolean) => !prev)}
-                    className={[
-                      "inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl px-3.5 text-left transition",
-                      "border border-gray-200/80 bg-white text-[13px] font-medium text-gray-600 hover:bg-gray-50",
-                      "dark:border-white/10 dark:bg-white/6 dark:text-white/75 dark:hover:bg-white/10",
-                    ].join(" ")}
+                    className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
-                    <span className="min-w-0 truncate">
-                      {dropdownButtonLabel}
-                    </span>
-
-                    <div className="flex shrink-0 items-center gap-2">
+                    <span className="min-w-0 truncate">{dropdownButtonLabel}</span>
+                    <div className="flex shrink-0 items-center gap-1.5">
                       {selectedCount > 0 && (
-                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-1.5 text-[10px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
+                        <span className="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-blue-200 bg-blue-50 px-1 text-[9.5px] font-semibold text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300">
                           {selectedCount}
                         </span>
                       )}
-
-                      <FiChevronDown
-                        className={`text-[15px] transition-transform ${
-                          open ? "rotate-180" : ""
-                        }`}
-                      />
+                      <FiChevronDown className={`text-[11px] transition-transform ${open ? "rotate-180" : ""}`} />
                     </div>
                   </button>
 
                   {open && (
-                    <div
-                      style={{ width: deviceDropdownWidth }}
-                      className="absolute left-0 z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]"
-                    >
-                      <div className="border-b border-gray-100 p-3 dark:border-white/10">
-                        <div className="relative">
-                          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-white/35" />
-
+                    <div className="absolute left-0 z-50 mt-1.5 w-full max-w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                      <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
+                        <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+                          <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
                           <input
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search target..."
-                            className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-[12px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
+                            placeholder={t("dashboard.searchTarget")}
+                            className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
                           />
-
                           {searchQuery && (
-                            <button
-                              type="button"
-                              onClick={() => setSearchQuery("")}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                            >
-                              <FiX className="text-[13px]" />
+                            <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-slate-400 hover:text-slate-600 dark:text-white/35">
+                              <FiX className="text-[11px]" />
                             </button>
                           )}
                         </div>
-
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            onClick={handleSelectAllVisible}
-                            className="rounded-xl bg-gray-100 px-3 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-200 dark:bg-white/8 dark:text-white/80 dark:hover:bg-white/12"
-                          >
-                            {allVisibleSelected
-                              ? "Unselect visible"
-                              : "Select visible"}
+                        <div className="mt-2 flex items-center justify-between">
+                          <button type="button" onClick={handleSelectAllVisible} className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400">
+                            {allVisibleSelected ? t("common.unselectAll") : t("common.selectAll")}
                           </button>
-
-                          <button
-                            type="button"
-                            onClick={clearAllSelections}
-                            className="rounded-xl bg-rose-50 px-3 py-1.5 text-[11px] font-medium text-rose-600 hover:bg-rose-100 dark:bg-rose-400/10 dark:text-rose-300 dark:hover:bg-rose-400/15"
-                          >
-                            Clear
+                          <button type="button" onClick={clearAllSelections} className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55">
+                            {t("common.clear")}
                           </button>
                         </div>
                       </div>
-
-                      <div className="max-h-70 overflow-y-auto p-2">
+                      <div className="max-h-64 overflow-y-auto p-2">
                         {filteredOptions.length === 0 ? (
-                          <div className="px-3 py-6 text-center text-[12px] text-gray-500 dark:text-white/45">
-                            No target found
-                          </div>
+                          <p className="py-6 text-center text-[11px] text-slate-400 dark:text-white/35">{t("common.noResults")}</p>
                         ) : (
-                          filteredOptions.map((option: FilterOption) => {
-                            const checked = selectedKeys.includes(option.key);
-
-                            return (
-                              <button
-                                key={option.key}
-                                type="button"
-                                onClick={() => toggleSelect(option.key)}
-                                className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/6"
-                              >
-                                <div className="min-w-0">
-                                  <div className="truncate text-[12px] font-medium text-gray-700 dark:text-white/85">
-                                    {option.label}
-                                  </div>
-                                </div>
-
-                                <div
-                                  className={[
-                                    "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border",
-                                    checked
-                                      ? "border-cyan-400 bg-cyan-500 text-white"
-                                      : "border-gray-300 bg-white text-transparent dark:border-white/15 dark:bg-white/5",
-                                  ].join(" ")}
+                          <div className="space-y-0.5">
+                            {filteredOptions.map((option: FilterOption) => {
+                              const checked = selectedKeys.includes(option.key);
+                              return (
+                                <button
+                                  key={option.key}
+                                  type="button"
+                                  onClick={() => toggleSelect(option.key)}
+                                  className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition", checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}
                                 >
-                                  <FiCheck className="text-[11px]" />
-                                </div>
-                              </button>
-                            );
-                          })
+                                  <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition", checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
+                                    <FiCheck className="text-[9px]" />
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate text-[11px] text-slate-700 dark:text-white/75">{option.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1740,58 +1600,28 @@ const index: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSortOpen((prev) => !prev)}
-                    className={[
-                      "inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl px-3.5 text-left transition",
-                      "border border-gray-200/80 bg-white text-[13px] font-medium text-gray-600 hover:bg-gray-50",
-                      "dark:border-white/10 dark:bg-white/6 dark:text-white/75 dark:hover:bg-white/10",
-                    ].join(" ")}
+                    className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
                     <span className="truncate">{sortBy}</span>
-
-                    <FiChevronDown
-                      className={`shrink-0 text-[15px] transition-transform ${
-                        sortOpen ? "rotate-180" : ""
-                      }`}
-                    />
+                    <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                   </button>
 
                   {sortOpen && (
-                    <div
-                      style={{ width: normalDropdownWidth }}
-                      className="absolute left-0 z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]"
-                    >
-                      <div className="p-2">
-                        {SORT_OPTIONS.map((option) => {
-                          const checked = sortBy === option;
-
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => {
-                                setSortBy(option);
-                                setSortOpen(false);
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/6"
-                            >
-                              <span className="text-[12px] font-medium text-gray-700 dark:text-white/85">
-                                {option}
-                              </span>
-
-                              <div
-                                className={[
-                                  "flex h-5 w-5 items-center justify-center rounded-md border",
-                                  checked
-                                    ? "border-cyan-400 bg-cyan-500 text-white"
-                                    : "border-gray-300 bg-white text-transparent dark:border-white/15 dark:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <FiCheck className="text-[11px]" />
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="absolute left-0 z-50 mt-1.5 w-full min-w-52 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                      {SORT_OPTIONS.map((option) => {
+                        const checked = sortBy === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => { setSortBy(option); setSortOpen(false); }}
+                            className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
+                          >
+                            <span>{option}</span>
+                            {checked && <FiCheck className="text-[11px]" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1803,110 +1633,50 @@ const index: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setRangeOpen((prev) => !prev)}
-                    className={[
-                      "inline-flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl px-3.5 text-left transition",
-                      "border border-gray-200/80 bg-white text-[13px] font-medium text-gray-600 hover:bg-gray-50",
-                      "dark:border-white/10 dark:bg-white/6 dark:text-white/75 dark:hover:bg-white/10",
-                    ].join(" ")}
+                    className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
-                    <span className="inline-flex min-w-0 items-center gap-2 truncate">
-                      <FiCalendar className="shrink-0 text-[14px] text-cyan-500" />
+                    <span className="flex min-w-0 items-center gap-1.5 truncate">
+                      <FiCalendar className="shrink-0 text-[11px] text-blue-400" />
                       <span className="truncate">{range}</span>
                     </span>
-
-                    <FiChevronDown
-                      className={`shrink-0 text-[15px] transition-transform ${
-                        rangeOpen ? "rotate-180" : ""
-                      }`}
-                    />
+                    <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${rangeOpen ? "rotate-180" : ""}`} />
                   </button>
 
                   {rangeOpen && (
-                    <div
-                      style={{ width: normalDropdownWidth }}
-                      className="absolute right-0 z-50 mt-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]"
-                    >
-                      <div className="p-2">
-                        {RANGE_OPTIONS.map((option) => {
-                          const checked = range === option;
+                    <div className="absolute right-0 z-50 mt-1.5 w-full min-w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                      {RANGE_OPTIONS.map((option) => {
+                        const checked = range === option;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => { setRange(option); if (option !== "Custom Range") setRangeOpen(false); }}
+                            className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
+                          >
+                            <span>{option}</span>
+                            {checked && <FiCheck className="text-[11px]" />}
+                          </button>
+                        );
+                      })}
 
-                          return (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => {
-                                setRange(option);
-
-                                if (option !== "Custom Range") {
-                                  setRangeOpen(false);
-                                }
-                              }}
-                              className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-white/6"
-                            >
-                              <span className="text-[12px] font-medium text-gray-700 dark:text-white/85">
-                                {option}
-                              </span>
-
-                              <div
-                                className={[
-                                  "flex h-5 w-5 items-center justify-center rounded-md border",
-                                  checked
-                                    ? "border-cyan-400 bg-cyan-500 text-white"
-                                    : "border-gray-300 bg-white text-transparent dark:border-white/15 dark:bg-white/5",
-                                ].join(" ")}
-                              >
-                                <FiCheck className="text-[11px]" />
-                              </div>
+                      {range === "Custom Range" && (
+                        <div className="mt-1 border-t border-slate-100 p-2 dark:border-white/8">
+                          <div className="grid grid-cols-1 gap-2">
+                            <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
+                              Start Date
+                              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                            </label>
+                            <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
+                              End Date
+                              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                            </label>
+                            {customRangeError && <p className="text-[10px] text-rose-500 dark:text-rose-300">{customRangeError}</p>}
+                            <button type="button" disabled={Boolean(customRangeError)} onClick={() => setRangeOpen(false)} className={["h-8 rounded-lg text-[11px] font-semibold transition", customRangeError ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-white/25" : "bg-blue-500 text-white hover:bg-blue-600"].join(" ")}>
+                              Apply
                             </button>
-                          );
-                        })}
-
-                        {range === "Custom Range" && (
-                          <div className="mt-2 border-t border-gray-100 p-2 dark:border-white/10">
-                            <div className="grid grid-cols-1 gap-2">
-                              <label className="text-[10px] font-semibold text-gray-500 dark:text-white/45">
-                                Start Date
-                                <input
-                                  type="date"
-                                  value={startDate}
-                                  onChange={(e) => setStartDate(e.target.value)}
-                                  className="mt-1 h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
-                                />
-                              </label>
-
-                              <label className="text-[10px] font-semibold text-gray-500 dark:text-white/45">
-                                End Date
-                                <input
-                                  type="date"
-                                  value={endDate}
-                                  onChange={(e) => setEndDate(e.target.value)}
-                                  className="mt-1 h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
-                                />
-                              </label>
-
-                              {customRangeError && (
-                                <p className="text-[10px] font-medium text-rose-500 dark:text-rose-300">
-                                  {customRangeError}
-                                </p>
-                              )}
-
-                              <button
-                                type="button"
-                                disabled={Boolean(customRangeError)}
-                                onClick={() => setRangeOpen(false)}
-                                className={[
-                                  "h-8 rounded-xl text-[11px] font-semibold transition",
-                                  customRangeError
-                                    ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
-                                    : "bg-cyan-500 text-white hover:bg-cyan-600",
-                                ].join(" ")}
-                              >
-                                Apply
-                              </button>
-                            </div>
                           </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1923,62 +1693,45 @@ const index: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleBackToOverview}
-                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-gray-200/80 bg-white px-4 text-[12px] font-medium text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10"
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                 >
-                  <FiArrowLeft className="text-[13px]" />
+                  <FiArrowLeft className="text-[11px]" />
                   Back
                 </button>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-none tracking-[-0.02em] text-gray-500 dark:text-white/55">
-                <FiShield className="shrink-0 text-[14px] text-cyan-500" />
-                <span className="min-w-0 truncate">
-                  {detailMode ? "Data Points" : "Total Targets"}
-                </span>
-              </div>
-
-              <div className="text-[21px] font-semibold text-[#1f2240] dark:text-white/92">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
+              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
+                {detailMode ? "Data Points" : "Total Targets"}
+              </p>
+              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
                 {detailMode ? detailRows.length : summary.totalAssets}
-              </div>
+              </p>
             </div>
 
-            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-none tracking-[-0.02em] text-gray-500 dark:text-white/55">
-                <FiActivity className="shrink-0 text-[13px] text-violet-500" />
-                <span className="min-w-0 truncate">
-                  Average Risk Score (CVSS Rating Score)
-                </span>
-              </div>
-
-              <div className="text-[21px] font-semibold text-[#1f2240] dark:text-white/92">
-                {formatRisk(detailMode ? detailAvgRisk : summary.avgLatestRisk)}{" "}
-                / 10.00
-              </div>
+            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
+              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
+                Avg Risk Score
+              </p>
+              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+                {formatRisk(detailMode ? detailAvgRisk : summary.avgLatestRisk)}
+                <span className="ml-1 text-[13px] font-normal text-slate-400 dark:text-white/30">/ 10</span>
+              </p>
             </div>
 
-            <div className="min-w-0 rounded-[22px] border border-gray-200/80 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-white/6">
-              <div className="mb-2 flex min-w-0 items-center gap-1.5 text-[12px] font-medium leading-none tracking-[-0.02em] text-gray-500 dark:text-white/55">
-                <FiAlertCircle className="shrink-0 text-[14px] text-rose-500" />
-                <span className="min-w-0 truncate">
-                  {detailMode ? "Risk Range" : "Increased / Decreased"}
-                </span>
-              </div>
-
-              <div className="text-[21px] font-semibold text-[#1f2240] dark:text-white/92">
-                {detailMode
-                  ? "0.00 - 10.00"
-                  : `${summary.increasedCount} / ${summary.decreasedCount}`}
-              </div>
+            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
+              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
+                {detailMode ? "Risk Range" : "↑ / ↓ Targets"}
+              </p>
+              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+                {detailMode ? "0–10" : `${summary.increasedCount} / ${summary.decreasedCount}`}
+              </p>
             </div>
           </div>
         </div>
-        <br />
-
-        <CustomLegend detailMode={detailMode} />
 
         <div className="min-h-90 flex min-w-0 flex-1 flex-col">
           {loading ? (
@@ -1986,14 +1739,14 @@ const index: React.FC = () => {
               style={{ height: chartHeight }}
               className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
             >
-              Loading...
+              {t("common.loading")}
             </div>
           ) : detailLoading ? (
             <div
               style={{ height: chartHeight }}
               className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
             >
-              Loading detail...
+              {t("common.loading")}
             </div>
           ) : detailMode ? (
             detailRows.length === 0 ? (
@@ -2001,7 +1754,7 @@ const index: React.FC = () => {
                 style={{ height: chartHeight }}
                 className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
               >
-                No Data
+                {t("dashboard.noData")}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={chartHeight} minWidth={0}>
@@ -2093,7 +1846,7 @@ const index: React.FC = () => {
               style={{ height: chartHeight }}
               className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
             >
-              No Data
+              {t("dashboard.noData")}
             </div>
           ) : (
             <>
@@ -2299,34 +2052,21 @@ const index: React.FC = () => {
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(1, prev - 1))
-                      }
+                      onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className={[
-                        "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
-                        currentPage === 1
-                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className={["h-8 rounded-lg border px-3 text-[11px] font-medium transition", currentPage === 1 ? "cursor-not-allowed border-slate-200/70 bg-slate-100 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25" : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"].join(" ")}
                     >
                       Prev
                     </button>
 
                     {pageNumbers.map((page) => {
                       const active = page === currentPage;
-
                       return (
                         <button
                           key={page}
                           type="button"
                           onClick={() => setCurrentPage(page)}
-                          className={[
-                            "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-semibold transition",
-                            active
-                              ? "border-cyan-400 bg-cyan-500 text-white shadow-sm"
-                              : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
-                          ].join(" ")}
+                          className={["h-8 min-w-8 rounded-lg border px-2 text-[11px] font-semibold transition", active ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"].join(" ")}
                         >
                           {page}
                         </button>
@@ -2335,18 +2075,9 @@ const index: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setCurrentPage((prev) =>
-                          Math.min(totalPages, prev + 1)
-                        )
-                      }
+                      onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages}
-                      className={[
-                        "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
-                        currentPage === totalPages
-                          ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className={["h-8 rounded-lg border px-3 text-[11px] font-medium transition", currentPage === totalPages ? "cursor-not-allowed border-slate-200/70 bg-slate-100 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25" : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"].join(" ")}
                     >
                       Next
                     </button>
@@ -2355,14 +2086,24 @@ const index: React.FC = () => {
               )}
 
               {summaryMode && (
-                <div className="mt-3 border-t border-gray-100 pt-3 text-[11px] text-gray-500 dark:border-white/10 dark:text-white/45">
-                  Summary mode: showing{" "}
-                  <span className="font-semibold text-gray-700 dark:text-white/75">
-                    {chartData.length}
-                  </span>{" "}
-                  targets in one chart. Scroll horizontally to view all targets
-                  clearly.
+                <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/8">
+                  <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                    Summary mode: showing{" "}
+                    <span className="font-semibold text-slate-600 dark:text-white/55">
+                      {chartData.length}
+                    </span>{" "}
+                    targets in one chart. Scroll horizontally to view all targets clearly.
+                  </p>
+                  <MinimalLegend detailMode={detailMode} avgRisk={detailMode ? detailAvgRisk : summary.avgLatestRisk} />
                 </div>
+              )}
+
+              {!summaryMode && !detailMode && (
+                <MinimalLegend detailMode={false} avgRisk={summary.avgLatestRisk} />
+              )}
+
+              {detailMode && (
+                <MinimalLegend detailMode avgRisk={detailAvgRisk} />
               )}
             </>
           )}
@@ -2373,3 +2114,4 @@ const index: React.FC = () => {
 };
 
 export default index;
+

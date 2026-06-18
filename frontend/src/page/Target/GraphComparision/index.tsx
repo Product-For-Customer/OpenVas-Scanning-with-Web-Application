@@ -11,12 +11,9 @@ import {
   ReferenceLine,
 } from "recharts";
 import {
-  FiActivity,
   FiChevronDown,
   FiCheck,
   FiSearch,
-  FiArrowRight,
-  FiBarChart2,
   FiCalendar,
   FiArrowLeft,
   FiX,
@@ -26,6 +23,7 @@ import {
   ListALLReportByTaskID,
   type TargetDifferDTO,
 } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type SortType = "Latest Updated" | "Highest Latest Risk";
 
@@ -786,6 +784,7 @@ const DetailXAxisTick = (props: {
 };
 
 const RiskScoreGraph: React.FC = () => {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [rawData, setRawData] = useState<TargetDifferDTO[]>([]);
 
@@ -1444,12 +1443,6 @@ const RiskScoreGraph: React.FC = () => {
     openDetailFromRow(row);
   };
 
-  const description = detailMode
-    ? "แสดง Risk Score ของ target ที่เลือกตาม Date-Time"
-    : summaryMode
-      ? "Summary mode shows all filtered targets in one chart without pagination."
-      : "Compare latest risk against previous risk for selected targets.";
-
   const renderOverviewChart = () => {
     if (loading) {
       return (
@@ -1468,7 +1461,7 @@ const RiskScoreGraph: React.FC = () => {
           style={{ height: chartHeight }}
           className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
         >
-          No Data
+          {t("dashboard.noData")}
         </div>
       );
     }
@@ -1693,7 +1686,7 @@ const RiskScoreGraph: React.FC = () => {
           style={{ height: chartHeight }}
           className="flex items-center justify-center text-[13px] text-gray-500 dark:text-white/55"
         >
-          No Data
+          {t("dashboard.noData")}
         </div>
       );
     }
@@ -1803,70 +1796,32 @@ const RiskScoreGraph: React.FC = () => {
   };
 
   return (
-    <section
-      className={[
-        "relative flex h-full w-full min-w-0 max-w-none flex-col overflow-visible rounded-[18px] p-2.5 sm:p-3 md:p-3.5",
-        "border border-gray-200/80 bg-white shadow-sm",
-        "dark:border-white/10 dark:bg-white/5 dark:shadow-none dark:ring-1 dark:ring-white/10",
-      ].join(" ")}
-    >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -right-8 -top-12 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -bottom-12 -left-8 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative z-10 flex h-full min-w-0 flex-col">
+    <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
+      <div className="flex h-full min-w-0 flex-col">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="grid min-w-0 grid-cols-1 gap-3 min-[1600px]:grid-cols-[minmax(320px,1fr)_auto] min-[1600px]:items-start min-[1600px]:justify-between">
             <div className="min-w-0">
               {detailMode ? (
                 <div className="flex items-center gap-2.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm">
-                    <FiBarChart2 className="text-[16px]" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <h2 className="truncate text-[17px] font-semibold tracking-tight text-[#1f2240] dark:text-white/92 sm:text-[19px]">
-                      Risk Score Timeline
-                      {detailTaskName ? ` • ${detailTaskName}` : ""}
-                    </h2>
-
-                    <p className="text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
-                      แสดง Risk Score ของ target ที่เลือกตาม Date-Time
-                    </p>
-                  </div>
+                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    Risk Score Timeline
+                    {detailTaskName ? ` · ${detailTaskName}` : ""}
+                  </h2>
                 </div>
               ) : (
-                <>
-                  <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                    <div
-                      className={[
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-1",
-                        "border border-cyan-200/80 bg-cyan-50 text-cyan-700",
-                        "dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300",
-                      ].join(" ")}
-                    >
-                      <FiActivity className="text-[10px]" />
-                      <span className="text-[10px] font-semibold tracking-wide">
-                        Risk Score Graph
-                      </span>
-                    </div>
-
-                    {summaryMode && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300">
-                        Summary
-                      </span>
-                    )}
-                  </div>
-
-                  <h2 className="max-w-full text-[18px] font-semibold leading-snug tracking-tight text-[#1f2240] dark:text-white/90 sm:text-[20px] lg:text-[21px] min-[760px]:whitespace-nowrap">
-                    Risk score comparison by target
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    {t("dashboard.graphComparison")}
                   </h2>
-
-                  <p className="mt-1 max-w-3xl text-[12px] leading-relaxed text-gray-500 dark:text-white/50 sm:text-[13px] min-[760px]:max-w-4xl">
-                    {description}
-                  </p>
-                </>
+                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                    {loading ? t("common.loadingShort") : `${totalTargets} targets`}
+                  </span>
+                  {summaryMode && (
+                    <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                      Summary
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1880,11 +1835,7 @@ const RiskScoreGraph: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOpenViewMode((prev) => !prev)}
-                      className={[
-                        "inline-flex min-h-8.5 w-full items-center justify-between gap-3 rounded-xl px-3 text-left transition",
-                        "border border-gray-200/80 bg-white text-[11px] font-medium text-gray-600 hover:bg-gray-50",
-                        "dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                     >
                       <span className="truncate">{viewMode}</span>
 
@@ -1896,27 +1847,23 @@ const RiskScoreGraph: React.FC = () => {
                     </button>
 
                     {openViewMode && (
-                      <div className="absolute right-0 z-50 mt-2 w-full min-w-42 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]">
+                      <div className="absolute right-0 z-50 mt-1.5 w-full min-w-36 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
                         {VIEW_MODE_OPTIONS.map((item) => {
                           const active = viewMode === item;
-
                           return (
                             <button
                               key={item}
                               type="button"
-                              onClick={() => {
-                                setViewMode(item);
-                                setOpenViewMode(false);
-                              }}
+                              onClick={() => { setViewMode(item); setOpenViewMode(false); }}
                               className={[
-                                "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-medium transition",
+                                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition",
                                 active
-                                  ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300"
-                                  : "text-gray-600 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/6",
+                                  ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                  : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
                               ].join(" ")}
                             >
                               <span>{item}</span>
-                              {active && <FiCheck className="text-[12px]" />}
+                              {active && <FiCheck className="text-[11px]" />}
                             </button>
                           );
                         })}
@@ -1931,116 +1878,77 @@ const RiskScoreGraph: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOpenQuery((prev) => !prev)}
-                      className={[
-                        "inline-flex min-h-8.5 w-full items-center justify-between gap-3 rounded-xl px-3 text-left transition",
-                        "border border-gray-200/80 bg-white text-[11px] font-medium text-gray-600 hover:bg-gray-50",
-                        "dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                     >
                       <span className="truncate">{queryButtonLabel}</span>
-
-                      <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         {selectedCount > 0 && (
-                          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 px-1.5 text-[10px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
+                          <span className="inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full border border-blue-200 bg-blue-50 px-1 text-[9.5px] font-semibold text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300">
                             {selectedCount}
                           </span>
                         )}
-
-                        <FiChevronDown
-                          className={`text-[13px] transition-transform ${
-                            openQuery ? "rotate-180" : ""
-                          }`}
-                        />
+                        <FiChevronDown className={`text-[11px] transition-transform ${openQuery ? "rotate-180" : ""}`} />
                       </div>
                     </button>
 
                     {openQuery && (
-                      <div className="absolute right-0 z-50 mt-2 w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.12)] sm:min-w-85 dark:border-white/10 dark:bg-[#0B1220]">
-                        <div className="border-b border-gray-100 p-2.5 dark:border-white/10">
-                          <div className="relative">
-                            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-gray-400 dark:text-white/35" />
-
+                      <div className="absolute right-0 z-50 mt-1.5 w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl sm:min-w-72 dark:border-white/10 dark:bg-[#0d0b1a]">
+                        <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
+                          <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+                            <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
                             <input
                               value={querySearch}
                               onChange={(e) => setQuerySearch(e.target.value)}
-                              placeholder="Search target."
-                              className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-[11px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
+                              placeholder={t("dashboard.searchTarget")}
+                              className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
                             />
-
                             {querySearch && (
-                              <button
-                                type="button"
-                                onClick={() => setQuerySearch("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 dark:text-white/35 dark:hover:text-white"
-                              >
-                                <FiX className="text-[13px]" />
+                              <button type="button" onClick={() => setQuerySearch("")} className="shrink-0 text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/65">
+                                <FiX className="text-[11px]" />
                               </button>
                             )}
                           </div>
-
-                          <div className="mt-2 flex items-center justify-between gap-2">
-                            <button
-                              type="button"
-                              onClick={handleSelectAllVisible}
-                              className="text-[10px] font-semibold text-cyan-600 hover:text-cyan-700 dark:text-cyan-300"
-                            >
-                              {allVisibleSelected
-                                ? "Unselect visible"
-                                : "Select visible"}
+                          <div className="mt-2 flex items-center justify-between">
+                            <button type="button" onClick={handleSelectAllVisible} className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400">
+                              {allVisibleSelected ? t("common.unselectAll") : t("common.selectAll")}
                             </button>
-
                             {selectedCount > 0 && (
-                              <button
-                                type="button"
-                                onClick={clearAllSelections}
-                                className="text-[10px] font-semibold text-rose-500 hover:text-rose-600 dark:text-rose-300"
-                              >
-                                Clear
+                              <button type="button" onClick={clearAllSelections} className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55">
+                                {t("common.clear")}
                               </button>
                             )}
                           </div>
                         </div>
-
-                        <div className="max-h-64 overflow-y-auto p-1.5">
+                        <div className="max-h-64 overflow-y-auto p-2">
                           {filteredOptions.length === 0 ? (
-                            <div className="px-3 py-6 text-center text-[11px] text-gray-400 dark:text-white/40">
-                              No target found.
-                            </div>
+                            <p className="py-6 text-center text-[11px] text-slate-400 dark:text-white/35">{t("common.noResults")}</p>
                           ) : (
-                            filteredOptions.map((opt) => {
-                              const checked = selectedKeys.includes(opt.key);
-
-                              return (
-                                <button
-                                  key={opt.key}
-                                  type="button"
-                                  onClick={() => toggleSelect(opt.key)}
-                                  className={[
-                                    "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition",
-                                    checked
-                                      ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300"
-                                      : "text-gray-600 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/6",
-                                  ].join(" ")}
-                                >
-                                  <span
+                            <div className="space-y-0.5">
+                              {filteredOptions.map((opt) => {
+                                const checked = selectedKeys.includes(opt.key);
+                                return (
+                                  <button
+                                    key={opt.key}
+                                    type="button"
+                                    onClick={() => toggleSelect(opt.key)}
                                     className={[
-                                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
-                                      checked
-                                        ? "border-cyan-400 bg-cyan-500 text-white"
-                                        : "border-gray-300 bg-white dark:border-white/15 dark:bg-white/5",
+                                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
+                                      checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5",
                                     ].join(" ")}
                                   >
-                                    {checked && (
-                                      <FiCheck className="text-[10px]" />
-                                    )}
-                                  </span>
-
-                                  <span className="min-w-0 flex-1 truncate text-[11px] font-medium">
-                                    {opt.label}
-                                  </span>
-                                </button>
-                              );
-                            })
+                                    <span className={[
+                                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
+                                      checked
+                                        ? "border-blue-500 bg-blue-500 text-white"
+                                        : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
+                                    ].join(" ")}>
+                                      <FiCheck className="text-[9px]" />
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate text-[11px] text-slate-700 dark:text-white/75">{opt.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -2054,43 +1962,30 @@ const RiskScoreGraph: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOpenSort((prev) => !prev)}
-                      className={[
-                        "inline-flex min-h-8.5 w-full items-center justify-between gap-3 rounded-xl px-3 text-left transition",
-                        "border border-gray-200/80 bg-white text-[11px] font-medium text-gray-600 hover:bg-gray-50",
-                        "dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                     >
                       <span className="truncate">{sortBy}</span>
-
-                      <FiChevronDown
-                        className={`text-[13px] transition-transform ${
-                          openSort ? "rotate-180" : ""
-                        }`}
-                      />
+                      <FiChevronDown className={`text-[11px] transition-transform ${openSort ? "rotate-180" : ""}`} />
                     </button>
 
                     {openSort && (
-                      <div className="absolute right-0 z-50 mt-2 w-full min-w-42 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]">
+                      <div className="absolute right-0 z-50 mt-1.5 w-full min-w-44 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
                         {SORT_OPTIONS.map((item) => {
                           const active = sortBy === item;
-
                           return (
                             <button
                               key={item}
                               type="button"
-                              onClick={() => {
-                                setSortBy(item);
-                                setOpenSort(false);
-                              }}
+                              onClick={() => { setSortBy(item); setOpenSort(false); }}
                               className={[
-                                "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-medium transition",
+                                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition",
                                 active
-                                  ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300"
-                                  : "text-gray-600 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/6",
+                                  ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                  : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
                               ].join(" ")}
                             >
                               <span>{item}</span>
-                              {active && <FiCheck className="text-[12px]" />}
+                              {active && <FiCheck className="text-[11px]" />}
                             </button>
                           );
                         })}
@@ -2105,91 +2000,70 @@ const RiskScoreGraph: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setOpenRange((prev) => !prev)}
-                      className={[
-                        "inline-flex min-h-8.5 w-full items-center justify-between gap-3 rounded-xl px-3 text-left transition",
-                        "border border-gray-200/80 bg-white text-[11px] font-medium text-gray-600 hover:bg-gray-50",
-                        "dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10",
-                      ].join(" ")}
+                      className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                     >
-                      <span className="inline-flex min-w-0 items-center gap-2 truncate">
-                        <FiCalendar className="shrink-0 text-[12px] text-cyan-500" />
+                      <span className="flex min-w-0 items-center gap-1.5 truncate">
+                        <FiCalendar className="shrink-0 text-[11px] text-blue-400" />
                         <span className="truncate">{range}</span>
                       </span>
-
-                      <FiChevronDown
-                        className={`shrink-0 text-[13px] transition-transform ${
-                          openRange ? "rotate-180" : ""
-                        }`}
-                      />
+                      <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${openRange ? "rotate-180" : ""}`} />
                     </button>
 
                     {openRange && (
-                      <div className="absolute right-0 z-50 mt-2 w-full min-w-65 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.12)] dark:border-white/10 dark:bg-[#0B1220]">
+                      <div className="absolute right-0 z-50 mt-1.5 w-full min-w-60 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
                         {RANGE_OPTIONS.map((item) => {
                           const active = range === item;
-
                           return (
                             <button
                               key={item}
                               type="button"
-                              onClick={() => {
-                                setRange(item);
-
-                                if (item !== "Custom Range") {
-                                  setOpenRange(false);
-                                }
-                              }}
+                              onClick={() => { setRange(item); if (item !== "Custom Range") setOpenRange(false); }}
                               className={[
-                                "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[11px] font-medium transition",
+                                "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition",
                                 active
-                                  ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-300"
-                                  : "text-gray-600 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/6",
+                                  ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                                  : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
                               ].join(" ")}
                             >
                               <span>{item}</span>
-                              {active && <FiCheck className="text-[12px]" />}
+                              {active && <FiCheck className="text-[11px]" />}
                             </button>
                           );
                         })}
 
                         {range === "Custom Range" && (
-                          <div className="mt-1.5 border-t border-gray-100 p-2 dark:border-white/10">
+                          <div className="mt-1 border-t border-slate-100 p-2 dark:border-white/8">
                             <div className="grid grid-cols-1 gap-2">
-                              <label className="text-[10px] font-semibold text-gray-500 dark:text-white/45">
+                              <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
                                 Start Date
                                 <input
                                   type="date"
                                   value={startDate}
                                   onChange={(e) => setStartDate(e.target.value)}
-                                  className="mt-1 h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
+                                  className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
                                 />
                               </label>
-
-                              <label className="text-[10px] font-semibold text-gray-500 dark:text-white/45">
+                              <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
                                 End Date
                                 <input
                                   type="date"
                                   value={endDate}
                                   onChange={(e) => setEndDate(e.target.value)}
-                                  className="mt-1 h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] text-gray-700 outline-none focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85"
+                                  className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
                                 />
                               </label>
-
                               {customRangeError && (
-                                <p className="text-[10px] font-medium text-rose-500 dark:text-rose-300">
-                                  {customRangeError}
-                                </p>
+                                <p className="text-[10px] font-medium text-rose-500 dark:text-rose-300">{customRangeError}</p>
                               )}
-
                               <button
                                 type="button"
                                 disabled={Boolean(customRangeError)}
                                 onClick={() => setOpenRange(false)}
                                 className={[
-                                  "h-8 rounded-xl text-[11px] font-semibold transition",
+                                  "h-8 rounded-lg text-[11px] font-semibold transition",
                                   customRangeError
-                                    ? "cursor-not-allowed bg-gray-100 text-gray-400 dark:bg-white/5 dark:text-white/30"
-                                    : "bg-cyan-500 text-white hover:bg-cyan-600",
+                                    ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-white/25"
+                                    : "bg-blue-500 text-white hover:bg-blue-600",
                                 ].join(" ")}
                               >
                                 Apply
@@ -2207,9 +2081,9 @@ const RiskScoreGraph: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleBackToOverview}
-                  className="inline-flex min-h-9 items-center justify-center gap-2 rounded-2xl border border-gray-200/80 bg-white px-4 text-[12px] font-medium text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10"
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                 >
-                  <FiArrowLeft className="text-[13px]" />
+                  <FiArrowLeft className="text-[11px]" />
                   Back
                 </button>
               </div>
@@ -2353,21 +2227,9 @@ const RiskScoreGraph: React.FC = () => {
           </div>
         )}
 
-        <div className="mt-3 flex flex-row flex-wrap items-center justify-center gap-2 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1.5 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300">
-            <FiBarChart2 className="text-[13px]" />
-            <span className="text-[10px] font-semibold md:text-[11px]">
-              Y Axis = Risk Score
-            </span>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200/80 bg-violet-50 px-3 py-1.5 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300">
-            <FiArrowRight className="text-[13px]" />
-            <span className="text-[10px] font-semibold md:text-[11px]">
-              X Axis = {detailMode ? "Date-Time" : "Target"}
-            </span>
-          </div>
-        </div>
+        <p className="mt-3 text-center text-[10.5px] text-slate-400 dark:text-white/25">
+          Y axis = Risk Score · X axis = {detailMode ? "Date-Time" : "Target"}
+        </p>
       </div>
     </section>
   );

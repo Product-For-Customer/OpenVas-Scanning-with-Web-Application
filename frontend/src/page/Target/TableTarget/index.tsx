@@ -1,13 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  FiActivity,
   FiSearch,
   FiChevronDown,
-  FiShield,
-  FiRadio,
   FiCheck,
   FiX,
 } from "react-icons/fi";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import {
   MdRouter,
   MdDevices,
@@ -245,6 +243,7 @@ const buildPageNumbers = (currentPage: number, totalPages: number): number[] => 
 };
 
 const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
@@ -481,98 +480,26 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
   };
 
   return (
-    <section
-      className={[
-        "relative overflow-hidden rounded-[20px] p-3 sm:p-4",
-        "bg-white border border-gray-200/80 shadow-sm",
-        "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
-      ].join(" ")}
-    >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-12 -right-8 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
-
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-          <div
-            className="h-full w-full"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, currentColor 1px, transparent 1px),
-                linear-gradient(to bottom, currentColor 1px, transparent 1px)
-              `,
-              backgroundSize: "24px 24px",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="relative z-10">
+    <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
+      <div>
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0">
-              <div className="mb-2.5 flex flex-wrap items-center gap-2">
-                <div
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                    "bg-cyan-50 text-cyan-700 border border-cyan-200/80",
-                    "dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20",
-                  ].join(" ")}
-                >
-                  <FiShield className="text-[11px]" />
-                  <span className="text-[10px] font-semibold tracking-wide">
-                    Target Scan Console
-                  </span>
-                </div>
-
-                <div
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                    "bg-slate-50 text-slate-600 border border-slate-200/80",
-                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                  ].join(" ")}
-                >
-                  <FiRadio className="text-[11px] text-cyan-500" />
-                  <span className="text-[10px] font-medium">
-                    {loading
-                      ? "Scanner Syncing"
-                      : `${stats.totalTargets} targets loaded`}
-                  </span>
-                </div>
-
-                <div
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                    "bg-slate-50 text-slate-600 border border-slate-200/80",
-                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                  ].join(" ")}
-                >
-                  <FiActivity className="text-[11px] text-cyan-500" />
-                  <span className="text-[10px] font-medium">
-                    {formatNumber(stats.totalVulns)} total vulns
-                  </span>
-                </div>
-
-                <div
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-                    "bg-slate-50 text-slate-600 border border-slate-200/80",
-                    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-                  ].join(" ")}
-                >
-                  <span className="text-[10px] font-medium">
-                    Peak risk {formatRisk(stats.highestRisk)}/10
-                  </span>
-                </div>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                  {t("target.title")}
+                </h2>
+                {!loading && (
+                  <>
+                    <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                      {stats.totalTargets} targets
+                    </span>
+                    <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                      {formatNumber(stats.totalVulns)} vulns
+                    </span>
+                  </>
+                )}
               </div>
-
-              <h2 className="text-[16px] font-semibold text-[#1f2240] dark:text-white/90 sm:text-[17px]">
-                Device Vulnerability Table
-              </h2>
-
-              <p className="mt-1 text-[11px] text-gray-500 dark:text-white/55 sm:text-[12px]">
-                Showing all monitored targets with paginated risk score,
-                vulnerability total, and device exposure details
-              </p>
             </div>
 
             <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end">
@@ -580,11 +507,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                 <button
                   type="button"
                   onClick={() => setOpenTargetQuery((prev) => !prev)}
-                  className={[
-                    "h-9 w-full px-3.5 rounded-[14px] inline-flex items-center justify-between gap-2 transition text-left sm:min-w-44",
-                    "border border-gray-200/80 bg-white text-[12px] font-medium text-[#1f2240] hover:bg-gray-50",
-                    "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10",
-                  ].join(" ")}
+                  className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8 sm:min-w-44"
                 >
                   <span className="truncate">{targetButtonLabel}</span>
 
@@ -607,10 +530,10 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                 {openTargetQuery && (
                   <div
                     className={[
-                      "fixed left-3 right-3 top-20 z-100 overflow-hidden rounded-[18px]",
-                      "border border-gray-200 bg-white shadow-xl",
-                      "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]",
-                      "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(20rem,calc(100vw-2rem))]",
+                      "fixed left-3 right-3 top-20 z-100 overflow-hidden rounded-xl",
+                      "border border-slate-200/80 bg-white shadow-xl",
+                      "dark:border-white/10 dark:bg-[#0d0b1a]",
+                      "sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-1.5 sm:w-[min(20rem,calc(100vw-2rem))]",
                     ].join(" ")}
                   >
                     <div className="border-b border-gray-100 p-2 dark:border-white/10">
@@ -787,9 +710,9 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
         <div
           className={[
-            "overflow-hidden rounded-[18px] border",
-            "border-gray-200/80 bg-white/80",
-            "dark:border-white/10 dark:bg-white/3",
+            "overflow-hidden rounded-xl border",
+            "border-slate-200/70 bg-white",
+            "dark:border-white/8 dark:bg-white/3",
           ].join(" ")}
         >
           <div className="overflow-x-auto overflow-y-hidden">
@@ -862,7 +785,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                       colSpan={6}
                       className="px-4 py-7 text-center text-[12px] text-gray-500 dark:text-white/55"
                     >
-                      No Data
+                      {t("target.noTargets")}
                     </td>
                   </tr>
                 ) : (

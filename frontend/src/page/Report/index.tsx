@@ -26,6 +26,7 @@ import {
   ListAppReport,
   DownloadPDFFile,
 } from "../../services/report";
+import { useLanguage } from "../../contexts/LanguageContext";
 import {
   ListAppNotification,
   ListAssetRisk,
@@ -136,6 +137,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
   onClose,
   onUpdated,
 }) => {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<UpdatePayload>({
     company_name: "",
     logo: "",
@@ -341,7 +343,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
 
           <div className="mb-4 pr-8">
             <h3 className="text-[16px] font-semibold text-slate-900 dark:text-white">
-              Update Logo
+              {t("report.editReport")}
             </h3>
             <p className="mt-1 text-[12px] text-slate-500 dark:text-white/50">
               Change logo and company name
@@ -388,7 +390,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
 
               <div>
                 <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Company Name
+                  {t("report.companyName")}
                 </label>
                 <input
                   type="text"
@@ -432,7 +434,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                   disabled={submitting}
                   className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
 
                 <button
@@ -443,10 +445,10 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                   {submitting ? (
                     <>
                       <FiLoader className="animate-spin text-[14px]" />
-                      Saving...
+                      {t("common.saving")}
                     </>
                   ) : (
-                    "Save"
+                    t("common.save")
                   )}
                 </button>
               </div>
@@ -465,6 +467,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
   onConfirm,
   submitting,
 }) => {
+  const { t } = useLanguage();
   const [items, setItems] = useState<AppNotificationResponse[]>([]);
   const [selectedIDs, setSelectedIDs] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
@@ -574,7 +577,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
 
           <div className="mb-4 pr-8">
             <h3 className="text-[16px] font-semibold text-slate-900 dark:text-white">
-              Send to LINE
+              {t("report.sendToLineTitle")}
             </h3>
             <p className="mt-1 text-[12px] text-slate-500 dark:text-white/50">
               Select line targets to receive the PDF link
@@ -681,7 +684,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                     disabled={submitting}
                     className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-[13px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
 
                   <button
@@ -693,12 +696,12 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                     {submitting ? (
                       <>
                         <FiLoader className="animate-spin text-[14px]" />
-                        Sending...
+                        {t("common.sending")}
                       </>
                     ) : (
                       <>
                         <FiSend className="text-[14px]" />
-                        Send to Selected
+                        {t("report.sendToLine")}
                       </>
                     )}
                   </button>
@@ -724,7 +727,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
   if (!open) return null;
 
   return (
-    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-[0_16px_40px_rgba(15,23,42,0.16)] sm:left-auto sm:right-0 sm:w-105 xl:w-120 dark:border-white/10 dark:bg-[#0f172a]">
+    <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white p-2 shadow-xl sm:left-auto sm:right-0 sm:w-96 dark:border-white/10 dark:bg-[#0d0b1a]">
       <div className="mb-2 flex items-center justify-between px-2 pt-1">
         <div>
           <p className="text-[12px] font-semibold text-slate-900 dark:text-white">
@@ -814,6 +817,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
 };
 
 const ReportPreviewIndex: React.FC = () => {
+  const { t } = useLanguage();
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openSendToLineModal, setOpenSendToLineModal] = useState(false);
   const [openDownloadMenu, setOpenDownloadMenu] = useState(false);
@@ -995,10 +999,10 @@ const ReportPreviewIndex: React.FC = () => {
   const actionBusy = sendingToLine || savingPdf;
 
   return (
-    <div className="relative z-0 min-h-screen w-full bg-slate-100 text-slate-900 transition-colors dark:bg-[#07101d] dark:text-white/90">
-      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur-sm transition-colors sm:px-4 lg:px-6 dark:border-cyan-400/10 dark:bg-[#08111f]/92 dark:shadow-[0_1px_0_rgba(34,211,238,0.08)]">
+    <div className="w-full">
+      <div className="sticky top-0 z-10 border-b border-slate-200/70 bg-white py-3 dark:border-white/8 dark:bg-[#0d0b1a]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="min-w-0">
+          <div className="min-w-0 ml-4">
             <h1 className="text-base font-semibold text-slate-900 sm:text-lg dark:text-white/92">
               PDF Preview
             </h1>
@@ -1007,9 +1011,9 @@ const ReportPreviewIndex: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end">
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center xl:w-auto xl:justify-end mr-4">
             {showSuccess && (
-              <div className="inline-flex items-center gap-2 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <FiCheckCircle className="text-[15px]" />
                 <span>Send To LINE Success</span>
               </div>
@@ -1018,17 +1022,17 @@ const ReportPreviewIndex: React.FC = () => {
             <button
               type="button"
               onClick={() => setOpenEditModal(true)}
-              className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8"
             >
               <FiImage className="text-[15px]" />
-              <span>CHANGE LOGO</span>
+              <span>{t("report.editReport")}</span>
             </button>
 
             <div className="relative w-full sm:w-auto" ref={deviceMenuRef}>
               <button
                 type="button"
                 onClick={() => setOpenDeviceMenu((prev) => !prev)}
-                className="inline-flex w-full items-center justify-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] sm:w-auto dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:hover:bg-white/10"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8"
               >
                 <FiHardDrive className="text-[15px]" />
                 <span>
@@ -1056,8 +1060,8 @@ const ReportPreviewIndex: React.FC = () => {
                 onClick={() => setOpenDownloadMenu((prev) => !prev)}
                 disabled={actionBusy}
                 className={[
-                  "inline-flex w-full items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white shadow-sm transition active:scale-[0.98] sm:min-w-42.5 sm:w-auto",
-                  "bg-cyan-600 hover:bg-cyan-700",
+                  "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition sm:min-w-42 sm:w-auto",
+                  "bg-slate-900 hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20",
                   actionBusy ? "cursor-not-allowed opacity-80" : "",
                 ].join(" ")}
               >
@@ -1076,14 +1080,14 @@ const ReportPreviewIndex: React.FC = () => {
               </button>
 
               {openDownloadMenu && !actionBusy ? (
-                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.16)] sm:left-auto sm:right-0 sm:min-w-52.5 dark:border-white/10 dark:bg-[#0f172a]">
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1.5 shadow-xl sm:left-auto sm:right-0 sm:min-w-48 dark:border-white/10 dark:bg-[#0d0b1a]">
                   <button
                     type="button"
                     onClick={handleSaveAsPDF}
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition hover:bg-slate-100 dark:text-white/80 dark:hover:bg-white/10"
                   >
                     <FiDownload className="text-[14px]" />
-                    <span>Save as PDF</span>
+                    <span>{t("report.downloadPDF")}</span>
                   </button>
 
                   <button
@@ -1095,7 +1099,7 @@ const ReportPreviewIndex: React.FC = () => {
                     className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-700 transition hover:bg-slate-100 dark:text-white/80 dark:hover:bg-white/10"
                   >
                     <FiSend className="text-[14px]" />
-                    <span>Send to LINE</span>
+                    <span>{t("report.sendToLine")}</span>
                   </button>
                 </div>
               ) : null}
@@ -1104,8 +1108,8 @@ const ReportPreviewIndex: React.FC = () => {
         </div>
       </div>
 
-      <main className="px-2 py-3 sm:px-3 sm:py-4 lg:px-5">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-cyan-400/10 dark:bg-[#0c1626] dark:shadow-[0_18px_40px_rgba(0,0,0,0.28)]">
+      <main className="py-4 sm:py-5">
+        <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
           <Pdf
             refreshToken={reportRefreshToken}
             selectedTaskIDs={selectedTaskIDs}

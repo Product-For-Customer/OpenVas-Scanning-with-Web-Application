@@ -4,7 +4,6 @@ export * from "./user";
 export * from "./line";
 export * from "./threat";
 export * from "./gmp";
-export * from "./risk";
 export * from "./compliance";
 import { apiUrl } from "./api";
 

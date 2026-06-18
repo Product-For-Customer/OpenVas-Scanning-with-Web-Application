@@ -2,6 +2,7 @@ import { MdOutlineCancel } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 import { type JSX, useState, useEffect, useMemo } from "react";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import {
   FiSettings,
   FiLogOut,
@@ -92,6 +93,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
   logout,
 }) => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const ctx = useStateContext() as any;
   const isClicked = ctx?.isClicked;
@@ -118,8 +120,8 @@ const UserProfile: React.FC<UserProfileProps> = ({
     const items: UserProfileItem[] = [
       {
         icon: <FiSettings />,
-        title: "Settings",
-        desc: "ตั้งค่าระบบ / integrations",
+        title: t("profile.myProfile"),
+        desc: t("profile.accountSettings"),
         iconColor: "#06b6d4",
         iconBg: "#ecfeff",
         link: "/admin/profile",
@@ -127,8 +129,8 @@ const UserProfile: React.FC<UserProfileProps> = ({
       },
       {
         icon: <FiServer />,
-        title: "Service",
-        desc: "จัดการ service ของระบบ",
+        title: t("profile.service"),
+        desc: t("profile.editServiceInfo"),
         iconColor: "#7c3aed",
         iconBg: "#f5f3ff",
         link: "/admin/service",
@@ -136,8 +138,8 @@ const UserProfile: React.FC<UserProfileProps> = ({
       },
       {
         icon: <FiLogOut />,
-        title: "Logout",
-        desc: "ออกจากระบบ",
+        title: t("sidebar.logout"),
+        desc: t("sidebar.endSession"),
         iconColor: "#dc2626",
         iconBg: "#fff1f2",
         action: "logout",
@@ -145,11 +147,11 @@ const UserProfile: React.FC<UserProfileProps> = ({
     ];
 
     if (isUserRole) {
-      return items.filter((item) => item.title !== "Service");
+      return items.filter((item) => item.title !== t("profile.service"));
     }
 
     return items;
-  }, [isUserRole]);
+  }, [isUserRole, t]);
 
   const close = () => {
     if (typeof setIsClicked === "function") {
@@ -207,13 +209,13 @@ const UserProfile: React.FC<UserProfileProps> = ({
     try {
       setLoggingOut(true);
       await logout();
-      message.success("logout success");
+      message.success(t("sidebar.logoutSuccess"));
       close();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Logout failed:", error);
-      message.error("logout failed");
+      message.error(t("sidebar.logoutFailed"));
       close();
       navigate("/", { replace: true });
     } finally {
@@ -259,10 +261,10 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
           <div>
             <p className="text-[13px] font-semibold text-gray-800 dark:text-white/90">
-              User Profile
+              {t("navbar.profile")}
             </p>
             <p className="text-[11px] text-gray-500 dark:text-white/50">
-              Security analyst profile
+              {t("profile.accountSettings")}
             </p>
           </div>
         </div>
@@ -344,7 +346,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
               <div className="min-w-0 flex-1 text-left">
                 <p className="truncate text-[12.5px] font-semibold text-gray-900 dark:text-white/85">
-                  {item.action === "logout" && loggingOut ? "Logging out..." : item.title}
+                  {item.action === "logout" && loggingOut ? t("sidebar.loggingOut") : item.title}
                 </p>
                 <p className="truncate text-[11px] text-gray-500 dark:text-white/55">
                   {item.desc}

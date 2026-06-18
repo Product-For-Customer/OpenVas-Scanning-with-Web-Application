@@ -544,9 +544,3 @@ func getEnv(key, fallback string) string {
 	return v
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

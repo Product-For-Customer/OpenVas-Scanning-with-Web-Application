@@ -24,16 +24,14 @@
   z-index: 1000000 !important;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
-}
+/* Scrollbar — accent color from CSS variable */
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-thumb {
-  background-color: rgb(216, 216, 216);
+  background-color: var(--accent, #1A97F5);
   border-radius: 40px;
+  opacity: 0.55;
 }
-::-webkit-scrollbar-track {
-  background-color: transparent;
-}
+::-webkit-scrollbar-track { background-color: transparent; }
 
 #preview {
   background: transparent

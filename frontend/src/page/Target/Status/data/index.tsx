@@ -12,9 +12,9 @@ import {
   FiPlayCircle,
   FiSearch,
   FiServer,
-  FiShield,
 } from "react-icons/fi";
 import { ListTaskStatus, type TaskStatusDTO } from "../../../../services";
+import { useLanguage } from "../../../../contexts/LanguageContext";
 
 type StatusKey = "Done" | "Running" | "New" | "Stopped";
 
@@ -336,6 +336,7 @@ const sortTaskRows = (items: TaskStatusDTO[], sortMode: SortMode) => {
 };
 
 const TargetStatusData: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -511,158 +512,101 @@ const TargetStatusData: React.FC = () => {
   }, [sortMode]);
 
   return (
-    <main className="w-full">
-      <div
-        className={[
-          "relative overflow-hidden rounded-[26px] border border-white/10 p-4 text-white sm:p-5 md:p-6",
-          "bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.12),transparent_24%),linear-gradient(135deg,#1e1b4b_0%,#111827_48%,#0b1220_100%)]",
-        ].join(" ")}
-      >
-        <div className="pointer-events-none absolute -top-24 -left-24 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-24 -bottom-24 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
+    <main className="w-full space-y-5 py-3 sm:py-4">
 
-        <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0">
+      {/* ── Header ── */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-sm transition-all duration-300 hover:bg-white/14"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
             >
-              <FiArrowLeft className="text-[13px]" />
-              Back
+              <FiArrowLeft />
             </button>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={[
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold",
-                  statusStyle.chip,
-                ].join(" ")}
-              >
-                {getStatusIcon(selectedStatus)}
-                {selectedStatus}
-              </span>
-
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 text-[11px] text-white/70">
-                <FiShield className="text-cyan-300" />
-                OpenVAS Target Status
-              </span>
-            </div>
-
-            <h1 className="mt-4 text-[24px] font-semibold tracking-tight sm:text-[30px]">
+            <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">
               Target Status Data
             </h1>
-
-            <p className="mt-1.5 max-w-2xl text-[12px] leading-6 text-white/65 sm:text-[13px]">
-              Showing target scan tasks with status{" "}
-              <span className="font-semibold text-white">{selectedStatus}</span>.
-            </p>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold ${statusStyle.chip}`}>
+              {getStatusIcon(selectedStatus)}
+              {selectedStatus}
+            </span>
           </div>
-
-          <div className="grid grid-cols-3 gap-2 lg:w-105">
-            <div className="rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
-              <p className="text-[10px] text-white/45">Targets</p>
-              <p className="mt-1 text-[20px] font-semibold tabular-nums">
-                {loading ? "..." : summary.total.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
-              <p className="text-[10px] text-white/45">Reports</p>
-              <p className="mt-1 text-[20px] font-semibold tabular-nums">
-                {loading ? "..." : summary.reports.toLocaleString()}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
-              <p className="text-[10px] text-white/45">Avg Severity</p>
-              <p className="mt-1 text-[20px] font-semibold tabular-nums">
-                {loading ? "..." : formatSeverity(summary.avgSeverity)}
-              </p>
-            </div>
-          </div>
+          <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
+            {loading ? t("common.loading") : `${rows.length} target${rows.length !== 1 ? "s" : ""} with status ${selectedStatus}`}
+          </p>
         </div>
       </div>
 
-      <section className="mt-4 overflow-hidden rounded-[22px] border border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-[#0B1220]">
-        <div className="flex flex-col gap-3 border-b border-slate-200/80 px-4 py-3 dark:border-white/10 xl:flex-row xl:items-center xl:justify-between">
+      {/* ── Stat cards ── */}
+      {!loading && (
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Targets",      value: summary.total.toLocaleString() },
+            { label: "Reports",      value: summary.reports.toLocaleString() },
+            { label: "Avg Severity", value: formatSeverity(summary.avgSeverity) },
+          ].map(s => (
+            <div key={s.label} className="rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 dark:border-white/8 dark:bg-white/4">
+              <p className="text-[11px] font-medium text-slate-400 dark:text-white/35">{s.label}</p>
+              <p className="mt-1 text-[24px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <section className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/8 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">
+            <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
               {selectedStatus} Targets
             </h2>
-
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/45">
-              {loading
-                ? "Loading..."
-                : `${sortedRows.length.toLocaleString()} of ${rows.length.toLocaleString()} targets • Page ${currentPage}/${totalPages}`}
+            <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">
+              {loading ? "Loading…" : `${sortedRows.length.toLocaleString()} of ${rows.length.toLocaleString()} · Page ${currentPage}/${totalPages}`}
             </p>
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="relative w-full sm:w-75">
-              <FiSearch className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[13px] text-slate-400" />
+            <div className="relative w-full sm:w-72">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search target or host..."
-                className="h-9 w-full rounded-xl border border-slate-200 bg-slate-50 pr-3 pl-8 text-[12px] text-slate-800 outline-none transition-all duration-300 placeholder:text-slate-400 focus:border-cyan-300 focus:bg-white focus:ring-3 focus:ring-cyan-100 dark:border-white/10 dark:bg-white/6 dark:text-white dark:placeholder:text-white/35 dark:focus:border-cyan-400/30 dark:focus:ring-cyan-400/10"
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search target or host…"
+                className="h-8 w-full rounded-lg border border-slate-200/70 bg-white pl-8.5 pr-3 text-[11px] text-slate-700 outline-none transition focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/30"
               />
             </div>
 
-            <div className="relative w-full sm:w-45" ref={sortRef}>
+            <div className="relative w-full sm:w-44" ref={sortRef}>
               <button
                 type="button"
-                onClick={() => setOpenSort((prev) => !prev)}
-                className={[
-                  "flex h-9 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left transition",
-                  "border-slate-200 bg-slate-50 text-slate-800 hover:bg-white",
-                  "dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
-                ].join(" ")}
+                onClick={() => setOpenSort(prev => !prev)}
+                className="flex h-8 w-full items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
               >
-                <span className="block truncate text-[12px] font-semibold">
-                  {currentSort.label}
-                </span>
-
-                <FiChevronDown
-                  className={[
-                    "shrink-0 text-[14px] text-slate-400 transition",
-                    openSort ? "rotate-180" : "",
-                  ].join(" ")}
-                />
+                <span className="truncate">{currentSort.label}</span>
+                <FiChevronDown className={`shrink-0 text-[11px] text-slate-400 transition-transform ${openSort ? "rotate-180" : ""}`} />
               </button>
 
               {openSort && (
-                <div
-                  className={[
-                    "absolute right-0 z-50 mt-2 w-full overflow-hidden rounded-2xl border shadow-xl",
-                    "border-slate-200 bg-white",
-                    "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-[0_18px_44px_rgba(0,0,0,0.28)]",
-                  ].join(" ")}
-                >
-                  <div className="p-1.5">
-                    {SORT_OPTIONS.map((option) => {
-                      const active = option.value === sortMode;
-
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => {
-                            setSortMode(option.value);
-                            setOpenSort(false);
-                          }}
-                          className={[
-                            "w-full rounded-xl px-3 py-2 text-left text-[11px] font-semibold transition",
-                            active
-                              ? "border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300"
-                              : "border border-transparent text-slate-700 hover:bg-slate-50 dark:text-white/75 dark:hover:bg-white/6",
-                          ].join(" ")}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="absolute right-0 z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                  {SORT_OPTIONS.map(option => {
+                    const active = option.value === sortMode;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => { setSortMode(option.value); setOpenSort(false); }}
+                        className={[
+                          "w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium transition",
+                          active
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                            : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
+                        ].join(" ")}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -672,7 +616,7 @@ const TargetStatusData: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full min-w-245 border-collapse">
             <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/70 text-left dark:border-white/10 dark:bg-white/4">
+              <tr className="border-b border-slate-100 bg-slate-50/70 text-left dark:border-white/8 dark:bg-white/3">
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
                   Name
                 </th>
@@ -781,8 +725,29 @@ const TargetStatusData: React.FC = () => {
                             {item.task_name || "-"}
                           </p>
 
-                          <p className="mt-0.5 max-w-65 truncate text-[11.5px] text-slate-600 dark:text-white/55">
-                            {item.target_hosts || item.target_name || "-"}
+                          <p className="mt-0.5 max-w-65 text-[11.5px] text-slate-600 dark:text-white/55">
+                            {(() => {
+                              const raw = item.target_hosts || item.target_name || "-";
+                              const parts = raw.split(/[,\s]+/).map((s: string) => s.trim()).filter(Boolean);
+                              const isIP = (s: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(s);
+                              return parts.map((part: string, idx: number) => (
+                                <span key={idx}>
+                                  {idx > 0 && <span className="mr-1">,</span>}
+                                  {isIP(part) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate(`/admin/host/${encodeURIComponent(part)}`)}
+                                      className="font-mono underline decoration-dotted underline-offset-2 hover:text-blue-500 dark:hover:text-blue-400"
+                                      title={`ดูข้อมูล host ${part}`}
+                                    >
+                                      {part}
+                                    </button>
+                                  ) : (
+                                    <span>{part}</span>
+                                  )}
+                                </span>
+                              ));
+                            })()}
                           </p>
                         </div>
                       </td>
@@ -894,10 +859,10 @@ const TargetStatusData: React.FC = () => {
                   }
                   disabled={currentPage === 1}
                   className={[
-                    "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-medium transition",
+                    "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-[11px] font-medium transition",
                     currentPage === 1
-                      ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/25"
-                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                      ? "cursor-not-allowed border-slate-200/70 bg-slate-100 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25"
+                      : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8",
                   ].join(" ")}
                 >
                   Prev
@@ -912,10 +877,10 @@ const TargetStatusData: React.FC = () => {
                       type="button"
                       onClick={() => setCurrentPage(page)}
                       className={[
-                        "inline-flex h-8 min-w-8 items-center justify-center rounded-xl border px-2 text-[11px] font-semibold transition",
+                        "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-[11px] font-semibold transition",
                         active
-                          ? "border-cyan-400 bg-cyan-500 text-white shadow-sm"
-                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8",
                       ].join(" ")}
                     >
                       {page}
@@ -945,6 +910,7 @@ const TargetStatusData: React.FC = () => {
       </section>
     </main>
   );
+
 };
 
 export default TargetStatusData;

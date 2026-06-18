@@ -15,6 +15,7 @@ import {
   FiPlus,
 } from "react-icons/fi";
 import { DeleteUserByID, ListUser, type UserResponse } from "../../services";
+import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { message } from "antd";
 import ModalCreateandUpdateUser from "../../Model/ModalCreateandUpdateUser";
@@ -39,6 +40,7 @@ const isBase64DataImage = (v: string) => {
 };
 
 const Index: React.FC = () => {
+  const { t } = useLanguage();
   const auth = useAuth() as any;
 
   const [search, setSearch] = useState("");
@@ -262,76 +264,53 @@ const Index: React.FC = () => {
   };
 
   const editGradientIconBtn = [
-    "inline-flex h-8 w-8 items-center justify-center rounded-full",
-    "text-white shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-sky-400 via-blue-400 to-indigo-500",
-    "hover:from-sky-500 hover:via-blue-500 hover:to-indigo-600",
-    "focus:outline-none focus:ring-2 focus:ring-sky-200",
-    "dark:focus:ring-sky-500/30",
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
+    "border border-blue-200 bg-blue-50 text-blue-700",
+    "hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15",
   ].join(" ");
 
   const deleteGradientIconBtn = [
-    "inline-flex h-8 w-8 items-center justify-center rounded-full",
-    "text-white shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-rose-400 via-red-400 to-rose-500",
-    "hover:from-rose-500 hover:via-red-500 hover:to-rose-600",
-    "focus:outline-none focus:ring-2 focus:ring-red-200",
-    "dark:focus:ring-red-500/30",
+    "inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200",
+    "border border-red-200 bg-red-50 text-red-700",
+    "hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15",
   ].join(" ");
 
   return (
     <>
-      <section
-        className={[
-          "relative overflow-hidden rounded-[18px] border p-3 sm:p-4",
-          "border-gray-200/80 bg-white shadow-[0_14px_34px_-24px_rgba(15,23,42,0.25)]",
-          "dark:border-white/10 dark:bg-[#08111f]/90 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
-        ].join(" ")}
-      >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-14 right-6 h-28 w-28 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute bottom-0 left-0 h-28 w-28 rounded-full bg-violet-500/10 blur-3xl" />
-        </div>
-
-        <div className="relative z-10">
+      <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
+        <div>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700 dark:border-violet-400/20 dark:bg-violet-500/10 dark:text-violet-300">
-                <FiShield className="text-[11px]" />
-                User Access Monitoring
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                  {t("user.title")}
+                </h2>
+                {!loading && (
+                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                    {rows.length} users
+                  </span>
+                )}
               </div>
-
-              <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[17px] dark:text-white">
-                User Management
-              </h2>
-
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55">
-                Manage admin and user accounts with a smaller and cleaner layout.
-              </p>
             </div>
 
             <button
               type="button"
               onClick={handleCreate}
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-full bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-3.5 text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
+              className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[11px] font-medium text-white transition hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20"
             >
               <FiPlus className="text-[12px]" />
-              <span className="text-[11px] font-medium">Create User</span>
+              {t("user.addUser")}
             </button>
           </div>
 
           <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="relative w-full sm:max-w-sm">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-gray-400 dark:text-white/35" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search firstname / lastname / email / phone / role..."
-                className={[
-                  "h-8 w-full rounded-xl pl-8.5 pr-3 text-[11px] outline-none transition",
-                  "border border-gray-200 bg-white text-slate-800 focus:ring-2 focus:ring-violet-200",
-                  "dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/35 dark:focus:ring-violet-400/10",
-                ].join(" ")}
+                placeholder={t("user.searchByNameOrEmail")}
+                className="h-8 w-full rounded-lg border border-slate-200/70 bg-white pl-8.5 pr-3 text-[11px] text-slate-700 outline-none transition focus:ring-2 focus:ring-blue-200 dark:border-white/8 dark:bg-white/5 dark:text-white/75 dark:placeholder:text-white/30 dark:focus:ring-white/10"
               />
             </div>
 
@@ -339,42 +318,24 @@ const Index: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setOpenSort((s) => !s)}
-                className={[
-                  "inline-flex h-8 items-center gap-2 rounded-xl px-3 transition",
-                  "border border-gray-200/80 bg-white text-[11px] font-medium text-gray-700 hover:bg-gray-50",
-                  "dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/8",
-                ].join(" ")}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
               >
                 {sortBy}
-                <FiChevronDown
-                  className={`text-[12px] text-gray-400 transition dark:text-white/45 ${
-                    openSort ? "rotate-180" : ""
-                  }`}
-                />
+                <FiChevronDown className={`text-[11px] text-slate-400 transition dark:text-white/35 ${openSort ? "rotate-180" : ""}`} />
               </button>
 
               {openSort && (
-                <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-[14px] border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-                  {(
-                    [
-                      "Newest",
-                      "Role: Admin First",
-                      "Role: User First",
-                      "Name A-Z",
-                    ] as SortKey[]
-                  ).map((opt) => (
+                <div className="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                  {(["Newest","Role: Admin First","Role: User First","Name A-Z"] as SortKey[]).map((opt) => (
                     <button
                       key={opt}
                       type="button"
-                      onClick={() => {
-                        setSortBy(opt);
-                        setOpenSort(false);
-                      }}
+                      onClick={() => { setSortBy(opt); setOpenSort(false); }}
                       className={[
-                        "w-full px-3 py-2 text-left text-[11px] transition",
+                        "w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium transition",
                         sortBy === opt
-                          ? "bg-violet-50 font-semibold text-violet-700 dark:bg-violet-500/10 dark:text-violet-200"
-                          : "text-gray-700 hover:bg-gray-50 dark:text-white/70 dark:hover:bg-white/8",
+                          ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                          : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
                       ].join(" ")}
                     >
                       {opt}
@@ -404,7 +365,7 @@ const Index: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-3 overflow-x-auto rounded-2xl border border-gray-200/80 bg-white/80 dark:border-white/10 dark:bg-white/3">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-white/3">
             <div className="min-w-280">
               <table className="w-full border-separate border-spacing-0">
                 <thead>
@@ -538,7 +499,7 @@ const Index: React.FC = () => {
                           colSpan={4}
                           className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
                         >
-                          No user data found
+                          {t("common.noResults")}
                         </td>
                       </tr>
                     )}
@@ -570,13 +531,7 @@ const Index: React.FC = () => {
             aria-label="Close delete modal overlay"
           />
 
-          <div
-            className={[
-              "relative z-10 w-full max-w-85 overflow-hidden rounded-[18px] border",
-              "border-gray-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.16)]",
-              "dark:border-white/10 dark:bg-[#0c1320] dark:shadow-none",
-            ].join(" ")}
-          >
+          <div className="relative z-10 w-full max-w-85 overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
             <button
               type="button"
               onClick={closeDeleteModal}
@@ -589,7 +544,7 @@ const Index: React.FC = () => {
 
             <div className="px-4 pb-3 pt-4">
               <div className="flex items-start gap-3 pr-8">
-                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-linear-to-br from-red-50 to-rose-100 text-red-500 ring-1 ring-red-100 dark:from-red-500/10 dark:to-rose-500/10 dark:text-red-300 dark:ring-red-400/20">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-500 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                   <FiAlertTriangle className="text-[14px]" />
                 </div>
 
@@ -608,7 +563,7 @@ const Index: React.FC = () => {
             </div>
 
             <div className="px-4 pb-4">
-              <div className="rounded-[14px] border border-gray-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-3 dark:border-white/8 dark:bg-white/5">
                 <div className="flex items-center gap-2.5">
                   <div className="grid h-8 w-8 place-items-center rounded-xl bg-white ring-1 ring-gray-200 dark:bg-white/8 dark:ring-white/10">
                     <FiUser className="text-[13px] text-slate-500 dark:text-white/55" />
@@ -625,7 +580,7 @@ const Index: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-3 rounded-[14px] border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-400/20 dark:bg-amber-500/10">
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-400/20 dark:bg-amber-500/10">
                 <div className="flex items-start gap-2">
                   <FiInfo className="mt-px text-[11px] text-amber-700 dark:text-amber-300" />
                   <p className="text-[10px] leading-5 text-amber-800 dark:text-amber-200">
@@ -635,7 +590,7 @@ const Index: React.FC = () => {
               </div>
 
               {deleteError && (
-                <div className="mt-3 rounded-[14px] border border-red-200 bg-red-50 px-3 py-2 text-[10px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[10px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
                   {deleteError}
                 </div>
               )}
@@ -646,9 +601,9 @@ const Index: React.FC = () => {
                   onClick={closeDeleteModal}
                   disabled={deleting}
                   className={[
-                    "inline-flex h-8 items-center justify-center rounded-xl px-3 text-[10.5px] font-medium transition",
-                    "border border-gray-200 bg-white text-slate-700 hover:bg-gray-50",
-                    "dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/8",
+                    "inline-flex h-8 items-center justify-center rounded-lg px-3 text-[10.5px] font-medium transition",
+                    "border border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50",
+                    "dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8",
                     "disabled:cursor-not-allowed disabled:opacity-60",
                   ].join(" ")}
                 >
@@ -660,7 +615,7 @@ const Index: React.FC = () => {
                   onClick={confirmDelete}
                   disabled={deleting}
                   className={[
-                    "inline-flex h-8 items-center justify-center rounded-xl px-3 text-[10.5px] font-medium transition",
+                    "inline-flex h-8 items-center justify-center rounded-lg px-3 text-[10.5px] font-medium transition",
                     "bg-red-500 text-white hover:bg-red-600",
                     "disabled:cursor-not-allowed disabled:opacity-60",
                   ].join(" ")}

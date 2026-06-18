@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FiArrowUpRight,
   FiCheckCircle,
   FiPlayCircle,
   FiPauseCircle,
@@ -300,171 +299,105 @@ const StatusTarget: React.FC = () => {
 
   return (
     <section className="w-full">
-      <div
-        className={[
-          "relative overflow-hidden rounded-[22px] px-4 sm:px-5 md:px-6 pt-5 sm:pt-6 pb-18 sm:pb-20",
-          "bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.10),transparent_22%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.10),transparent_24%),linear-gradient(135deg,#1e1b4b_0%,#111827_50%,#0b1220_100%)]",
-          "text-white border border-white/10",
-        ].join(" ")}
-      >
-        <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-56 w-56 rounded-full bg-violet-500/10 blur-3xl" />
 
-        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      {/* ── Dark hero banner (with bottom padding for card overlap) ── */}
+      <div className="relative overflow-hidden rounded-xl px-5 pb-20 pt-6 sm:px-6 sm:pb-22 sm:pt-7 bg-slate-900 dark:bg-[#0b0e1a] border border-white/8">
+        <div className="pointer-events-none absolute -top-12 right-8 h-40 w-40 rounded-full bg-cyan-500/12 blur-[60px]" />
+        <div className="pointer-events-none absolute -bottom-12 left-8 h-36 w-36 rounded-full bg-violet-500/12 blur-[60px]" />
+
+        <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h2 className="text-[22px] font-semibold tracking-tight sm:text-[26px]">
+            <h2 className="text-[20px] font-semibold tracking-tight text-white sm:text-[22px]">
               Scanning Network Status
             </h2>
-
-            <p className="mt-1.5 text-[11px] text-white/70 sm:text-[12px]">
-              Click a status card to view matching target details
+            <p className="mt-1.5 text-[11px] text-white/50">
+              Click a status card to view matching target details · {nowText}
             </p>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
-                <FiShield className="text-[12px] text-cyan-300" />
-                Security Monitor
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-2.5 py-1.5 text-[10.5px] text-white/80 backdrop-blur-sm">
-                <FiRadio className="text-[12px] text-violet-300" />
-                {loading ? "Syncing..." : dominantStatus}
-              </div>
-            </div>
           </div>
 
-          <div className="shrink-0 rounded-2xl border border-white/10 bg-white/8 px-3 py-2.5 backdrop-blur-sm">
-            <p className="text-[9px] uppercase tracking-[0.16em] text-white/50">
-              Date
-            </p>
-            <p className="mt-1 text-[11px] text-white/85 sm:text-[12px]">
-              {nowText}
-            </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[10.5px] text-white/70">
+              <FiShield className="text-[11px] text-cyan-400" />
+              Security Monitor
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[10.5px] text-white/70">
+              <FiRadio className="text-[11px] text-violet-400" />
+              {loading ? "Syncing…" : dominantStatus}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="relative z-10 -mt-13 px-3 sm:-mt-15 sm:px-4 md:px-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
-          {stats.map((s) => {
-            const theme = themeByStatus[s.title];
-            const count = statusCounts[s.title];
-            const percent = loading ? 0 : percents[s.title];
+      {/* ── Stat cards overlapping the banner ── */}
+      <div className="-mt-14 grid grid-cols-2 gap-3 px-3 sm:-mt-16 sm:gap-4 sm:px-4 md:grid-cols-4 md:px-5">
+        {stats.map((s) => {
+          const theme = themeByStatus[s.title];
+          const count = statusCounts[s.title];
+          const percent = loading ? 0 : percents[s.title];
 
-            return (
+          return (
+            <div
+              key={s.id}
+              role="button"
+              tabIndex={0}
+              title={loading ? "Loading..." : `View ${s.title} targets`}
+              aria-label={`View ${s.title} targets`}
+              onClick={() => handleStatusClick(s.title)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleStatusClick(s.title);
+                }
+              }}
+              className={[
+                "group relative overflow-hidden rounded-xl border border-slate-200/70 bg-white px-4 py-4 transition-all duration-200",
+                "hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300",
+                loading ? "cursor-wait" : "cursor-pointer",
+                "dark:border-white/8 dark:bg-[#0d0b1a]",
+              ].join(" ")}
+            >
+              {/* Thin accent top bar */}
               <div
-                key={s.id}
-                role="button"
-                tabIndex={0}
-                title={loading ? "Loading..." : `View ${s.title} targets`}
-                aria-label={`View ${s.title} targets`}
-                onClick={() => handleStatusClick(s.title)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    handleStatusClick(s.title);
-                  }
-                }}
-                className={[
-                  "group relative overflow-hidden rounded-[22px] border p-3 transition-all duration-300 sm:p-3.5",
-                  "focus-visible:outline-none focus-visible:ring-4",
-                  "hover:-translate-y-0.5 hover:shadow-lg",
-                  loading ? "cursor-wait" : "cursor-pointer",
-                  theme.focus,
-                  theme.panelLight,
-                  theme.panelDark,
-                  theme.borderLight,
-                  theme.borderDark,
-                  theme.glow,
-                ].join(" ")}
-              >
-                <div
-                  className="pointer-events-none absolute inset-x-0 top-0 h-1"
-                  style={{
-                    background: `linear-gradient(90deg, ${theme.soft}, ${theme.accent})`,
-                  }}
-                />
+                className="pointer-events-none absolute inset-x-0 top-0 h-0.5 rounded-t-xl"
+                style={{ backgroundColor: theme.accent }}
+              />
 
-                <div
-                  className="pointer-events-none absolute -top-12 -right-12 h-24 w-24 rounded-full blur-3xl"
-                  style={{ background: `${theme.accent}18` }}
-                />
-
-                <div className="relative">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[12px] font-semibold text-slate-900 dark:text-white/90">
-                          {s.title}
-                        </p>
-
-                        {!loading && (
-                          <FiArrowUpRight className="text-[12px] text-slate-400 opacity-70 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100 dark:text-white/45" />
-                        )}
-                      </div>
-
-                      <p className="mt-0.5 text-[10.5px] text-slate-600 dark:text-white/55">
-                        {s.subtitle}
-                      </p>
-                    </div>
-
-                    <div
-                      className={[
-                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] text-[16px] shadow-sm transition-transform duration-300 group-hover:scale-105",
-                        theme.iconWrap,
-                        theme.iconColor,
-                      ].join(" ")}
-                    >
-                      {s.icon}
-                    </div>
-                  </div>
-
-                  <div className="mt-3.5 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-[22px] font-semibold leading-none tracking-tight text-slate-900 tabular-nums dark:text-white sm:text-[26px]">
-                        {s.value}
-                      </p>
-                      <p className="mt-1.5 text-[10.5px] text-slate-600 dark:text-white/55">
-                        {loading ? "Loading..." : `${count} tasks`}
-                      </p>
-                    </div>
-
-                    <span
-                      className={[
-                        "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold backdrop-blur-sm",
-                        theme.chip,
-                      ].join(" ")}
-                    >
-                      {loading ? "Sync" : `${percent}%`}
-                    </span>
-                  </div>
-
-                  <div className="mt-3.5">
-                    <div className="mb-1.5 flex items-center justify-between text-[9.5px] text-slate-600 dark:text-white/45">
-                      <span>Status</span>
-                      <span>{loading ? "..." : `${count}/${totalTasks}`}</span>
-                    </div>
-
-                    <div className="h-2 w-full overflow-hidden rounded-full border border-black/5 bg-black/5 dark:border-white/10 dark:bg-white/10">
-                      <div
-                        className={`h-full rounded-full transition-all duration-700 ${theme.progress}`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2.5 dark:border-white/10">
-                    <span className="text-[10px] font-medium text-slate-500 dark:text-white/45">
-                      Click to view targets
-                    </span>
-
-                    <FiArrowUpRight className="text-[12px] text-slate-400 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-slate-600 dark:text-white/40 dark:group-hover:text-white/70" />
-                  </div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-slate-800 dark:text-white/90">
+                    {s.title}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-500 dark:text-white/45">
+                    {s.subtitle}
+                  </p>
                 </div>
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[16px] text-white shadow-sm"
+                  style={{ backgroundColor: theme.accent }}
+                >
+                  {s.icon}
+                </span>
               </div>
-            );
-          })}
-        </div>
+
+              <p className="mt-3.5 text-[28px] font-bold leading-none tracking-tight text-slate-900 tabular-nums dark:text-white sm:text-[32px]">
+                {loading
+                  ? <span className="inline-block h-8 w-10 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
+                  : s.value}
+              </p>
+
+              <p className="mt-1.5 text-[10.5px] text-slate-500 dark:text-white/45">
+                {loading ? "—" : `${count} tasks`}
+              </p>
+
+              <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/8">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${percent}%`, backgroundColor: theme.accent }}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

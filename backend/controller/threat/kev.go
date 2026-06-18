@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -484,14 +485,9 @@ WHERE LOWER(BTRIM(vr.type)) = 'cve'
 		byHostList = append(byHostList, *h)
 	}
 
-	// Sort by KEV count descending
-	for i := 0; i < len(byHostList)-1; i++ {
-		for j := i + 1; j < len(byHostList); j++ {
-			if byHostList[j].KEVCount > byHostList[i].KEVCount {
-				byHostList[i], byHostList[j] = byHostList[j], byHostList[i]
-			}
-		}
-	}
+	sort.Slice(byHostList, func(i, j int) bool {
+		return byHostList[i].KEVCount > byHostList[j].KEVCount
+	})
 
 	lastSync := ""
 	if !kevLastSyncAt.IsZero() {

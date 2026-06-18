@@ -6,7 +6,6 @@ import {
   FiSquare,
   FiCheckSquare,
   FiChevronDown,
-  FiShield,
   FiAlertTriangle,
   FiCheckCircle,
   FiMessageSquare,
@@ -25,6 +24,7 @@ import {
   DeleteHistoryNotifyByIDs,
   type HistoryNotifyResponse,
 } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type FilterKey =
   | "All"
@@ -393,7 +393,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72.5 rounded-[18px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+        <div className="absolute right-0 mt-1.5 w-72 rounded-xl border border-slate-200/80 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0d0b1a]">
           <div className="p-2 border-b border-gray-100 dark:border-white/10">
             <div
               className={[
@@ -610,7 +610,7 @@ const StatusFilterDropdown: React.FC<StatusFilterProps> = ({
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-full rounded-[18px] border border-gray-200 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
+        <div className="absolute right-0 mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0d0b1a]">
           <div className="p-2 border-b border-gray-100 dark:border-white/10">
             <div
               className={[
@@ -723,6 +723,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
   loading,
   error,
 }) => {
+  const { t } = useLanguage();
   const [search, setSearch] = useState("");
 
   const [selectedFilters, setSelectedFilters] = useState<FilterKey[]>(["All"]);
@@ -1141,45 +1142,15 @@ const Index: React.FC<HistoryNotifyProps> = ({
   }, [notifications]);
 
   return (
-    <section
-      className={[
-        "relative overflow-hidden rounded-[18px] p-3 sm:p-3.5",
-        "bg-white border border-gray-200/80 shadow-[0_12px_28px_-24px_rgba(15,23,42,0.20)]",
-        "dark:bg-[#08111f]/95 dark:border-white/10 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
-      ].join(" ")}
-    >
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -top-12 right-5 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]">
-          <div
-            className="h-full w-full"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, currentColor 1px, transparent 1px),
-                linear-gradient(to bottom, currentColor 1px, transparent 1px)
-              `,
-              backgroundSize: "24px 24px",
-            }}
-          />
-        </div>
-      </div>
-
-      <div className="relative z-10">
+    <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
+      <div>
         <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[9.5px] font-semibold text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-              <FiShield className="text-[10px]" />
-              Notification History Center
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                {t("line.notificationHistory")}
+              </h2>
             </div>
-
-            <h2 className="mt-2 text-[16px] font-semibold tracking-tight text-slate-900 sm:text-[18px] dark:text-white">
-              Summary Notifications
-            </h2>
-
-            <p className="mt-0.5 text-[10.5px] text-slate-500 sm:text-[11px] dark:text-white/55">
-              Review, search, filter, and manage notification history records.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -1261,7 +1232,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   ? "bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300 dark:hover:bg-red-500/15"
                   : "bg-white border border-gray-200 text-gray-300 cursor-not-allowed dark:bg-white/5 dark:border-white/10 dark:text-white/20",
               ].join(" ")}
-              title="Delete selected"
+              title={t("line.deleteSelected")}
             >
               <FiTrash2 className="text-[12px]" />
             </button>

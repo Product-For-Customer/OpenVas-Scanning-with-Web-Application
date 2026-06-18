@@ -1,5 +1,16 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import type { ReactNode, ChangeEvent } from "react";
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 
 interface InitialState {
   chat: boolean;
@@ -8,7 +19,7 @@ interface InitialState {
   notification: boolean;
 }
 
-type ThemeMode = "Light" | "Dark";
+export type ThemeMode = "Light" | "Dark";
 
 interface StateContextType {
   screenSize: number | undefined;
@@ -19,6 +30,7 @@ interface StateContextType {
 
   currentMode: ThemeMode;
   setCurrentMode: React.Dispatch<React.SetStateAction<ThemeMode>>;
+  setTheme: (mode: ThemeMode) => void;
 
   themeSettings: boolean;
   setThemeSettings: React.Dispatch<React.SetStateAction<boolean>>;
@@ -33,7 +45,6 @@ interface StateContextType {
   setMode: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   setColor: (color: string) => void;
   handleClick: (clicked: keyof InitialState) => void;
-
   toggleMode: () => void;
 
   userRefreshTrigger: number;
@@ -49,103 +60,127 @@ const initialState: InitialState = {
 
 const StateContext = createContext<StateContextType | undefined>(undefined);
 
-interface ContextProviderProps {
-  children: ReactNode;
-}
+// ─────────────────────────────────────────────────────────────
+// Storage keys
+// ─────────────────────────────────────────────────────────────
 
-const STORAGE_KEY_MODE = "themeMode";
+const STORAGE_KEY_MODE  = "themeMode";
 const STORAGE_KEY_COLOR = "colorMode";
+const DEFAULT_COLOR     = "#1A97F5";
 
-const applySyncfusionTheme = (mode: ThemeMode) => {
-  const link = document.getElementById("ej2-theme") as HTMLLinkElement | null;
-  if (!link) return;
-
-  const lightHref = "https://cdn.syncfusion.com/ej2/material.css";
-  const darkHref = "https://cdn.syncfusion.com/ej2/material-dark.css";
-
-  link.href = mode === "Dark" ? darkHref : lightHref;
-};
+// ─────────────────────────────────────────────────────────────
+// DOM helpers
+// ─────────────────────────────────────────────────────────────
 
 const applyTheme = (mode: ThemeMode) => {
-  const root = document.documentElement;
-  if (mode === "Dark") root.classList.add("dark");
-  else root.classList.remove("dark");
-
-  applySyncfusionTheme(mode);
+  if (mode === "Dark") document.documentElement.classList.add("dark");
+  else document.documentElement.classList.remove("dark");
 };
 
-const getSystemPrefMode = (): ThemeMode => {
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
-  return prefersDark ? "Dark" : "Light";
+/** Sets the --accent CSS custom property used by all accent utilities */
+const applyAccentColor = (color: string) => {
+  document.documentElement.style.setProperty("--accent", color);
 };
 
-export const ContextProvider: React.FC<ContextProviderProps> = ({ children }) => {
-  const [screenSize, setScreenSize] = useState<number | undefined>(undefined);
-  const [currentColor, setCurrentColor] = useState<string>("#1860e7ff");
-  const [currentMode, setCurrentMode] = useState<ThemeMode>("Light");
-  const [themeSettings, setThemeSettings] = useState<boolean>(false);
-  const [activeMenu, setActiveMenu] = useState<boolean>(true);
-  const [isClicked, setIsClicked] = useState<InitialState>(initialState);
+const getSystemPrefMode = (): ThemeMode =>
+  window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "Dark" : "Light";
+
+// ─────────────────────────────────────────────────────────────
+// Provider
+// ─────────────────────────────────────────────────────────────
+
+export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [screenSize, setScreenSize]         = useState<number | undefined>(undefined);
+  const [currentColor, setCurrentColor]     = useState<string>(DEFAULT_COLOR);
+  const [currentMode, setCurrentMode]       = useState<ThemeMode>("Light");
+  const [themeSettings, setThemeSettings]   = useState<boolean>(false);
+  const [activeMenu, setActiveMenu]         = useState<boolean>(true);
+  const [isClicked, setIsClicked]           = useState<InitialState>(initialState);
   const [userRefreshTrigger, setUserRefreshTrigger] = useState<number>(0);
 
+  // ── Init from localStorage ──────────────────────────────────
   useEffect(() => {
-    const savedMode = localStorage.getItem(STORAGE_KEY_MODE);
+    const savedMode  = localStorage.getItem(STORAGE_KEY_MODE);
     const savedColor = localStorage.getItem(STORAGE_KEY_COLOR);
 
-    const initMode: ThemeMode =
+    const mode: ThemeMode =
       savedMode === "Dark" || savedMode === "Light"
         ? (savedMode as ThemeMode)
         : getSystemPrefMode();
 
-    setCurrentMode(initMode);
-    localStorage.setItem(STORAGE_KEY_MODE, initMode);
+    setCurrentMode(mode);
+    applyTheme(mode);
 
-    if (savedColor) setCurrentColor(savedColor);
-
-    applyTheme(initMode);
+    const color = savedColor || DEFAULT_COLOR;
+    setCurrentColor(color);
+    applyAccentColor(color);
   }, []);
 
+  // ── Keep .dark class in sync with currentMode ───────────────
   useEffect(() => {
     applyTheme(currentMode);
-    localStorage.setItem(STORAGE_KEY_MODE, currentMode);
   }, [currentMode]);
 
+  // ── Cross-tab sync (both mode AND color) ────────────────────
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== STORAGE_KEY_MODE) return;
-      if (e.newValue === "Dark" || e.newValue === "Light") {
-        setCurrentMode(e.newValue);
+      if (e.key === STORAGE_KEY_MODE && e.newValue) {
+        const mode: ThemeMode = e.newValue === "Dark" ? "Dark" : "Light";
+        setCurrentMode(mode);
+      }
+      if (e.key === STORAGE_KEY_COLOR && e.newValue) {
+        setCurrentColor(e.newValue);
+        applyAccentColor(e.newValue);
       }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const setMode = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const next: ThemeMode = e.target.value === "Dark" ? "Dark" : "Light";
-    setCurrentMode(next);
-  };
+  // ── Methods ─────────────────────────────────────────────────
 
-  const toggleMode = () => {
-    setCurrentMode((prev) => (prev === "Dark" ? "Light" : "Dark"));
-  };
+  /** Set dark/light mode — applies CSS class + persists to localStorage */
+  const setTheme = useCallback((mode: ThemeMode) => {
+    setCurrentMode(mode);
+    localStorage.setItem(STORAGE_KEY_MODE, mode);
+  }, []);
 
-  const setColor = (color: string) => {
+  const setMode = useCallback(
+    (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setTheme(e.target.value === "Dark" ? "Dark" : "Light");
+    },
+    [setTheme]
+  );
+
+  const toggleMode = useCallback(() => {
+    setTheme(currentMode === "Dark" ? "Light" : "Dark");
+  }, [currentMode, setTheme]);
+
+  /** Set accent color — applies CSS variable + persists to localStorage */
+  const setColor = useCallback((color: string) => {
     setCurrentColor(color);
+    applyAccentColor(color);
     localStorage.setItem(STORAGE_KEY_COLOR, color);
-  };
+  }, []);
 
-  const handleClick = (clicked: keyof InitialState) =>
-    setIsClicked({ ...initialState, [clicked]: true });
+  const handleClick = useCallback(
+    (clicked: keyof InitialState) =>
+      setIsClicked({ ...initialState, [clicked]: true }),
+    []
+  );
 
-  const triggerUserRefresh = () => {
-    setUserRefreshTrigger((prev) => prev + 1);
-  };
+  const triggerUserRefresh = useCallback(
+    () => setUserRefreshTrigger((prev) => prev + 1),
+    []
+  );
 
+  // ── Context value ────────────────────────────────────────────
   const value = useMemo<StateContextType>(
     () => ({
       currentColor,
       currentMode,
+      setCurrentMode,
+      setTheme,
       activeMenu,
       screenSize,
       setScreenSize,
@@ -155,7 +190,6 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({ children }) =>
       setIsClicked,
       setActiveMenu,
       setCurrentColor,
-      setCurrentMode,
       setMode,
       setColor,
       themeSettings,
@@ -167,16 +201,25 @@ export const ContextProvider: React.FC<ContextProviderProps> = ({ children }) =>
     [
       currentColor,
       currentMode,
+      setTheme,
       activeMenu,
       screenSize,
       isClicked,
       themeSettings,
+      setMode,
+      setColor,
+      toggleMode,
       userRefreshTrigger,
+      triggerUserRefresh,
     ]
   );
 
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
 };
+
+// ─────────────────────────────────────────────────────────────
+// Hook
+// ─────────────────────────────────────────────────────────────
 
 export const useStateContext = (): StateContextType => {
   const context = useContext(StateContext);

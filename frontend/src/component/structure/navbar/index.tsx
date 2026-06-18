@@ -1,14 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AiOutlineMenu } from "react-icons/ai";
-import { RiNotification3Line } from "react-icons/ri";
 import { MdKeyboardArrowDown } from "react-icons/md";
-import { Notification, UserProfile } from "../path";
+import { UserProfile } from "../path";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useAuth } from "../../../contexts/AuthContext";
 import { pathOpenVas } from "../../../services/api";
-import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
+import { HiOutlinePaintBrush } from "react-icons/hi2";
 import greenboneIcon from "../../../assets/logo-light.svg";
 import { ListUserByID, type UserResponse } from "../../../services";
+import { useLanguage, LANGUAGE_OPTIONS } from "../../../contexts/LanguageContext";
+import type { Lang } from "../../../locales";
+import { FiCheck } from "react-icons/fi";
+import flagEN from "../../../assets/flags/english.png";
+import flagTH from "../../../assets/flags/thai.png";
+import flagZH from "../../../assets/flags/china.png";
+
+const FLAG_MAP: Record<Lang, string> = { en: flagEN, th: flagTH, zh: flagZH };
 
 type NavBtnProps = {
   title: string;
@@ -128,7 +135,10 @@ const NavButton: React.FC<NavBtnProps> = ({
       )}
 
       {typeof badgeCount === "number" && badgeCount > 0 && (
-        <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-linear-to-r from-cyan-500 to-violet-500 px-1 text-[10px] font-bold leading-none text-white shadow-sm">
+        <span
+          className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none text-white shadow-sm"
+          style={{ background: `linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 60%, #9333ea))` }}
+        >
           {badgeCount > 99 ? "99+" : badgeCount}
         </span>
       )}
@@ -138,20 +148,136 @@ const NavButton: React.FC<NavBtnProps> = ({
   </SimpleTooltip>
 );
 
+// ── Language Switcher ─────────────────────────────────────────────────────
+
+const LanguageSwitcher: React.FC = () => {
+  const { lang, setLang, t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      {/* Trigger — circular flag */}
+      <button
+        type="button"
+        aria-label={t("navbar.language")}
+        onClick={() => setOpen((p) => !p)}
+        style={{ WebkitTapHighlightColor: "transparent" }}
+        className={[
+          "inline-flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+          "hover:bg-gray-100 dark:hover:bg-white/10",
+          open ? "bg-gray-100 dark:bg-white/10" : "",
+          "focus:outline-none focus:ring-0",
+        ].join(" ")}
+      >
+        <div className="h-6 w-6 overflow-hidden rounded-full shadow-sm ring-1 ring-black/12 dark:ring-white/15">
+          <img
+            src={FLAG_MAP[lang]}
+            alt={lang}
+            draggable={false}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          className={[
+            "absolute right-0 top-[calc(100%+8px)] z-9999 w-44 overflow-hidden",
+            "rounded-2xl shadow-[0_8px_30px_-8px_rgba(0,0,0,0.18)]",
+            "border border-slate-200 bg-white",
+            "dark:border-white/8 dark:bg-[#0d0b1a]",
+          ].join(" ")}
+        >
+          {/* Accent top bar */}
+          <div
+            className="h-0.5 w-full"
+            style={{
+              background: `linear-gradient(to right, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`,
+            }}
+          />
+
+          <div className="p-1.5">
+            {LANGUAGE_OPTIONS.map((opt) => {
+              const active = lang === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { setLang(opt.value); setOpen(false); }}
+                  className={[
+                    "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
+                    active ? "" : "hover:bg-slate-50 dark:hover:bg-white/6",
+                    "focus:outline-none",
+                  ].join(" ")}
+                  style={active ? { backgroundColor: `${currentColor}12` } : undefined}
+                >
+                  {/* Rectangle flag */}
+                  <div className="h-5 w-8 shrink-0 overflow-hidden rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10">
+                    <img
+                      src={FLAG_MAP[opt.value]}
+                      alt={opt.englishName}
+                      draggable={false}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={["text-[12px] font-medium", active ? "" : "text-slate-700 dark:text-white/75"].join(" ")}
+                      style={active ? { color: currentColor } : undefined}
+                    >
+                      {opt.nativeName}
+                    </p>
+                    <p className="text-[10px] text-slate-400 dark:text-white/35">
+                      {opt.englishName}
+                    </p>
+                  </div>
+
+                  {active && (
+                    <FiCheck
+                      className="shrink-0 text-[13px]"
+                      style={{ color: currentColor }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Navbar ────────────────────────────────────────────────────────────────
+
 const Navbar: React.FC = () => {
   const {
     activeMenu,
     setActiveMenu,
+    currentColor,
     handleClick,
     isClicked,
     setScreenSize,
     screenSize,
-    currentMode,
-    toggleMode,
+    setThemeSettings,
     userRefreshTrigger,
   } = useStateContext();
 
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
 
   const [navbarUser, setNavbarUser] = useState<UserResponse | null>(null);
   const [profileError, setProfileError] = useState(false);
@@ -319,25 +445,16 @@ const Navbar: React.FC = () => {
     >
       <div className="px-2.5 pb-2.5 pt-2.5 sm:px-3.5 md:px-4.5 lg:px-5">
         <div
-          className={[
-            "relative flex min-h-18.5 w-full items-center justify-between overflow-hidden rounded-[22px]",
-            "border border-gray-200/80 bg-white/92 shadow-[0_14px_36px_-24px_rgba(15,23,42,0.28)] backdrop-blur",
-            "dark:border-white/10 dark:bg-[#08111f]/80 dark:ring-1 dark:ring-cyan-400/10 dark:shadow-none",
-          ].join(" ")}
+          className="flex min-h-18.5 w-full items-center justify-between rounded-xl border border-slate-200/70 bg-white shadow-sm dark:border-white/8 dark:bg-[#0d0b1a]"
         >
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute -top-12 right-10 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-            <div className="absolute -bottom-12 left-16 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
-          </div>
-
-          <div className="relative z-10 flex min-w-0 flex-1 items-center gap-2.5 pl-3 sm:gap-3 sm:pl-4 md:pl-5">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 pl-3 sm:gap-3 sm:pl-4 md:pl-5">
             <SimpleTooltip
               content={activeMenu ? "Hide menu" : "Open menu"}
               position="BottomCenter"
             >
               <button
                 type="button"
-                aria-label="Toggle menu"
+                aria-label={t("navbar.toggleMenu")}
                 onClick={handleActiveMenu}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 className={[
@@ -352,11 +469,11 @@ const Navbar: React.FC = () => {
             </SimpleTooltip>
           </div>
 
-          <div className="relative z-10 flex h-full shrink-0 items-center">
+          <div className="flex h-full shrink-0 items-center">
             <div className="flex items-center gap-1 px-2 sm:px-3">
               <NavButton
-                title="Go to OpenVAS"
-                aria-label="Go to OpenVAS"
+                title={t("navbar.gotoOpenVAS")}
+                aria-label={t("navbar.gotoOpenVAS")}
                 onClick={openGreenbone}
                 icon={
                   <img
@@ -368,28 +485,19 @@ const Navbar: React.FC = () => {
               />
 
               <NavButton
-                title={currentMode === "Dark" ? "Light mode" : "Dark mode"}
-                aria-label="Toggle theme"
-                onClick={toggleMode}
-                icon={
-                  currentMode === "Dark" ? <HiOutlineSun /> : <HiOutlineMoon />
-                }
+                title={t("navbar.appearance")}
+                aria-label={t("navbar.appearance")}
+                onClick={() => setThemeSettings(prev => !prev)}
+                icon={<HiOutlinePaintBrush />}
               />
 
-              <NavButton
-                title="Notifications"
-                aria-label="Open notifications"
-                badgeCount={0}
-                dotColor="#22d3ee"
-                onClick={() => handleClick("notification")}
-                icon={<RiNotification3Line />}
-              />
+              <LanguageSwitcher />
             </div>
 
             <div className="h-8 w-px bg-gray-200/90 dark:bg-white/10" />
 
             <div className="px-2.5 sm:px-3.5 md:px-4">
-              <SimpleTooltip content="Profile" position="BottomCenter">
+              <SimpleTooltip content={t("navbar.profile")} position="BottomCenter">
                 <button
                   type="button"
                   onClick={() => handleClick("userProfile")}
@@ -400,7 +508,7 @@ const Navbar: React.FC = () => {
                     "dark:hover:bg-white/10 dark:active:bg-white/15",
                     "focus:outline-none focus:ring-0",
                   ].join(" ")}
-                  aria-label="Open profile"
+                  aria-label={t("navbar.profile")}
                 >
                   <div className="relative shrink-0">
                     <img
@@ -413,12 +521,15 @@ const Navbar: React.FC = () => {
                       ].join(" ")}
                       onError={() => setProfileError(true)}
                     />
-                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-cyan-400 ring-2 ring-white dark:ring-[#08111f]" />
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-white dark:ring-[#0d0b1a]"
+                      style={{ backgroundColor: currentColor }}
+                    />
                   </div>
 
                   <div className="hidden text-left leading-tight sm:block">
                     <span className="block text-[11px] font-medium uppercase tracking-[0.14em] text-gray-400 dark:text-white/35">
-                      Profile
+                      {t("navbar.profile")}
                     </span>
                     <span className="block max-w-24 truncate text-[13px] font-semibold text-gray-700 dark:text-white/85 md:max-w-30">
                       {fullName}
@@ -432,8 +543,6 @@ const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {isClicked.notification && <Notification />}
 
       {isClicked.userProfile && (
         <UserProfile
