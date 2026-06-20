@@ -208,13 +208,13 @@ const ModalOTP: React.FC<ModalOTPProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-900/30 backdrop-blur-[3px] px-4">
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/50 backdrop-blur-[3px] px-4">
       <div
         className={[
-          "w-full max-w-95 rounded-3xl border px-6 py-7",
+          "w-full max-w-95 overflow-hidden rounded-2xl border px-6 py-7",
           "border-slate-200/80 bg-white",
-          "shadow-[0_20px_70px_rgba(15,23,42,0.16)]",
-          "dark:border-white/10 dark:bg-[#0f172a]",
+          "shadow-[0_24px_64px_rgba(15,23,42,0.20)]",
+          "dark:border-white/10 dark:bg-[#12101f]",
         ].join(" ")}
       >
         <div className="mx-auto flex h-15 w-15 items-center justify-center rounded-full bg-slate-100 dark:bg-white/8">

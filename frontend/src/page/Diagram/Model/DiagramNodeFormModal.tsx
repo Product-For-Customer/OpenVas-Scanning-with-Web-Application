@@ -14,7 +14,6 @@ import {
   FiType,
   FiAlignLeft,
   FiRefreshCw,
-  FiCpu,
   FiMapPin,
   FiChevronDown,
   FiSearch,
@@ -27,6 +26,7 @@ import {
 } from "react-icons/fi";
 import type { AppDiagramNodeResponse } from "../../../services/diagram";
 import { ListALLTarget, type AllTargetDTO } from "../../../services";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 export type DiagramNodeModalMode = "create" | "edit";
 
@@ -114,6 +114,9 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   onSubmit,
   onDelete,
 }) => {
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
   const [form, setForm] = useState<DiagramNodeFormValues>(defaultForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -431,27 +434,6 @@ const DiagramNodeFormModal: React.FC<Props> = ({
     "disabled:cursor-not-allowed disabled:opacity-60",
   ].join(" ");
 
-  const secondaryBtn = [
-    "h-8.5 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
-    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-  ].join(" ");
-
-  const actionBtn = [
-    "h-8.5 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
-    "bg-cyan-500 text-white hover:bg-cyan-600 border border-cyan-500 shadow-sm",
-    "dark:bg-cyan-500 dark:text-white dark:hover:bg-cyan-400 dark:border-cyan-400/30",
-  ].join(" ");
-
-  const deleteGradientIconBtn = [
-    "inline-flex h-8 w-8 items-center justify-center rounded-full",
-    "text-white shadow-sm transition-all duration-200",
-    "bg-linear-to-r from-rose-400 via-red-400 to-rose-500",
-    "hover:from-rose-500 hover:via-red-500 hover:to-rose-600",
-    "focus:outline-none focus:ring-2 focus:ring-red-200",
-    "dark:focus:ring-red-500/30",
-  ].join(" ");
-
   const isUpdateDisabled =
     submitting ||
     loading ||
@@ -459,66 +441,46 @@ const DiagramNodeFormModal: React.FC<Props> = ({
     (mode === "edit" && !isFormChanged);
 
   return (
-    <div
-      className="fixed inset-0 z-1200"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-1200" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
       <div className="absolute inset-0 overflow-hidden">
         <div
           ref={modalCardRef}
           onClick={(e) => e.stopPropagation()}
-          className="absolute left-1/2 w-[calc(100vw-24px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none"
+          className="absolute left-1/2 w-[calc(100vw-24px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
           style={{
             top: modalTop ?? 16,
             maxHeight: "calc(100vh - 32px)",
+            boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.22)`,
           }}
         >
-          <div className="relative border-b border-gray-100 bg-white px-3.5 py-3 dark:border-white/10 dark:bg-[#0B1220]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-linear-to-r from-cyan-500/8 via-transparent to-violet-500/8 dark:from-cyan-500/10 dark:via-transparent dark:to-violet-500/10" />
-
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200/80 bg-cyan-50 px-2 py-1 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-                  {mode === "create" ? (
-                    <FiPlus className="text-[9px]" />
-                  ) : (
-                    <FiEdit2 className="text-[9px]" />
-                  )}
-                  <span className="text-[8.5px] font-semibold tracking-wide">
-                    {mode === "create"
-                      ? "Create Diagram Node"
-                      : "Edit Diagram Node"}
-                  </span>
-                </div>
-
-                <div className="mt-2.5 flex items-center gap-2">
-                  <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-cyan-200/80 bg-cyan-50 dark:border-cyan-400/20 dark:bg-cyan-500/10">
-                    <FiCpu className="text-[15px] text-cyan-600 dark:text-cyan-300" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/90">
-                      Diagram Node
-                    </p>
-                    <p className="mt-0.5 text-[9.5px] text-gray-500 dark:text-white/50">
-                      {subtitle}
-                    </p>
-                  </div>
-                </div>
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+                {mode === "create" ? <FiPlus className="text-[14px]" /> : <FiEdit2 className="text-[14px]" />}
+              </span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                  {mode === "create" ? "CREATE NODE" : "EDIT NODE"}
+                </p>
+                <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
+                  Diagram Node
+                </h3>
+                <p className="text-[10px] text-slate-400 dark:text-white/35">{subtitle}</p>
               </div>
-
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting || loading}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/8"
-              >
-                <FiX className="text-[14px]" />
-              </button>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting || loading}
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+            >
+              <FiX className="text-[15px]" />
+            </button>
           </div>
 
-          <div className="max-h-[calc(100vh-190px)] overflow-y-auto px-3.5 py-3.5">
+          <div className="max-h-[calc(100vh-190px)] overflow-y-auto px-5 py-5">
             <div className="space-y-3">
               <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
                 <div className="mb-2.5 flex items-center gap-2">
@@ -752,63 +714,47 @@ const DiagramNodeFormModal: React.FC<Props> = ({
             </div>
           </div>
 
-          <div className="flex flex-col-reverse gap-2 border-t border-gray-100 bg-white/90 px-3.5 py-3 dark:border-white/10 dark:bg-[#0B1220] sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
             <div>
               {mode === "edit" && onDelete ? (
                 <button
                   type="button"
                   onClick={onDelete}
                   disabled={submitting || loading}
-                  className={[
-                    deleteGradientIconBtn,
-                    submitting || loading
-                      ? "cursor-not-allowed opacity-60"
-                      : "",
-                  ].join(" ")}
                   title="Delete"
                   aria-label="Delete"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
                 >
-                  <FiTrash2 className="text-[12px]" />
+                  <FiTrash2 className="text-[13px]" />
                 </button>
               ) : (
                 <div />
               )}
             </div>
-
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting || loading}
-                className={[
-                  secondaryBtn,
-                  submitting || loading ? "cursor-not-allowed opacity-60" : "",
-                ].join(" ")}
+                className="rounded-xl border border-slate-200 px-4 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isUpdateDisabled}
-                className={[
-                  actionBtn,
-                  isUpdateDisabled ? "cursor-not-allowed opacity-60" : "",
-                ].join(" ")}
+                style={isUpdateDisabled ? undefined : { background: accentGrad }}
+                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-60"
               >
                 {submitting || loading ? (
                   <>
                     <FiRefreshCw className="animate-spin text-[11px]" />
-                    Saving
+                    Saving…
                   </>
                 ) : (
                   <>
-                    {mode === "create" ? (
-                      <FiPlus className="text-[11px]" />
-                    ) : (
-                      <FiSave className="text-[11px]" />
-                    )}
+                    {mode === "create" ? <FiPlus className="text-[11px]" /> : <FiSave className="text-[11px]" />}
                     {mode === "create" ? "Create Node" : "Update Node"}
                   </>
                 )}

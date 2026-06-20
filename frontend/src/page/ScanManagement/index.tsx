@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   FiPlay, FiSquare, FiTrash2, FiPlus, FiRefreshCw,
   FiSettings, FiTarget, FiAlertTriangle, FiCheckCircle,
   FiWifi, FiClock, FiCalendar, FiX, FiRepeat,
+  FiChevronDown, FiSearch, FiCheck,
 } from "react-icons/fi";
 import { message, Modal, Spin } from "antd";
 import {
@@ -18,7 +19,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
 
 // ─────────────────────────────────────────────────────────────
-// Auto Scan Schedule — helpers (API-backed, no localStorage)
+// Auto Scan Schedule — helpers
 // ─────────────────────────────────────────────────────────────
 
 const MONTHS = [
@@ -113,6 +114,9 @@ const CreateTargetModal: React.FC<CreateTargetModalProps> = ({
   open, onClose, onCreated,
 }) => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
   const [name, setName]       = useState("");
   const [hosts, setHosts]     = useState("");
   const [comment, setComment] = useState("");
@@ -141,7 +145,7 @@ const CreateTargetModal: React.FC<CreateTargetModalProps> = ({
   };
 
   const inputCls =
-    "w-full rounded-lg border border-slate-200/70 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 placeholder-slate-400 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/30 dark:focus:ring-blue-500/10";
+    "w-full rounded-xl border border-slate-200/70 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 placeholder-slate-400 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/30 dark:focus:ring-blue-500/10";
 
   return (
     <Modal
@@ -153,29 +157,41 @@ const CreateTargetModal: React.FC<CreateTargetModalProps> = ({
       width={480}
       styles={{ body: { padding: 0 } }}
     >
-      <div className="bg-white p-6 dark:bg-[#0d0b1a]">
-        {/* Modal header */}
-        <div className="mb-5 flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-600 dark:border-white/8 dark:bg-white/5 dark:text-white/65">
-            <FiTarget className="text-[15px]" />
+      <div className="overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
+              style={{ background: accentGrad }}
+            >
+              <FiTarget className="text-[14px]" />
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                SCAN TARGET
+              </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scan.createTarget")}</h3>
+            </div>
           </div>
-          <div>
-            <p className="text-[15px] font-bold text-slate-800 dark:text-white/90">{t("scan.createTarget")}</p>
-            <p className="text-[10.5px] text-slate-400 dark:text-white/40">กำหนด host ที่ต้องการสแกน</p>
-          </div>
+          <button type="button" onClick={() => { reset(); onClose(); }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8">
+            <FiX className="text-[15px]" />
+          </button>
         </div>
 
-        <div className="space-y-4">
+        {/* Body */}
+        <div className="space-y-4 px-5 py-5">
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-white/60">
-              Target Name <span className="text-red-500">*</span>
+            <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+              Target Name <span className="text-red-400">*</span>
             </label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Office Network" className={inputCls} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-white/60">
-              Hosts / IP Range <span className="text-red-500">*</span>
+            <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
+              Hosts / IP Range <span className="text-red-400">*</span>
             </label>
             <input type="text" value={hosts} onChange={(e) => setHosts(e.target.value)}
               placeholder="e.g. 192.168.1.0/24 or 10.0.0.1,10.0.0.2" className={inputCls} />
@@ -184,31 +200,25 @@ const CreateTargetModal: React.FC<CreateTargetModalProps> = ({
             </p>
           </div>
           <div>
-            <label className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-white/60">
+            <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
               Comment (optional)
             </label>
             <input type="text" value={comment} onChange={(e) => setComment(e.target.value)}
               placeholder="Description…" className={inputCls} />
           </div>
-        </div>
 
-        <div className="mt-5 flex justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={() => { reset(); onClose(); }}
-            className="rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/65"
-          >
-            {t("common.cancel")}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleCreate()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-white/15 dark:hover:bg-white/20"
-          >
-            {loading && <Spin size="small" />}
-            {t("scan.createTarget")}
-          </button>
+          <div className="flex gap-2.5 pt-1">
+            <button type="button" onClick={() => { reset(); onClose(); }}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
+              {t("common.cancel")}
+            </button>
+            <button type="button" onClick={() => void handleCreate()} disabled={loading}
+              style={{ background: accentGrad }}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
+              {loading && <Spin size="small" />}
+              {t("scan.createTarget")}
+            </button>
+          </div>
         </div>
       </div>
     </Modal>
@@ -398,7 +408,7 @@ const ScanManagement: React.FC = () => {
   const [activeTab, setActiveTab]     = useState<"tasks" | "targets" | "schedule">("tasks");
   const [showCreateTarget, setShowCreateTarget] = useState(false);
 
-  // ── Auto-scan schedule state (API-backed) ────────────────────────────
+  // ── Auto-scan schedule state ─────────────────────────────────
   const [schedules,         setSchedules]         = useState<AutoScanScheduleDTO[]>([]);
   const [loadingSchedules,  setLoadingSchedules]  = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -407,11 +417,45 @@ const ScanManagement: React.FC = () => {
     time: string; date: string; dayOfMonth: number; month: number; day: number;
   }>({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
 
+  // ── Custom selector state ────────────────────────────────────
+  const [taskDropOpen, setTaskDropOpen]   = useState(false);
+  const [taskSearch, setTaskSearch]       = useState("");
+  const taskDropRef   = useRef<HTMLDivElement | null>(null);
+  const [monthDropOpen, setMonthDropOpen] = useState(false);
+  const monthDropRef  = useRef<HTMLDivElement | null>(null);
+
+  // Close custom dropdowns on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (taskDropRef.current && !taskDropRef.current.contains(e.target as Node)) {
+        setTaskDropOpen(false);
+      }
+      if (monthDropRef.current && !monthDropRef.current.contains(e.target as Node)) {
+        setMonthDropOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Filtered tasks for modal search
+  const filteredTasksForModal = useMemo(() => {
+    const kw = taskSearch.trim().toLowerCase();
+    return kw ? tasks.filter(tk => tk.name.toLowerCase().includes(kw)) : tasks;
+  }, [tasks, taskSearch]);
+
   const fetchSchedules = useCallback(async () => {
     setLoadingSchedules(true);
     const list = await ListScanSchedules();
     setSchedules(list);
     setLoadingSchedules(false);
+  }, []);
+
+  const closeScheduleModal = useCallback(() => {
+    setShowScheduleModal(false);
+    setTaskDropOpen(false);
+    setTaskSearch("");
+    setMonthDropOpen(false);
   }, []);
 
   const handleAddSchedule = useCallback(async () => {
@@ -432,11 +476,11 @@ const ScanManagement: React.FC = () => {
         day:         schedForm.frequency === "yearly"  ? schedForm.day          : undefined,
       });
       message.success(t("scan.scheduleCreated"));
-      setShowScheduleModal(false);
+      closeScheduleModal();
       setSchedForm({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
       void fetchSchedules();
     } catch { message.error(t("common.noResults")); }
-  }, [schedForm, tasks, fetchSchedules, t]);
+  }, [schedForm, tasks, fetchSchedules, t, closeScheduleModal]);
 
   const toggleSchedule = useCallback(async (id: number, enabled: boolean) => {
     try {
@@ -541,6 +585,9 @@ const ScanManagement: React.FC = () => {
     { label: "Targets",     val: targets.length,  icon: <FiTarget />,       color: "sky" },
   ];
 
+  // ── Shared input class ───────────────────────────────────────
+  const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:focus:ring-blue-500/10";
+
   return (
     <div className="w-full space-y-5 py-0 sm:py-0">
 
@@ -629,7 +676,6 @@ const ScanManagement: React.FC = () => {
       {/* ── Tabs + action buttons ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          {/* Tasks tab */}
           <button type="button" onClick={() => setActiveTab("tasks")}
             className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
               activeTab === "tasks"
@@ -638,7 +684,6 @@ const ScanManagement: React.FC = () => {
             ].join(" ")}>
             {`${t("scan.tasks")} (${tasks.length})`}
           </button>
-          {/* Targets tab */}
           <button type="button" onClick={() => setActiveTab("targets")}
             className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
               activeTab === "targets"
@@ -647,7 +692,6 @@ const ScanManagement: React.FC = () => {
             ].join(" ")}>
             {`${t("scan.targets")} (${targets.length})`}
           </button>
-          {/* Auto Schedule tab */}
           <button type="button" onClick={() => setActiveTab("schedule")}
             style={activeTab === "schedule" ? { background: accentGrad } : undefined}
             className={["flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
@@ -781,8 +825,6 @@ const ScanManagement: React.FC = () => {
       {/* ── Auto Schedule Tab ── */}
       {activeTab === "schedule" && (
         <div className="space-y-3">
-
-          {/* Info note */}
           <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/3">
             <FiClock className="mt-0.5 shrink-0 text-[12px] text-slate-400 dark:text-white/30" />
             <p className="text-[11px] text-slate-500 dark:text-white/40">
@@ -790,7 +832,6 @@ const ScanManagement: React.FC = () => {
             </p>
           </div>
 
-          {/* Empty state */}
           {loadingSchedules ? (
             <div className="flex h-32 items-center justify-center">
               <FiRefreshCw className="animate-spin text-[18px] text-slate-400 dark:text-white/30" />
@@ -819,15 +860,12 @@ const ScanManagement: React.FC = () => {
                       !s.enabled ? "opacity-50" : "",
                     ].join(" ")}
                   >
-                    {/* Left: icon */}
                     <div
                       className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:flex"
                       style={{ backgroundColor: `${currentColor}12`, color: currentColor }}
                     >
                       <FiRepeat className="text-[15px]" />
                     </div>
-
-                    {/* Task + freq */}
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-white/88">{s.task_name}</p>
@@ -843,8 +881,6 @@ const ScanManagement: React.FC = () => {
                         <span>{t("scan.nextRun")}: <strong className="text-slate-600 dark:text-white/55">{fmtNextRun(s.next_run_at)}</strong></span>
                       </div>
                     </div>
-
-                    {/* Enabled toggle */}
                     <div className="flex items-center gap-1.5">
                       <span className="hidden text-[10.5px] text-slate-400 dark:text-white/30 sm:block">
                         {s.enabled ? t("scan.scheduleEnabled") : t("scan.scheduleDisabled")}
@@ -858,8 +894,6 @@ const ScanManagement: React.FC = () => {
                           style={{ transform: s.enabled ? "translateX(18px)" : "translateX(2px)" }} />
                       </button>
                     </div>
-
-                    {/* Delete */}
                     <button type="button" onClick={() => void deleteSchedule(s.id)}
                       className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                       <FiTrash2 className="text-[12px]" />
@@ -881,11 +915,13 @@ const ScanManagement: React.FC = () => {
       {/* ── New Schedule Modal ── */}
       {showScheduleModal && createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={() => setShowScheduleModal(false)} />
-          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
-            style={{ boxShadow: `0 24px 64px -12px ${currentColor}40, 0 8px 24px rgba(0,0,0,.18)` }}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={closeScheduleModal} />
+          <div
+            className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+            style={{ boxShadow: `0 24px 64px -12px ${currentColor}40, 0 8px 24px rgba(0,0,0,.18)` }}
+          >
 
-            {/* Modal header */}
+            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
@@ -899,31 +935,105 @@ const ScanManagement: React.FC = () => {
                   <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scan.newSchedule")}</h3>
                 </div>
               </div>
-              <button type="button" onClick={() => setShowScheduleModal(false)}
+              <button type="button" onClick={closeScheduleModal}
                 className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8 focus:outline-none">
                 <FiX className="text-[15px]" />
               </button>
             </div>
 
-            {/* Modal body */}
+            {/* Body */}
             <div className="space-y-4 px-5 py-5">
 
-              {/* Select task */}
+              {/* ── Task Selector (Custom Dropdown) ── */}
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                   {t("scan.selectTask")}
                 </label>
-                <select
-                  value={schedForm.taskId}
-                  onChange={e => setSchedForm(p => ({ ...p, taskId: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
-                >
-                  <option value="">— {t("scan.selectTask")} —</option>
-                  {tasks.map(tk => <option key={tk.id} value={tk.id}>{tk.name}</option>)}
-                </select>
+                <div className="relative" ref={taskDropRef}>
+                  <button
+                    type="button"
+                    onClick={() => { setTaskDropOpen(p => !p); }}
+                    className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 text-left transition hover:border-slate-300 hover:bg-slate-50/50 focus:outline-none dark:border-white/8 dark:bg-white/5 dark:hover:bg-white/8"
+                  >
+                    {schedForm.taskId ? (
+                      <>
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: currentColor }} />
+                        <span className="flex-1 truncate text-[12.5px] font-medium text-slate-700 dark:text-white/85">
+                          {tasks.find(tk => tk.id === schedForm.taskId)?.name ?? "—"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-slate-300 dark:bg-white/20" />
+                        <span className="flex-1 truncate text-[12.5px] text-slate-400 dark:text-white/30">
+                          — {t("scan.selectTask")} —
+                        </span>
+                      </>
+                    )}
+                    <FiChevronDown className={`ml-auto shrink-0 text-[13px] text-slate-400 transition-transform dark:text-white/30 ${taskDropOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {taskDropOpen && (
+                    <div className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                      {/* Search */}
+                      <div className="border-b border-slate-100 p-2 dark:border-white/8">
+                        <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+                          <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
+                          <input
+                            type="text"
+                            value={taskSearch}
+                            onChange={e => setTaskSearch(e.target.value)}
+                            placeholder="Search task..."
+                            autoFocus
+                            className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
+                          />
+                        </div>
+                      </div>
+                      {/* Options */}
+                      <div className="max-h-48 overflow-y-auto p-1.5">
+                        {filteredTasksForModal.length === 0 ? (
+                          <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">
+                            No tasks found
+                          </p>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {filteredTasksForModal.map(tk => {
+                              const isSelected = schedForm.taskId === tk.id;
+                              return (
+                                <button
+                                  key={tk.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSchedForm(p => ({ ...p, taskId: tk.id }));
+                                    setTaskDropOpen(false);
+                                    setTaskSearch("");
+                                  }}
+                                  className={[
+                                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
+                                    isSelected ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5",
+                                  ].join(" ")}
+                                >
+                                  <span className={[
+                                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
+                                    isSelected
+                                      ? "border-blue-500 bg-blue-500 text-white"
+                                      : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
+                                  ].join(" ")}>
+                                    <FiCheck className="text-[9px]" />
+                                  </span>
+                                  <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{tk.name}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Frequency */}
+              {/* ── Frequency ── */}
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                   {t("scan.scheduleType")}
@@ -933,7 +1043,7 @@ const ScanManagement: React.FC = () => {
                     <button key={freq} type="button"
                       onClick={() => setSchedForm(p => ({ ...p, frequency: freq }))}
                       style={schedForm.frequency === freq ? { background: accentGrad } : undefined}
-                      className={["flex-1 rounded-lg border py-2 text-[11.5px] font-semibold transition-all",
+                      className={["flex-1 rounded-xl border py-2 text-[11.5px] font-semibold transition-all",
                         schedForm.frequency === freq
                           ? "border-transparent text-white"
                           : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55",
@@ -945,18 +1055,22 @@ const ScanManagement: React.FC = () => {
                 </div>
               </div>
 
-              {/* Date / day config */}
+              {/* ── Date config (once) ── */}
               {schedForm.frequency === "once" && (
                 <div>
                   <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                     {t("scan.selectDate")}
                   </label>
-                  <input type="date" value={schedForm.date}
-                    onChange={e => setSchedForm(p => ({ ...p, date: e.target.value }))}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                  <div className="relative">
+                    <FiCalendar className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/30" />
+                    <input type="date" value={schedForm.date}
+                      onChange={e => setSchedForm(p => ({ ...p, date: e.target.value }))}
+                      className={["pl-10", inputCls].join(" ")} />
+                  </div>
                 </div>
               )}
 
+              {/* ── Day of month (monthly) ── */}
               {schedForm.frequency === "monthly" && (
                 <div>
                   <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
@@ -964,21 +1078,58 @@ const ScanManagement: React.FC = () => {
                   </label>
                   <input type="number" min={1} max={31} value={schedForm.dayOfMonth}
                     onChange={e => setSchedForm(p => ({ ...p, dayOfMonth: parseInt(e.target.value) || 1 }))}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                    className={inputCls} />
                 </div>
               )}
 
+              {/* ── Month + Day (yearly) ── */}
               {schedForm.frequency === "yearly" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                       {t("scan.scheduleMonth")}
                     </label>
-                    <select value={schedForm.month}
-                      onChange={e => setSchedForm(p => ({ ...p, month: parseInt(e.target.value) }))}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none dark:border-white/8 dark:bg-white/5 dark:text-white/80">
-                      {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                    </select>
+                    {/* Custom Month Dropdown */}
+                    <div className="relative" ref={monthDropRef}>
+                      <button
+                        type="button"
+                        onClick={() => setMonthDropOpen(p => !p)}
+                        className="flex h-10 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-left transition hover:border-slate-300 focus:outline-none dark:border-white/8 dark:bg-white/5 dark:hover:bg-white/8"
+                      >
+                        <span className="flex-1 truncate text-[12px] text-slate-700 dark:text-white/80">
+                          {MONTHS[schedForm.month - 1]}
+                        </span>
+                        <FiChevronDown className={`shrink-0 text-[12px] text-slate-400 transition-transform dark:text-white/30 ${monthDropOpen ? "rotate-180" : ""}`} />
+                      </button>
+                      {monthDropOpen && (
+                        <div className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                          <div className="max-h-48 overflow-y-auto p-1.5">
+                            {MONTHS.map((m, i) => {
+                              const isSel = schedForm.month === i + 1;
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => { setSchedForm(p => ({ ...p, month: i + 1 })); setMonthDropOpen(false); }}
+                                  className={[
+                                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition",
+                                    isSel ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5",
+                                  ].join(" ")}
+                                >
+                                  <span className={[
+                                    "flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition",
+                                    isSel ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
+                                  ].join(" ")}>
+                                    <FiCheck className="text-[8px]" />
+                                  </span>
+                                  <span className="text-[11.5px] text-slate-700 dark:text-white/75">{m}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
@@ -986,24 +1137,27 @@ const ScanManagement: React.FC = () => {
                     </label>
                     <input type="number" min={1} max={31} value={schedForm.day}
                       onChange={e => setSchedForm(p => ({ ...p, day: parseInt(e.target.value) || 1 }))}
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                      className={inputCls} />
                   </div>
                 </div>
               )}
 
-              {/* Time */}
+              {/* ── Time ── */}
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                   {t("scan.scheduleTime")}
                 </label>
-                <input type="time" value={schedForm.time}
-                  onChange={e => setSchedForm(p => ({ ...p, time: e.target.value }))}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
+                <div className="relative">
+                  <FiClock className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/30" />
+                  <input type="time" value={schedForm.time}
+                    onChange={e => setSchedForm(p => ({ ...p, time: e.target.value }))}
+                    className={["pl-10", inputCls].join(" ")} />
+                </div>
               </div>
 
-              {/* Next run preview */}
+              {/* ── Next run preview ── */}
               {schedForm.taskId && (
-                <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
+                <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                     {t("scan.nextRun")}:&nbsp;
                     <span className="font-semibold text-slate-700 dark:text-white/70">
@@ -1019,15 +1173,15 @@ const ScanManagement: React.FC = () => {
                 </div>
               )}
 
-              {/* Actions */}
+              {/* ── Actions ── */}
               <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => setShowScheduleModal(false)}
-                  className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
+                <button type="button" onClick={closeScheduleModal}
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
                   {t("common.cancel")}
                 </button>
                 <button type="button" onClick={handleAddSchedule}
                   style={{ background: accentGrad }}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 focus:outline-none">
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 focus:outline-none">
                   <FiCalendar className="text-[13px]" />
                   {t("scan.newSchedule")}
                 </button>

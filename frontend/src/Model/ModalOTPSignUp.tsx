@@ -190,8 +190,8 @@ const ModalOTPSignUp: React.FC<ModalOTPSignUpProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-950/35 backdrop-blur-xs px-4">
-      <div className="relative w-full max-w-107.5 overflow-hidden rounded-3xl border border-white/80 bg-white/95 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-[rgba(8,15,31,0.92)]">
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/50 backdrop-blur-[3px] px-4">
+      <div className="relative w-full max-w-107.5 overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_24px_64px_rgba(15,23,42,0.20)] dark:border-white/10 dark:bg-[#12101f]">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-cyan-300/20 blur-3xl dark:bg-cyan-500/10" />
           <div className="absolute -bottom-12 right-0 h-32 w-32 rounded-full bg-sky-300/20 blur-3xl dark:bg-sky-500/10" />

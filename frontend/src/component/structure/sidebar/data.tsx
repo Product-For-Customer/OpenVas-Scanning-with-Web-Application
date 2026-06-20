@@ -75,7 +75,7 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
         links: [
           { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog" },
           { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus" },
-          { name: "threat-config",        icon: <FiSliders />, labelKey: "nav.threatConfig" },
+          { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig" },
           { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement" },
         ],
       },

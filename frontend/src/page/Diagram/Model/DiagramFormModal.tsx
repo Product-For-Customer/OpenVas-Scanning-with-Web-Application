@@ -19,6 +19,7 @@ import {
   type DiagramResponse,
   type UpdateDiagramInput,
 } from "../../../services/diagram";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 type ModalMode = "create" | "edit";
 
@@ -124,6 +125,9 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
   const [form, setForm] = useState<FormState>(emptyForm);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -158,12 +162,6 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
       }
     }
   }, [open, mode, initialData]);
-
-  const subtitle = useMemo(() => {
-    return mode === "create"
-      ? "Create a new diagram and upload its image"
-      : "Edit diagram information and replace image if needed";
-  }, [mode]);
 
   const isFormChanged = useMemo(() => {
     if (mode !== "edit") return true;
@@ -346,27 +344,16 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
   ].join(" ");
 
-  const actionBtn = [
-    "h-8 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 transition text-[10px] font-semibold",
-    "bg-cyan-500 text-white hover:bg-cyan-600 border border-cyan-500 shadow-sm",
-    "dark:bg-cyan-500 dark:text-white dark:hover:bg-cyan-400 dark:border-cyan-400/30",
-  ].join(" ");
-
-  const secondaryBtn = [
-    "h-8 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 transition text-[10px] font-semibold",
-    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-  ].join(" ");
-
   const dangerBtn = [
     "h-8 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 transition text-[10px] font-semibold",
     "bg-red-50 border border-red-200 text-red-700 hover:bg-red-100",
     "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-200 dark:hover:bg-red-500/15",
   ].join(" ");
 
-  const disabledActionBtn = [
-    actionBtn,
-    "opacity-60 cursor-not-allowed pointer-events-none",
+  const secondaryBtn = [
+    "h-8 px-3 rounded-xl inline-flex items-center justify-center gap-1.5 transition text-[10px] font-semibold",
+    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
+    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
   ].join(" ");
 
   const sectionTitleCls =
@@ -376,42 +363,38 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     submitting || loading || (mode === "edit" && !isFormChanged);
 
   return (
-    <div className="fixed inset-0 z-1200 flex items-center justify-center  p-2.5">
-      <div className="w-full max-w-105 rounded-[20px] overflow-hidden border border-gray-200/80 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] dark:bg-[#0B1220] dark:border-white/10 dark:shadow-none">
-        <div className="relative border-b border-gray-100 dark:border-white/10 px-3.5 py-3">
-          <div className="absolute inset-x-0 top-0 h-16 bg-linear-to-r from-cyan-50 via-transparent to-violet-50 dark:from-cyan-500/10 dark:to-violet-500/10 pointer-events-none" />
-
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200/80 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                {mode === "create" ? (
-                  <FiPlus className="text-[9px]" />
-                ) : (
-                  <FiEdit2 className="text-[9px]" />
-                )}
-
-                <span className="text-[9px] font-semibold tracking-wide">
-                  {mode === "create" ? "Create Diagram" : "Edit Diagram"}
-                </span>
-              </div>
-
-              <p className="mt-0.5 text-[10px] text-gray-500 dark:text-white/45">
-                {subtitle}
+    <div className="fixed inset-0 z-1200 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={!submitting ? onClose : undefined} />
+      <div
+        className="relative z-10 w-full max-w-105 overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.18)` }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+              {mode === "create" ? <FiPlus className="text-[14px]" /> : <FiEdit2 className="text-[14px]" />}
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                {mode === "create" ? "NEW DIAGRAM" : "EDIT DIAGRAM"}
               </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
+                {mode === "create" ? "Create Diagram" : "Edit Diagram"}
+              </h3>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="h-8 w-8 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/8 inline-flex items-center justify-center shrink-0 transition"
-            >
-              <FiX className="text-[13px]" />
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+          >
+            <FiX className="text-[15px]" />
+          </button>
         </div>
 
-        <div className="px-3.5 py-3 space-y-3 max-h-[68vh] overflow-y-auto">
+        <div className="px-5 py-5 space-y-3 max-h-[68vh] overflow-y-auto">
           {loading ? (
             <div className="py-8 text-center text-[10.5px] text-gray-500 dark:text-white/55">
               Loading.
@@ -527,38 +510,30 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
           )}
         </div>
 
-        <div className="border-t border-gray-100 dark:border-white/10 px-3.5 py-3 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end bg-white/90 dark:bg-[#0B1220]">
+        <div className="flex gap-2.5 border-t border-slate-100 px-5 py-4 dark:border-white/8">
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className={[
-              secondaryBtn,
-              submitting ? "opacity-60 cursor-not-allowed" : "",
-            ].join(" ")}
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
           >
             Cancel
           </button>
-
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
-            className={isSubmitDisabled ? disabledActionBtn : actionBtn}
+            style={isSubmitDisabled ? undefined : { background: accentGrad }}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-60"
           >
             {submitting ? (
               <>
-                <FiRefreshCw className="text-[10px] animate-spin" />
-                Saving
+                <FiRefreshCw className="animate-spin text-[12px]" />
+                Saving…
               </>
             ) : (
               <>
-                {mode === "create" ? (
-                  <FiPlus className="text-[10px]" />
-                ) : (
-                  <FiCheck className="text-[10px]" />
-                )}
-
+                {mode === "create" ? <FiPlus className="text-[12px]" /> : <FiCheck className="text-[12px]" />}
                 {mode === "create" ? "Create Diagram" : "Update Diagram"}
               </>
             )}

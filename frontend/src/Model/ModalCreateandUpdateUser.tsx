@@ -7,7 +7,6 @@ import {
   FiMail,
   FiMapPin,
   FiPhone,
-  FiPlus,
   FiSave,
   FiSearch,
   FiShield,
@@ -24,6 +23,7 @@ import {
   CreateUser,
   ListEmailAndPhoneNumber,
 } from "../services";
+import { useStateContext } from "../contexts/ProviderContext";
 
 type UiUser = {
   id: number;
@@ -104,19 +104,6 @@ const getRoleBadgeClass = (role: string) => {
   return "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-500/12 dark:text-cyan-200";
 };
 
-const primaryBlueButtonCls = [
-  "h-8.5 px-3 rounded-lg inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
-  "bg-cyan-500 text-white hover:bg-cyan-600 border border-cyan-500 shadow-sm",
-  "dark:bg-cyan-500 dark:text-white dark:hover:bg-cyan-400 dark:border-cyan-400/30",
-  "disabled:cursor-not-allowed disabled:opacity-60",
-].join(" ");
-
-const secondaryBtnCls = [
-  "h-8.5 px-3 rounded-lg inline-flex items-center justify-center gap-2 transition text-[10px] font-semibold",
-  "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-  "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-  "disabled:cursor-not-allowed disabled:opacity-60",
-].join(" ");
 
 const inputCls = [
   "h-9 rounded-lg border px-3 text-[10px] outline-none transition w-full",
@@ -161,6 +148,8 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   onClose,
   onUpdated,
 }) => {
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const isEditMode = !!user;
 
   const [formData, setFormData] = useState<Payload>(EMPTY_FORM);
@@ -608,50 +597,33 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-300 flex items-center justify-center bg-slate-950/55 backdrop-blur-[2px] p-2">
-      <div className="w-full max-w-4xl overflow-hidden rounded-[22px] border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none">
-        <div className="relative border-b border-gray-100 bg-white px-3 py-3 dark:border-white/10 dark:bg-[#0B1220]">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-full bg-linear-to-r from-cyan-500/8 via-transparent to-violet-500/8 dark:from-cyan-500/10 dark:via-transparent dark:to-violet-500/10" />
-
-          <div className="relative flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-1 rounded-full border border-cyan-200/80 bg-cyan-50 px-2 py-0.5 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-cyan-300">
-                {isEditMode ? (
-                  <FiEdit2 className="text-[8px]" />
-                ) : (
-                  <FiPlus className="text-[8px]" />
-                )}
-                <span className="text-[8px] font-semibold tracking-wide">
-                  {isEditMode ? "Edit User" : "Create User"}
-                </span>
-              </div>
-
-              <div className="mt-2 flex items-start gap-2">
-                <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-cyan-200/80 bg-cyan-50 dark:border-cyan-400/20 dark:bg-cyan-500/10">
-                  <FiUsers className="text-[12px] text-cyan-600 dark:text-cyan-300" />
-                </div>
-
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold text-[#1f2240] dark:text-white/90">
-                    User Form
-                  </p>
-                  <p className="mt-1 text-[9px] leading-relaxed text-gray-500 dark:text-white/50">
-                    Manage user profile, contact information, role, and profile
-                    image. Upload supports image files only.
-                  </p>
-                </div>
-              </div>
+    <div className="fixed inset-0 z-300 flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-3">
+      <div
+        className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.22)` }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+              {isEditMode ? <FiEdit2 className="text-[14px]" /> : <FiUsers className="text-[14px]" />}
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                {isEditMode ? "EDIT USER" : "CREATE USER"}
+              </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">User Form</h3>
+              <p className="text-[10px] text-slate-400 dark:text-white/35">Manage user profile, contact information, role, and profile image.</p>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/8"
-            >
-              <FiX className="text-[12px]" />
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+          >
+            <FiX className="text-[15px]" />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -1049,16 +1021,15 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-white/90 px-3 py-2.5 dark:border-white/10 dark:bg-[#0B1220]">
+          <div className="flex gap-2.5 border-t border-slate-100 px-5 py-4 dark:border-white/8">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className={secondaryBtnCls}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
             >
               Cancel
             </button>
-
             <button
               type="submit"
               disabled={
@@ -1071,16 +1042,15 @@ const ModalCreateandUpdateUser: React.FC<ModalCreateandUpdateUserProps> = ({
                 (!isEditMode && !!passwordValidationError) ||
                 (isEditMode && !hasFormChanged)
               }
-              className={primaryBlueButtonCls}
+              style={
+                !(submitting || uploadingImage || loadingExistingContacts || !!emailDuplicateError || !!phoneDuplicateError || !!phoneValidationError || (!isEditMode && !!passwordValidationError) || (isEditMode && !hasFormChanged))
+                  ? { background: accentGrad }
+                  : undefined
+              }
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-60"
             >
-              <FiSave className="text-[10px]" />
-              {submitting
-                ? isEditMode
-                  ? "Saving..."
-                  : "Creating..."
-                : isEditMode
-                ? "Save"
-                : "Create"}
+              <FiSave className="text-[11px]" />
+              {submitting ? (isEditMode ? "Saving…" : "Creating…") : isEditMode ? "Save Changes" : "Create User"}
             </button>
           </div>
         </form>

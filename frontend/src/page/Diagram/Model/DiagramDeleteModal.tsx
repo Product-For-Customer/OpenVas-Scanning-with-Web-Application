@@ -1,6 +1,7 @@
 import React from "react";
-import { FiRefreshCw, FiTrash2, FiX } from "react-icons/fi";
+import { FiRefreshCw, FiTrash2, FiX, FiAlertTriangle } from "react-icons/fi";
 import { type DiagramResponse } from "../../../services/diagram";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 interface DiagramDeleteModalProps {
   open: boolean;
@@ -17,90 +18,91 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { currentColor } = useStateContext();
+
   if (!open || !data) return null;
 
-  const secondaryBtn = [
-    "h-9 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[11px] font-semibold",
-    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-  ].join(" ");
-
-  const dangerBtn = [
-    "h-9 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[11px] font-semibold",
-    "bg-red-50 border border-red-200 text-red-700 hover:bg-red-100",
-    "dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-200 dark:hover:bg-red-500/15",
-  ].join(" ");
-
   return (
-    <div className="fixed inset-0 z-1200 flex items-center justify-center bg-slate-950/55 backdrop-blur-[2px] p-3 sm:p-4">
-      <div className="w-full max-w-md rounded-3xl overflow-hidden bg-white border border-gray-200 shadow-2xl dark:bg-[#0B1220] dark:border-white/10 dark:shadow-none">
-        <div className="px-4 py-3 border-b border-gray-100 dark:border-white/10 flex items-center justify-between gap-3">
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 bg-red-50 text-red-700 border border-red-200/80 dark:bg-red-500/10 dark:text-red-300 dark:border-red-400/20">
-              <FiTrash2 className="text-[10px]" />
-              <span className="text-[9.5px] font-semibold tracking-wide">
-                Delete Diagram
-              </span>
+    <div className="fixed inset-0 z-1200 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={!deleting ? onClose : undefined} />
+      <div
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.18)` }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white"
+            >
+              <FiTrash2 className="text-[14px]" />
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">
+                CONFIRM DELETE
+              </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Delete Diagram</h3>
             </div>
-
-            <h3 className="mt-2 text-[14px] font-semibold text-[#1f2240] dark:text-white/90">
-              Confirm delete
-            </h3>
           </div>
-
           <button
             type="button"
             onClick={onClose}
             disabled={deleting}
-            className="h-9 w-9 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-white/10 dark:text-white/65 dark:hover:bg-white/8 inline-flex items-center justify-center"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
           >
             <FiX className="text-[15px]" />
           </button>
         </div>
 
-        <div className="p-4">
-          <div className="rounded-2xl border border-gray-200/80 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
-            <p className="text-[12px] font-semibold text-[#1f2240] dark:text-white/90 line-clamp-2">
-              {data.name || "-"}
+        {/* Body */}
+        <div className="space-y-4 px-5 py-5">
+          {/* Warning banner */}
+          <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/8">
+            <FiAlertTriangle className="mt-0.5 shrink-0 text-[14px] text-red-500" />
+            <p className="text-[12px] text-red-700 dark:text-red-300">
+              คุณต้องการลบ Diagram นี้ใช่หรือไม่ การดำเนินการนี้ไม่สามารถยกเลิกได้
             </p>
-            <p className="mt-1 text-[10.5px] leading-5 text-gray-500 dark:text-white/55 line-clamp-3">
+          </div>
+
+          {/* Diagram info */}
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/8 dark:bg-white/3">
+            <p className="text-[13px] font-semibold text-slate-800 dark:text-white/90 line-clamp-2">
+              {data.name || "—"}
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-white/45 line-clamp-3">
               {data.description?.trim() ? data.description : "No description"}
             </p>
           </div>
 
-          <p className="mt-3 text-[11px] text-gray-600 dark:text-white/65">
-            คุณต้องการลบ Diagram นี้ใช่หรือไม่
-          </p>
-        </div>
-
-        <div className="px-4 py-3 border-t border-gray-100 dark:border-white/10 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={deleting}
-            className={[secondaryBtn, deleting ? "opacity-60 cursor-not-allowed" : ""].join(" ")}
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={deleting}
-            className={[dangerBtn, deleting ? "opacity-60 cursor-not-allowed" : ""].join(" ")}
-          >
-            {deleting ? (
-              <>
-                <FiRefreshCw className="text-[12px] animate-spin" />
-                Deleting
-              </>
-            ) : (
-              <>
-                <FiTrash2 className="text-[12px]" />
-                Delete
-              </>
-            )}
-          </button>
+          {/* Buttons */}
+          <div className="flex gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={deleting}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={deleting}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60"
+            >
+              {deleting ? (
+                <>
+                  <FiRefreshCw className="animate-spin text-[12px]" />
+                  Deleting…
+                </>
+              ) : (
+                <>
+                  <FiTrash2 className="text-[12px]" />
+                  Delete
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
