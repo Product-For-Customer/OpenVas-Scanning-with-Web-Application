@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  FiTrash2, FiRefreshCw, FiRotateCcw, FiAlertTriangle,
+  FiTrash2, FiRefreshCw, FiRotateCcw,
   FiCheckCircle, FiKey, FiList, FiTarget, FiSettings, FiX,
 } from "react-icons/fi";
 import { message } from "antd";
@@ -17,45 +17,91 @@ import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 
 // ─────────────────────────────────────────────────────────────
-// Confirm dialog (portal)
+// Confirm dialog (portal) — minimal style like Create Diagram
 // ─────────────────────────────────────────────────────────────
 interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmLabel?: string;
   danger?: boolean;
+  currentColor?: string;
+  accentGrad?: string;
   onConfirm: () => void;
   onCancel: () => void;
 }
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
-  title, message: msg, confirmLabel = "Confirm", danger = false, onConfirm, onCancel,
-}) => createPortal(
-  <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
-    <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onCancel} />
-    <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-[#12101f]">
-      <div className="p-6">
-        <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-2xl ${danger ? "bg-red-50 dark:bg-red-500/10" : "bg-amber-50 dark:bg-amber-500/10"}`}>
-          <FiAlertTriangle className={`text-[22px] ${danger ? "text-red-500" : "text-amber-500"}`} />
+  title, message: msg, confirmLabel = "Confirm", danger = false,
+  currentColor = "#06b6d4", accentGrad, onConfirm, onCancel,
+}) => {
+  const restoreGrad = accentGrad ?? `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+  const deleteGrad  = "linear-gradient(135deg, #ef4444, #dc2626)";
+  const iconGrad    = danger ? deleteGrad : restoreGrad;
+  const labelColor  = danger ? "#ef4444" : currentColor;
+  const shadowColor = danger ? "#ef444430" : `${currentColor}30`;
+  const Icon        = danger ? FiTrash2 : FiRotateCcw;
+  const badgeLabel  = danger ? "RECYCLE BIN · DELETE" : "RECYCLE BIN · RESTORE";
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={onCancel} />
+      <div
+        className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${shadowColor}, 0 8px 32px rgba(0,0,0,.20)` }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
+              style={{ background: iconGrad }}
+            >
+              <Icon className="text-[13px]" />
+            </span>
+            <div>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: labelColor }}>
+                {badgeLabel}
+              </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{title}</h3>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8"
+          >
+            <FiX className="text-[15px]" />
+          </button>
         </div>
-        <h3 className="text-[15px] font-bold text-slate-800 dark:text-white/90">{title}</h3>
-        <p className="mt-1.5 text-[12.5px] text-slate-500 dark:text-white/45">{msg}</p>
-        <div className="mt-5 flex gap-2">
-          <button type="button" onClick={onCancel}
-            className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
+
+        {/* Body */}
+        <div className="px-5 py-4">
+          <p className="text-[12.5px] leading-6 text-slate-500 dark:text-white/45">{msg}</p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-2.5 border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
+          >
             Cancel
           </button>
-          <button type="button" onClick={onConfirm}
-            className={`flex-1 rounded-xl py-2 text-[12.5px] font-semibold text-white transition focus:outline-none ${
-              danger ? "bg-red-500 hover:bg-red-600" : "bg-amber-500 hover:bg-amber-600"
-            }`}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90"
+            style={{ background: iconGrad }}
+          >
+            <Icon className="text-[12px]" />
             {confirmLabel}
           </button>
         </div>
       </div>
-    </div>
-  </div>,
-  document.body,
-);
+    </div>,
+    document.body,
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Action buttons: Restore + Permanent Delete
@@ -322,7 +368,7 @@ const RecycleBinPage: React.FC = () => {
 
           {/* ── Credentials ── */}
           <Section icon={<FiKey />} title="Credentials" count={trash.credentials?.length || 0}>
-            <table className="w-full min-w-[520px]">
+            <table className="w-full min-w-130">
               <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
                 <tr className="border-b border-slate-100 dark:border-white/8">
                   {["Name", "Type", "Login", ""].map(h => (
@@ -355,7 +401,7 @@ const RecycleBinPage: React.FC = () => {
 
           {/* ── Targets ── */}
           <Section icon={<FiTarget />} title="Targets" count={trash.targets?.length || 0}>
-            <table className="w-full min-w-[640px]">
+            <table className="w-full min-w-160">
               <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
                 <tr className="border-b border-slate-100 dark:border-white/8">
                   {["Name", "Hosts", "IPs", "Port List", ""].map(h => (
@@ -389,7 +435,7 @@ const RecycleBinPage: React.FC = () => {
 
           {/* ── Tasks ── */}
           <Section icon={<FiSettings />} title="Tasks" count={trash.tasks?.length || 0}>
-            <table className="w-full min-w-[680px]">
+            <table className="w-full min-w-170">
               <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
                 <tr className="border-b border-slate-100 dark:border-white/8">
                   {["Name", "Status", "Reports", "Last Report", "Severity", ""].map(h => (
@@ -445,7 +491,7 @@ const RecycleBinPage: React.FC = () => {
 
           {/* ── Port Lists ── */}
           <Section icon={<FiList />} title="Port Lists" count={trash.port_lists?.length || 0}>
-            <table className="w-full min-w-[520px]">
+            <table className="w-full min-w-130">
               <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
                 <tr className="border-b border-slate-100 dark:border-white/8">
                   {["Name", "Total", "TCP", "UDP", ""].map(h => (
@@ -499,6 +545,8 @@ const RecycleBinPage: React.FC = () => {
           message={`This will permanently delete all ${totalItems} item${totalItems !== 1 ? "s" : ""} from OpenVAS. This action cannot be undone.`}
           confirmLabel="Empty Trash"
           danger
+          currentColor={currentColor}
+          accentGrad={accentGrad}
           onConfirm={handleEmptyTrash}
           onCancel={() => setConfirmEmpty(false)}
         />
@@ -515,6 +563,8 @@ const RecycleBinPage: React.FC = () => {
           }
           confirmLabel={confirmItem.action === "restore" ? "Restore" : "Delete Permanently"}
           danger={confirmItem.action === "delete"}
+          currentColor={currentColor}
+          accentGrad={accentGrad}
           onConfirm={() => void handleConfirmAction()}
           onCancel={() => setConfirmItem(null)}
         />

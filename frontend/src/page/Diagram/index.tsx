@@ -349,8 +349,8 @@ const index: React.FC = () => {
 
   const primaryGradientBtn = [
     "inline-flex h-8 items-center justify-center gap-2 rounded-lg px-3.5",
-    "bg-slate-900 text-white text-[11px] font-medium transition-all duration-200",
-    "hover:bg-slate-800 focus:outline-none dark:bg-white/15 dark:hover:bg-white/20",
+    "text-white text-[11px] font-medium transition-all duration-200",
+    "hover:opacity-90 focus:outline-none",
   ].join(" ");
 
   const editGradientBtn = [
@@ -481,6 +481,7 @@ const index: React.FC = () => {
                       type="button"
                       onClick={handleOpenCreate}
                       className={primaryGradientBtn}
+                      style={{ background: accentGrad }}
                     >
                       <FiPlus className="text-[12px]" />
                       <span className="text-[11px] font-medium">{t("diagram.createDiagram")}</span>
@@ -494,9 +495,10 @@ const index: React.FC = () => {
                       className={[
                         "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition",
                         view === "list"
-                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          ? "border-transparent text-white"
                           : "border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8",
                       ].join(" ")}
+                      style={view === "list" ? { background: accentGrad } : undefined}
                     >
                       <FiList className="text-[13px]" />
                     </button>
@@ -507,9 +509,10 @@ const index: React.FC = () => {
                       className={[
                         "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition",
                         view === "grid"
-                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          ? "border-transparent text-white"
                           : "border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8",
                       ].join(" ")}
+                      style={view === "grid" ? { background: accentGrad } : undefined}
                     >
                       <FiGrid className="text-[13px]" />
                     </button>

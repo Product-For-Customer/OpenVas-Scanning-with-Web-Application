@@ -1,10 +1,5 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FiSave,
   FiX,
@@ -14,7 +9,6 @@ import {
   FiType,
   FiAlignLeft,
   FiRefreshCw,
-  FiMapPin,
   FiChevronDown,
   FiSearch,
   FiCheck,
@@ -42,10 +36,7 @@ export type DiagramNodeFormValues = {
   z_index: number;
 };
 
-type AnchorPoint = {
-  clientX: number;
-  clientY: number;
-};
+type AnchorPoint = { clientX: number; clientY: number };
 
 type Props = {
   open: boolean;
@@ -53,12 +44,7 @@ type Props = {
   loading?: boolean;
   diagramName?: string;
   initialData?: AppDiagramNodeResponse | null;
-  draftPosition?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null;
+  draftPosition?: { x: number; y: number; width: number; height: number } | null;
   allDiagramNodes?: AppDiagramNodeResponse[];
   currentNodeId?: number | null;
   anchorPoint?: AnchorPoint | null;
@@ -100,6 +86,7 @@ const createComparableForm = (form: DiagramNodeFormValues) => ({
   z_index: Number(form.z_index),
 });
 
+// ── Inline dropdown (no portal needed — modal has no overflow-hidden) ────────
 const DiagramNodeFormModal: React.FC<Props> = ({
   open,
   mode,
@@ -109,7 +96,6 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   draftPosition,
   allDiagramNodes = [],
   currentNodeId = null,
-  anchorPoint = null,
   onClose,
   onSubmit,
   onDelete,
@@ -123,20 +109,16 @@ const DiagramNodeFormModal: React.FC<Props> = ({
 
   const [targets, setTargets] = useState<AllTargetDTO[]>([]);
   const [loadingTargets, setLoadingTargets] = useState(false);
-
   const [openTargetSelector, setOpenTargetSelector] = useState(false);
   const [targetSearch, setTargetSearch] = useState("");
 
-  const [modalTop, setModalTop] = useState<number | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const initialEditFormRef = useRef<ReturnType<typeof createComparableForm> | null>(null);
 
-  const modalCardRef = useRef<HTMLDivElement | null>(null);
-  const targetSelectorRef = useRef<HTMLDivElement | null>(null);
-  const initialEditFormRef =
-    useRef<ReturnType<typeof createComparableForm> | null>(null);
-
+  // ── Init form ──────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     if (mode === "edit" && initialData) {
       const editForm: DiagramNodeFormValues = {
         task_id: initialData.task_id ?? "",
@@ -149,13 +131,11 @@ const DiagramNodeFormModal: React.FC<Props> = ({
         height: toNumber(initialData.height, 9),
         z_index: toNumber(initialData.z_index, 1),
       };
-
       setForm(editForm);
       initialEditFormRef.current = createComparableForm(editForm);
       setErrors({});
       return;
     }
-
     if (mode === "create") {
       const createForm: DiagramNodeFormValues = {
         ...defaultForm,
@@ -165,192 +145,116 @@ const DiagramNodeFormModal: React.FC<Props> = ({
         width: draftPosition?.width ?? 12,
         height: draftPosition?.height ?? 9,
       };
-
       setForm(createForm);
       initialEditFormRef.current = null;
       setErrors({});
     }
   }, [open, mode, initialData, draftPosition]);
 
+  // ── Fetch targets ──────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     let isMounted = true;
-
     const fetchTargets = async () => {
       setLoadingTargets(true);
       try {
         const res = await ListALLTarget();
         if (!isMounted) return;
         setTargets(Array.isArray(res) ? res : []);
-      } catch (error) {
-        console.error("Failed to fetch all targets:", error);
+      } catch {
         if (isMounted) setTargets([]);
       } finally {
         if (isMounted) setLoadingTargets(false);
       }
     };
-
-    fetchTargets();
-
-    return () => {
-      isMounted = false;
-    };
+    void fetchTargets();
+    return () => { isMounted = false; };
   }, [open]);
 
+  // ── Close dropdown on outside click ───────────────────────────
   useEffect(() => {
     if (!openTargetSelector) return;
-
-    const onClickOutside = (e: MouseEvent) => {
-      if (!targetSelectorRef.current) return;
-      if (!targetSelectorRef.current.contains(e.target as Node)) {
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!triggerRef.current?.contains(t) && !dropdownRef.current?.contains(t)) {
         setOpenTargetSelector(false);
       }
     };
-
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [openTargetSelector]);
 
-  useLayoutEffect(() => {
-    if (!open) return;
+  useEffect(() => {
+    if (!open) setOpenTargetSelector(false);
+  }, [open]);
 
-    const updatePosition = () => {
-      const card = modalCardRef.current;
-      if (!card) return;
-
-      const viewportHeight = window.innerHeight;
-      const cardHeight = card.offsetHeight;
-      const padding = 16;
-
-      const fallbackTop = Math.max((viewportHeight - cardHeight) / 2, padding);
-
-      if (!anchorPoint) {
-        setModalTop(fallbackTop);
-        return;
-      }
-
-      const preferredTop = anchorPoint.clientY - cardHeight / 2;
-      const maxTop = Math.max(viewportHeight - cardHeight - padding, padding);
-      const nextTop = Math.min(Math.max(preferredTop, padding), maxTop);
-
-      setModalTop(nextTop);
-    };
-
-    const raf = window.requestAnimationFrame(updatePosition);
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.cancelAnimationFrame(raf);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [
-    open,
-    anchorPoint,
-    mode,
-    initialData?.id,
-    loadingTargets,
-    openTargetSelector,
-  ]);
-
-  const subtitle = useMemo(() => {
-    return mode === "create"
+  // ── Derived ────────────────────────────────────────────────────
+  const subtitle = useMemo(
+    () => mode === "create"
       ? `Create new node in ${diagramName || "diagram"}`
-      : `Update selected node in ${diagramName || "diagram"}`;
-  }, [mode, diagramName]);
+      : `Update selected node in ${diagramName || "diagram"}`,
+    [mode, diagramName]
+  );
 
   const usedTaskIdSet = useMemo(() => {
     const set = new Set<string>();
-
     for (const node of allDiagramNodes) {
       const nodeId = Number(node?.id ?? 0);
       const taskId = String(node?.task_id ?? "").trim();
-
       if (!taskId) continue;
-
-      if (currentNodeId && nodeId === currentNodeId) {
-        continue;
-      }
-
+      if (currentNodeId && nodeId === currentNodeId) continue;
       set.add(taskId);
     }
-
     return set;
   }, [allDiagramNodes, currentNodeId]);
 
-  const selectedTarget = useMemo(() => {
-    return targets.find((item) => item.task_id === form.task_id) ?? null;
-  }, [targets, form.task_id]);
+  const selectedTarget = useMemo(
+    () => targets.find((t) => t.task_id === form.task_id) ?? null,
+    [targets, form.task_id]
+  );
 
-  const availableTargets = useMemo(() => {
-    return targets.filter((target) => {
-      const taskId = String(target.task_id ?? "").trim();
+  const availableTargets = useMemo(
+    () => targets.filter((t) => {
+      const taskId = String(t.task_id ?? "").trim();
       if (!taskId) return false;
-
-      if (taskId === String(form.task_id ?? "").trim()) {
-        return true;
-      }
-
+      if (taskId === String(form.task_id ?? "").trim()) return true;
       return !usedTaskIdSet.has(taskId);
-    });
-  }, [targets, usedTaskIdSet, form.task_id]);
+    }),
+    [targets, usedTaskIdSet, form.task_id]
+  );
 
   const filteredTargets = useMemo(() => {
-    const keyword = targetSearch.trim().toLowerCase();
-    if (!keyword) return availableTargets;
-
-    return availableTargets.filter((target) => {
-      const name = String(target.name ?? "").toLowerCase();
-      const ip = String(target.ip ?? "").toLowerCase();
-      const detectedDate = String(target.detected_date ?? "").toLowerCase();
-      const taskId = String(target.task_id ?? "").toLowerCase();
-
-      return (
-        name.includes(keyword) ||
-        ip.includes(keyword) ||
-        detectedDate.includes(keyword) ||
-        taskId.includes(keyword)
-      );
-    });
+    const kw = targetSearch.trim().toLowerCase();
+    if (!kw) return availableTargets;
+    return availableTargets.filter((t) =>
+      [t.name, t.ip, t.detected_date, t.task_id]
+        .some((v) => String(v ?? "").toLowerCase().includes(kw))
+    );
   }, [availableTargets, targetSearch]);
 
   const targetButtonLabel = useMemo(() => {
-    if (!selectedTarget) {
-      return loadingTargets ? "Loading target..." : "Select target";
-    }
-
-    return selectedTarget.name?.trim()
-      ? selectedTarget.name
-      : selectedTarget.ip?.trim()
-      ? selectedTarget.ip
-      : "Selected target";
+    if (!selectedTarget) return loadingTargets ? "Loading targets…" : "Select target";
+    return selectedTarget.name?.trim() || selectedTarget.ip?.trim() || "Selected target";
   }, [selectedTarget, loadingTargets]);
 
   const isFormChanged = useMemo(() => {
     if (mode !== "edit") return true;
     if (!initialEditFormRef.current) return false;
-
-    const currentComparableForm = createComparableForm(form);
-
+    const cur = createComparableForm(form);
+    const orig = initialEditFormRef.current;
     return (
-      currentComparableForm.task_id !== initialEditFormRef.current.task_id ||
-      currentComparableForm.label !== initialEditFormRef.current.label ||
-      currentComparableForm.description !==
-        initialEditFormRef.current.description ||
-      currentComparableForm.icon !== initialEditFormRef.current.icon ||
-      currentComparableForm.x !== initialEditFormRef.current.x ||
-      currentComparableForm.y !== initialEditFormRef.current.y ||
-      currentComparableForm.width !== initialEditFormRef.current.width ||
-      currentComparableForm.height !== initialEditFormRef.current.height ||
-      currentComparableForm.z_index !== initialEditFormRef.current.z_index
+      cur.task_id !== orig.task_id || cur.label !== orig.label ||
+      cur.description !== orig.description || cur.icon !== orig.icon ||
+      cur.x !== orig.x || cur.y !== orig.y ||
+      cur.width !== orig.width || cur.height !== orig.height ||
+      cur.z_index !== orig.z_index
     );
   }, [form, mode]);
 
   if (!open) return null;
 
   const setField = <K extends keyof DiagramNodeFormValues>(
-    key: K,
-    value: DiagramNodeFormValues[K]
+    key: K, value: DiagramNodeFormValues[K]
   ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: "" }));
@@ -359,14 +263,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   const handleSelectTarget = (target: AllTargetDTO) => {
     const taskId = String(target.task_id ?? "").trim();
     if (!taskId) return;
-
-    if (
-      usedTaskIdSet.has(taskId) &&
-      taskId !== String(form.task_id ?? "").trim()
-    ) {
-      return;
-    }
-
+    if (usedTaskIdSet.has(taskId) && taskId !== String(form.task_id ?? "").trim()) return;
     setField("task_id", taskId);
     setOpenTargetSelector(false);
     setTargetSearch("");
@@ -374,20 +271,15 @@ const DiagramNodeFormModal: React.FC<Props> = ({
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
-
-    if (!form.label.trim()) {
-      nextErrors.label = "กรุณากรอก Label";
-    }
-
+    if (!form.label.trim()) nextErrors.label = "Please enter a label";
     if (!form.task_id.trim()) {
-      nextErrors.task_id = "กรุณาเลือก Target";
+      nextErrors.task_id = "Please select a target";
     } else if (
       usedTaskIdSet.has(form.task_id.trim()) &&
       form.task_id.trim() !== String(initialData?.task_id ?? "").trim()
     ) {
-      nextErrors.task_id = "Target นี้ถูกใช้งานแล้ว";
+      nextErrors.task_id = "This target is already used";
     }
-
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -395,7 +287,6 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   const handleSubmit = async () => {
     if (!validate()) return;
     if (mode === "edit" && !isFormChanged) return;
-
     setSubmitting(true);
     try {
       await onSubmit({
@@ -404,10 +295,8 @@ const DiagramNodeFormModal: React.FC<Props> = ({
         description: form.description.trim(),
         task_id: form.task_id.trim(),
         icon: FIXED_ICON,
-        x: Number(form.x),
-        y: Number(form.y),
-        width: Number(form.width),
-        height: Number(form.height),
+        x: Number(form.x), y: Number(form.y),
+        width: Number(form.width), height: Number(form.height),
         z_index: Number(form.z_index),
       });
     } finally {
@@ -415,355 +304,334 @@ const DiagramNodeFormModal: React.FC<Props> = ({
     }
   };
 
+  const isUpdateDisabled =
+    submitting || loading || loadingTargets || (mode === "edit" && !isFormChanged);
+
   const inputCls = [
-    "h-9 rounded-xl border px-3 text-[10px] outline-none transition w-full",
-    "border-gray-200/80 bg-white text-[#1f2240] focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
-    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
+    "h-9 w-full rounded-xl border px-3 text-[12px] outline-none transition",
+    "border-slate-200/80 bg-white text-slate-800 placeholder:text-slate-400",
+    "focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
+    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35",
+    "dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
   ].join(" ");
 
   const textareaCls = [
-    "min-h-[90px] rounded-xl border px-3 py-2 text-[10px] outline-none transition w-full resize-none",
-    "border-gray-200/80 bg-white text-[#1f2240] focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
-    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
+    "w-full resize-none rounded-xl border px-3 py-2 text-[12px] outline-none transition",
+    "border-slate-200/80 bg-white text-slate-800 placeholder:text-slate-400",
+    "focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
+    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35",
+    "dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
   ].join(" ");
 
-  const selectorButtonCls = [
-    "h-9 rounded-xl px-3 flex items-center gap-2 border transition w-full",
-    "bg-white border-gray-200 text-slate-700 hover:border-cyan-200 hover:bg-cyan-50/60",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/10",
-    "disabled:cursor-not-allowed disabled:opacity-60",
-  ].join(" ");
+  const labelCls =
+    "mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35";
 
-  const isUpdateDisabled =
-    submitting ||
-    loading ||
-    loadingTargets ||
-    (mode === "edit" && !isFormChanged);
+  // Each item ≈ 56px → 3 items = 168px for the list area
+  const ITEM_H = 56;
+  const LIST_MAX_H = ITEM_H * 3;
 
-  return (
-    <div className="fixed inset-0 z-1200" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-      <div className="absolute inset-0 overflow-hidden">
-        <div
-          ref={modalCardRef}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute left-1/2 w-[calc(100vw-24px)] max-w-xl -translate-x-1/2 overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
-          style={{
-            top: modalTop ?? 16,
-            maxHeight: "calc(100vh - 32px)",
-            boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.22)`,
-          }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
-                {mode === "create" ? <FiPlus className="text-[14px]" /> : <FiEdit2 className="text-[14px]" />}
-              </span>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                  {mode === "create" ? "CREATE NODE" : "EDIT NODE"}
-                </p>
-                <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
-                  Diagram Node
-                </h3>
-                <p className="text-[10px] text-slate-400 dark:text-white/35">{subtitle}</p>
-              </div>
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-[3px]"
+        onClick={!submitting ? onClose : undefined}
+      />
+
+      {/* Modal card — no overflow-hidden so inline dropdown is visible */}
+      <div
+        className="relative z-10 w-full max-w-md rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 32px rgba(0,0,0,.25)` }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between rounded-t-2xl border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
+              style={{ background: accentGrad }}
+            >
+              {mode === "create" ? <FiPlus className="text-[14px]" /> : <FiEdit2 className="text-[14px]" />}
+            </span>
+            <div>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
+                {mode === "create" ? "CREATE NODE" : "EDIT NODE"}
+              </p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Diagram Node</h3>
+              <p className="text-[10px] text-slate-400 dark:text-white/35">{subtitle}</p>
             </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting || loading}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+          >
+            <FiX className="text-[15px]" />
+          </button>
+        </div>
+
+        {/* Body */}
+        {loading ? (
+          <div className="flex h-44 items-center justify-center text-[11px] text-slate-400 dark:text-white/40">
+            <FiRefreshCw className="mr-2 animate-spin text-[14px]" />
+            Loading…
+          </div>
+        ) : (
+          <div className="space-y-3.5 px-5 py-4">
+
+            {/* Label */}
+            <div>
+              <label className={labelCls}>
+                <FiType className="text-[10px]" />
+                Label <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={form.label}
+                onChange={(e) => setField("label", e.target.value)}
+                placeholder="Enter label"
+                className={inputCls}
+              />
+              {errors.label && (
+                <p className="mt-1 text-[10px] text-red-500">{errors.label}</p>
+              )}
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className={labelCls}>
+                <FiAlignLeft className="text-[10px]" />
+                Description
+              </label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setField("description", e.target.value)}
+                placeholder="Enter description (optional)"
+                rows={2}
+                className={textareaCls}
+              />
+            </div>
+
+            {/* Target selector */}
+            <div>
+              <label className={labelCls}>
+                <FiTarget className="text-[10px]" />
+                Target <span className="text-red-400">*</span>
+              </label>
+
+              {/* Trigger + floating dropdown wrapper */}
+              <div className="relative">
+                <button
+                  ref={triggerRef}
+                  type="button"
+                  onClick={() => { if (!loadingTargets) setOpenTargetSelector((p) => !p); }}
+                  disabled={loadingTargets}
+                  className={[
+                    "flex h-9 w-full items-center gap-2 rounded-xl border px-3 transition",
+                    openTargetSelector
+                      ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-400/30 dark:bg-white/10"
+                      : "border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/30 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+                    "disabled:cursor-not-allowed disabled:opacity-60",
+                  ].join(" ")}
+                >
+                  <FiServer className="shrink-0 text-[12px] text-slate-400 dark:text-white/35" />
+                  <span className="flex-1 truncate text-left text-[12px] text-slate-700 dark:text-white/75">
+                    {targetButtonLabel}
+                  </span>
+                  <FiChevronDown
+                    className={`shrink-0 text-[12px] text-slate-400 transition-transform duration-200 dark:text-white/35 ${openTargetSelector ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+              {/* Absolute dropdown — floats over content, does NOT expand modal */}
+              {openTargetSelector && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 right-0 top-full z-200 mt-1.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-white/10 dark:bg-[#0d0b1a]"
+                  style={{ boxShadow: "0 16px 48px -8px rgba(0,0,0,.28), 0 4px 16px rgba(0,0,0,.14)" }}
+                >
+                  {/* Search bar */}
+                  <div className="border-b border-slate-100 p-2 dark:border-white/8">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+                      <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
+                      <input
+                        value={targetSearch}
+                        onChange={(e) => setTargetSearch(e.target.value)}
+                        placeholder="Search target…"
+                        autoFocus
+                        className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* List — fixed height = 3 items, scroll for more */}
+                  <div
+                    className="overflow-y-auto px-1.5 py-1.5"
+                    style={{ maxHeight: LIST_MAX_H }}
+                  >
+                    {loadingTargets ? (
+                      <div className="flex items-center justify-center gap-2 py-5 text-[11px] text-slate-400 dark:text-white/35">
+                        <FiRefreshCw className="animate-spin text-[12px]" />
+                        Loading targets…
+                      </div>
+                    ) : filteredTargets.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center gap-1.5 py-5 text-[11px] text-slate-400 dark:text-white/35">
+                        <FiSlash className="text-[16px]" />
+                        No available targets
+                      </div>
+                    ) : (
+                      <div className="space-y-0.5">
+                        {filteredTargets.map((target) => {
+                          const checked = form.task_id === target.task_id;
+                          return (
+                            <button
+                              key={`${target.task_id}-${target.ip}`}
+                              type="button"
+                              onClick={() => handleSelectTarget(target)}
+                              className={[
+                                "flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+                                checked
+                                  ? "bg-cyan-50 dark:bg-cyan-500/10"
+                                  : "hover:bg-slate-50 dark:hover:bg-white/5",
+                              ].join(" ")}
+                              style={{ minHeight: ITEM_H }}
+                            >
+                              {/* Checkbox */}
+                              <span
+                                className={[
+                                  "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
+                                  checked
+                                    ? "border-cyan-500 bg-cyan-500 text-white"
+                                    : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
+                                ].join(" ")}
+                              >
+                                <FiCheck className="text-[9px]" />
+                              </span>
+
+                              {/* Info */}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[11.5px] font-medium text-slate-700 dark:text-white/80">
+                                  {target.name || "Unnamed Target"}
+                                </p>
+                                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/35">
+                                    <FiServer className="text-[9px]" />
+                                    {target.ip || "-"}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/35">
+                                    <FiCalendar className="text-[9px]" />
+                                    {target.detected_date || "-"}
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/35">
+                                    <FiActivity className="text-[9px]" />
+                                    Risk{" "}
+                                    {typeof target.risk_score === "number"
+                                      ? target.risk_score.toFixed(2)
+                                      : "-"}
+                                  </span>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              </div>{/* end relative wrapper */}
+
+              {/* Selected target chip (hidden while dropdown is open) */}
+              {selectedTarget && !openTargetSelector && (
+                <div
+                  className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-3 py-2"
+                  style={{ backgroundColor: `${currentColor}10`, border: `1px solid ${currentColor}25` }}
+                >
+                  <span
+                    className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold"
+                    style={{ color: currentColor }}
+                  >
+                    <FiServer className="text-[10px]" />
+                    {selectedTarget.name || selectedTarget.ip || "-"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/45">
+                    <FiCalendar className="text-[10px]" />
+                    {selectedTarget.detected_date || "-"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/45">
+                    <FiActivity className="text-[10px]" />
+                    Risk{" "}
+                    {typeof selectedTarget.risk_score === "number"
+                      ? selectedTarget.risk_score.toFixed(2)
+                      : "-"}
+                  </span>
+                </div>
+              )}
+
+              {errors.task_id && (
+                <p className="mt-1 text-[10px] text-red-500">{errors.task_id}</p>
+              )}
+            </div>
+
+            {/* Error banner */}
+            {(errors.label || errors.task_id) && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                Please fill in all required fields before saving.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-2 rounded-b-2xl border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <div>
+            {mode === "edit" && onDelete ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={submitting || loading}
+                title="Delete node"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+              >
+                <FiTrash2 className="text-[13px]" />
+              </button>
+            ) : (
+              <div />
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onClose}
               disabled={submitting || loading}
-              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
             >
-              <FiX className="text-[15px]" />
+              Cancel
             </button>
-          </div>
-
-          <div className="max-h-[calc(100vh-190px)] overflow-y-auto px-5 py-5">
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-gray-200/80 bg-gray-50/70 p-3 dark:border-white/10 dark:bg-white/3">
-                <div className="mb-2.5 flex items-center gap-2">
-                  <div className="inline-flex h-7 w-7 items-center justify-center rounded-xl border border-cyan-200/80 bg-white dark:border-white/10 dark:bg-white/5">
-                    <FiMapPin className="text-[12px] text-cyan-600 dark:text-cyan-300" />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-[#1f2240] dark:text-white/90">
-                      Basic Information
-                    </p>
-                    <p className="text-[9px] text-gray-500 dark:text-white/50">
-                      Fill label, description and select target
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-2.5">
-                  <div>
-                    <label className="mb-1.5 flex items-center gap-1.5 text-[9px] font-medium text-gray-600 dark:text-white/65">
-                      <FiType className="text-[9.5px] text-cyan-600 dark:text-cyan-300" />
-                      Label
-                    </label>
-                    <div className="relative">
-                      <FiType className="absolute left-3 top-1/2 -translate-y-1/2 text-[9.5px] text-gray-400 dark:text-white/35" />
-                      <input
-                        value={form.label}
-                        onChange={(e) => setField("label", e.target.value)}
-                        placeholder="Enter label"
-                        className={["pl-8", inputCls].join(" ")}
-                      />
-                    </div>
-                    {errors.label ? (
-                      <p className="mt-1 text-[9px] text-red-500">
-                        {errors.label}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 flex items-center gap-1.5 text-[9px] font-medium text-gray-600 dark:text-white/65">
-                      <FiAlignLeft className="text-[9.5px] text-cyan-600 dark:text-cyan-300" />
-                      Description
-                    </label>
-                    <div className="relative">
-                      <FiAlignLeft className="absolute left-3 top-3 text-[9.5px] text-gray-400 dark:text-white/35" />
-                      <textarea
-                        value={form.description}
-                        onChange={(e) =>
-                          setField("description", e.target.value)
-                        }
-                        placeholder="Enter description"
-                        className={["pl-8", textareaCls].join(" ")}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 flex items-center gap-1.5 text-[9px] font-medium text-gray-600 dark:text-white/65">
-                      <FiTarget className="text-[9.5px] text-cyan-600 dark:text-cyan-300" />
-                      Target
-                    </label>
-
-                    <div className="relative" ref={targetSelectorRef}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!loadingTargets) {
-                            setOpenTargetSelector((prev) => !prev);
-                          }
-                        }}
-                        disabled={loadingTargets}
-                        className={selectorButtonCls}
-                      >
-                        <FiServer className="text-[11px] shrink-0" />
-                        <span className="text-[10px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                          {targetButtonLabel}
-                        </span>
-                        <FiChevronDown
-                          className={`ml-auto text-[11px] transition-transform ${
-                            openTargetSelector ? "rotate-180" : ""
-                          }`}
-                        />
-                      </button>
-
-                      {openTargetSelector && (
-                        <div
-                          className={[
-                            "absolute bottom-full left-0 right-0 z-30 mb-2 overflow-hidden rounded-2xl",
-                            "border border-gray-200 bg-white shadow-xl",
-                            "dark:border-white/10 dark:bg-[#0B1220] dark:shadow-none",
-                          ].join(" ")}
-                        >
-                          <div className="border-b border-gray-100 p-2 dark:border-white/10">
-                            <div
-                              className={[
-                                "flex items-center gap-2 rounded-xl border px-2.5",
-                                "border-gray-200/80 bg-gray-50",
-                                "dark:border-white/10 dark:bg-white/5",
-                              ].join(" ")}
-                            >
-                              <FiSearch className="shrink-0 text-[10px] text-gray-400 dark:text-white/40" />
-                              <input
-                                value={targetSearch}
-                                onChange={(e) =>
-                                  setTargetSearch(e.target.value)
-                                }
-                                placeholder="Search target"
-                                className="h-7.5 w-full bg-transparent text-[10px] text-gray-700 outline-none placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/35"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="max-h-44 overflow-y-auto p-2">
-                            {loadingTargets ? (
-                              <div className="px-3 py-5 text-center text-[10px] text-gray-500 dark:text-white/50">
-                                Loading target...
-                              </div>
-                            ) : filteredTargets.length === 0 ? (
-                              <div className="px-3 py-5 text-center text-[10px] text-gray-500 dark:text-white/50">
-                                <div className="flex flex-col items-center gap-2">
-                                  <FiSlash className="text-[14px]" />
-                                  <span>No available target</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                {filteredTargets.map((target) => {
-                                  const checked =
-                                    form.task_id === target.task_id;
-
-                                  return (
-                                    <button
-                                      key={`${target.task_id}-${target.ip}`}
-                                      type="button"
-                                      onClick={() => handleSelectTarget(target)}
-                                      className={[
-                                        "w-full flex items-start gap-2 rounded-xl px-2.5 py-2 text-left transition",
-                                        checked
-                                          ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                                          : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                                      ].join(" ")}
-                                    >
-                                      <span
-                                        className={[
-                                          "mt-0.5 h-3.5 w-3.5 rounded-md border flex items-center justify-center shrink-0 transition",
-                                          checked
-                                            ? "bg-cyan-500 border-cyan-500 text-white"
-                                            : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                                        ].join(" ")}
-                                      >
-                                        <FiCheck className="text-[9px]" />
-                                      </span>
-
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="h-2 w-2 rounded-full bg-cyan-500 shrink-0" />
-                                          <span className="text-[10px] font-medium text-gray-700 dark:text-white/80 truncate">
-                                            {target.name || "Unnamed Target"}
-                                          </span>
-                                        </div>
-
-                                        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                                          <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-white/50">
-                                            <FiServer className="text-[9px]" />
-                                            {target.ip || "-"}
-                                          </span>
-                                          <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-white/50">
-                                            <FiCalendar className="text-[9px]" />
-                                            {target.detected_date || "-"}
-                                          </span>
-                                          <span className="inline-flex items-center gap-1 text-[9px] text-gray-500 dark:text-white/50">
-                                            <FiActivity className="text-[9px]" />
-                                            {typeof target.risk_score ===
-                                            "number"
-                                              ? target.risk_score.toFixed(2)
-                                              : "-"}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedTarget ? (
-                      <div className="mt-2 rounded-xl border border-cyan-200/80 bg-cyan-50/70 px-3 py-2 dark:border-cyan-400/20 dark:bg-cyan-500/10">
-                        <div className="grid grid-cols-1 gap-1">
-                          <p className="text-[9px] text-cyan-800 dark:text-cyan-200">
-                            <span className="font-semibold">Target:</span>{" "}
-                            {selectedTarget.name || "-"}
-                          </p>
-                          <p className="text-[9px] text-cyan-800 dark:text-cyan-200">
-                            <span className="font-semibold">IP:</span>{" "}
-                            {selectedTarget.ip || "-"}
-                          </p>
-                          <p className="text-[9px] text-cyan-800 dark:text-cyan-200">
-                            <span className="font-semibold">
-                              Detected Date:
-                            </span>{" "}
-                            {selectedTarget.detected_date || "-"}
-                          </p>
-                          <p className="text-[9px] text-cyan-800 dark:text-cyan-200">
-                            <span className="font-semibold">Risk Score:</span>{" "}
-                            {typeof selectedTarget.risk_score === "number"
-                              ? selectedTarget.risk_score.toFixed(2)
-                              : "-"}
-                          </p>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {errors.task_id ? (
-                      <p className="mt-1 text-[9px] text-red-500">
-                        {errors.task_id}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              {(errors.task_id || errors.label) && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[9px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-200">
-                  กรุณาตรวจสอบข้อมูลให้ครบถ้วนก่อนบันทึก
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
-            <div>
-              {mode === "edit" && onDelete ? (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={submitting || loading}
-                  title="Delete"
-                  aria-label="Delete"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                >
-                  <FiTrash2 className="text-[13px]" />
-                </button>
+            <button
+              type="button"
+              onClick={() => void handleSubmit()}
+              disabled={isUpdateDisabled}
+              style={isUpdateDisabled ? undefined : { background: accentGrad }}
+              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-white/10"
+            >
+              {submitting || loading ? (
+                <>
+                  <FiRefreshCw className="animate-spin text-[11px]" />
+                  Saving…
+                </>
               ) : (
-                <div />
+                <>
+                  {mode === "create" ? <FiPlus className="text-[11px]" /> : <FiSave className="text-[11px]" />}
+                  {mode === "create" ? "+ Create Node" : "Update Node"}
+                </>
               )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting || loading}
-                className="rounded-xl border border-slate-200 px-4 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isUpdateDisabled}
-                style={isUpdateDisabled ? undefined : { background: accentGrad }}
-                className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:opacity-60"
-              >
-                {submitting || loading ? (
-                  <>
-                    <FiRefreshCw className="animate-spin text-[11px]" />
-                    Saving…
-                  </>
-                ) : (
-                  <>
-                    {mode === "create" ? <FiPlus className="text-[11px]" /> : <FiSave className="text-[11px]" />}
-                    {mode === "create" ? "Create Node" : "Update Node"}
-                  </>
-                )}
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

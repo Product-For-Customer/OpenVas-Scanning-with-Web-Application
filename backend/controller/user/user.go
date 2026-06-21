@@ -19,11 +19,11 @@ type CreateUserInput struct {
 	Password    string `json:"password" binding:"required,min=8"`
 	FirstName   string `json:"first_name" binding:"required"`
 	LastName    string `json:"last_name" binding:"required"`
-	Profile     string `json:"profile" binding:"required"`
-	PhoneNumber string `json:"phone_number" binding:"required"`
-	Location    string `json:"location" binding:"required"`
-	Position    string `json:"position" binding:"required"`
-	AppRoleID   uint   `json:"app_role_id" binding:"required"`
+	Profile     string `json:"profile"`      // optional
+	PhoneNumber string `json:"phone_number"` // optional
+	Location    string `json:"location"`     // optional
+	Position    string `json:"position"`     // optional
+	AppRoleID   uint   `json:"app_role_id"`  // optional – defaults to "User" role
 }
 
 type UpdateUserInput struct {
@@ -94,6 +94,16 @@ func CreateUser(c *gin.Context) {
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing email"})
 		return
+	}
+
+	// If no role provided, default to "User" role
+	if input.AppRoleID == 0 {
+		var defaultRole entity.AppRole
+		if err := db.Where("LOWER(role) = ?", "user").First(&defaultRole).Error; err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "default user role not found"})
+			return
+		}
+		input.AppRoleID = defaultRole.ID
 	}
 
 	var role entity.AppRole

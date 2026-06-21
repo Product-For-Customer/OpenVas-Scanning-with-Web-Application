@@ -13,10 +13,12 @@ import {
   FiX,
   FiAlertTriangle,
   FiPlus,
+  FiUsers,
 } from "react-icons/fi";
 import { DeleteUserByID, ListUser, type UserResponse } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 import { message } from "antd";
 import ModalCreateandUpdateUser from "../../Model/ModalCreateandUpdateUser";
 
@@ -42,6 +44,8 @@ const isBase64DataImage = (v: string) => {
 const Index: React.FC = () => {
   const { t } = useLanguage();
   const auth = useAuth() as any;
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("Newest");
@@ -277,34 +281,47 @@ const Index: React.FC = () => {
 
   return (
     <>
+      {/* ── Page header card ── */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:mb-5 sm:p-5 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}
+      >
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
+        </div>
+        <div className="relative z-10 flex items-center gap-3 sm:gap-4">
+          <div
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-12 sm:w-12"
+            style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
+          >
+            <FiUsers className="text-[20px]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
+              MANAGEMENT · ADMIN
+            </p>
+            <h1 className="truncate text-[17px] font-bold text-slate-900 sm:text-[19px] dark:text-white/90">
+              {t("user.title")}
+            </h1>
+            <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
+              Manage admin and user accounts with a smaller and cleaner layout.
+            </p>
+          </div>
+          {!loading && (
+            <span className="ml-auto shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-white" style={{ background: accentGrad }}>
+              {rows.length} {rows.length === 1 ? "user" : "users"}
+            </span>
+          )}
+        </div>
+      </div>
+
       <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
         <div>
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-                  {t("user.title")}
-                </h2>
-                {!loading && (
-                  <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                    {rows.length} users
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCreate}
-              className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[11px] font-medium text-white transition hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20"
-            >
-              <FiPlus className="text-[12px]" />
-              {t("user.addUser")}
-            </button>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative w-full sm:max-w-sm">
+          {/* ── Search + Sort + Add User — single row ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Search */}
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
               <input
                 value={search}
@@ -314,7 +331,8 @@ const Index: React.FC = () => {
               />
             </div>
 
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
+            {/* Sort dropdown */}
+            <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
               <button
                 type="button"
                 onClick={() => setOpenSort((s) => !s)}
@@ -323,7 +341,6 @@ const Index: React.FC = () => {
                 {sortBy}
                 <FiChevronDown className={`text-[11px] text-slate-400 transition dark:text-white/35 ${openSort ? "rotate-180" : ""}`} />
               </button>
-
               {openSort && (
                 <div className="absolute right-0 z-20 mt-1.5 w-48 overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
                   {(["Newest","Role: Admin First","Role: User First","Name A-Z"] as SortKey[]).map((opt) => (
@@ -344,6 +361,17 @@ const Index: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Add User */}
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-medium text-white transition hover:opacity-90"
+              style={{ background: accentGrad }}
+            >
+              <FiPlus className="text-[12px]" />
+              {t("user.addUser")}
+            </button>
           </div>
 
           <div className="mt-2.5 flex flex-col gap-1 text-[10px] text-slate-500 dark:text-white/50">

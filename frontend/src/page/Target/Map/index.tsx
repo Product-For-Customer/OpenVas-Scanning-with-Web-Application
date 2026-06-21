@@ -33,6 +33,7 @@ import { useLanguage } from "../../../contexts/LanguageContext";
 import ModalCreateAndUpdate from "./modal/ModalCreateAndUpdate";
 import ModalDelete from "./modal/ModalDelete";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 export type DeviceStatus = "online" | "offline" | "warning";
 
@@ -271,6 +272,8 @@ const MapPopupCard: React.FC<{
 
 const MapDevice: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const mapRef = useRef<MapRef | null>(null);
   const { user } = useAuth();
 
@@ -790,7 +793,8 @@ const MapDevice: React.FC = () => {
                       <button
                         type="button"
                         onClick={handleOpenCreateModal}
-                        className="flex h-8 items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-[11px] font-medium text-white transition hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20"
+                        className="flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-medium text-white transition hover:opacity-90"
+                        style={{ background: accentGrad }}
                       >
                         <FiPlus className="text-[12px]" />
                         Create Location

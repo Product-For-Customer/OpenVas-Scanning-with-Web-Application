@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { ListTaskStatus, type TaskStatusDTO } from "../../../../services";
 import { useLanguage } from "../../../../contexts/LanguageContext";
+import { useStateContext } from "../../../../contexts/ProviderContext";
 
 type StatusKey = "Done" | "Running" | "New" | "Stopped";
 
@@ -337,6 +338,8 @@ const sortTaskRows = (items: TaskStatusDTO[], sortMode: SortMode) => {
 
 const TargetStatusData: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -876,10 +879,11 @@ const TargetStatusData: React.FC = () => {
                       key={page}
                       type="button"
                       onClick={() => setCurrentPage(page)}
+                      style={active ? { background: accentGrad } : undefined}
                       className={[
                         "inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-[11px] font-semibold transition",
                         active
-                          ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/15"
+                          ? "border-transparent text-white"
                           : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8",
                       ].join(" ")}
                     >

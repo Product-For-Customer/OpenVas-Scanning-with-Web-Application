@@ -398,10 +398,11 @@ const ThreatIntelligence: React.FC = () => {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
+            style={activeTab === tab ? { background: accentGrad } : undefined}
             className={[
               "rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
               activeTab === tab
-                ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/10"
+                ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
             ].join(" ")}
           >

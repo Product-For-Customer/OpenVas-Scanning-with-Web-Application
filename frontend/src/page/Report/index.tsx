@@ -28,6 +28,7 @@ import {
   SendPDFToEmail,
 } from "../../services/report";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 import {
   ListAppNotification,
   ListAssetRisk,
@@ -819,6 +820,8 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
 
 const ReportPreviewIndex: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const [openEditModal, setOpenEditModal] = useState(false);
   const [openSendToLineModal, setOpenSendToLineModal] = useState(false);
   const [openDownloadMenu, setOpenDownloadMenu] = useState(false);
@@ -1074,9 +1077,10 @@ const ReportPreviewIndex: React.FC = () => {
                 type="button"
                 onClick={() => setOpenDownloadMenu((prev) => !prev)}
                 disabled={actionBusy}
+                style={{ background: accentGrad }}
                 className={[
                   "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white transition sm:min-w-42 sm:w-auto",
-                  "bg-slate-900 hover:bg-slate-800 dark:bg-white/15 dark:hover:bg-white/20",
+                  "hover:opacity-90",
                   actionBusy ? "cursor-not-allowed opacity-80" : "",
                 ].join(" ")}
               >

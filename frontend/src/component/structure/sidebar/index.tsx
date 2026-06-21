@@ -152,10 +152,6 @@ const Sidebar: React.FC = () => {
   return (
     <>
       <style>{`
-        @keyframes argusLogoFloat {
-          0%, 100% { transform: translateY(0px) scale(1); }
-          50%       { transform: translateY(-3px) scale(1.01); }
-        }
         @keyframes sidebarMiniModalIn {
           0%   { opacity: 0; transform: translateX(-8px) scale(0.96); }
           100% { opacity: 1; transform: translateX(0px) scale(1); }
@@ -209,15 +205,11 @@ const Sidebar: React.FC = () => {
               className={`select-none ${isExpanded ? "flex items-center gap-3" : "flex items-center justify-center"}`}
               aria-label="Go to dashboard"
             >
-              <div
-                className={`relative flex shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-cyan-50 to-sky-50 dark:from-cyan-500/10 dark:to-sky-500/10 ${
-                  isTablet ? "h-12 w-12" : "h-14 w-14"
-                }`}
-                style={{ animation: "argusLogoFloat 4.2s ease-in-out infinite", willChange: "transform" }}
-              >
-                <img src={logo} alt="Logo"
-                  className={`object-contain ${isTablet ? "h-10 w-10" : "h-12 w-12"}`} />
-              </div>
+              <img
+                src={logo}
+                alt="Logo"
+                className={`shrink-0 object-contain ${isTablet ? "h-10 w-10" : "h-12 w-12"}`}
+              />
 
               {isExpanded && (
                 <div className="min-w-0">
@@ -519,49 +511,59 @@ const Sidebar: React.FC = () => {
               : "px-2 pb-3 pt-1"
           }`}>
             {isExpanded ? (
-              <button type="button" onClick={() => void handleLogout()} disabled={loggingOut}
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 className={[
-                  "group flex w-full items-center justify-between rounded-xl border border-slate-200/70 transition-all duration-200",
+                  "group flex w-full items-center justify-between rounded-xl border border-slate-200/70 bg-white shadow-sm transition-all duration-200",
+                  "dark:border-white/8 dark:bg-white/5",
                   isTablet ? "px-2.5 py-2" : "px-3 py-2.5",
-                  "bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/8",
-                  loggingOut ? "cursor-not-allowed opacity-70" : "",
+                  loggingOut ? "cursor-not-allowed opacity-60" : "hover:border-slate-300 hover:shadow-md dark:hover:bg-white/8",
                   "focus:outline-none focus:ring-0",
                 ].join(" ")}
                 aria-label={t("sidebar.logout")}
               >
                 <div className={`flex items-center ${isTablet ? "gap-2" : "gap-2.5"}`}>
-                  <span className={`inline-flex items-center justify-center rounded-xl border border-slate-200/70 bg-slate-100 text-slate-500 dark:border-white/8 dark:bg-white/8 dark:text-white/55 ${
-                    isTablet ? "h-7 w-7" : "h-8 w-8"
-                  }`}>
-                    <RiDoorOpenLine className={isTablet ? "text-[14px]" : "text-[15px]"} />
+                  {/* Gradient icon — matches section headers */}
+                  <span
+                    className={`inline-flex shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${isTablet ? "h-7 w-7" : "h-8 w-8"}`}
+                    style={{
+                      background: `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 60%, #9333ea))`,
+                      boxShadow: `0 4px 12px -4px ${currentColor}55`,
+                    }}
+                  >
+                    <RiDoorOpenLine className={isTablet ? "text-[13px]" : "text-[14px]"} />
                   </span>
                   <div className="text-left leading-tight">
-                    <span className={`block font-semibold ${isTablet ? "text-[11.5px]" : "text-[12.5px]"}`}>
+                    <span className={`block font-semibold text-slate-700 dark:text-white/80 ${isTablet ? "text-[12px]" : "text-[13px]"}`}>
                       {loggingOut ? t("sidebar.loggingOut") : t("sidebar.logout")}
                     </span>
-                    <span className={`block text-slate-500 dark:text-white/45 ${isTablet ? "text-[8.5px]" : "text-[9.5px]"}`}>
+                    <span className={`block text-slate-400 dark:text-white/40 ${isTablet ? "text-[9px]" : "text-[10px]"}`}>
                       {t("sidebar.endSession")}
                     </span>
                   </div>
                 </div>
-                <FiLogOut className={`text-slate-400 transition-colors duration-200 group-hover:text-slate-600 dark:text-white/40 dark:group-hover:text-white/65 ${
-                  isTablet ? "text-[13px]" : "text-[14px]"
-                }`} />
+                <FiLogOut
+                  className={`text-slate-400 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-white/30 ${isTablet ? "text-[13px]" : "text-[14px]"}`}
+                />
               </button>
             ) : (
-              <button type="button" onClick={() => void handleLogout()} disabled={loggingOut}
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
                 style={{ WebkitTapHighlightColor: "transparent" }}
                 className={[
-                  "flex h-12 w-full items-center justify-center rounded-xl border transition-all duration-200",
-                  "border-transparent bg-slate-100 text-slate-500 hover:border-slate-200 hover:bg-slate-200",
-                  "dark:bg-white/8 dark:text-white/55 dark:hover:bg-white/12",
-                  loggingOut ? "cursor-not-allowed opacity-70" : "",
+                  "flex h-12 w-full items-center justify-center rounded-xl border border-slate-200/70 bg-white shadow-sm transition-all duration-200",
+                  "dark:border-white/8 dark:bg-white/5",
+                  loggingOut ? "cursor-not-allowed opacity-60" : "hover:border-slate-300 hover:shadow-md dark:hover:bg-white/8",
                   "focus:outline-none focus:ring-0",
                 ].join(" ")}
                 aria-label={t("sidebar.logout")}
               >
-                <FiLogOut className="text-[18px]" />
+                <FiLogOut className="text-[18px] text-slate-500 dark:text-white/50" />
               </button>
             )}
           </div>

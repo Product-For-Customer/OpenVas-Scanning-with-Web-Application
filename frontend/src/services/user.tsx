@@ -36,11 +36,11 @@ export type CreateUserInput = {
   password: string;
   first_name: string;
   last_name: string;
-  profile: string;
-  phone_number: string;
-  location: string;
-  position: string;
-  app_role_id: number;
+  profile?: string;
+  phone_number?: string;
+  location?: string;
+  position?: string;
+  app_role_id?: number; // 0 = default "User" role (handled by backend)
 };
 
 export type UpdateUserInput = {

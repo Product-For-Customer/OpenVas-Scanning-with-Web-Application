@@ -10,6 +10,7 @@ import {
 } from "react-icons/fi";
 import { GetKEVSummary, type KEVByHost, type KEVEntryDTO } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 // ─────────────────────────────────────────────────────────────
 // KEV Badge
@@ -122,6 +123,8 @@ const CVECard: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry, index
 
 const ThreatIntelligenceDetail: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const navigate = useNavigate();
   const { hostIp } = useParams<{ hostIp: string }>();
   const location = useLocation();
@@ -263,10 +266,11 @@ const ThreatIntelligenceDetail: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFilterRansomware(false)}
+                style={!filterRansomware ? { background: accentGrad } : undefined}
                 className={[
                   "rounded-lg border px-3 py-1.5 text-[11px] font-semibold transition-all",
                   !filterRansomware
-                    ? "border-slate-900 bg-slate-900 text-white dark:border-white/20 dark:bg-white/10"
+                    ? "border-transparent text-white"
                     : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60",
                 ].join(" ")}
               >

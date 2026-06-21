@@ -49,6 +49,7 @@ import {
   type AppLineMasterResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { useStateContext } from "../../../contexts/ProviderContext";
 
 type SortKey = "Newest" | "Alert: On First" | "Alert: Off First";
 type FormMode = "create" | "edit";
@@ -307,8 +308,7 @@ const panelClass =
 
 const createGradientBtn = [
   "flex h-8 items-center justify-center gap-1.5 rounded-lg px-3.5",
-  "bg-slate-900 text-[11px] font-medium text-white transition hover:bg-slate-800",
-  "dark:bg-white/15 dark:hover:bg-white/20",
+  "text-[11px] font-medium text-white transition hover:opacity-90",
 ].join(" ");
 
 const editGradientIconBtn = [
@@ -716,6 +716,8 @@ const LineMasterSelector: React.FC<{
 
 const index: React.FC = () => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("Newest");
   const [openSort, setOpenSort] = useState(false);
@@ -1773,6 +1775,7 @@ const index: React.FC = () => {
                         type="button"
                         onClick={openCreateMasterModal}
                         className={createGradientBtn}
+                        style={{ background: accentGrad }}
                       >
                         <FiPlus className="text-[12px]" />
                         <span className="text-[11px] font-medium">Bot</span>

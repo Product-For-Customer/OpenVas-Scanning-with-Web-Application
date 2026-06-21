@@ -7,8 +7,6 @@ import {
   FiImage,
   FiEdit2,
   FiLayers,
-  FiCrosshair,
-  FiType,
   FiAlignLeft,
   FiCpu,
   FiCalendar,
@@ -16,7 +14,9 @@ import {
   FiBarChart2,
   FiHash,
   FiActivity,
-  FiUser,
+  FiPlus,
+  FiRefreshCw,
+  FiTarget,
 } from "react-icons/fi";
 import {
   CreateAppDiagramNode,
@@ -36,6 +36,9 @@ import DiagramNodeFormModal, {
   type DiagramNodeModalMode,
 } from "../Model/DiagramNodeFormModal";
 import { useAuth } from "../../../contexts/AuthContext";
+import { useStateContext } from "../../../contexts/ProviderContext";
+
+// ── helpers ───────────────────────────────────────────────────────────────────
 
 const getImageSrc = (value?: string) => {
   if (!value) return "";
@@ -64,146 +67,70 @@ const normalizeSizePercent = (value: number, fallback: number) => {
 
 const formatDetectedDateTime = (value?: string) => {
   if (!value) return "-";
-
   try {
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return value;
-
     return d.toLocaleString("th-TH", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
-  } catch {
-    return value;
-  }
+  } catch { return value; }
 };
 
 const formatRiskScore = (value?: number) => {
   const num = Number(value ?? 0);
-  if (!Number.isFinite(num)) return "0.00";
-  return num.toFixed(2);
+  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
 };
 
 const formatSeverity = (value?: number) => {
   const num = Number(value ?? 0);
-  if (!Number.isFinite(num)) return "0.00";
-  return num.toFixed(2);
+  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
 };
 
 const getRiskScoreTone = (value?: number) => {
   const score = Number(value ?? 0);
-
-  if (!Number.isFinite(score)) {
-    return {
-      box: "border-slate-200 bg-slate-50",
-      label: "text-sky-700",
-      value: "text-slate-800",
-      dot: "bg-slate-400",
-    };
-  }
-
-  if (score >= 9) {
-    return {
-      box: "border-red-200 bg-red-50",
-      label: "text-red-700",
-      value: "text-red-700",
-      dot: "bg-red-500",
-    };
-  }
-
-  if (score >= 7) {
-    return {
-      box: "border-orange-200 bg-orange-50",
-      label: "text-orange-700",
-      value: "text-orange-700",
-      dot: "bg-orange-500",
-    };
-  }
-
-  if (score >= 4) {
-    return {
-      box: "border-amber-200 bg-amber-50",
-      label: "text-amber-700",
-      value: "text-amber-700",
-      dot: "bg-amber-500",
-    };
-  }
-
-  if (score > 0) {
-    return {
-      box: "border-lime-200 bg-lime-50",
-      label: "text-lime-700",
-      value: "text-lime-700",
-      dot: "bg-lime-500",
-    };
-  }
-
-  return {
-    box: "border-emerald-200 bg-emerald-50",
-    label: "text-emerald-700",
-    value: "text-emerald-700",
-    dot: "bg-emerald-500",
-  };
+  if (!Number.isFinite(score)) return { box: "border-slate-200 bg-slate-50", label: "text-sky-700", value: "text-slate-800", dot: "bg-slate-400" };
+  if (score >= 9) return { box: "border-red-200 bg-red-50", label: "text-red-700", value: "text-red-700", dot: "bg-red-500" };
+  if (score >= 7) return { box: "border-orange-200 bg-orange-50", label: "text-orange-700", value: "text-orange-700", dot: "bg-orange-500" };
+  if (score >= 4) return { box: "border-amber-200 bg-amber-50", label: "text-amber-700", value: "text-amber-700", dot: "bg-amber-500" };
+  if (score > 0)  return { box: "border-lime-200 bg-lime-50", label: "text-lime-700", value: "text-lime-700", dot: "bg-lime-500" };
+  return { box: "border-emerald-200 bg-emerald-50", label: "text-emerald-700", value: "text-emerald-700", dot: "bg-emerald-500" };
 };
 
 const getLevelTone = (level?: string) => {
   const normalized = String(level ?? "").trim().toLowerCase();
-
-  if (normalized === "critical") {
-    return {
-      box: "border-red-200 bg-red-50",
-      label: "text-red-700",
-      value: "text-red-700",
-      dot: "bg-red-500",
-    };
-  }
-
-  return {
-    box: "border-slate-200 bg-slate-50",
-    label: "text-sky-700",
-    value: "text-slate-800",
-    dot: "bg-slate-400",
-  };
+  if (normalized === "critical") return { box: "border-red-200 bg-red-50", label: "text-red-700", value: "text-red-700", dot: "bg-red-500" };
+  if (normalized === "high")     return { box: "border-orange-200 bg-orange-50", label: "text-orange-700", value: "text-orange-700", dot: "bg-orange-500" };
+  if (normalized === "medium")   return { box: "border-amber-200 bg-amber-50", label: "text-amber-700", value: "text-amber-700", dot: "bg-amber-500" };
+  if (normalized === "low")      return { box: "border-lime-200 bg-lime-50", label: "text-lime-700", value: "text-lime-700", dot: "bg-lime-500" };
+  return { box: "border-slate-200 bg-slate-50", label: "text-slate-600", value: "text-slate-700", dot: "bg-slate-400" };
 };
 
 type HoverCardState = {
   node: AppDiagramNodeResponse;
-  left: number;
-  top: number;
-  arrowLeft: number;
-  placeBelow: boolean;
+  left: number; top: number; arrowLeft: number; placeBelow: boolean;
 };
 
-type ModalAnchorPoint = {
-  clientX: number;
-  clientY: number;
-};
+type ModalAnchorPoint = { clientX: number; clientY: number };
 
-const TOOLTIP_WIDTH = 300;
-const TOOLTIP_ESTIMATED_HEIGHT = 420;
+const TOOLTIP_WIDTH = 272;
+const TOOLTIP_ESTIMATED_HEIGHT = 390;
 const TOOLTIP_GAP = 14;
 const CONTAINER_PADDING = 12;
 
-const index: React.FC = () => {
+// ── Main component ────────────────────────────────────────────────────────────
+
+const DiagramNodePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const auth = useAuth() as any;
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const roleName = String(
-    auth?.user?.role ??
-      auth?.me?.role ??
-      auth?.profile?.role ??
-      auth?.currentUser?.role ??
-      auth?.authUser?.role ??
-      ""
-  )
-    .trim()
-    .toLowerCase();
-
+    auth?.user?.role ?? auth?.me?.role ?? auth?.profile?.role ??
+    auth?.currentUser?.role ?? auth?.authUser?.role ?? ""
+  ).trim().toLowerCase();
   const isUserRole = roleName === "user";
 
   const diagramIdParam = searchParams.get("diagramId");
@@ -211,7 +138,6 @@ const index: React.FC = () => {
 
   const imageWrapperRef = useRef<HTMLDivElement | null>(null);
   const hoverLeaveTimerRef = useRef<number | null>(null);
-
   const hasFetchedRef = useRef(false);
   const isLoadingDataRef = useRef(false);
   const isMountedRef = useRef(false);
@@ -221,7 +147,6 @@ const index: React.FC = () => {
   const [nodes, setNodes] = useState<AppDiagramNodeResponse[]>([]);
   const [allNodes, setAllNodes] = useState<AppDiagramNodeResponse[]>([]);
   const [targets, setTargets] = useState<AllTargetDTO[]>([]);
-
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [error, setError] = useState("");
@@ -229,43 +154,25 @@ const index: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<DiagramNodeModalMode>("create");
   const [modalLoading, setModalLoading] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<AppDiagramNodeResponse | null>(
-    null
-  );
-  const [draftPosition, setDraftPosition] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  const [modalAnchorPoint, setModalAnchorPoint] =
-    useState<ModalAnchorPoint | null>(null);
-
+  const [selectedNode, setSelectedNode] = useState<AppDiagramNodeResponse | null>(null);
+  const [draftPosition, setDraftPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [modalAnchorPoint, setModalAnchorPoint] = useState<ModalAnchorPoint | null>(null);
   const [hoverCard, setHoverCard] = useState<HoverCardState | null>(null);
 
-  const imageSrc = useMemo(
-    () => getImageSrc(diagram?.image_base64),
-    [diagram?.image_base64]
-  );
+  const imageSrc = useMemo(() => getImageSrc(diagram?.image_base64), [diagram?.image_base64]);
 
   const targetMap = useMemo(() => {
     const map = new Map<string, AllTargetDTO>();
-
     for (const target of targets) {
       const key = String(target.task_id || "").trim();
-      if (!key) continue;
-      map.set(key, target);
+      if (key) map.set(key, target);
     }
-
     return map;
   }, [targets]);
 
   useEffect(() => {
     isMountedRef.current = true;
-
-    return () => {
-      isMountedRef.current = false;
-    };
+    return () => { isMountedRef.current = false; };
   }, []);
 
   const clearHoverLeaveTimer = useCallback(() => {
@@ -278,98 +185,55 @@ const index: React.FC = () => {
   const scheduleHideHoverCard = useCallback(() => {
     clearHoverLeaveTimer();
     hoverLeaveTimerRef.current = window.setTimeout(() => {
-      if (isMountedRef.current) {
-        setHoverCard(null);
-      }
+      if (isMountedRef.current) setHoverCard(null);
     }, 40);
   }, [clearHoverLeaveTimer]);
 
-  useEffect(() => {
-    return () => {
-      clearHoverLeaveTimer();
-    };
-  }, [clearHoverLeaveTimer]);
+  useEffect(() => () => { clearHoverLeaveTimer(); }, [clearHoverLeaveTimer]);
 
-  const loadData = useCallback(
-    async (showLoading = true) => {
-      if (!diagramId || Number.isNaN(diagramId)) {
-        if (isMountedRef.current) {
-          setError("ไม่พบ DiagramID");
-          setLoading(false);
-          setReloading(false);
-        }
+  const loadData = useCallback(async (showLoading = true) => {
+    if (!diagramId || Number.isNaN(diagramId)) {
+      if (isMountedRef.current) { setError("ไม่พบ DiagramID"); setLoading(false); setReloading(false); }
+      return;
+    }
+    if (isLoadingDataRef.current) return;
+    try {
+      isLoadingDataRef.current = true;
+      if (isMountedRef.current) {
+        if (showLoading) setLoading(true); else setReloading(true);
+        setError("");
+      }
+      const [diagramData, fetchedAllNodes, fetchedTargets] = await Promise.all([
+        ListDiagramByID(diagramId), ListAppDiagramNodes(), ListALLTarget(),
+      ]);
+      if (!isMountedRef.current) return;
+      if (!diagramData) {
+        setError("ไม่สามารถโหลดข้อมูล Diagram ได้");
+        setDiagram(null); setNodes([]); setAllNodes([]); setTargets([]);
         return;
       }
-
-      if (isLoadingDataRef.current) return;
-
-      try {
-        isLoadingDataRef.current = true;
-
-        if (isMountedRef.current) {
-          if (showLoading) {
-            setLoading(true);
-          } else {
-            setReloading(true);
-          }
-          setError("");
-        }
-
-        const [diagramData, fetchedAllNodes, fetchedTargets] = await Promise.all([
-          ListDiagramByID(diagramId),
-          ListAppDiagramNodes(),
-          ListALLTarget(),
-        ]);
-
-        if (!isMountedRef.current) return;
-
-        if (!diagramData) {
-          setError("ไม่สามารถโหลดข้อมูล Diagram ได้");
-          setDiagram(null);
-          setNodes([]);
-          setAllNodes([]);
-          setTargets([]);
-          return;
-        }
-
-        const safeAllNodes = Array.isArray(fetchedAllNodes)
-          ? fetchedAllNodes
-          : [];
-        const safeTargets = Array.isArray(fetchedTargets) ? fetchedTargets : [];
-
-        const filteredNodes = safeAllNodes
-          .filter((item) => Number(item.diagram_id) === diagramId)
-          .sort((a, b) => {
-            const zA = Number(a.z_index ?? 0);
-            const zB = Number(b.z_index ?? 0);
-            if (zA !== zB) return zA - zB;
-            return Number(a.id ?? 0) - Number(b.id ?? 0);
-          });
-
-        setDiagram(diagramData);
-        setAllNodes(safeAllNodes);
-        setNodes(filteredNodes);
-        setTargets(safeTargets);
-      } catch (err) {
-        console.error("loadData error:", err);
-
-        if (!isMountedRef.current) return;
-
-        setError("เกิดข้อผิดพลาดในการโหลดข้อมูล Diagram Node");
-        setDiagram(null);
-        setNodes([]);
-        setAllNodes([]);
-        setTargets([]);
-      } finally {
-        if (isMountedRef.current) {
-          setLoading(false);
-          setReloading(false);
-        }
-        isLoadingDataRef.current = false;
-      }
-    },
-    [diagramId]
-  );
+      const safeAllNodes = Array.isArray(fetchedAllNodes) ? fetchedAllNodes : [];
+      const safeTargets = Array.isArray(fetchedTargets) ? fetchedTargets : [];
+      const filteredNodes = safeAllNodes
+        .filter((item) => Number(item.diagram_id) === diagramId)
+        .sort((a, b) => {
+          const zA = Number(a.z_index ?? 0), zB = Number(b.z_index ?? 0);
+          return zA !== zB ? zA - zB : Number(a.id ?? 0) - Number(b.id ?? 0);
+        });
+      setDiagram(diagramData);
+      setAllNodes(safeAllNodes);
+      setNodes(filteredNodes);
+      setTargets(safeTargets);
+    } catch (err) {
+      console.error("loadData error:", err);
+      if (!isMountedRef.current) return;
+      setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      setDiagram(null); setNodes([]); setAllNodes([]); setTargets([]);
+    } finally {
+      if (isMountedRef.current) { setLoading(false); setReloading(false); }
+      isLoadingDataRef.current = false;
+    }
+  }, [diagramId]);
 
   useEffect(() => {
     if (hasFetchedRef.current) return;
@@ -377,663 +241,467 @@ const index: React.FC = () => {
     void loadData(true);
   }, [loadData]);
 
-  const handleOpenCreateByClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (isUserRole) return;
-      if (!imageWrapperRef.current || !diagramId) return;
+  const handleOpenCreateByClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (isUserRole || !imageWrapperRef.current || !diagramId) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-node-marker='true']") || target.closest("[data-hover-card='true']")) return;
+    const rect = imageWrapperRef.current.getBoundingClientRect();
+    const xPercent = normalizePercentValue(((e.clientX - rect.left) / rect.width) * 100);
+    const yPercent = normalizePercentValue(((e.clientY - rect.top) / rect.height) * 100);
+    setDraftPosition({ x: xPercent, y: yPercent, width: 12, height: 9 });
+    setModalAnchorPoint({ clientX: e.clientX, clientY: e.clientY });
+    setSelectedNode(null);
+    setModalMode("create");
+    setModalOpen(true);
+  }, [diagramId, isUserRole]);
 
-      const target = e.target as HTMLElement;
-      if (
-        target.closest("[data-node-marker='true']") ||
-        target.closest("[data-hover-card='true']")
-      ) {
-        return;
+  const handleOpenEdit = useCallback(async (nodeId: number, anchorPoint?: ModalAnchorPoint) => {
+    if (isUserRole) return;
+    const requestId = ++editRequestIdRef.current;
+    setModalAnchorPoint(anchorPoint ?? { clientX: window.innerWidth / 2, clientY: window.innerHeight / 2 });
+    setModalMode("edit");
+    setSelectedNode(null);
+    setDraftPosition(null);
+    setModalOpen(true);
+    setModalLoading(true);
+    try {
+      const node = await ListAppDiagramNodeByID(nodeId);
+      if (!isMountedRef.current || requestId !== editRequestIdRef.current) return;
+      if (!node) { message.error("ไม่สามารถโหลดข้อมูล node ได้"); setModalOpen(false); return; }
+      setSelectedNode(node);
+      setHoverCard(null);
+    } catch (err) {
+      console.error("handleOpenEdit error:", err);
+      if (!isMountedRef.current || requestId !== editRequestIdRef.current) return;
+      message.error("ไม่สามารถโหลดข้อมูล node ได้");
+      setModalOpen(false);
+    } finally {
+      if (isMountedRef.current && requestId === editRequestIdRef.current) setModalLoading(false);
+    }
+  }, [isUserRole]);
+
+  const handleSubmit = useCallback(async (values: DiagramNodeFormValues) => {
+    if (!diagramId || Number.isNaN(diagramId)) { message.error("ไม่พบ DiagramID"); return; }
+    setModalLoading(true);
+    try {
+      if (modalMode === "create") {
+        const payload: CreateAppDiagramNodeInput = {
+          diagram_id: diagramId, task_id: values.task_id.trim(), label: values.label.trim(),
+          description: values.description.trim(), icon: values.icon.trim(),
+          x: normalizePercentValue(values.x), y: normalizePercentValue(values.y),
+          width: normalizeSizePercent(values.width, 12), height: normalizeSizePercent(values.height, 9),
+          z_index: toNumber(values.z_index, 0),
+        };
+        const res = await CreateAppDiagramNode(payload);
+        if (!res) { message.error("สร้าง node ไม่สำเร็จ"); return; }
+        message.success("create success");
+      } else {
+        if (!selectedNode?.id) { message.error("ไม่พบ node ที่ต้องการแก้ไข"); return; }
+        const payload: UpdateAppDiagramNodeInput = {
+          diagram_id: diagramId, task_id: values.task_id.trim(), label: values.label.trim(),
+          description: values.description.trim(), icon: values.icon.trim(),
+          x: normalizePercentValue(values.x), y: normalizePercentValue(values.y),
+          width: normalizeSizePercent(values.width, 12), height: normalizeSizePercent(values.height, 9),
+          z_index: toNumber(values.z_index, 0),
+        };
+        const res = await UpdateAppDiagramNodeByID(selectedNode.id, payload);
+        if (!res) { message.error("แก้ไข node ไม่สำเร็จ"); return; }
+        message.success("update success");
       }
+      if (!isMountedRef.current) return;
+      setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);
+      await loadData(false);
+    } catch (err) {
+      console.error("handleSubmit error:", err);
+    } finally {
+      if (isMountedRef.current) setModalLoading(false);
+    }
+  }, [diagramId, modalMode, selectedNode, loadData]);
 
-      const rect = imageWrapperRef.current.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+  const handleDeleteImmediate = useCallback(async (node: AppDiagramNodeResponse | null) => {
+    if (isUserRole || !node?.id) { message.error("ไม่พบ node ที่ต้องการลบ"); return; }
+    setModalLoading(true);
+    try {
+      const res = await DeleteAppDiagramNodeByID(node.id);
+      if (!res) { message.error("ลบ node ไม่สำเร็จ"); return; }
+      message.success("delete success");
+      if (!isMountedRef.current) return;
+      setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);
+      await loadData(false);
+    } catch (err) {
+      console.error("handleDeleteImmediate error:", err);
+    } finally {
+      if (isMountedRef.current) setModalLoading(false);
+    }
+  }, [loadData, isUserRole]);
 
-      const xPercent = normalizePercentValue((clickX / rect.width) * 100);
-      const yPercent = normalizePercentValue((clickY / rect.height) * 100);
+  const handleMarkerEnter = useCallback((node: AppDiagramNodeResponse, xPercent: number, yPercent: number) => {
+    clearHoverLeaveTimer();
+    const wrapper = imageWrapperRef.current;
+    if (!wrapper) return;
+    const containerWidth = wrapper.clientWidth;
+    const containerHeight = wrapper.clientHeight;
+    const markerX = (xPercent / 100) * containerWidth;
+    const markerY = (yPercent / 100) * containerHeight;
+    let left = clamp(markerX - TOOLTIP_WIDTH / 2, CONTAINER_PADDING, containerWidth - TOOLTIP_WIDTH - CONTAINER_PADDING);
+    const placeBelow = markerY - TOOLTIP_ESTIMATED_HEIGHT - TOOLTIP_GAP < CONTAINER_PADDING;
+    let top = placeBelow ? markerY + TOOLTIP_GAP : markerY - TOOLTIP_ESTIMATED_HEIGHT - TOOLTIP_GAP;
+    top = clamp(top, CONTAINER_PADDING, containerHeight - TOOLTIP_ESTIMATED_HEIGHT - CONTAINER_PADDING);
+    const arrowLeft = clamp(markerX - left, 18, TOOLTIP_WIDTH - 18);
+    setHoverCard({ node, left, top, arrowLeft, placeBelow });
+  }, [clearHoverLeaveTimer]);
 
-      setDraftPosition({
-        x: xPercent,
-        y: yPercent,
-        width: 12,
-        height: 9,
-      });
-
-      setModalAnchorPoint({
-        clientX: e.clientX,
-        clientY: e.clientY,
-      });
-
-      setSelectedNode(null);
-      setModalMode("create");
-      setModalOpen(true);
-    },
-    [diagramId, isUserRole]
-  );
-
-  const handleOpenEdit = useCallback(
-    async (nodeId: number, anchorPoint?: ModalAnchorPoint) => {
-      if (isUserRole) return;
-
-      const requestId = ++editRequestIdRef.current;
-
-      setModalAnchorPoint(
-        anchorPoint ?? {
-          clientX: window.innerWidth / 2,
-          clientY: window.innerHeight / 2,
-        }
-      );
-      setModalMode("edit");
-      setSelectedNode(null);
-      setDraftPosition(null);
-      setModalOpen(true);
-      setModalLoading(true);
-
-      try {
-        const node = await ListAppDiagramNodeByID(nodeId);
-
-        if (!isMountedRef.current) return;
-        if (requestId !== editRequestIdRef.current) return;
-
-        if (!node) {
-          message.error("ไม่สามารถโหลดข้อมูล node ได้");
-          setModalOpen(false);
-          return;
-        }
-
-        setSelectedNode(node);
-        setHoverCard(null);
-      } catch (err) {
-        console.error("handleOpenEdit error:", err);
-
-        if (!isMountedRef.current) return;
-        if (requestId !== editRequestIdRef.current) return;
-
-        message.error("ไม่สามารถโหลดข้อมูล node ได้");
-        setModalOpen(false);
-      } finally {
-        if (isMountedRef.current && requestId === editRequestIdRef.current) {
-          setModalLoading(false);
-        }
-      }
-    },
-    [isUserRole]
-  );
-
-  const handleSubmit = useCallback(
-    async (values: DiagramNodeFormValues) => {
-      if (!diagramId || Number.isNaN(diagramId)) {
-        message.error("ไม่พบ DiagramID");
-        return;
-      }
-
-      setModalLoading(true);
-
-      try {
-        if (modalMode === "create") {
-          const payload: CreateAppDiagramNodeInput = {
-            diagram_id: diagramId,
-            task_id: values.task_id.trim(),
-            label: values.label.trim(),
-            description: values.description.trim(),
-            icon: values.icon.trim(),
-            x: normalizePercentValue(values.x),
-            y: normalizePercentValue(values.y),
-            width: normalizeSizePercent(values.width, 12),
-            height: normalizeSizePercent(values.height, 9),
-            z_index: toNumber(values.z_index, 0),
-          };
-
-          const res = await CreateAppDiagramNode(payload);
-          if (!res) {
-            message.error("สร้าง node ไม่สำเร็จ");
-            return;
-          }
-
-          message.success("create success");
-        } else {
-          if (!selectedNode?.id) {
-            message.error("ไม่พบ node ที่ต้องการแก้ไข");
-            return;
-          }
-
-          const payload: UpdateAppDiagramNodeInput = {
-            diagram_id: diagramId,
-            task_id: values.task_id.trim(),
-            label: values.label.trim(),
-            description: values.description.trim(),
-            icon: values.icon.trim(),
-            x: normalizePercentValue(values.x),
-            y: normalizePercentValue(values.y),
-            width: normalizeSizePercent(values.width, 12),
-            height: normalizeSizePercent(values.height, 9),
-            z_index: toNumber(values.z_index, 0),
-          };
-
-          const res = await UpdateAppDiagramNodeByID(selectedNode.id, payload);
-          if (!res) {
-            message.error("แก้ไข node ไม่สำเร็จ");
-            return;
-          }
-
-          message.success("update success");
-        }
-
-        if (!isMountedRef.current) return;
-
-        setModalOpen(false);
-        setSelectedNode(null);
-        setDraftPosition(null);
-        setModalAnchorPoint(null);
-        await loadData(false);
-      } catch (err) {
-        console.error("handleSubmit error:", err);
-      } finally {
-        if (isMountedRef.current) {
-          setModalLoading(false);
-        }
-      }
-    },
-    [diagramId, modalMode, selectedNode, loadData]
-  );
-
-  const handleDeleteImmediate = useCallback(
-    async (node: AppDiagramNodeResponse | null) => {
-      if (isUserRole) return;
-      if (!node?.id) {
-        message.error("ไม่พบ node ที่ต้องการลบ");
-        return;
-      }
-
-      setModalLoading(true);
-      try {
-        const res = await DeleteAppDiagramNodeByID(node.id);
-        if (!res) {
-          message.error("ลบ node ไม่สำเร็จ");
-          return;
-        }
-
-        message.success("delete success");
-
-        if (!isMountedRef.current) return;
-
-        setModalOpen(false);
-        setSelectedNode(null);
-        setDraftPosition(null);
-        setModalAnchorPoint(null);
-        await loadData(false);
-      } catch (err) {
-        console.error("handleDeleteImmediate error:", err);
-      } finally {
-        if (isMountedRef.current) {
-          setModalLoading(false);
-        }
-      }
-    },
-    [loadData, isUserRole]
-  );
-
-  const handleMarkerEnter = useCallback(
-    (node: AppDiagramNodeResponse, xPercent: number, yPercent: number) => {
-      clearHoverLeaveTimer();
-
-      const wrapper = imageWrapperRef.current;
-      if (!wrapper) return;
-
-      const containerWidth = wrapper.clientWidth;
-      const containerHeight = wrapper.clientHeight;
-
-      const markerX = (xPercent / 100) * containerWidth;
-      const markerY = (yPercent / 100) * containerHeight;
-
-      let left = markerX - TOOLTIP_WIDTH / 2;
-      left = clamp(
-        left,
-        CONTAINER_PADDING,
-        containerWidth - TOOLTIP_WIDTH - CONTAINER_PADDING
-      );
-
-      const placeBelow =
-        markerY - TOOLTIP_ESTIMATED_HEIGHT - TOOLTIP_GAP < CONTAINER_PADDING;
-
-      let top = placeBelow
-        ? markerY + TOOLTIP_GAP
-        : markerY - TOOLTIP_ESTIMATED_HEIGHT - TOOLTIP_GAP;
-
-      top = clamp(
-        top,
-        CONTAINER_PADDING,
-        containerHeight - TOOLTIP_ESTIMATED_HEIGHT - CONTAINER_PADDING
-      );
-
-      const arrowLeft = clamp(markerX - left, 18, TOOLTIP_WIDTH - 18);
-
-      setHoverCard({
-        node,
-        left,
-        top,
-        arrowLeft,
-        placeBelow,
-      });
-    },
-    [clearHoverLeaveTimer]
-  );
-
-  const shell = [
-    "relative overflow-hidden rounded-[18px]",
-    "bg-white border border-gray-200/80 shadow-sm",
-    "dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none",
-  ].join(" ");
-
-  const secondaryBtn = [
-    "h-9 px-3 rounded-xl inline-flex items-center justify-center gap-2 transition text-[11px] font-semibold",
-    "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50",
-    "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-  ].join(" ");
-
-  const badgeCls = [
-    "inline-flex items-center gap-1.5 rounded-full px-2 py-1 min-w-0",
-    "bg-slate-50 text-slate-600 border border-slate-200/80",
-    "dark:bg-white/5 dark:text-white/65 dark:border-white/10",
-  ].join(" ");
-
-  const editGradientBtn = [
-    "w-full h-9 rounded-xl inline-flex items-center justify-center gap-2",
-    "text-white shadow-sm transition-all duration-200 text-[11px] font-semibold",
-    "bg-linear-to-r from-sky-400 via-blue-400 to-indigo-500",
-    "hover:from-sky-500 hover:via-blue-500 hover:to-indigo-600",
-    "focus:outline-none focus:ring-2 focus:ring-sky-200",
-    "dark:focus:ring-sky-500/30",
-  ].join(" ");
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full">
-      <section className={shell}>
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-12 -right-8 h-24 w-24 rounded-full bg-cyan-400/10 blur-3xl" />
-          <div className="absolute -bottom-12 -left-8 h-24 w-24 rounded-full bg-violet-500/10 blur-3xl" />
+    <div className="flex h-[calc(100vh-64px)] flex-col overflow-hidden">
+
+      {/* ── Header bar ── */}
+      <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-3 dark:border-white/8 dark:bg-[#0d0b1a]">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-7 w-0.5 shrink-0 rounded-full" style={{ background: accentGrad }} />
+          <div className="min-w-0">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
+              APPS · DIAGRAMS · NODES
+            </p>
+            <h1 className="truncate text-[16px] font-bold text-slate-800 dark:text-white/90">
+              {loading ? "Loading…" : (diagram?.name || "Diagram Node")}
+            </h1>
+          </div>
+          {!loading && (
+            <span
+              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold text-white"
+              style={{ background: accentGrad }}
+            >
+              {nodes.length} node{nodes.length !== 1 ? "s" : ""}
+            </span>
+          )}
+          {reloading && <FiRefreshCw className="shrink-0 animate-spin text-[13px] text-slate-400 dark:text-white/30" />}
         </div>
 
-        <div className="relative z-10">
-          <div className="border-b border-gray-100 px-3 py-3 dark:border-white/10 sm:px-4 sm:py-3.5">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  <div className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 min-w-0 bg-cyan-50 text-cyan-700 border border-cyan-200/80 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-                    <FiLayers className="shrink-0 text-[10px]" />
-                    <span className="truncate text-[9.5px] font-semibold tracking-wide">
-                      Diagram Node Management
-                    </span>
-                  </div>
+        <div className="flex items-center gap-2">
+          {!isUserRole && !loading && (
+            <span className="hidden items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/30 sm:flex">
+              <FiPlus className="text-[11px]" />
+              Click diagram to add node
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => navigate("/admin/diagrams")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8"
+          >
+            <FiArrowLeft className="text-[12px]" />
+            Back
+          </button>
+        </div>
+      </div>
 
-                  {!isUserRole && (
-                    <div className={badgeCls}>
-                      <FiCrosshair className="shrink-0 text-[10px] text-violet-500" />
-                      <span className="truncate text-[9.5px] font-medium">
-                        Click image to create node
-                      </span>
-                    </div>
-                  )}
+      {/* ── Body: 2-column layout ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-                  <div className={badgeCls}>
-                    <FiMapPin className="shrink-0 text-[10px] text-red-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      {nodes.length} saved node{nodes.length > 1 ? "s" : ""}
-                    </span>
-                  </div>
-
-                  {reloading && (
-                    <div className={badgeCls}>
-                      <span className="truncate text-[9.5px] font-medium">
-                        Reloading...
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <h2 className="wrap-break-word text-[14px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90 sm:text-[16px]">
-                  {diagram?.name || "Diagram Node"}
-                </h2>
-                <p className="mt-1 text-[10px] leading-4.5 text-gray-500 dark:text-white/55 sm:text-[11px]">
-                  {diagram?.description?.trim() || "No description"}
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  className={secondaryBtn}
-                  onClick={() => navigate("/admin/diagrams")}
-                >
-                  <FiArrowLeft className="text-[12px]" />
-                  Back
-                </button>
-              </div>
+        {/* ── LEFT: nodes list panel ── */}
+        <div className="flex w-60 shrink-0 flex-col overflow-hidden border-r border-slate-100 bg-white dark:border-white/8 dark:bg-[#0d0b1a]">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/8">
+            <div className="flex items-center gap-2">
+              <FiLayers className="text-[13px] text-slate-400 dark:text-white/30" />
+              <span className="text-[12.5px] font-semibold text-slate-700 dark:text-white/80">Nodes</span>
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
+                {nodes.length}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() => { hasFetchedRef.current = false; void loadData(false); }}
+              disabled={loading || reloading}
+              className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 disabled:opacity-40 dark:text-white/30 dark:hover:bg-white/8"
+            >
+              <FiRefreshCw className={`text-[11px] ${reloading ? "animate-spin" : ""}`} />
+            </button>
           </div>
 
-          {loading ? (
-            <div className="px-4 py-6 text-[11px] text-gray-500 dark:text-white/55">
-              Loading.
-            </div>
-          ) : error ? (
-            <div className="px-4 py-6 text-[11px] text-red-600 dark:text-red-200">
-              {error}
-            </div>
-          ) : !diagram ? (
-            <div className="px-4 py-6 text-[11px] text-gray-500 dark:text-white/55">
-              No Data
-            </div>
-          ) : (
-            <div className="p-3 sm:p-4">
-              <div className="rounded-2xl border border-gray-200/80 bg-white p-3 shadow-sm dark:bg-white/5 dark:border-white/10 dark:ring-1 dark:ring-white/10 dark:shadow-none">
-                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-[13px] font-semibold text-[#1f2240] dark:text-white/90">
-                      Interactive Diagram
-                    </h3>
-                    <p className="mt-1 text-[10.5px] text-gray-500 dark:text-white/55">
-                      {isUserRole
-                        ? "เลื่อนเมาส์เหนือ marker เพื่อดูรายละเอียด"
-                        : "กดบนรูปเพื่อสร้าง node ใหม่ และกด icon พิกัดเพื่อแก้ไข / ลบ"}
-                    </p>
-                  </div>
-
-                  <div className={badgeCls}>
-                    <FiEdit2 className="shrink-0 text-[10px] text-cyan-500" />
-                    <span className="truncate text-[9.5px] font-medium">
-                      Hover marker to view detail
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  ref={imageWrapperRef}
-                  className={[
-                    "relative w-full overflow-hidden rounded-2xl border border-gray-200/80 bg-slate-50 dark:bg-white/5 dark:border-white/10",
-                    isUserRole ? "cursor-default" : "cursor-crosshair",
-                  ].join(" ")}
-                  onClick={handleOpenCreateByClick}
-                  onMouseLeave={scheduleHideHoverCard}
-                  onMouseEnter={clearHoverLeaveTimer}
-                >
-                  {imageSrc ? (
-                    <img
-                      src={imageSrc}
-                      alt={diagram.name}
-                      className="block w-full h-auto select-none pointer-events-none"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="h-130 w-full flex items-center justify-center text-gray-400 dark:text-white/30">
-                      <div className="flex flex-col items-center gap-2">
-                        <FiImage className="text-[32px]" />
-                        <span className="text-[11px]">No image</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {nodes.map((node) => {
-                    const x = normalizePercentValue(toNumber(node.x, 0));
-                    const y = normalizePercentValue(toNumber(node.y, 0));
-                    const zIndex = toNumber(node.z_index, 1);
-
-                    return (
-                      <button
-                        key={node.id}
-                        type="button"
-                        data-node-marker="true"
-                        title={node.label || `Node ${node.id}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isUserRole) return;
-                          void handleOpenEdit(node.id, {
-                            clientX: e.clientX,
-                            clientY: e.clientY,
-                          });
-                        }}
-                        onMouseEnter={() => handleMarkerEnter(node, x, y)}
-                        onMouseLeave={scheduleHideHoverCard}
-                        className={[
-                          "absolute -translate-x-1/2 -translate-y-full",
-                          "inline-flex items-center justify-center",
-                          "focus:outline-none",
-                        ].join(" ")}
-                        style={{
-                          left: `${x}%`,
-                          top: `${y}%`,
-                          zIndex,
-                        }}
-                      >
-                        <span className="relative inline-flex items-center justify-center">
-                          <span className="absolute h-8 w-8 rounded-full bg-red-400/25 blur-md transition-all" />
-                          <FiMapPin className="relative text-[30px] text-red-500 drop-shadow-[0_4px_10px_rgba(239,68,68,0.45)] transition-transform duration-200 hover:scale-110" />
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  {hoverCard &&
-                    (() => {
-                      const matchedTarget = targetMap.get(
-                        String(hoverCard.node.task_id || "").trim()
-                      );
-
-                      const targetName = String(matchedTarget?.name || "").trim();
-                      const targetIP = String(matchedTarget?.ip || "").trim();
-                      const detectedDate = formatDetectedDateTime(
-                        matchedTarget?.detected_date
-                      );
-                      const riskScore = formatRiskScore(
-                        matchedTarget?.risk_score
-                      );
-                      const level =
-                        String(matchedTarget?.level || "").trim() || "-";
-                      const total = Number(matchedTarget?.total ?? 0);
-                      const severity = formatSeverity(matchedTarget?.severity);
-
-                      const targetDisplay =
-                        targetName || targetIP
-                          ? [targetName || "-", targetIP || "-"].join(" - ")
-                          : hoverCard.node.task_id || "-";
-
-                      const riskTone = getRiskScoreTone(
-                        matchedTarget?.risk_score
-                      );
-                      const levelTone = getLevelTone(matchedTarget?.level);
-
-                      return (
-                        <div
-                          data-hover-card="true"
-                          className="pointer-events-auto absolute z-999 w-75"
-                          style={{
-                            left: hoverCard.left,
-                            top: hoverCard.top,
-                          }}
-                          onMouseEnter={clearHoverLeaveTimer}
-                          onMouseLeave={scheduleHideHoverCard}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="relative overflow-visible">
-                            <div className="overflow-hidden rounded-2xl border border-sky-100 bg-white shadow-[0_20px_40px_rgba(14,165,233,0.14)]">
-                              <div className="border-b border-sky-100 bg-linear-to-r from-sky-50 via-white to-cyan-50 px-3 py-2.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500 text-white shadow-sm">
-                                    <FiMapPin className="text-[14px]" />
-                                  </span>
-                                  <div className="min-w-0 text-left">
-                                    <p className="text-[11px] font-semibold text-slate-800">
-                                      Node Detail
-                                    </p>
-                                    <p className="text-[9.5px] text-slate-500">
-                                      Marker information
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2 px-3 py-3 text-left">
-                                <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[9.5px] font-medium text-sky-700">
-                                    <FiType className="text-[10px] text-sky-500" />
-                                    Label
-                                  </p>
-                                  <p className="text-[11px] font-semibold text-slate-800 wrap-break-word">
-                                    {hoverCard.node.label || "-"}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[9.5px] font-medium text-sky-700">
-                                    <FiAlignLeft className="text-[10px] text-sky-500" />
-                                    Description
-                                  </p>
-                                  <p className="text-[10.5px] leading-5 text-slate-600 wrap-break-word">
-                                    {hoverCard.node.description?.trim()
-                                      ? hoverCard.node.description
-                                      : "No description"}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[9.5px] font-medium text-sky-700">
-                                    <FiUser className="text-[10px] text-sky-500" />
-                                    App User ID
-                                  </p>
-                                  <p className="text-[10.5px] font-medium text-slate-800 wrap-break-word">
-                                    {hoverCard.node.app_user_id || "-"}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[9.5px] font-medium text-sky-700">
-                                    <FiCpu className="text-[10px] text-sky-500" />
-                                    Target
-                                  </p>
-                                  <p className="text-[10.5px] font-medium text-slate-800 wrap-break-word">
-                                    {targetDisplay}
-                                  </p>
-                                </div>
-
-                                <div>
-                                  <p className="mb-1 flex items-center gap-1.5 text-[9.5px] font-medium text-sky-700">
-                                    <FiCalendar className="text-[10px] text-sky-500" />
-                                    Detected
-                                  </p>
-                                  <p className="text-[10.5px] font-medium text-slate-800 wrap-break-word">
-                                    {detectedDate}
-                                  </p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div
-                                    className={`rounded-xl border px-2.5 py-2 ${riskTone.box}`}
-                                  >
-                                    <p
-                                      className={`mb-1 flex items-center gap-1.5 text-[9px] font-medium ${riskTone.label}`}
-                                    >
-                                      <span
-                                        className={`h-1.5 w-1.5 rounded-full ${riskTone.dot}`}
-                                      />
-                                      <FiBarChart2 className="text-[10px]" />
-                                      Risk Score
-                                    </p>
-                                    <p
-                                      className={`text-[10.5px] font-semibold ${riskTone.value}`}
-                                    >
-                                      {riskScore}
-                                    </p>
-                                  </div>
-
-                                  <div
-                                    className={`rounded-xl border px-2.5 py-2 ${levelTone.box}`}
-                                  >
-                                    <p
-                                      className={`mb-1 flex items-center gap-1.5 text-[9px] font-medium ${levelTone.label}`}
-                                    >
-                                      <span
-                                        className={`h-1.5 w-1.5 rounded-full ${levelTone.dot}`}
-                                      />
-                                      <FiAlertTriangle className="text-[10px]" />
-                                      Level
-                                    </p>
-                                    <p
-                                      className={`text-[10.5px] font-semibold ${levelTone.value}`}
-                                    >
-                                      {level}
-                                    </p>
-                                  </div>
-
-                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
-                                    <p className="mb-1 flex items-center gap-1.5 text-[9px] font-medium text-sky-700">
-                                      <FiHash className="text-[10px] text-sky-500" />
-                                      Total
-                                    </p>
-                                    <p className="text-[10.5px] font-semibold text-slate-800">
-                                      {total}
-                                    </p>
-                                  </div>
-
-                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2">
-                                    <p className="mb-1 flex items-center gap-1.5 text-[9px] font-medium text-sky-700">
-                                      <FiActivity className="text-[10px] text-sky-500" />
-                                      Severity
-                                    </p>
-                                    <p className="text-[10.5px] font-semibold text-slate-800">
-                                      {severity}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {!isUserRole && (
-                                  <div className="pt-1">
-                                    <button
-                                      type="button"
-                                      className={editGradientBtn}
-                                      onClick={(e) =>
-                                        void handleOpenEdit(hoverCard.node.id, {
-                                          clientX: e.clientX,
-                                          clientY: e.clientY,
-                                        })
-                                      }
-                                    >
-                                      <FiEdit2 className="text-[12px]" />
-                                      Edit Node
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div
-                              className="absolute h-3 w-3 rotate-45 border-r border-b border-sky-100 bg-white"
-                              style={{
-                                left: hoverCard.arrowLeft,
-                                top: hoverCard.placeBelow ? -6 : undefined,
-                                bottom: hoverCard.placeBelow ? undefined : -6,
-                                transform: `translateX(-50%) ${
-                                  hoverCard.placeBelow
-                                    ? "rotate(225deg)"
-                                    : "rotate(45deg)"
-                                }`,
-                              }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })()}
-                </div>
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="space-y-2 p-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-100 dark:bg-white/6" />
+                ))}
               </div>
+            ) : nodes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${currentColor}12` }}>
+                  <FiMapPin className="text-[16px]" style={{ color: currentColor }} />
+                </div>
+                <p className="text-[11.5px] font-medium text-slate-500 dark:text-white/45">No nodes yet</p>
+                {!isUserRole && <p className="text-[10.5px] text-slate-400 dark:text-white/30">Click the diagram to add</p>}
+              </div>
+            ) : (
+              <div className="space-y-0 px-2 py-2">
+                {nodes.map((node) => {
+                  const matchedTarget = targetMap.get(String(node.task_id || "").trim());
+                  const riskScore = formatRiskScore(matchedTarget?.risk_score);
+                  const riskTone = getRiskScoreTone(matchedTarget?.risk_score);
+                  return (
+                    <button
+                      key={node.id}
+                      type="button"
+                      onClick={() => { if (!isUserRole) void handleOpenEdit(node.id); }}
+                      className="group flex w-full flex-col gap-0.5 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-white/4 focus:outline-none"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: currentColor }} />
+                        <p className="truncate text-[12px] font-semibold text-slate-700 dark:text-white/80">
+                          {node.label || "Unnamed"}
+                        </p>
+                        <span className={`ml-auto shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${riskTone.box} ${riskTone.value}`}>
+                          {riskScore}
+                        </span>
+                      </div>
+                      <p className="truncate pl-4 text-[10.5px] text-slate-400 dark:text-white/30">
+                        {matchedTarget?.name || matchedTarget?.ip || node.task_id || "-"}
+                      </p>
+                      {node.description?.trim() && (
+                        <p className="truncate pl-4 text-[10px] text-slate-300 dark:text-white/20">
+                          {node.description}
+                        </p>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {diagram?.description?.trim() && (
+            <div className="border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+              <p className="line-clamp-2 text-[10px] leading-4.5 text-slate-400 dark:text-white/30">
+                {diagram.description}
+              </p>
             </div>
           )}
         </div>
-      </section>
 
+        {/* ── RIGHT: interactive diagram ── */}
+        <div className="flex flex-1 flex-col overflow-hidden bg-slate-50/30 dark:bg-[#080614]/30">
+
+          {/* Toolbar */}
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-2.5 dark:border-white/8 dark:bg-[#0d0b1a]">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-semibold text-slate-700 dark:text-white/75">Interactive Diagram</span>
+              <span className="text-[10.5px] text-slate-300 dark:text-white/20">·</span>
+              <span className="text-[10.5px] text-slate-400 dark:text-white/30">
+                {isUserRole ? "Hover marker to view detail" : "Click to place node · click marker to edit"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                style={{ borderColor: `${currentColor}30`, color: currentColor, backgroundColor: `${currentColor}08` }}
+              >
+                <FiTarget className="text-[9px]" />
+                {nodes.length} placed
+              </span>
+            </div>
+          </div>
+
+          {/* Canvas — no scroll, image fits the viewport */}
+          <div className="flex-1 overflow-hidden p-3">
+            {loading ? (
+              <div className="flex h-full items-center justify-center gap-2 text-[12px] text-slate-400 dark:text-white/30">
+                <FiRefreshCw className="animate-spin text-[16px]" />
+                Loading diagram…
+              </div>
+            ) : error ? (
+              <div className="flex h-full items-center justify-center text-[12px] text-red-500 dark:text-red-300">{error}</div>
+            ) : (
+              <div
+                className="relative h-full overflow-hidden rounded-2xl border border-slate-200/60 bg-[#f8fafc] shadow-sm dark:border-white/8 dark:bg-white/2"
+                ref={imageWrapperRef}
+                style={{ cursor: isUserRole ? "default" : "crosshair" }}
+                onClick={handleOpenCreateByClick}
+                onMouseLeave={scheduleHideHoverCard}
+                onMouseEnter={clearHoverLeaveTimer}
+              >
+                {imageSrc ? (
+                  <img
+                    src={imageSrc}
+                    alt={diagram?.name}
+                    className="h-full w-full select-none pointer-events-none object-contain"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-300 dark:text-white/20">
+                    <FiImage className="text-[36px]" />
+                    <p className="text-[12px]">No diagram image</p>
+                  </div>
+                )}
+
+                {/* Node markers */}
+                {nodes.map((node) => {
+                  const x = normalizePercentValue(toNumber(node.x, 0));
+                  const y = normalizePercentValue(toNumber(node.y, 0));
+                  const zIndex = toNumber(node.z_index, 1);
+                  return (
+                    <button
+                      key={node.id}
+                      type="button"
+                      data-node-marker="true"
+                      title={node.label || `Node ${node.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isUserRole) return;
+                        void handleOpenEdit(node.id, { clientX: e.clientX, clientY: e.clientY });
+                      }}
+                      onMouseEnter={() => handleMarkerEnter(node, x, y)}
+                      onMouseLeave={scheduleHideHoverCard}
+                      className="absolute -translate-x-1/2 -translate-y-full focus:outline-none"
+                      style={{ left: `${x}%`, top: `${y}%`, zIndex }}
+                    >
+                      <span className="relative inline-flex items-center justify-center">
+                        <span className="absolute h-8 w-8 rounded-full blur-md" style={{ backgroundColor: `${currentColor}30` }} />
+                        <FiMapPin
+                          className="relative text-[28px] drop-shadow-sm transition-transform duration-200 hover:scale-110"
+                          style={{ color: currentColor, filter: `drop-shadow(0 4px 8px ${currentColor}55)` }}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {/* Hover card */}
+                {hoverCard && (() => {
+                  const matchedTarget = targetMap.get(String(hoverCard.node.task_id || "").trim());
+                  const targetName = String(matchedTarget?.name || "").trim();
+                  const targetIP = String(matchedTarget?.ip || "").trim();
+                  const detectedDate = formatDetectedDateTime(matchedTarget?.detected_date);
+                  const riskScore = formatRiskScore(matchedTarget?.risk_score);
+                  const level = String(matchedTarget?.level || "").trim() || "-";
+                  const total = Number(matchedTarget?.total ?? 0);
+                  const severity = formatSeverity(matchedTarget?.severity);
+                  const targetDisplay = (targetName || targetIP)
+                    ? [targetName || "-", targetIP || "-"].join(" · ")
+                    : hoverCard.node.task_id || "-";
+                  const riskTone = getRiskScoreTone(matchedTarget?.risk_score);
+                  const levelTone = getLevelTone(matchedTarget?.level);
+
+                  return (
+                    <div
+                      data-hover-card="true"
+                      className="pointer-events-auto absolute z-999 w-68"
+                      style={{ left: hoverCard.left, top: hoverCard.top }}
+                      onMouseEnter={clearHoverLeaveTimer}
+                      onMouseLeave={scheduleHideHoverCard}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="relative overflow-visible">
+                        <div
+                          className="overflow-hidden rounded-2xl bg-white dark:bg-[#0d0b1a]"
+                          style={{ border: `1px solid ${currentColor}20`, boxShadow: `0 20px 48px -8px ${currentColor}18, 0 8px 24px rgba(0,0,0,.10)` }}
+                        >
+                          {/* Header */}
+                          <div className="flex items-center gap-2.5 border-b px-3.5 py-3" style={{ borderColor: `${currentColor}15` }}>
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+                              <FiMapPin className="text-[12px]" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>NODE DETAIL</p>
+                              <p className="truncate text-[12.5px] font-bold text-slate-800 dark:text-white/90">
+                                {hoverCard.node.label || "Unnamed Node"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Body */}
+                          <div className="space-y-2.5 px-3.5 py-3">
+                            {hoverCard.node.description?.trim() && (
+                              <div className="flex items-start gap-2">
+                                <FiAlignLeft className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
+                                <p className="text-[10.5px] leading-5 text-slate-500 dark:text-white/45">{hoverCard.node.description}</p>
+                              </div>
+                            )}
+                            <div className="border-t" style={{ borderColor: `${currentColor}12` }} />
+                            <div className="flex items-start gap-2">
+                              <FiCpu className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: currentColor }}>Target</p>
+                                <p className="break-all text-[11px] font-medium text-slate-700 dark:text-white/70">{targetDisplay}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <FiCalendar className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: currentColor }}>Detected</p>
+                                <p className="text-[11px] font-medium text-slate-700 dark:text-white/70">{detectedDate}</p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <div className={`rounded-xl border px-2.5 py-2 ${riskTone.box}`}>
+                                <p className={`mb-1 flex items-center gap-1 text-[9px] font-semibold ${riskTone.label}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${riskTone.dot}`} />
+                                  <FiBarChart2 className="text-[9px]" /> Risk
+                                </p>
+                                <p className={`text-[13px] font-bold ${riskTone.value}`}>{riskScore}</p>
+                              </div>
+                              <div className={`rounded-xl border px-2.5 py-2 ${levelTone.box}`}>
+                                <p className={`mb-1 flex items-center gap-1 text-[9px] font-semibold ${levelTone.label}`}>
+                                  <span className={`h-1.5 w-1.5 rounded-full ${levelTone.dot}`} />
+                                  <FiAlertTriangle className="text-[9px]" /> Level
+                                </p>
+                                <p className={`text-[13px] font-bold ${levelTone.value}`}>{level}</p>
+                              </div>
+                              <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-2 dark:border-white/8 dark:bg-white/4">
+                                <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-slate-500 dark:text-white/40">
+                                  <FiHash className="text-[9px]" /> Total
+                                </p>
+                                <p className="text-[13px] font-bold text-slate-700 dark:text-white/75">{total}</p>
+                              </div>
+                              <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-2 dark:border-white/8 dark:bg-white/4">
+                                <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-slate-500 dark:text-white/40">
+                                  <FiActivity className="text-[9px]" /> Severity
+                                </p>
+                                <p className="text-[13px] font-bold text-slate-700 dark:text-white/75">{severity}</p>
+                              </div>
+                            </div>
+                            {!isUserRole && (
+                              <button
+                                type="button"
+                                onClick={(e) => void handleOpenEdit(hoverCard.node.id, { clientX: e.clientX, clientY: e.clientY })}
+                                className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[11.5px] font-semibold text-white transition hover:opacity-90"
+                                style={{ background: accentGrad }}
+                              >
+                                <FiEdit2 className="text-[11px]" />
+                                Edit Node
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <div
+                          className="absolute h-3 w-3 bg-white dark:bg-[#0d0b1a]"
+                          style={{
+                            left: hoverCard.arrowLeft,
+                            top: hoverCard.placeBelow ? -6 : undefined,
+                            bottom: hoverCard.placeBelow ? undefined : -6,
+                            border: `1px solid ${currentColor}20`,
+                            borderTop: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
+                            borderLeft: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
+                            borderRight: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
+                            borderBottom: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
+                            transform: `translateX(-50%) rotate(${hoverCard.placeBelow ? "225" : "45"}deg)`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal */}
       {!isUserRole && (
         <DiagramNodeFormModal
           open={modalOpen}
@@ -1047,10 +715,7 @@ const index: React.FC = () => {
           anchorPoint={modalAnchorPoint}
           onClose={() => {
             if (modalLoading) return;
-            setModalOpen(false);
-            setSelectedNode(null);
-            setDraftPosition(null);
-            setModalAnchorPoint(null);
+            setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);
           }}
           onSubmit={handleSubmit}
           onDelete={
@@ -1064,4 +729,4 @@ const index: React.FC = () => {
   );
 };
 
-export default index;
+export default DiagramNodePage;

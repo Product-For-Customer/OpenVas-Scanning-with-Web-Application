@@ -31,7 +31,8 @@ const ToggleRow: React.FC<{
   value: boolean;
   onChange: (v: boolean) => void;
   disabled?: boolean;
-}> = ({ label, desc, value, onChange, disabled }) => (
+  currentColor?: string;
+}> = ({ label, desc, value, onChange, disabled, currentColor }) => (
   <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 dark:border-white/8 dark:bg-white/4">
     <div className="min-w-0">
       <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">{label}</p>
@@ -45,9 +46,10 @@ const ToggleRow: React.FC<{
       onClick={() => onChange(!value)}
       className={[
         "relative h-6 w-11 shrink-0 overflow-hidden rounded-full transition-colors duration-200",
-        value ? "bg-slate-900 dark:bg-white/70" : "bg-slate-200 dark:bg-white/15",
+        !value ? "bg-slate-200 dark:bg-white/15" : "",
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
       ].join(" ")}
+      style={value && currentColor ? { backgroundColor: currentColor } : undefined}
     >
       <span className={[
         "absolute left-0 top-0.5 block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200",
@@ -229,18 +231,21 @@ const PasswordPolicyPage: React.FC = () => {
               desc="At least one uppercase letter (A–Z)"
               value={draft.require_uppercase}
               onChange={v => updateDraft("require_uppercase", v)}
+              currentColor={currentColor}
             />
             <ToggleRow
               label="Require Number"
               desc="At least one numeric digit (0–9)"
               value={draft.require_number}
               onChange={v => updateDraft("require_number", v)}
+              currentColor={currentColor}
             />
             <ToggleRow
               label="Require Special Character"
               desc={`At least one special character (!@#$%^&*)`}
               value={draft.require_special}
               onChange={v => updateDraft("require_special", v)}
+              currentColor={currentColor}
             />
           </div>
         </div>

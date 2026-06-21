@@ -157,68 +157,52 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
 
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={onClose} />
       <div
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
-        style={{ boxShadow: `0 24px 64px -12px ${currentColor}40, 0 8px 24px rgba(0,0,0,.2)`, maxHeight: "92dvh", display: "flex", flexDirection: "column" }}
+        className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 32px rgba(0,0,0,.22)` }}
       >
-        {/* Modal header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex items-center gap-2.5">
-            <span
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white"
-              style={{ background: accentGrad }}
-            >
-              <FiShield className="text-[14px]" />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+              <FiShield className="text-[13px]" />
             </span>
             <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                SECURITY
-              </p>
-              <h3 className="text-[14px] font-bold leading-tight text-slate-800 dark:text-white/90">
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SECURITY</p>
+              <h3 className="text-[13.5px] font-bold text-slate-800 dark:text-white/90">
                 {status?.is_enabled ? "TOTP Settings" : "Enable Authenticator App"}
               </h3>
             </div>
           </div>
           <button type="button" onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8 focus:outline-none">
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8">
             <FiX className="text-[15px]" />
           </button>
         </div>
 
-        {/* Modal body */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Body */}
+        <div className="px-5 py-4">
 
-          {/* ── Already enabled: status view ── */}
+          {/* ── Already enabled ── */}
           {step === "idle" && status?.is_enabled && (
-            <div className="space-y-4 p-5">
-              <div className="flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-3.5 dark:border-emerald-500/15 dark:bg-emerald-500/5">
-                <FiCheckCircle className="mt-0.5 shrink-0 text-[18px] text-emerald-500" />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3.5 py-3 dark:border-emerald-500/15 dark:bg-emerald-500/5">
+                <FiCheckCircle className="shrink-0 text-[16px] text-emerald-500" />
                 <div>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">
-                    Authenticator App is Active
-                  </p>
-                  <p className="mt-0.5 text-[11.5px] text-slate-500 dark:text-white/45">
-                    Your account is protected with two-factor authentication.
-                  </p>
+                  <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">Authenticator App is Active</p>
+                  <p className="text-[10.5px] text-slate-500 dark:text-white/40">Your account is protected with 2FA.</p>
                 </div>
               </div>
-
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-4 py-3.5 dark:border-white/8 dark:bg-white/3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75">Disable TOTP</p>
-                    <p className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5">Remove authenticator app protection</p>
-                  </div>
-                  <button type="button" onClick={() => setStep("disabling")}
-                    className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-[11.5px] font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/20 dark:bg-transparent dark:text-red-400">
-                    <FiX className="text-[11px]" /> Disable
-                  </button>
-                </div>
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-3 dark:border-white/8 dark:bg-white/3">
+                <p className="text-[12px] font-medium text-slate-600 dark:text-white/60">Disable TOTP</p>
+                <button type="button" onClick={() => setStep("disabling")}
+                  className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/20 dark:bg-transparent dark:text-red-400">
+                  <FiX className="text-[10px]" /> Disable
+                </button>
               </div>
-
               <button type="button" onClick={onClose}
-                className="w-full rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
+                className="w-full rounded-xl border border-slate-200 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
                 Close
               </button>
             </div>
@@ -226,106 +210,102 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
 
           {/* ── Confirm disable ── */}
           {step === "disabling" && (
-            <div className="space-y-4 p-5">
-              <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/60 px-4 py-3.5 dark:border-red-500/15 dark:bg-red-500/5">
-                <FiAlertTriangle className="mt-0.5 shrink-0 text-[18px] text-red-500" />
+            <div className="space-y-3">
+              <div className="flex items-start gap-2.5 rounded-xl border border-red-100 bg-red-50/60 px-3.5 py-3 dark:border-red-500/15 dark:bg-red-500/5">
+                <FiAlertTriangle className="mt-0.5 shrink-0 text-[15px] text-red-500" />
                 <div>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">Disable authenticator app?</p>
-                  <p className="mt-0.5 text-[11.5px] text-slate-500 dark:text-white/45">
-                    Your account will rely on password only. You can re-enable anytime.
-                  </p>
+                  <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">Disable authenticator app?</p>
+                  <p className="text-[10.5px] text-slate-500 dark:text-white/40">Account will rely on password only.</p>
                 </div>
               </div>
-              {error && <p className="text-[11.5px] text-red-500 dark:text-red-400">{error}</p>}
+              {error && <p className="text-[11px] text-red-500">{error}</p>}
               <div className="flex gap-2">
                 <button type="button" onClick={() => void handleDisable()} disabled={submitting}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60 focus:outline-none">
-                  {submitting ? <FiRefreshCw className="animate-spin text-[12px]" /> : null}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60">
+                  {submitting && <FiRefreshCw className="animate-spin text-[11px]" />}
                   {submitting ? "Disabling…" : "Yes, disable"}
                 </button>
                 <button type="button" onClick={() => { setStep("idle"); setError(""); }}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-transparent dark:text-white/55 focus:outline-none">
+                  className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55">
                   Cancel
                 </button>
               </div>
             </div>
           )}
 
-          {/* ── Setup flow (loading / QR) ── */}
+          {/* ── Setup flow ── */}
           {step === "setup" && (
-            <div className="space-y-4 p-5">
+            <div className="space-y-3.5">
 
-              {/* Loading state before QR arrives */}
+              {/* Loading */}
               {submitting && !qrDataUrl && (
-                <div className="flex flex-col items-center gap-3 py-8">
-                  <FiRefreshCw className="animate-spin text-[28px]" style={{ color: currentColor }} />
-                  <p className="text-[12.5px] text-slate-500 dark:text-white/45">Generating QR code…</p>
+                <div className="flex flex-col items-center gap-2.5 py-6">
+                  <FiRefreshCw className="animate-spin text-[22px]" style={{ color: currentColor }} />
+                  <p className="text-[12px] text-slate-500 dark:text-white/45">Generating QR code…</p>
                 </div>
               )}
 
-              {/* QR code + instructions */}
+              {/* QR + code input */}
               {qrDataUrl && initData && (
                 <>
-                  {/* Step 1 */}
-                  <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-4 dark:border-white/8 dark:bg-white/3">
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">
-                      Step 1 — Scan QR Code
-                    </p>
-                    <p className="mb-4 text-[12px] text-slate-500 dark:text-white/45">
-                      Open <strong>Google Authenticator</strong>, <strong>Authy</strong>, or any TOTP app and scan the code below.
-                    </p>
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="rounded-2xl border-4 border-white bg-white p-2 shadow-md">
-                        <img src={qrDataUrl} alt="TOTP QR Code" className="h-[180px] w-[180px]" />
-                      </div>
-                      {/* Manual key */}
-                      <div className="w-full rounded-lg border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/3">
-                        <p className="mb-0.5 text-[9.5px] font-semibold uppercase tracking-widest text-slate-400 dark:text-white/30">
-                          Manual entry key
+                  {/* QR + manual key — compact horizontal layout */}
+                  <div className="flex items-start gap-3">
+                    {/* QR */}
+                    <div className="shrink-0 rounded-xl border-2 border-slate-100 bg-white p-1.5 shadow-sm dark:border-white/10">
+                      <img src={qrDataUrl} alt="TOTP QR Code" className="h-32.5 w-32.5" />
+                    </div>
+                    {/* Instructions + manual key */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11.5px] font-semibold text-slate-700 dark:text-white/80">Scan with your app</p>
+                      <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/35">
+                        Google Authenticator, Authy, or any TOTP app.
+                      </p>
+                      <div className="mt-2.5 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 py-2 dark:border-white/8 dark:bg-white/3">
+                        <p className="mb-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
+                          Manual key
                         </p>
-                        <p className="break-all select-all font-mono text-[11.5px] tracking-wider text-slate-700 dark:text-white/70">
+                        <p className="break-all select-all font-mono text-[10px] tracking-wide text-slate-700 dark:text-white/65">
                           {initData.secret}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Step 2 */}
-                  <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-4 dark:border-white/8 dark:bg-white/3">
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">
-                      Step 2 — Enter 6-digit Code
-                    </p>
-                    <p className="mb-3 text-[12px] text-slate-500 dark:text-white/45">
-                      Enter the 6-digit code from your authenticator app to verify and activate.
+                  {/* Divider */}
+                  <div className="border-t border-slate-100 dark:border-white/8" />
+
+                  {/* 6-digit input */}
+                  <div>
+                    <p className="mb-2 text-[11.5px] font-semibold text-slate-700 dark:text-white/80">
+                      Enter 6-digit code
                     </p>
                     <input
-                      type="text" inputMode="numeric" maxLength={6}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
                       value={code}
                       onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
                       placeholder="000 000"
-                      className="mb-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center font-mono text-[26px] tracking-[0.55em] text-slate-800 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-center font-mono text-[22px] tracking-[0.45em] text-slate-800 outline-none transition focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100 dark:border-white/8 dark:bg-white/5 dark:text-white"
                     />
-                    {error && (
-                      <p className="mb-2 text-[11.5px] text-red-500 dark:text-red-400">{error}</p>
-                    )}
-                    <div className="flex gap-2">
-                      <button type="button"
-                        onClick={() => void handleVerify()}
-                        disabled={submitting || code.length !== 6}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:opacity-50 focus:outline-none"
-                        style={{ background: accentGrad }}
-                      >
-                        {submitting
-                          ? <FiRefreshCw className="animate-spin text-[12px]" />
-                          : <FiCheckCircle className="text-[12px]" />
-                        }
-                        {submitting ? "Verifying…" : "Verify & Enable"}
-                      </button>
-                      <button type="button" onClick={onClose}
-                        className="rounded-xl border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                        Cancel
-                      </button>
-                    </div>
+                    {error && <p className="mt-1.5 text-[10.5px] text-red-500">{error}</p>}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <button type="button"
+                      onClick={() => void handleVerify()}
+                      disabled={submitting || code.length !== 6}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                      style={{ background: accentGrad }}
+                    >
+                      {submitting ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiCheckCircle className="text-[11px]" />}
+                      {submitting ? "Verifying…" : "Verify & Enable"}
+                    </button>
+                    <button type="button" onClick={onClose}
+                      className="rounded-xl border border-slate-200 px-4 py-2.5 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
+                      Cancel
+                    </button>
                   </div>
                 </>
               )}
@@ -641,7 +621,7 @@ const Account: React.FC = () => {
               {/* Avatar */}
               <div className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2">
                 <label htmlFor="avatar-upload"
-                  className="group relative block h-[68px] w-[68px] cursor-pointer overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg dark:border-[#0d0b1a] dark:bg-white/10">
+                  className="group relative block h-17 w-17 cursor-pointer overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg dark:border-[#0d0b1a] dark:bg-white/10">
                   {previewUrl
                     ? <img src={thumbSrc || previewUrl} alt={fullName} className="h-full w-full object-cover" />
                     : <span className="flex h-full w-full items-center justify-center text-[28px]">🧑🏻‍💻</span>
