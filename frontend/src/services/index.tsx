@@ -122,6 +122,7 @@ export type VulnerabilityLevelDTO = {
   task_id: string;
   task_name: string;
   host_ip: string;
+  port: string;
   vulnerability_family: string;
   vulnerability_name: string;
   level: "Critical" | "High" | "Medium" | "Low" | "Info";
@@ -255,6 +256,7 @@ export type VulnerabilityByTaskIDDTO = {
   task_id: string;
   task_name: string;
   host_ip: string;
+  port: string;
   vulnerability_family: string;
   vulnerability_name: string;
   level: "Critical" | "High" | "Medium" | "Low" | "Info";
@@ -356,6 +358,7 @@ export type VulnerabilityByLevelDTO = {
   task_id: string;
   task_name: string;
   host_ip: string;
+  port: string;
   vulnerability_family: string;
   vulnerability_name: string;
   level: string;

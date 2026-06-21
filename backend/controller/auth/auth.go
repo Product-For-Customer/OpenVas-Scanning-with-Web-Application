@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
@@ -348,7 +349,13 @@ func VerifyOTPSignUp(c *gin.Context) {
 		return
 	}
 
-	// 5) hash password
+	// 5) ตรวจสอบรหัสผ่านตาม password policy
+	if err := passwordpolicy.ValidatePassword(db, req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 6) hash password
 	hashedPassword, err := services.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -357,7 +364,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 		return
 	}
 
-	// 6) เริ่ม transaction
+	// 7) เริ่ม transaction
 	tx := db.Begin()
 	if tx.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -376,7 +383,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 		}
 	}()
 
-	// 7) สร้าง user หลัง OTP ถูกต้องเท่านั้น
+	// 8) สร้าง user หลัง OTP ถูกต้องเท่านั้น
 	// ปรับ AppRoleID ตามระบบของคุณ
 	user := entity.AppUser{
 		Email:       req.Email,
@@ -397,7 +404,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 		return
 	}
 
-	// 8) อัปเดตสถานะ OTP เป็น verified
+	// 9) อัปเดตสถานะ OTP เป็น verified
 	otpRecord.Verified = true
 	if err := tx.Save(&otpRecord).Error; err != nil {
 		tx.Rollback()
@@ -407,7 +414,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 		return
 	}
 
-	// 9) commit
+	// 10) commit
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{

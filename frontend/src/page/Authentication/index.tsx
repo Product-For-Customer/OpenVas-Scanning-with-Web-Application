@@ -24,6 +24,11 @@ import {
   SendOTP,
   ListEmailAndPhoneNumber,
 } from "../../services";
+import {
+  GetPasswordPolicy,
+  validatePasswordAgainstPolicy,
+  type PasswordPolicy,
+} from "../../services/passwordpolicy";
 import { pathOpenVas } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import ModalOTPSignUp from "../../Model/ModalOTPSignUp";
@@ -137,6 +142,7 @@ const Index: React.FC = () => {
 
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [otpOpen, setOtpOpen] = useState(false);
+  const [policy, setPolicy] = useState<PasswordPolicy | null>(null);
 
   const [pendingSignupData, setPendingSignupData] = useState<SignUpFormData>({
     email: "",
@@ -212,6 +218,7 @@ const Index: React.FC = () => {
     void preloadImage(travelPhoto);
     void preloadImage(greenboneIcon);
     void preloadLoginSuccessAnimationAssets();
+    GetPasswordPolicy().then(setPolicy).catch(() => {});
   }, []);
 
   const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -500,14 +507,14 @@ const Index: React.FC = () => {
 
   const validateResetPassword = () => {
     if (!newPassword.trim()) return "กรุณากรอกรหัสผ่านใหม่";
-    if (newPassword.length < 8) return "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร";
-    if (!/[A-Z]/.test(newPassword))
+    const minLen = policy?.min_length ?? 8;
+    if (newPassword.length < minLen)
+      return `รหัสผ่านต้องมีอย่างน้อย ${minLen} ตัวอักษร`;
+    if ((policy?.require_uppercase ?? false) && !/[A-Z]/.test(newPassword))
       return "รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว";
-    if (!/[a-z]/.test(newPassword))
-      return "รหัสผ่านต้องมีตัวพิมพ์เล็กอย่างน้อย 1 ตัว";
-    if (!/[0-9]/.test(newPassword))
+    if ((policy?.require_number ?? false) && !/[0-9]/.test(newPassword))
       return "รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว";
-    if (!/[^A-Za-z0-9]/.test(newPassword))
+    if ((policy?.require_special ?? false) && !/[^A-Za-z0-9]/.test(newPassword))
       return "รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว";
     if (!confirmPassword.trim()) return "กรุณากรอกยืนยันรหัสผ่าน";
     if (newPassword !== confirmPassword)
@@ -609,8 +616,9 @@ const Index: React.FC = () => {
       message.error("กรุณากรอก Password");
       return false;
     }
-    if (signupForm.password.length < 8) {
-      message.error("Password ต้องมีอย่างน้อย 8 ตัวอักษร");
+    const pwError = validatePasswordAgainstPolicy(signupForm.password, policy);
+    if (pwError) {
+      message.error(pwError);
       return false;
     }
     if (!signupForm.phone_number.trim()) {

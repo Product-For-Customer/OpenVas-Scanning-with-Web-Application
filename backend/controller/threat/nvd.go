@@ -20,7 +20,7 @@ const (
 	nvdBaseURL       = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 	nvdCacheMaxDays  = 30
 	nvdFetchTimeout  = 20 * time.Second
-	nvdRateLimitWait = 7 * time.Second // conservative: 5 req/30s without key
+	nvdRateLimitWait = 7 * time.Second
 )
 
 var nvdRateMu sync.Mutex
@@ -31,8 +31,8 @@ var nvdLastFetch time.Time
 // ===========================
 
 type nvdAPIResponse struct {
-	TotalResults    int              `json:"totalResults"`
-	Vulnerabilities []nvdCVEWrapper  `json:"vulnerabilities"`
+	TotalResults    int             `json:"totalResults"`
+	Vulnerabilities []nvdCVEWrapper `json:"vulnerabilities"`
 }
 
 type nvdCVEWrapper struct {
@@ -40,14 +40,15 @@ type nvdCVEWrapper struct {
 }
 
 type nvdCVEData struct {
-	ID           string             `json:"id"`
-	Published    string             `json:"published"`
-	LastModified string             `json:"lastModified"`
-	VulnStatus   string             `json:"vulnStatus"`
-	Descriptions []nvdDescription   `json:"descriptions"`
-	Metrics      nvdMetrics         `json:"metrics"`
-	Weaknesses   []nvdWeakness      `json:"weaknesses"`
-	References   []nvdReference     `json:"references"`
+	ID             string           `json:"id"`
+	Published      string           `json:"published"`
+	LastModified   string           `json:"lastModified"`
+	VulnStatus     string           `json:"vulnStatus"`
+	Descriptions   []nvdDescription `json:"descriptions"`
+	Metrics        nvdMetrics       `json:"metrics"`
+	Weaknesses     []nvdWeakness    `json:"weaknesses"`
+	References     []nvdReference   `json:"references"`
+	Configurations []nvdConfig      `json:"configurations"`
 }
 
 type nvdDescription struct {
@@ -62,18 +63,19 @@ type nvdMetrics struct {
 }
 
 type nvdCVSSMetricV31 struct {
-	Type     string       `json:"type"`
-	CVSSData nvdCVSSData  `json:"cvssData"`
+	Type     string      `json:"type"`
+	CVSSData nvdCVSSData `json:"cvssData"`
 }
 
 type nvdCVSSMetricV30 struct {
-	Type     string       `json:"type"`
-	CVSSData nvdCVSSData  `json:"cvssData"`
+	Type     string      `json:"type"`
+	CVSSData nvdCVSSData `json:"cvssData"`
 }
 
 type nvdCVSSMetricV2 struct {
-	Type     string       `json:"type"`
-	CVSSData nvdCVSSDataV2 `json:"cvssData"`
+	Type         string        `json:"type"`
+	BaseSeverity string        `json:"baseSeverity"` // HIGH/MEDIUM/LOW — at metric level for v2
+	CVSSData     nvdCVSSDataV2 `json:"cvssData"`
 }
 
 type nvdCVSSData struct {
@@ -98,8 +100,25 @@ type nvdReference struct {
 	Source string `json:"source"`
 }
 
+// CPE structures
+type nvdConfig struct {
+	Nodes []nvdNode `json:"nodes"`
+}
+
+type nvdNode struct {
+	CPEMatch []nvdCPEMatch `json:"cpeMatch"`
+	Children []nvdNode     `json:"children"`
+}
+
+type nvdCPEMatch struct {
+	Vulnerable            bool   `json:"vulnerable"`
+	Criteria              string `json:"criteria"`
+	VersionStartIncluding string `json:"versionStartIncluding"`
+	VersionEndExcluding   string `json:"versionEndExcluding"`
+}
+
 // ===========================
-// Response DTO
+// Response DTOs
 // ===========================
 
 type NVDCVEDetailDTO struct {
@@ -108,13 +127,22 @@ type NVDCVEDetailDTO struct {
 	CVSSVector   string   `json:"cvss_vector"`
 	CVSSSeverity string   `json:"cvss_severity"`
 	CVSSVersion  string   `json:"cvss_version"`
-	Description  string   `json:"description"`
-	PublishedAt  string   `json:"published_at"`
-	ModifiedAt   string   `json:"modified_at"`
-	VulnStatus   string   `json:"vuln_status"`
-	CWE          string   `json:"cwe"`
-	References   []string `json:"references"`
-	FromCache    bool     `json:"from_cache"`
+
+	// CVSS v2 — populated when NVD has v2 data
+	CVSSV2Score    float64 `json:"cvss_v2_score"`
+	CVSSV2Vector   string  `json:"cvss_v2_vector"`
+	CVSSV2Severity string  `json:"cvss_v2_severity"`
+
+	// CPE — comma-separated list of affected product URIs
+	CPE string `json:"cpe"`
+
+	Description string   `json:"description"`
+	PublishedAt string   `json:"published_at"`
+	ModifiedAt  string   `json:"modified_at"`
+	VulnStatus  string   `json:"vuln_status"`
+	CWE         string   `json:"cwe"`
+	References  []string `json:"references"`
+	FromCache   bool     `json:"from_cache"`
 }
 
 type CVEEnrichDTO struct {
@@ -128,7 +156,6 @@ type CVEEnrichDTO struct {
 // ===========================
 
 func fetchNVDForCVE(cveID string) (*entity.AppNVDCache, error) {
-	// Rate limiting
 	nvdRateMu.Lock()
 	elapsed := time.Since(nvdLastFetch)
 	if elapsed < nvdRateLimitWait {
@@ -159,7 +186,6 @@ func fetchNVDForCVE(cveID string) (*entity.AppNVDCache, error) {
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, nil
 	}
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("nvd bad status: %s", resp.Status)
 	}
@@ -198,22 +224,35 @@ func buildNVDCache(cveID string, cve nvdCVEData) *entity.AppNVDCache {
 		}
 	}
 
-	// CVSS v3.1 (preferred)
+	// CVSS v3.1 → v3.0 → fallback v2 for primary score
 	if len(cve.Metrics.CVSSMetricV31) > 0 {
 		m := cve.Metrics.CVSSMetricV31[0]
-		cache.CVSSScore = m.CVSSData.BaseScore
-		cache.CVSSVector = m.CVSSData.VectorString
+		cache.CVSSScore    = m.CVSSData.BaseScore
+		cache.CVSSVector   = m.CVSSData.VectorString
 		cache.CVSSSeverity = m.CVSSData.BaseSeverity
 	} else if len(cve.Metrics.CVSSMetricV30) > 0 {
 		m := cve.Metrics.CVSSMetricV30[0]
-		cache.CVSSScore = m.CVSSData.BaseScore
-		cache.CVSSVector = m.CVSSData.VectorString
+		cache.CVSSScore    = m.CVSSData.BaseScore
+		cache.CVSSVector   = m.CVSSData.VectorString
 		cache.CVSSSeverity = m.CVSSData.BaseSeverity
 	} else if len(cve.Metrics.CVSSMetricV2) > 0 {
 		m := cve.Metrics.CVSSMetricV2[0]
-		cache.CVSSScore = m.CVSSData.BaseScore
-		cache.CVSSVector = m.CVSSData.VectorString
+		cache.CVSSScore    = m.CVSSData.BaseScore
+		cache.CVSSVector   = m.CVSSData.VectorString
 		cache.CVSSSeverity = scoreToCVSSSeverity(m.CVSSData.BaseScore)
+	}
+
+	// CVSS v2 — always store separately if available
+	if len(cve.Metrics.CVSSMetricV2) > 0 {
+		m := cve.Metrics.CVSSMetricV2[0]
+		cache.CVSSV2Score  = m.CVSSData.BaseScore
+		cache.CVSSV2Vector = m.CVSSData.VectorString
+		// BaseSeverity is at the metric level for v2 (not inside cvssData)
+		if m.BaseSeverity != "" {
+			cache.CVSSV2Severity = strings.ToUpper(m.BaseSeverity)
+		} else {
+			cache.CVSSV2Severity = scoreToCVSSSeverity(m.CVSSData.BaseScore)
+		}
 	}
 
 	// CWE
@@ -227,6 +266,33 @@ func buildNVDCache(cveID string, cve nvdCVEData) *entity.AppNVDCache {
 	}
 	cache.CWE = strings.Join(unique(cwes), ", ")
 
+	// CPE — extract unique vulnerable CPE criteria
+	cpeSet := make(map[string]struct{})
+	var walkNodes func(nodes []nvdNode)
+	walkNodes = func(nodes []nvdNode) {
+		for _, n := range nodes {
+			for _, m := range n.CPEMatch {
+				if m.Vulnerable && m.Criteria != "" {
+					cpeSet[m.Criteria] = struct{}{}
+				}
+			}
+			walkNodes(n.Children)
+		}
+	}
+	for _, cfg := range cve.Configurations {
+		walkNodes(cfg.Nodes)
+	}
+	cpeList := make([]string, 0, len(cpeSet))
+	for cpe := range cpeSet {
+		cpeList = append(cpeList, cpe)
+	}
+	if len(cpeList) > 20 {
+		cpeList = cpeList[:20] // cap to avoid huge blobs
+	}
+	if cpeJSON, err := json.Marshal(cpeList); err == nil {
+		cache.CPE = string(cpeJSON)
+	}
+
 	// References
 	refs := make([]string, 0, len(cve.References))
 	for _, r := range cve.References {
@@ -239,15 +305,17 @@ func buildNVDCache(cveID string, cve nvdCVEData) *entity.AppNVDCache {
 	}
 
 	// Dates
-	if t, err := time.Parse("2006-01-02T15:04:05.000", cve.Published); err == nil {
-		cache.PublishedAt = &t
-	} else if t, err := time.Parse(time.RFC3339, cve.Published); err == nil {
-		cache.PublishedAt = &t
+	for _, layout := range []string{"2006-01-02T15:04:05.000", time.RFC3339} {
+		if t, err := time.Parse(layout, cve.Published); err == nil {
+			cache.PublishedAt = &t
+			break
+		}
 	}
-	if t, err := time.Parse("2006-01-02T15:04:05.000", cve.LastModified); err == nil {
-		cache.ModifiedAt = &t
-	} else if t, err := time.Parse(time.RFC3339, cve.LastModified); err == nil {
-		cache.ModifiedAt = &t
+	for _, layout := range []string{"2006-01-02T15:04:05.000", time.RFC3339} {
+		if t, err := time.Parse(layout, cve.LastModified); err == nil {
+			cache.ModifiedAt = &t
+			break
+		}
 	}
 
 	return cache
@@ -278,17 +346,14 @@ func getNVDFromCacheOrFetch(cveID string) (*entity.AppNVDCache, bool, error) {
 	result := db.First(&cached, "cve_id = ?", cveID)
 
 	if result.Error == nil {
-		// Check cache age
 		if time.Since(cached.FetchedAt) < time.Duration(nvdCacheMaxDays)*24*time.Hour {
 			return &cached, true, nil
 		}
 	}
 
-	// Fetch from NVD
 	fetched, err := fetchNVDForCVE(cveID)
 	if err != nil {
 		log.Printf("⚠️ NVD fetch error for %s: %v\n", cveID, err)
-		// Return cached even if stale when fetch fails
 		if result.Error == nil {
 			return &cached, true, nil
 		}
@@ -299,7 +364,6 @@ func getNVDFromCacheOrFetch(cveID string) (*entity.AppNVDCache, bool, error) {
 		return nil, false, nil
 	}
 
-	// Upsert cache
 	if saveErr := db.Save(fetched).Error; saveErr != nil {
 		log.Printf("⚠️ NVD cache save error for %s: %v\n", cveID, saveErr)
 	}
@@ -313,25 +377,30 @@ func nvdCacheToDTO(cache *entity.AppNVDCache) *NVDCVEDetailDTO {
 	}
 
 	dto := &NVDCVEDetailDTO{
-		CVEID:        cache.CVEID,
-		CVSSScore:    cache.CVSSScore,
-		CVSSVector:   cache.CVSSVector,
-		CVSSSeverity: strings.ToUpper(cache.CVSSSeverity),
-		Description:  cache.Description,
-		VulnStatus:   cache.VulnStatus,
-		CWE:          cache.CWE,
-		References:   []string{},
-		FromCache:    true,
+		CVEID:          cache.CVEID,
+		CVSSScore:      cache.CVSSScore,
+		CVSSVector:     cache.CVSSVector,
+		CVSSSeverity:   strings.ToUpper(cache.CVSSSeverity),
+		CVSSV2Score:    cache.CVSSV2Score,
+		CVSSV2Vector:   cache.CVSSV2Vector,
+		CVSSV2Severity: strings.ToUpper(cache.CVSSV2Severity),
+		CPE:            cache.CPE,
+		Description:    cache.Description,
+		VulnStatus:     cache.VulnStatus,
+		CWE:            cache.CWE,
+		References:     []string{},
+		FromCache:      true,
 	}
 
-	// Detect CVSS version from vector string
-	if strings.HasPrefix(cache.CVSSVector, "CVSS:3.1") {
+	// Detect CVSS version from primary vector
+	switch {
+	case strings.HasPrefix(cache.CVSSVector, "CVSS:3.1"):
 		dto.CVSSVersion = "3.1"
-	} else if strings.HasPrefix(cache.CVSSVector, "CVSS:3.0") {
+	case strings.HasPrefix(cache.CVSSVector, "CVSS:3.0"):
 		dto.CVSSVersion = "3.0"
-	} else if strings.HasPrefix(cache.CVSSVector, "CVSS:2.0") || strings.Contains(cache.CVSSVector, "AV:") {
+	case strings.HasPrefix(cache.CVSSVector, "CVSS:2.0"), strings.Contains(cache.CVSSVector, "AV:"):
 		dto.CVSSVersion = "2.0"
-	} else {
+	default:
 		dto.CVSSVersion = "unknown"
 	}
 
@@ -354,10 +423,9 @@ func nvdCacheToDTO(cache *entity.AppNVDCache) *NVDCVEDetailDTO {
 
 // ===========================
 // Gin Handler: CVE Enrichment
+// GET /threats/cve/enrich?cve_ids=CVE-xxx,CVE-yyy
 // ===========================
 
-// GET /threats/cve/enrich?cve_ids=CVE-xxx,CVE-yyy
-// คืน NVD detail + KEV status ของแต่ละ CVE
 func EnrichCVEs(c *gin.Context) {
 	db := config.DB()
 	if db == nil {
@@ -382,13 +450,11 @@ func EnrichCVEs(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "no valid CVE IDs provided"})
 		return
 	}
-
-	// Limit per request
 	if len(cveIDs) > 20 {
 		cveIDs = cveIDs[:20]
 	}
 
-	// Fetch KEV data for all CVEs at once
+	// Bulk-load KEV
 	var kevEntries []entity.AppKEVCache
 	db.Where("cve_id IN ?", cveIDs).Find(&kevEntries)
 	kevMap := make(map[string]entity.AppKEVCache)
@@ -396,13 +462,11 @@ func EnrichCVEs(c *gin.Context) {
 		kevMap[k.CVEID] = k
 	}
 
-	// Build result
 	result := make(map[string]*CVEEnrichDTO, len(cveIDs))
 
 	for _, cveID := range cveIDs {
 		dto := &CVEEnrichDTO{CVEID: cveID}
 
-		// NVD
 		nvdCache, _, err := getNVDFromCacheOrFetch(cveID)
 		if err != nil {
 			log.Printf("⚠️ enrich NVD error for %s: %v\n", cveID, err)
@@ -411,7 +475,6 @@ func EnrichCVEs(c *gin.Context) {
 			dto.NVD = nvdCacheToDTO(nvdCache)
 		}
 
-		// KEV
 		if kev, ok := kevMap[cveID]; ok {
 			kevDTO := entityToKEVDTO(kev)
 			dto.KEV = &kevDTO

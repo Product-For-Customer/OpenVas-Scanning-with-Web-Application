@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
@@ -125,6 +126,11 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := passwordpolicy.ValidatePassword(db, password); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -312,6 +318,13 @@ func UpdateUserByID(c *gin.Context) {
 	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+
+	if input.Password != nil {
+		if err := passwordpolicy.ValidatePassword(db, newPlainPassword); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	if input.Email != nil {
@@ -555,6 +568,13 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	if input.Password != nil {
+		if err := passwordpolicy.ValidatePassword(db, newPlainPassword); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	if input.Password != nil {

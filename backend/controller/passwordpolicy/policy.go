@@ -1,6 +1,8 @@
 package passwordpolicy
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -41,6 +43,53 @@ func boolVal(s string) bool { return s == "true" || s == "1" }
 func boolStr(b bool) string {
 	if b { return "true" }
 	return "false"
+}
+
+func ValidatePassword(db *gorm.DB, password string) error {
+	policy := GetCurrentPolicy(db)
+
+	if len([]rune(password)) < policy.MinLength {
+		return fmt.Errorf("password must be at least %d characters", policy.MinLength)
+	}
+	if policy.RequireUppercase {
+		found := false
+		for _, r := range password {
+			if r >= 'A' && r <= 'Z' {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("password must contain at least 1 uppercase letter")
+		}
+	}
+	if policy.RequireNumber {
+		found := false
+		for _, r := range password {
+			if r >= '0' && r <= '9' {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("password must contain at least 1 number")
+		}
+	}
+	if policy.RequireSpecial {
+		found := false
+		for _, r := range password {
+			isLetter := (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z')
+			isDigit := r >= '0' && r <= '9'
+			if !isLetter && !isDigit {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return errors.New("password must contain at least 1 special character")
+		}
+	}
+	return nil
 }
 
 func GetCurrentPolicy(db *gorm.DB) PasswordPolicy {

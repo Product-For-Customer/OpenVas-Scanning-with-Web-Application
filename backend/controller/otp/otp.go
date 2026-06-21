@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
@@ -128,6 +129,12 @@ func VerifyOTPAddUpdatePassword(c *gin.Context) {
 	// หา user จาก email
 	if err := db.Where("email = ?", req.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ไม่พบบัญชีผู้ใช้นี้ในระบบ"})
+		return
+	}
+
+	// ตรวจสอบรหัสผ่านตาม password policy
+	if err := passwordpolicy.ValidatePassword(db, req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

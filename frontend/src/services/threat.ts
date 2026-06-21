@@ -58,10 +58,17 @@ export type KEVSyncStatusDTO = {
 
 export type NVDCVEDetailDTO = {
   cve_id: string;
+  // CVSS v3.x (primary — v3.1 preferred)
   cvss_score: number;
   cvss_vector: string;
   cvss_severity: string;
   cvss_version: string;
+  // CVSS v2 (may be 0 / empty if not available)
+  cvss_v2_score: number;
+  cvss_v2_vector: string;
+  cvss_v2_severity: string;
+  // CPE — JSON-encoded array of affected product URIs
+  cpe: string;
   description: string;
   published_at: string;
   modified_at: string;
@@ -78,6 +85,93 @@ export type CVEEnrichDTO = {
 };
 
 export type CVEEnrichMap = Record<string, CVEEnrichDTO | null>;
+
+// ===========================
+// GitHub Security Advisory
+// Fetched directly from GitHub public API (CORS-enabled, 60 req/hr unauthed)
+// GET https://api.github.com/advisories?cve_id={id}&per_page=5
+// ===========================
+
+export type GitHubAdvisoryVulnerability = {
+  package: { ecosystem: string; name: string };
+  first_patched_version: string | null;
+  vulnerable_version_range: string | null;
+  vulnerable_functions: string[];
+};
+
+export type GitHubAdvisoryCredit = {
+  user: { login: string; html_url: string; avatar_url: string } | null;
+  type: string; // "reporter" | "finder" | "analyst" | ...
+};
+
+export type GitHubAdvisory = {
+  ghsa_id: string;
+  cve_id: string | null;
+  url: string;
+  html_url: string;
+  summary: string;
+  description: string;
+  severity: "critical" | "high" | "medium" | "low" | "unknown";
+  cvss: { vector_string: string; score: number } | null;
+  cvss_severities: {
+    cvss_v3: { vector_string: string; score: number } | null;
+    cvss_v4: { vector_string: string; score: number } | null;
+  } | null;
+  cwes: Array<{ cwe_id: string; name: string }> | null;
+  identifiers: Array<{ type: string; value: string }>;
+  references: string[];
+  published_at: string;
+  updated_at: string;
+  withdrawn_at: string | null;
+  vulnerabilities: GitHubAdvisoryVulnerability[] | null;
+  credits: GitHubAdvisoryCredit[] | null;
+  patched_at: string | null;
+};
+
+export type GitHubAdvisoryMap = Record<string, GitHubAdvisory | null>;
+
+/**
+ * Fetch GitHub Security Advisories for a list of CVE IDs.
+ * Uses the public GitHub Advisory API (CORS-enabled, no auth required for public data).
+ * Rate limit: 60 req/hr unauthenticated. Each CVE = 1 request → batching kept ≤5 CVEs.
+ */
+export const FetchGitHubAdvisories = async (
+  cveIds: string[]
+): Promise<GitHubAdvisoryMap> => {
+  if (!cveIds || cveIds.length === 0) return {};
+
+  const unique = [...new Set(cveIds.map((id) => id.trim().toUpperCase()))].filter(
+    (id) => id.startsWith("CVE-")
+  ).slice(0, 5); // cap — 1 req per CVE
+
+  const results: GitHubAdvisoryMap = {};
+
+  await Promise.allSettled(
+    unique.map(async (cveId) => {
+      try {
+        const res = await fetch(
+          `https://api.github.com/advisories?cve_id=${cveId}&per_page=3`,
+          {
+            headers: {
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+            },
+          }
+        );
+        if (!res.ok) { results[cveId] = null; return; }
+        const data: GitHubAdvisory[] = await res.json();
+        // Pick the advisory that explicitly references this CVE
+        const match =
+          data.find((a) => a.cve_id?.toUpperCase() === cveId) ?? data[0] ?? null;
+        results[cveId] = match;
+      } catch {
+        results[cveId] = null;
+      }
+    })
+  );
+
+  return results;
+};
 
 // ===========================
 // KEV API
