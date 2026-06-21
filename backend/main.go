@@ -177,10 +177,13 @@ func main() {
 		// Port Lists
 		authorized.GET("/gmp/port-lists", gmp.ListGMPPortLists)
 		authorized.POST("/gmp/port-lists", gmp.CreateGMPPortList)
+		authorized.POST("/gmp/port-lists/import", gmp.ImportGMPPortList)
+		authorized.PATCH("/gmp/port-lists/:id", gmp.UpdateGMPPortList)
 		authorized.DELETE("/gmp/port-lists/:id", gmp.DeleteGMPPortList)
 		// Credentials
 		authorized.GET("/gmp/credentials", gmp.ListGMPCredentials)
 		authorized.POST("/gmp/credentials", gmp.CreateGMPCredential)
+		authorized.PATCH("/gmp/credentials/:id", gmp.UpdateGMPCredential)
 		authorized.DELETE("/gmp/credentials/:id", gmp.DeleteGMPCredential)
 		authorized.GET("/gmp/tasks", gmp.ListGMPTasks)
 		authorized.POST("/gmp/tasks", gmp.CreateGMPTask)
@@ -189,6 +192,7 @@ func main() {
 		authorized.DELETE("/gmp/tasks/:id", gmp.DeleteGMPTask)
 		authorized.GET("/gmp/targets", gmp.ListGMPTargets)
 		authorized.POST("/gmp/targets", gmp.CreateGMPTarget)
+		authorized.PATCH("/gmp/targets/:id", gmp.UpdateGMPTarget)
 		authorized.DELETE("/gmp/targets/:id", gmp.DeleteGMPTarget)
 		authorized.GET("/gmp/scanners", gmp.ListGMPScanners)
 		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)

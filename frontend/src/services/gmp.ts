@@ -42,8 +42,13 @@ export type GMPTargetDTO = {
   id: string;
   name: string;
   hosts: string;
+  exclude_hosts: string;
   comment: string;
   max_hosts: number;
+  alive_test: string;
+  multiple_ips: boolean;
+  reverse_lookup_only: boolean;
+  reverse_lookup_unify: boolean;
   port_list_id: string;
   port_list_name: string;
   ssh_cred_id: string;
@@ -118,7 +123,8 @@ export type CreateCredentialRequest = {
   name: string;
   comment?: string;
   type: GMPCredentialType;
-  // up
+  auto_generate?: boolean;
+  // up / usk
   login?: string;
   password?: string;
   // usk
@@ -183,6 +189,29 @@ export const CreateGMPPortList = async (req: CreatePortListRequest): Promise<{ i
 
 export const DeleteGMPPortList = async (id: string): Promise<void> => {
   await gmpApi.delete(`/gmp/port-lists/${id}`);
+};
+
+export const UpdateGMPPortList = async (id: string, req: { name: string; comment?: string }): Promise<void> => {
+  await gmpApi.patch(`/gmp/port-lists/${id}`, req);
+};
+
+export const UpdateGMPCredential = async (id: string, req: CreateCredentialRequest): Promise<void> => {
+  await gmpApi.patch(`/gmp/credentials/${id}`, req);
+};
+
+export const UpdateGMPTarget = async (id: string, req: CreateTargetRequest): Promise<void> => {
+  await gmpApi.patch(`/gmp/targets/${id}`, req);
+};
+
+export const ImportGMPPortList = async (file: File): Promise<{ id: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await axios.post(`${apiUrl}/gmp/port-lists/import`, formData, {
+    withCredentials: true,
+    headers: { "ngrok-skip-browser-warning": "true" },
+    timeout: 30000,
+  });
+  return res.data as { id: string };
 };
 
 // ── Credential API ────────────────────────────────────────────

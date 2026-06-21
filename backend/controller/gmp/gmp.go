@@ -84,11 +84,16 @@ type gmpGetTargetsResponse struct {
 }
 
 type GMPTarget struct {
-	ID       string `xml:"id,attr"`
-	Name     string `xml:"name"`
-	Comment  string `xml:"comment"`
-	Hosts    string `xml:"hosts"`
-	MaxHosts int    `xml:"max_hosts"`
+	ID                   string `xml:"id,attr"`
+	Name                 string `xml:"name"`
+	Comment              string `xml:"comment"`
+	Hosts                string `xml:"hosts"`
+	ExcludeHosts         string `xml:"exclude_hosts"`
+	MaxHosts             int    `xml:"max_hosts"`
+	AliveTests           string `xml:"alive_tests"`
+	AllowSimultaneousIPs string `xml:"allow_simultaneous_ips"`
+	ReverseLookupOnly    string `xml:"reverse_lookup_only"`
+	ReverseLookupUnify   string `xml:"reverse_lookup_unify"`
 	PortList struct {
 		ID   string `xml:"id,attr"`
 		Name string `xml:"name"`
@@ -180,6 +185,27 @@ type gmpCreatePortListResponse struct {
 
 type gmpDeletePortListResponse struct {
 	XMLName xml.Name `xml:"delete_port_list_response"`
+	gmpResponse
+}
+
+type gmpImportPortListResponse struct {
+	XMLName xml.Name `xml:"import_port_list_response"`
+	gmpResponse
+	ID string `xml:"id,attr"`
+}
+
+type gmpModifyPortListResponse struct {
+	XMLName xml.Name `xml:"modify_port_list_response"`
+	gmpResponse
+}
+
+type gmpModifyCredentialResponse struct {
+	XMLName xml.Name `xml:"modify_credential_response"`
+	gmpResponse
+}
+
+type gmpModifyTargetResponse struct {
+	XMLName xml.Name `xml:"modify_target_response"`
 	gmpResponse
 }
 
@@ -724,6 +750,107 @@ func DeletePortList(id string) error {
 	return nil
 }
 
+func ImportPortList(xmlContent string) (string, error) {
+	cmd := fmt.Sprintf(`<import_port_list>%s</import_port_list>`, xmlContent)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return "", err
+	}
+	var resp gmpImportPortListResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("gmp import_port_list parse error: %w", err)
+	}
+	if resp.Status != "201" {
+		return "", fmt.Errorf("gmp import_port_list failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.ID, nil
+}
+
+func ModifyPortList(id, name, comment string) error {
+	cmd := fmt.Sprintf(
+		`<modify_port_list port_list_id="%s"><name>%s</name><comment>%s</comment></modify_port_list>`,
+		xmlEscape(id), xmlEscape(name), xmlEscape(comment),
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpModifyPortListResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp modify_port_list parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp modify_port_list failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+func ModifyTarget(id string, p CreateTargetParams) error {
+	aliveTest := p.AliveTest
+	if aliveTest == "" {
+		aliveTest = "Scan Config Default"
+	}
+	multiIPs := "0"
+	if p.MultipleIPs {
+		multiIPs = "1"
+	}
+	excludePart := ""
+	if p.ExcludeHosts != "" {
+		excludePart = fmt.Sprintf(`<exclude_hosts>%s</exclude_hosts>`, xmlEscape(p.ExcludeHosts))
+	}
+	portListPart := ""
+	if p.PortListID != "" {
+		portListPart = fmt.Sprintf(`<port_list id="%s"/>`, xmlEscape(p.PortListID))
+	}
+	sshPart := ""
+	if p.SSHCredID != "" {
+		port := p.SSHPort
+		if port == "" {
+			port = "22"
+		}
+		sshPart = fmt.Sprintf(`<ssh_credential id="%s"><port>%s</port></ssh_credential>`, xmlEscape(p.SSHCredID), xmlEscape(port))
+	}
+	smbPart := ""
+	if p.SMBCredID != "" {
+		smbPart = fmt.Sprintf(`<smb_credential id="%s"/>`, xmlEscape(p.SMBCredID))
+	}
+	esxiPart := ""
+	if p.ESXiCredID != "" {
+		esxiPart = fmt.Sprintf(`<esxi_credential id="%s"/>`, xmlEscape(p.ESXiCredID))
+	}
+	snmpPart := ""
+	if p.SNMPCredID != "" {
+		snmpPart = fmt.Sprintf(`<snmp_credential id="%s"/>`, xmlEscape(p.SNMPCredID))
+	}
+	rlOnly := "0"
+	if p.ReverseLookup {
+		rlOnly = "1"
+	}
+	rlUnify := "0"
+	if p.ReverseUnify {
+		rlUnify = "1"
+	}
+	cmd := fmt.Sprintf(
+		`<modify_target target_id="%s"><name>%s</name><comment>%s</comment><hosts>%s</hosts>%s<alive_tests>%s</alive_tests><allow_simultaneous_ips>%s</allow_simultaneous_ips>%s%s%s%s%s<reverse_lookup_only>%s</reverse_lookup_only><reverse_lookup_unify>%s</reverse_lookup_unify></modify_target>`,
+		xmlEscape(id), xmlEscape(p.Name), xmlEscape(p.Comment), xmlEscape(p.Hosts),
+		excludePart, xmlEscape(aliveTest), multiIPs,
+		portListPart, sshPart, smbPart, esxiPart, snmpPart,
+		rlOnly, rlUnify,
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpModifyTargetResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp modify_target parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp modify_target failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
 // ── Credential operations ─────────────────────────────────────
 
 func GetCredentials() ([]GMPCredential, error) {
@@ -745,6 +872,7 @@ type CreateCredentialParams struct {
 	Name             string
 	Comment          string
 	Type             string // up | usk | snmp | smime | pgp | pw | cc
+	AutoGenerate     bool
 	Login            string
 	Password         string
 	PrivateKey       string
@@ -764,17 +892,22 @@ func CreateCredential(p CreateCredentialParams) (string, error) {
 
 	switch p.Type {
 	case "up":
-		body = fmt.Sprintf(
-			`<login>%s</login><password>%s</password>`,
-			xmlEscape(p.Login), xmlEscape(p.Password),
-		)
-	case "usk":
-		keyPart := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.PrivateKey))
-		if p.Passphrase != "" {
-			keyPart += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.Passphrase))
+		if p.AutoGenerate {
+			body = fmt.Sprintf(`<auto_generate>1</auto_generate><login>%s</login>`, xmlEscape(p.Login))
+		} else {
+			body = fmt.Sprintf(`<login>%s</login><password>%s</password>`, xmlEscape(p.Login), xmlEscape(p.Password))
 		}
-		keyPart += `</key>`
-		body = fmt.Sprintf(`<login>%s</login>%s`, xmlEscape(p.Login), keyPart)
+	case "usk":
+		if p.AutoGenerate {
+			body = fmt.Sprintf(`<auto_generate>1</auto_generate><login>%s</login>`, xmlEscape(p.Login))
+		} else {
+			keyPart := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.PrivateKey))
+			if p.Passphrase != "" {
+				keyPart += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.Passphrase))
+			}
+			keyPart += `</key>`
+			body = fmt.Sprintf(`<login>%s</login>%s`, xmlEscape(p.Login), keyPart)
+		}
 
 	case "snmp":
 		authAlgo := p.AuthAlgorithm
@@ -828,6 +961,102 @@ func CreateCredential(p CreateCredentialParams) (string, error) {
 		return "", fmt.Errorf("gmp create_credential failed: %s - %s", resp.Status, resp.StatusText)
 	}
 	return resp.ID, nil
+}
+
+type ModifyCredentialParams struct {
+	Name             string
+	Comment          string
+	Type             string
+	Login            string
+	Password         string
+	PrivateKey       string
+	Passphrase       string
+	Community        string
+	AuthAlgorithm    string
+	PrivacyAlgorithm string
+	PrivacyPassword  string
+	Certificate      string
+	PublicPGPKey     string
+	CCPrivateKey     string
+	CCPassphrase     string
+}
+
+func ModifyCredential(id string, p ModifyCredentialParams) error {
+	var extra string
+	if p.Login != "" {
+		extra += fmt.Sprintf(`<login>%s</login>`, xmlEscape(p.Login))
+	}
+	switch p.Type {
+	case "up":
+		if p.Password != "" {
+			extra += fmt.Sprintf(`<password>%s</password>`, xmlEscape(p.Password))
+		}
+	case "pw":
+		if p.Password != "" {
+			extra += fmt.Sprintf(`<password>%s</password>`, xmlEscape(p.Password))
+		}
+	case "usk":
+		if p.PrivateKey != "" {
+			kp := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.PrivateKey))
+			if p.Passphrase != "" {
+				kp += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.Passphrase))
+			}
+			kp += `</key>`
+			extra += kp
+		}
+	case "snmp":
+		if p.Community != "" {
+			extra += fmt.Sprintf(`<community>%s</community>`, xmlEscape(p.Community))
+		}
+		if p.Password != "" {
+			extra += fmt.Sprintf(`<password>%s</password>`, xmlEscape(p.Password))
+		}
+		if p.PrivacyPassword != "" {
+			extra += fmt.Sprintf(`<privacy_password>%s</privacy_password>`, xmlEscape(p.PrivacyPassword))
+		}
+		if p.AuthAlgorithm != "" {
+			extra += fmt.Sprintf(`<auth_algorithm>%s</auth_algorithm>`, xmlEscape(p.AuthAlgorithm))
+		}
+		if p.PrivacyAlgorithm != "" {
+			extra += fmt.Sprintf(`<privacy_algorithm>%s</privacy_algorithm>`, xmlEscape(p.PrivacyAlgorithm))
+		}
+	case "smime":
+		if p.Certificate != "" {
+			extra += fmt.Sprintf(`<certificate>%s</certificate>`, xmlEscape(p.Certificate))
+		}
+	case "pgp":
+		if p.PublicPGPKey != "" {
+			extra += fmt.Sprintf(`<key><public>%s</public></key>`, xmlEscape(p.PublicPGPKey))
+		}
+	case "cc":
+		if p.Certificate != "" {
+			extra += fmt.Sprintf(`<certificate>%s</certificate>`, xmlEscape(p.Certificate))
+		}
+		if p.CCPrivateKey != "" {
+			kp := fmt.Sprintf(`<key><private>%s</private>`, xmlEscape(p.CCPrivateKey))
+			if p.CCPassphrase != "" {
+				kp += fmt.Sprintf(`<passphrase>%s</passphrase>`, xmlEscape(p.CCPassphrase))
+			}
+			kp += `</key>`
+			extra += kp
+		}
+	}
+	cmd := fmt.Sprintf(
+		`<modify_credential credential_id="%s"><name>%s</name><comment>%s</comment>%s</modify_credential>`,
+		xmlEscape(id), xmlEscape(p.Name), xmlEscape(p.Comment), extra,
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpModifyCredentialResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp modify_credential parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp modify_credential failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
 }
 
 func DeleteCredential(id string) error {

@@ -1,6 +1,7 @@
 package gmp
 
 import (
+	"io"
 	"net/http"
 	"strings"
 
@@ -29,22 +30,27 @@ type TaskDTO struct {
 }
 
 type TargetDTO struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Hosts        string `json:"hosts"`
-	Comment      string `json:"comment"`
-	MaxHosts     int    `json:"max_hosts"`
-	PortListID   string `json:"port_list_id"`
-	PortListName string `json:"port_list_name"`
-	SSHCredID    string `json:"ssh_cred_id"`
-	SSHCredName  string `json:"ssh_cred_name"`
-	SSHCredPort  string `json:"ssh_cred_port"`
-	SMBCredID    string `json:"smb_cred_id"`
-	SMBCredName  string `json:"smb_cred_name"`
-	ESXiCredID   string `json:"esxi_cred_id"`
-	ESXiCredName string `json:"esxi_cred_name"`
-	SNMPCredID   string `json:"snmp_cred_id"`
-	SNMPCredName string `json:"snmp_cred_name"`
+	ID                 string `json:"id"`
+	Name               string `json:"name"`
+	Hosts              string `json:"hosts"`
+	ExcludeHosts       string `json:"exclude_hosts"`
+	Comment            string `json:"comment"`
+	MaxHosts           int    `json:"max_hosts"`
+	AliveTest          string `json:"alive_test"`
+	MultipleIPs        bool   `json:"multiple_ips"`
+	ReverseLookupOnly  bool   `json:"reverse_lookup_only"`
+	ReverseLookupUnify bool   `json:"reverse_lookup_unify"`
+	PortListID         string `json:"port_list_id"`
+	PortListName       string `json:"port_list_name"`
+	SSHCredID          string `json:"ssh_cred_id"`
+	SSHCredName        string `json:"ssh_cred_name"`
+	SSHCredPort        string `json:"ssh_cred_port"`
+	SMBCredID          string `json:"smb_cred_id"`
+	SMBCredName        string `json:"smb_cred_name"`
+	ESXiCredID         string `json:"esxi_cred_id"`
+	ESXiCredName       string `json:"esxi_cred_name"`
+	SNMPCredID         string `json:"snmp_cred_id"`
+	SNMPCredName       string `json:"snmp_cred_name"`
 }
 
 type ScannerDTO struct {
@@ -212,22 +218,27 @@ func ListGMPTargets(c *gin.Context) {
 	dtos := make([]TargetDTO, 0, len(targets))
 	for _, t := range targets {
 		dtos = append(dtos, TargetDTO{
-			ID:           t.ID,
-			Name:         t.Name,
-			Hosts:        t.Hosts,
-			Comment:      t.Comment,
-			MaxHosts:     t.MaxHosts,
-			PortListID:   t.PortList.ID,
-			PortListName: t.PortList.Name,
-			SSHCredID:    t.SSHCredential.ID,
-			SSHCredName:  t.SSHCredential.Name,
-			SSHCredPort:  t.SSHCredential.Port,
-			SMBCredID:    t.SMBCredential.ID,
-			SMBCredName:  t.SMBCredential.Name,
-			ESXiCredID:   t.ESXiCredential.ID,
-			ESXiCredName: t.ESXiCredential.Name,
-			SNMPCredID:   t.SNMPCredential.ID,
-			SNMPCredName: t.SNMPCredential.Name,
+			ID:                 t.ID,
+			Name:               t.Name,
+			Hosts:              t.Hosts,
+			ExcludeHosts:       t.ExcludeHosts,
+			Comment:            t.Comment,
+			MaxHosts:           t.MaxHosts,
+			AliveTest:          t.AliveTests,
+			MultipleIPs:        t.AllowSimultaneousIPs == "1",
+			ReverseLookupOnly:  t.ReverseLookupOnly == "1",
+			ReverseLookupUnify: t.ReverseLookupUnify == "1",
+			PortListID:         t.PortList.ID,
+			PortListName:       t.PortList.Name,
+			SSHCredID:          t.SSHCredential.ID,
+			SSHCredName:        t.SSHCredential.Name,
+			SSHCredPort:        t.SSHCredential.Port,
+			SMBCredID:          t.SMBCredential.ID,
+			SMBCredName:        t.SMBCredential.Name,
+			ESXiCredID:         t.ESXiCredential.ID,
+			ESXiCredName:       t.ESXiCredential.Name,
+			SNMPCredID:         t.SNMPCredential.ID,
+			SNMPCredName:       t.SNMPCredential.Name,
 		})
 	}
 
@@ -485,6 +496,29 @@ func DeleteGMPPortList(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "port list deleted"})
 }
 
+// POST /gmp/port-lists/import
+func ImportGMPPortList(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "xml file is required"})
+		return
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to read file"})
+		return
+	}
+
+	id, err := ImportPortList(strings.TrimSpace(string(content)))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list imported"})
+}
+
 // ─────────────────────────────────────────────────────────────
 // Credential DTOs & Handlers
 // ─────────────────────────────────────────────────────────────
@@ -501,6 +535,7 @@ type CreateCredentialRequest struct {
 	Name             string `json:"name"              binding:"required"`
 	Comment          string `json:"comment"`
 	Type             string `json:"type"              binding:"required"`
+	AutoGenerate     bool   `json:"auto_generate"`
 	Login            string `json:"login"`
 	Password         string `json:"password"`
 	PrivateKey       string `json:"private_key"`
@@ -551,6 +586,7 @@ func CreateGMPCredential(c *gin.Context) {
 
 	id, err := CreateCredential(CreateCredentialParams{
 		Name: req.Name, Comment: req.Comment, Type: req.Type,
+		AutoGenerate: req.AutoGenerate,
 		Login: req.Login, Password: req.Password,
 		PrivateKey: req.PrivateKey, Passphrase: req.Passphrase,
 		Community: req.Community,
@@ -609,7 +645,10 @@ func GetGMPTrash(c *gin.Context) {
 	tgtDTOs := make([]TargetDTO, 0, len(tgts))
 	for _, t := range tgts {
 		tgtDTOs = append(tgtDTOs, TargetDTO{
-			ID: t.ID, Name: t.Name, Hosts: t.Hosts, Comment: t.Comment, MaxHosts: t.MaxHosts,
+			ID: t.ID, Name: t.Name, Hosts: t.Hosts, ExcludeHosts: t.ExcludeHosts,
+			Comment: t.Comment, MaxHosts: t.MaxHosts,
+			AliveTest: t.AliveTests, MultipleIPs: t.AllowSimultaneousIPs == "1",
+			ReverseLookupOnly: t.ReverseLookupOnly == "1", ReverseLookupUnify: t.ReverseLookupUnify == "1",
 			PortListID: t.PortList.ID, PortListName: t.PortList.Name,
 			SSHCredID: t.SSHCredential.ID, SSHCredName: t.SSHCredential.Name, SSHCredPort: t.SSHCredential.Port,
 			SMBCredID: t.SMBCredential.ID, SMBCredName: t.SMBCredential.Name,
@@ -703,6 +742,98 @@ func DeleteGMPTrashPortList(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
+}
+
+// PATCH /gmp/port-lists/:id
+func UpdateGMPPortList(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
+		return
+	}
+	var req struct {
+		Name    string `json:"name" binding:"required"`
+		Comment string `json:"comment"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
+		return
+	}
+	if err := ModifyPortList(id, req.Name, req.Comment); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "port list updated"})
+}
+
+// PATCH /gmp/credentials/:id
+func UpdateGMPCredential(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
+		return
+	}
+	var req CreateCredentialRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name required"})
+		return
+	}
+	if err := ModifyCredential(id, ModifyCredentialParams{
+		Name: req.Name, Comment: req.Comment, Type: req.Type,
+		Login: req.Login, Password: req.Password,
+		PrivateKey: req.PrivateKey, Passphrase: req.Passphrase,
+		Community: req.Community,
+		AuthAlgorithm: req.AuthAlgorithm, PrivacyAlgorithm: req.PrivacyAlgorithm,
+		PrivacyPassword: req.PrivacyPassword,
+		Certificate: req.Certificate, PublicPGPKey: req.PublicPGPKey,
+		CCPrivateKey: req.CCPrivateKey, CCPassphrase: req.CCPassphrase,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "credential updated"})
+}
+
+// PATCH /gmp/targets/:id
+func UpdateGMPTarget(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
+		return
+	}
+	var req CreateTargetRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Name  = strings.TrimSpace(req.Name)
+	req.Hosts = strings.TrimSpace(req.Hosts)
+	if req.Name == "" || req.Hosts == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name and hosts are required"})
+		return
+	}
+	if err := ModifyTarget(id, CreateTargetParams{
+		Name: req.Name, Comment: req.Comment, Hosts: req.Hosts,
+		ExcludeHosts: req.ExcludeHosts, PortListID: req.PortListID,
+		AliveTest: req.AliveTest, MultipleIPs: req.MultipleIPs,
+		SSHCredID: req.SSHCredID, SSHPort: req.SSHPort,
+		SMBCredID: req.SMBCredID, ESXiCredID: req.ESXiCredID, SNMPCredID: req.SNMPCredID,
+		ReverseLookup: req.ReverseLookup, ReverseUnify: req.ReverseUnify,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "target updated"})
 }
 
 // DELETE /gmp/credentials/:id
