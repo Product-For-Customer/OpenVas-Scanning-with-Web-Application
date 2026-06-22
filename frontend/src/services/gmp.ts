@@ -27,6 +27,7 @@ export type GMPTaskDTO = {
   comment: string;
   status: string;
   progress: number;
+  alterable: boolean;
   target_id: string;
   target_name: string;
   config_id: string;
@@ -197,9 +198,39 @@ export const ListGMPPortLists = async (): Promise<GMPPortListDTO[]> => {
   } catch (e) { console.error("ListGMPPortLists error:", e); return []; }
 };
 
+export type GMPPortRangeDTO = {
+  id: string;
+  start: number;
+  end: number;
+  protocol: "tcp" | "udp";
+  comment?: string;
+};
+
+export type GMPPortListDetailDTO = GMPPortListDTO & {
+  port_ranges: GMPPortRangeDTO[];
+};
+
 export const CreateGMPPortList = async (req: CreatePortListRequest): Promise<{ id: string }> => {
   const res = await gmpApi.post("/gmp/port-lists", req);
   return res.data;
+};
+
+export const GetGMPPortListDetail = async (id: string): Promise<GMPPortListDetailDTO> => {
+  const res = await gmpApi.get(`/gmp/port-lists/${id}`);
+  const data = res.data as GMPPortListDetailDTO;
+  return { ...data, port_ranges: Array.isArray(data.port_ranges) ? data.port_ranges : [] };
+};
+
+export const CreateGMPPortRange = async (
+  portListId: string,
+  req: { start: number; end: number; protocol: "tcp" | "udp"; comment?: string },
+): Promise<{ id: string }> => {
+  const res = await gmpApi.post(`/gmp/port-lists/${portListId}/ranges`, req);
+  return res.data as { id: string };
+};
+
+export const DeleteGMPPortRange = async (portListId: string, rangeId: string): Promise<void> => {
+  await gmpApi.delete(`/gmp/port-lists/${portListId}/ranges/${rangeId}`);
 };
 
 export const DeleteGMPPortList = async (id: string): Promise<void> => {
@@ -370,6 +401,13 @@ export const DeleteGMPTask = async (taskId: string): Promise<void> => {
 export type UpdateTaskRequest = {
   name: string;
   comment?: string;
+  // Editable when task is New or Alterable
+  target_id?: string;
+  config_id?: string;
+  scanner_id?: string;
+  alterable?: boolean;
+  add_assets?: boolean;
+  // Always editable
   apply_overrides?: boolean;
   min_qod?: number;
   max_checks?: number;

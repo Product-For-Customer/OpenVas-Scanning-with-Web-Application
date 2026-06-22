@@ -13,20 +13,21 @@ import (
 // ===========================
 
 type TaskDTO struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	Comment     string  `json:"comment"`
-	Status      string  `json:"status"`
-	Progress    int     `json:"progress"`
-	TargetID    string  `json:"target_id"`
-	TargetName  string  `json:"target_name"`
-	ConfigID    string  `json:"config_id"`
-	ConfigName  string  `json:"config_name"`
-	ScannerID   string  `json:"scanner_id"`
-	ScannerName string  `json:"scanner_name"`
-	LastReportAt string `json:"last_report_at"`
-	Severity    float64 `json:"severity"`
-	ReportCount int     `json:"report_count"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	Comment      string  `json:"comment"`
+	Status       string  `json:"status"`
+	Progress     int     `json:"progress"`
+	Alterable    bool    `json:"alterable"`
+	TargetID     string  `json:"target_id"`
+	TargetName   string  `json:"target_name"`
+	ConfigID     string  `json:"config_id"`
+	ConfigName   string  `json:"config_name"`
+	ScannerID    string  `json:"scanner_id"`
+	ScannerName  string  `json:"scanner_name"`
+	LastReportAt string  `json:"last_report_at"`
+	Severity     float64 `json:"severity"`
+	ReportCount  int     `json:"report_count"`
 }
 
 type TargetDTO struct {
@@ -84,7 +85,7 @@ type CreateTargetRequest struct {
 type CreateTaskRequest struct {
 	Name           string `json:"name" binding:"required"`
 	TargetID       string `json:"target_id" binding:"required"`
-	ConfigID       string `json:"config_id" binding:"required"`
+	ConfigID       string `json:"config_id"` // optional for CVE scanner
 	ScannerID      string `json:"scanner_id"`
 	Comment        string `json:"comment"`
 	ApplyOverrides *bool  `json:"apply_overrides"`
@@ -197,6 +198,7 @@ func ListGMPTasks(c *gin.Context) {
 			Comment:     t.Comment,
 			Status:      t.Status,
 			Progress:    t.Progress,
+			Alterable:   t.Alterable == "1",
 			TargetID:    t.Target.ID,
 			TargetName:  t.Target.Name,
 			ConfigID:    t.Config.ID,
@@ -344,8 +346,8 @@ func CreateGMPTask(c *gin.Context) {
 	req.TargetID = strings.TrimSpace(req.TargetID)
 	req.ConfigID = strings.TrimSpace(req.ConfigID)
 
-	if req.Name == "" || req.TargetID == "" || req.ConfigID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name, target_id, and config_id are required"})
+	if req.Name == "" || req.TargetID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name and target_id are required"})
 		return
 	}
 
@@ -449,6 +451,13 @@ func StopGMPTask(c *gin.Context) {
 type UpdateTaskRequest struct {
 	Name           string `json:"name" binding:"required"`
 	Comment        string `json:"comment"`
+	// Editable when task is New or Alterable
+	TargetID       string `json:"target_id"`
+	ConfigID       string `json:"config_id"`
+	ScannerID      string `json:"scanner_id"`
+	Alterable      *bool  `json:"alterable"`
+	AddAssets      *bool  `json:"add_assets"`
+	// Always editable
 	ApplyOverrides *bool  `json:"apply_overrides"`
 	MinQoD         *int   `json:"min_qod"`
 	MaxChecks      *int   `json:"max_checks"`
@@ -484,6 +493,11 @@ func UpdateGMPTask(c *gin.Context) {
 	params := ModifyTaskParams{
 		Name:           req.Name,
 		Comment:        req.Comment,
+		TargetID:       req.TargetID,
+		ConfigID:       req.ConfigID,
+		ScannerID:      req.ScannerID,
+		Alterable:      req.Alterable,
+		AddAssets:      req.AddAssets,
 		ApplyOverrides: req.ApplyOverrides,
 		MinQoD:         req.MinQoD,
 		MaxChecks:      req.MaxChecks,
@@ -628,6 +642,115 @@ func ImportGMPPortList(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list imported"})
+}
+
+// ─────────────────────────────────────────────────────────────
+// Port List Detail + Port Range Handlers
+// ─────────────────────────────────────────────────────────────
+
+type PortRangeDTO struct {
+	ID       string `json:"id"`
+	Start    int    `json:"start"`
+	End      int    `json:"end"`
+	Protocol string `json:"protocol"` // "tcp" or "udp" (lowercase)
+	Comment  string `json:"comment,omitempty"`
+}
+
+type PortListDetailDTO struct {
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Comment    string         `json:"comment"`
+	Total      int            `json:"total"`
+	TCP        int            `json:"tcp"`
+	UDP        int            `json:"udp"`
+	PortRanges []PortRangeDTO `json:"port_ranges"`
+}
+
+// GET /gmp/port-lists/:id — returns port list with its port ranges
+func GetGMPPortListDetail(c *gin.Context) {
+	id := strings.TrimSpace(c.Param("id"))
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id required"})
+		return
+	}
+	detail, err := GetPortListDetail(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	dto := PortListDetailDTO{
+		ID:         detail.ID,
+		Name:       detail.Name,
+		Comment:    detail.Comment,
+		Total:      detail.PortCount.All,
+		TCP:        detail.PortCount.TCP,
+		UDP:        detail.PortCount.UDP,
+		PortRanges: []PortRangeDTO{},
+	}
+	for _, pr := range detail.PortRanges {
+		dto.PortRanges = append(dto.PortRanges, PortRangeDTO{
+			ID:       pr.ID,
+			Start:    pr.Start,
+			End:      pr.End,
+			Protocol: strings.ToLower(pr.Type),
+			Comment:  pr.Comment,
+		})
+	}
+	c.JSON(http.StatusOK, dto)
+}
+
+type CreatePortRangeRequest struct {
+	Start    int    `json:"start"`
+	End      int    `json:"end"`
+	Protocol string `json:"protocol" binding:"required"` // "tcp" or "udp"
+	Comment  string `json:"comment"`
+}
+
+// POST /gmp/port-lists/:id/ranges
+func CreateGMPPortRange(c *gin.Context) {
+	portListID := strings.TrimSpace(c.Param("id"))
+	if portListID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "port list id required"})
+		return
+	}
+	var req CreatePortRangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	req.Protocol = strings.ToLower(strings.TrimSpace(req.Protocol))
+	if req.Protocol != "tcp" && req.Protocol != "udp" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "protocol must be 'tcp' or 'udp'"})
+		return
+	}
+	if req.Start < 1 || req.Start > 65535 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "start port must be 1–65535"})
+		return
+	}
+	if req.End < req.Start || req.End > 65535 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "end port must be >= start and <= 65535"})
+		return
+	}
+	id, err := CreatePortRange(portListID, req.Start, req.End, req.Protocol, req.Comment)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port range created"})
+}
+
+// DELETE /gmp/port-lists/:id/ranges/:range_id
+func DeleteGMPPortRange(c *gin.Context) {
+	rangeID := strings.TrimSpace(c.Param("range_id"))
+	if rangeID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "range id required"})
+		return
+	}
+	if err := DeletePortRange(rangeID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "port range deleted"})
 }
 
 // ─────────────────────────────────────────────────────────────

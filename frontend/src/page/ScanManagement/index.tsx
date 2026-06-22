@@ -95,11 +95,13 @@ type SearchDropdownProps = {
   selectedId: string;
   onSelect: (id: string) => void;
   disabled?: boolean;
+  dropH?: string; // Tailwind max-h class for the items list, default "max-h-44" (~5 items)
 };
 
 const SearchDropdown: React.FC<SearchDropdownProps> = ({
   dropRef, open, setOpen, search, setSearch,
   selectedLabel, placeholder, items, selectedId, onSelect, disabled,
+  dropH = "max-h-44",
 }) => (
   <div className="relative" ref={dropRef}>
     <button type="button" onClick={() => setOpen(!open)} disabled={disabled}
@@ -123,7 +125,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
               className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
           </div>
         </div>
-        <div className="max-h-44 overflow-y-auto p-1.5">
+        <div className={`${dropH} overflow-y-auto p-1.5`}>
           {items.length === 0
             ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No items found</p>
             : <div className="space-y-0.5">
@@ -320,6 +322,15 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
   const [scanners,    setScanners]    = useState<GMPScannerDTO[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
+  // Detect CVE scanner (type 3 in GMP, or name contains "CVE") — must be after scanners state
+  const isCVEScanner = useMemo(() => {
+    const sel = scanners.find(x => x.id === scannerId);
+    return sel !== undefined && (
+      (sel as GMPScannerDTO & { type?: number }).type === 3 ||
+      sel.name.toLowerCase().includes("cve")
+    );
+  }, [scanners, scannerId]);
+
   const [openTarget,  setOpenTarget]  = useState(false);
   const [openConfig,  setOpenConfig]  = useState(false);
   const [openScanner, setOpenScanner] = useState(false);
@@ -375,10 +386,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
   const handleCreate = async () => {
     if (!name.trim()) { setFormError("Task name is required"); return; }
     if (!targetId)    { setFormError("Please select a Scan Target"); return; }
-    if (!configId)    { setFormError("Please select a Scan Config"); return; }
+    if (!isCVEScanner && !configId) { setFormError("Please select a Scan Config"); return; }
     if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be 0–100"); return; }
-    if (maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
-    if (maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
+    if (!isCVEScanner && maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
+    if (!isCVEScanner && maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
 
     setLoading(true); setFormError("");
     try {
@@ -548,7 +559,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
             </div>
 
             {/* ── Scanner & Config ── */}
-            <SectionDivider label="Scanner & Config" />
+            <SectionDivider label={isCVEScanner ? "Scanner" : "Scanner & Config"} />
 
             <div>
               <label className={labelCls}><FiTarget className="text-[10px]" />Scanner</label>
@@ -559,19 +570,33 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
                 onSelect={setScannerId} disabled={loadingData} />
             </div>
 
-            <div>
-              <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
-              <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
-                search={searchConfig} setSearch={setSearchConfig}
-                selectedLabel={configs.find(x => x.id === configId)?.name ?? ""}
-                placeholder="Select scan config…" items={fConfig} selectedId={configId}
-                onSelect={setConfigId} disabled={loadingData} />
-            </div>
+            {/* CVE scanner banner — explain why fields are hidden */}
+            {isCVEScanner && (
+              <div className="flex items-start gap-2.5 rounded-xl border border-cyan-200/60 bg-cyan-50/50 px-3.5 py-2.5 dark:border-cyan-500/20 dark:bg-cyan-500/8">
+                <FiSettings className="mt-0.5 shrink-0 text-[12px] text-cyan-600 dark:text-cyan-400" />
+                <p className="text-[11px] text-cyan-700 dark:text-cyan-300">
+                  CVE Scanner uses the CVE database directly — Scan Config, Max NVTs per host and Max concurrent hosts are not applicable.
+                </p>
+              </div>
+            )}
 
-            {/* ── Performance ── */}
-            <SectionDivider label="Performance" />
+            {/* Scan Config — hidden for CVE scanner */}
+            {!isCVEScanner && (
+              <div>
+                <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
+                <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
+                  search={searchConfig} setSearch={setSearchConfig}
+                  selectedLabel={configs.find(x => x.id === configId)?.name ?? ""}
+                  placeholder="Select scan config…" items={fConfig} selectedId={configId}
+                  onSelect={setConfigId} disabled={loadingData}
+                  dropH="max-h-36" />
+              </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* ── Performance — hidden for CVE scanner ── */}
+            {!isCVEScanner && <SectionDivider label="Performance" />}
+
+            {!isCVEScanner && <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Max concurrent NVTs per host</label>
                 <input type="number" min={1} max={99} value={maxChecks}
@@ -586,7 +611,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
                   className={numCls} />
                 <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
               </div>
-            </div>
+            </div>}
 
             {/* Error */}
             {formError && (
@@ -618,7 +643,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
 };
 
 // ─────────────────────────────────────────────────────────────
-// EditTaskModal — full OpenVAS fields, locked fields read-only
+// EditTaskModal — full OpenVAS fields
+// New / Alterable tasks: all fields editable (dropdowns)
+// Already-run + non-alterable: Target/Config/Scanner locked
 // ─────────────────────────────────────────────────────────────
 
 type EditTaskModalProps = {
@@ -632,9 +659,12 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
-  // Editable fields
-  const [name,          setName]          = useState("");
-  const [comment,       setComment]       = useState("");
+  // Is this task fully editable? (New status OR alterable=true)
+  const isEditable = task?.status?.toLowerCase() === "new" || task?.alterable === true;
+
+  // Basic fields (always editable)
+  const [name,           setName]           = useState("");
+  const [comment,        setComment]        = useState("");
   const [applyOverrides, setApplyOverrides] = useState(true);
   const [minQod,         setMinQod]         = useState(70);
   const [autoDelete,     setAutoDelete]     = useState<"no" | "keep">("no");
@@ -642,14 +672,51 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
   const [maxChecks,      setMaxChecks]      = useState(8);
   const [maxHosts,       setMaxHosts]       = useState(20);
 
+  // Fields only relevant when editable
+  const [targetId,   setTargetId]   = useState("");
+  const [configId,   setConfigId]   = useState("");
+  const [scannerId,  setScannerId]  = useState("");
+  const [alterable,  setAlterable]  = useState(false);
+  const [addAssets,  setAddAssets]  = useState(true);
+
   const [loading,   setLoading]   = useState(false);
   const [formError, setFormError] = useState("");
+
+  // Dropdown data (only loaded when isEditable)
+  const [targets,     setTargets]     = useState<GMPTargetDTO[]>([]);
+  const [configs,     setConfigs]     = useState<GMPConfigDTO[]>([]);
+  const [scanners,    setScanners]    = useState<GMPScannerDTO[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+
+  const [openTarget,  setOpenTarget]  = useState(false);
+  const [openConfig,  setOpenConfig]  = useState(false);
+  const [openScanner, setOpenScanner] = useState(false);
+  const [searchTarget,  setSearchTarget]  = useState("");
+  const [searchConfig,  setSearchConfig]  = useState("");
+  const [searchScanner, setSearchScanner] = useState("");
+
+  const targetRef  = useRef<HTMLDivElement | null>(null);
+  const configRef  = useRef<HTMLDivElement | null>(null);
+  const scannerRef = useRef<HTMLDivElement | null>(null);
+
+  // CVE scanner detection
+  const isCVEScanner = useMemo(() => {
+    const sel = scanners.find(x => x.id === scannerId);
+    return sel !== undefined && (
+      (sel as GMPScannerDTO & { type?: number }).type === 3 ||
+      sel.name.toLowerCase().includes("cve")
+    );
+  }, [scanners, scannerId]);
 
   // Pre-fill when task changes
   useEffect(() => {
     if (!task) return;
     setName(task.name);
     setComment(task.comment ?? "");
+    setTargetId(task.target_id ?? "");
+    setConfigId(task.config_id ?? "");
+    setScannerId(task.scanner_id ?? "");
+    setAlterable(task.alterable ?? false);
     setApplyOverrides(task.apply_overrides ?? true);
     setMinQod(task.min_qod ?? 70);
     setAutoDelete(task.auto_delete === "keep" ? "keep" : "no");
@@ -657,24 +724,58 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
     setMaxChecks(task.max_checks ?? 8);
     setMaxHosts(task.max_hosts ?? 20);
     setFormError("");
+    setOpenTarget(false); setOpenConfig(false); setOpenScanner(false);
+    setSearchTarget(""); setSearchConfig(""); setSearchScanner("");
   }, [task]);
+
+  // Load dropdown data only when the task is fully editable
+  useEffect(() => {
+    if (!task || !isEditable) return;
+    const load = async () => {
+      setLoadingData(true);
+      try {
+        const [t2, c, s] = await Promise.all([ListGMPTargets(), ListGMPConfigs(), ListGMPScanners()]);
+        setTargets(t2); setConfigs(c); setScanners(s);
+      } catch { /* silent */ }
+      finally { setLoadingData(false); }
+    };
+    void load();
+  }, [task?.id, isEditable]);
+
+  useEffect(() => {
+    if (!isEditable) return;
+    const handler = (e: MouseEvent) => {
+      if (!targetRef.current?.contains(e.target as Node))  setOpenTarget(false);
+      if (!configRef.current?.contains(e.target as Node))  setOpenConfig(false);
+      if (!scannerRef.current?.contains(e.target as Node)) setOpenScanner(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditable]);
 
   const handleSave = async () => {
     if (!task) return;
-    if (!name.trim())    { setFormError("Task name is required"); return; }
-    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be between 0 and 100"); return; }
-    if (maxChecks < 1)   { setFormError("Max concurrent NVTs must be at least 1"); return; }
-    if (maxHosts < 1)    { setFormError("Max concurrent hosts must be at least 1"); return; }
+    if (!name.trim()) { setFormError("Task name is required"); return; }
+    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be 0–100"); return; }
+    if (!isCVEScanner && maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
+    if (!isCVEScanner && maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
 
     setLoading(true); setFormError("");
     try {
       await UpdateGMPTask(task.id, {
         name:             name.trim(),
         comment:          comment.trim(),
+        // Editable fields — only sent when task is new/alterable
+        ...(isEditable && { target_id:  targetId  || undefined }),
+        ...(isEditable && !isCVEScanner && { config_id: configId || undefined }),
+        ...(isEditable && { scanner_id: scannerId || undefined }),
+        alterable:        alterable,
+        add_assets:       addAssets,
+        // Always editable
         apply_overrides:  applyOverrides,
         min_qod:          minQod,
-        max_checks:       maxChecks,
-        max_hosts:        maxHosts,
+        max_checks:       !isCVEScanner ? maxChecks : undefined,
+        max_hosts:        !isCVEScanner ? maxHosts  : undefined,
         auto_delete:      autoDelete,
         auto_delete_data: autoDelete === "keep" ? autoDeleteData : undefined,
       });
@@ -694,20 +795,22 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
   const numCls   = "h-9 w-full rounded-xl border border-slate-200/80 bg-white px-3 text-[12px] text-slate-800 outline-none transition focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:focus:ring-white/10 dark:focus:border-cyan-400/30";
   const labelCls = "mb-1.5 flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35";
 
-  // Read-only locked field (like OpenVAS greyed-out dropdown)
+  // Locked read-only field (shown when !isEditable)
   const LockedField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div>
       <label className={labelCls}>
         {label}
-        <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase text-slate-400 dark:bg-white/8 dark:text-white/30">
-          locked
-        </span>
+        <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase text-slate-400 dark:bg-white/8 dark:text-white/30">locked</span>
       </label>
-      <div className="flex h-9 w-full items-center gap-2 rounded-xl border border-slate-200/60 bg-slate-50 px-3 dark:border-white/8 dark:bg-white/3">
+      <div className="flex h-9 w-full items-center rounded-xl border border-slate-200/60 bg-slate-50 px-3 dark:border-white/8 dark:bg-white/3">
         <span className="truncate text-[12px] text-slate-500 dark:text-white/40">{value || "—"}</span>
       </div>
     </div>
   );
+
+  const fTarget  = searchTarget.trim()  ? targets.filter(x => x.name.toLowerCase().includes(searchTarget.toLowerCase()))  : targets;
+  const fConfig  = searchConfig.trim()  ? configs.filter(x  => x.name.toLowerCase().includes(searchConfig.toLowerCase()))   : configs;
+  const fScanner = searchScanner.trim() ? scanners.filter(x => x.name.toLowerCase().includes(searchScanner.toLowerCase()))  : scanners;
 
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
@@ -723,7 +826,17 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
             </span>
             <div>
               <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SCAN MANAGEMENT · EDIT TASK</p>
-              <h3 className="max-w-xs truncate text-[14px] font-bold text-slate-800 dark:text-white/90">{task.name}</h3>
+              <h3 className="flex items-center gap-2 max-w-xs truncate text-[14px] font-bold text-slate-800 dark:text-white/90">
+                {task.name}
+                {isEditable
+                  ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+                      {task.alterable ? "Alterable" : "New"}
+                    </span>
+                  : <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
+                      Read-only config
+                    </span>
+                }
+              </h3>
             </div>
           </div>
           <button type="button" onClick={onClose}
@@ -755,15 +868,70 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
               <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder="e.g. IP address or description" className={inputCls} />
             </div>
 
-            {/* ── Scan Configuration (read-only / locked like OpenVAS) ── */}
-            <SectionDivider label="Scan Configuration" />
+            {/* ── Scan Configuration ── */}
+            <SectionDivider label={isEditable ? "Scan Configuration" : "Scan Configuration"} />
 
-            <LockedField label="Scan Targets" value={task.target_name} />
-            <LockedField label="Scan Config"  value={task.config_name} />
-            <LockedField label="Scanner"      value={task.scanner_name} />
+            {isEditable ? (
+              /* Fully editable dropdowns — like OpenVAS when task is New or Alterable */
+              <>
+                <div>
+                  <label className={labelCls}><FiTarget className="text-[10px]" />Scan Target <span className="text-red-400">*</span></label>
+                  <SearchDropdown dropRef={targetRef} open={openTarget} setOpen={setOpenTarget}
+                    search={searchTarget} setSearch={setSearchTarget}
+                    selectedLabel={targets.find(x => x.id === targetId)?.name ?? task.target_name}
+                    placeholder="Select a target…" items={fTarget} selectedId={targetId}
+                    onSelect={setTargetId} disabled={loadingData} />
+                </div>
+
+                <div>
+                  <label className={labelCls}><FiTarget className="text-[10px]" />Scanner</label>
+                  <SearchDropdown dropRef={scannerRef} open={openScanner} setOpen={setOpenScanner}
+                    search={searchScanner} setSearch={setSearchScanner}
+                    selectedLabel={scanners.find(x => x.id === scannerId)?.name ?? task.scanner_name}
+                    placeholder="Select scanner…" items={fScanner} selectedId={scannerId}
+                    onSelect={setScannerId} disabled={loadingData} />
+                </div>
+
+                {isCVEScanner && (
+                  <div className="flex items-start gap-2.5 rounded-xl border border-cyan-200/60 bg-cyan-50/50 px-3.5 py-2.5 dark:border-cyan-500/20 dark:bg-cyan-500/8">
+                    <FiSettings className="mt-0.5 shrink-0 text-[12px] text-cyan-600 dark:text-cyan-400" />
+                    <p className="text-[11px] text-cyan-700 dark:text-cyan-300">
+                      CVE Scanner — Scan Config, Max NVTs and Max hosts are not applicable.
+                    </p>
+                  </div>
+                )}
+
+                {!isCVEScanner && (
+                  <div>
+                    <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
+                    <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
+                      search={searchConfig} setSearch={setSearchConfig}
+                      selectedLabel={configs.find(x => x.id === configId)?.name ?? task.config_name}
+                      placeholder="Select scan config…" items={fConfig} selectedId={configId}
+                      onSelect={setConfigId} disabled={loadingData} dropH="max-h-36" />
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Locked read-only fields — task has been run and is NOT alterable */
+              <>
+                <LockedField label="Scan Targets" value={task.target_name} />
+                {task.scanner_name && <LockedField label="Scanner" value={task.scanner_name} />}
+                {task.config_name  && <LockedField label="Scan Config" value={task.config_name} />}
+                <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                  Set <strong>Alterable Task = Yes</strong> below to unlock Scan Target, Scanner and Config for editing.
+                </p>
+              </>
+            )}
 
             {/* ── Scan Options ── */}
             <SectionDivider label="Scan Options" />
+
+            {/* Add results to Assets */}
+            <div>
+              <label className={labelCls}>Add results to Assets</label>
+              <YesNoRadio value={addAssets} onChange={setAddAssets} currentColor={currentColor} />
+            </div>
 
             {/* Apply Overrides */}
             <div>
@@ -780,12 +948,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
                 <label className={labelCls + " mb-0"}>Min QoD</label>
                 <span className="text-[11px] font-bold tabular-nums" style={{ color: currentColor }}>{minQod}%</span>
               </div>
-              <input
-                type="range" min={0} max={100} step={1} value={minQod}
+              <input type="range" min={0} max={100} step={1} value={minQod}
                 onChange={e => setMinQod(Number(e.target.value))}
                 className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-white/15"
-                style={{ accentColor: currentColor }}
-              />
+                style={{ accentColor: currentColor }} />
               <div className="mt-1 flex justify-between text-[9.5px] text-slate-400 dark:text-white/30">
                 <span>0% (all)</span>
                 <span>Only include results with QoD ≥ {minQod}%</span>
@@ -798,19 +964,26 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
               </div>
             </div>
 
+            {/* Alterable Task */}
+            <div>
+              <label className={labelCls}>Alterable Task</label>
+              <YesNoRadio value={alterable} onChange={setAlterable} currentColor={currentColor} />
+              <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
+                Alterable tasks allow changing Scan Target and Config after scanning.
+              </p>
+            </div>
+
             {/* Auto Delete Reports */}
             <div>
               <label className={labelCls}>Auto Delete Reports</label>
               <div className="space-y-2.5">
-                {/* Option: Do not delete */}
-                <label className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
+                <div className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
                   <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
                     style={{ borderColor: autoDelete === "no" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "no" ? currentColor : "transparent" }}>
                     {autoDelete === "no" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                   </span>
                   <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">Do not automatically delete reports</span>
-                </label>
-                {/* Option: Auto delete, keep N */}
+                </div>
                 <div className="flex cursor-pointer items-start gap-2.5" onClick={() => setAutoDelete("keep")}>
                   <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
                     style={{ borderColor: autoDelete === "keep" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "keep" ? currentColor : "transparent" }}>
@@ -833,34 +1006,46 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
               </div>
             </div>
 
-            {/* ── Performance ── */}
-            <SectionDivider label="Performance" />
+            {/* ── Scanner (when not editable) + Scan Config ── */}
+            {!isEditable && (
+              <>
+                <SectionDivider label="Scanner & Config (locked)" />
+                {task.scanner_name && <LockedField label="Scanner" value={task.scanner_name} />}
+                {task.config_name  && <LockedField label="Scan Config" value={task.config_name} />}
+              </>
+            )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelCls}>Max concurrent NVTs per host</label>
-                <input type="number" min={1} max={99} value={maxChecks}
-                  onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
-                  className={numCls} />
-                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 8</p>
-              </div>
-              <div>
-                <label className={labelCls}>Max concurrent scanned hosts</label>
-                <input type="number" min={1} max={999} value={maxHosts}
-                  onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
-                  className={numCls} />
-                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
-              </div>
-            </div>
+            {/* ── Performance — hidden for CVE scanner ── */}
+            {!isCVEScanner && (
+              <>
+                <SectionDivider label="Performance" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Max concurrent NVTs per host</label>
+                    <input type="number" min={1} max={99} value={maxChecks}
+                      onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
+                      className={numCls} />
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 8</p>
+                  </div>
+                  <div>
+                    <label className={labelCls}>Max concurrent scanned hosts</label>
+                    <input type="number" min={1} max={999} value={maxHosts}
+                      onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
+                      className={numCls} />
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* ── Current State ── */}
             <SectionDivider label="Current State" />
 
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Status",   val: task.status || "—" },
-                { label: "Reports",  val: String(task.report_count) },
-                { label: "Severity", val: task.severity > 0 ? task.severity.toFixed(1) : "0.0 (Log)" },
+                { label: "Status",     val: task.status || "—" },
+                { label: "Reports",    val: String(task.report_count) },
+                { label: "Severity",   val: task.severity > 0 ? task.severity.toFixed(1) : "0.0 (Log)" },
               ].map(({ label, val }) => (
                 <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{label}</p>
@@ -885,7 +1070,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
             {t("common.cancel")}
           </button>
-          <button type="button" onClick={() => void handleSave()} disabled={loading}
+          <button type="button" onClick={() => void handleSave()} disabled={loading || (isEditable && loadingData)}
             style={{ background: accentGrad }}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
             {loading && <FiRefreshCw className="animate-spin text-[12px]" />}

@@ -47,15 +47,16 @@ type gmpGetTasksResponse struct {
 }
 
 type GMPTask struct {
-	ID       string         `xml:"id,attr"`
-	Name     string         `xml:"name"`
-	Comment  string         `xml:"comment"`
-	Status   string         `xml:"status"`
-	Progress int            `xml:"progress"`
-	Target   GMPRef         `xml:"target"`
-	Config   GMPRef         `xml:"config"`
-	Scanner  GMPRef         `xml:"scanner"`
-	LastReport GMPLastReport `xml:"last_report"`
+	ID        string         `xml:"id,attr"`
+	Name      string         `xml:"name"`
+	Comment   string         `xml:"comment"`
+	Status    string         `xml:"status"`
+	Progress  int            `xml:"progress"`
+	Alterable string         `xml:"alterable"` // "0" or "1"
+	Target    GMPRef         `xml:"target"`
+	Config    GMPRef         `xml:"config"`
+	Scanner   GMPRef         `xml:"scanner"`
+	LastReport  GMPLastReport `xml:"last_report"`
 	ReportCount struct {
 		Total int `xml:",chardata"`
 	} `xml:"report_count"`
@@ -677,7 +678,9 @@ func CreateTask(p CreateTaskFullParams) (string, error) {
 	sb.WriteString(fmt.Sprintf(`<name>%s</name>`, xmlEscape(p.Name)))
 	sb.WriteString(fmt.Sprintf(`<comment>%s</comment>`, xmlEscape(p.Comment)))
 	sb.WriteString(fmt.Sprintf(`<target id="%s"/>`, xmlEscape(p.TargetID)))
-	sb.WriteString(fmt.Sprintf(`<config id="%s"/>`, xmlEscape(p.ConfigID)))
+	if p.ConfigID != "" {
+		sb.WriteString(fmt.Sprintf(`<config id="%s"/>`, xmlEscape(p.ConfigID)))
+	}
 	sb.WriteString(scannerPart)
 	sb.WriteString(fmt.Sprintf(`<apply_overrides>%s</apply_overrides>`, applyOverridesVal))
 	sb.WriteString(fmt.Sprintf(`<min_qod>%d</min_qod>`, minQoD))
@@ -1355,12 +1358,114 @@ func DeleteTarget(targetID string) error {
 }
 
 // ===========================
+// Port Range — get detail / create / delete
+// ===========================
+
+type GMPPortRange struct {
+	ID      string `xml:"id,attr"`
+	Start   int    `xml:"start"`
+	End     int    `xml:"end"`
+	Type    string `xml:"type"`    // "TCP" or "UDP"
+	Comment string `xml:"comment"`
+}
+
+type GMPPortListDetailItem struct {
+	ID      string `xml:"id,attr"`
+	Name    string `xml:"name"`
+	Comment string `xml:"comment"`
+	PortCount struct {
+		All int `xml:"all"`
+		TCP int `xml:"tcp"`
+		UDP int `xml:"udp"`
+	} `xml:"port_count"`
+	PortRanges []GMPPortRange `xml:"port_ranges>port_range"`
+}
+
+type gmpGetPortListDetailResponse struct {
+	XMLName   xml.Name                `xml:"get_port_lists_response"`
+	gmpResponse
+	PortLists []GMPPortListDetailItem `xml:"port_list"`
+}
+
+type gmpCreatePortRangeResponse struct {
+	XMLName xml.Name `xml:"create_port_range_response"`
+	gmpResponse
+	ID string `xml:"id,attr"`
+}
+
+type gmpDeletePortRangeResponse struct {
+	XMLName xml.Name `xml:"delete_port_range_response"`
+	gmpResponse
+}
+
+func GetPortListDetail(id string) (*GMPPortListDetailItem, error) {
+	cmd := fmt.Sprintf(`<get_port_lists port_list_id="%s" details="1"/>`, xmlEscape(id))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return nil, err
+	}
+	var resp gmpGetPortListDetailResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return nil, fmt.Errorf("gmp get_port_list parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return nil, fmt.Errorf("gmp get_port_list failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	if len(resp.PortLists) == 0 {
+		return nil, fmt.Errorf("port list not found")
+	}
+	return &resp.PortLists[0], nil
+}
+
+func CreatePortRange(portListID string, start, end int, protocol, comment string) (string, error) {
+	cmd := fmt.Sprintf(
+		`<create_port_range><port_list id="%s"/><start>%d</start><end>%d</end><type>%s</type><comment>%s</comment></create_port_range>`,
+		xmlEscape(portListID), start, end, xmlEscape(strings.ToUpper(protocol)), xmlEscape(comment),
+	)
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return "", err
+	}
+	var resp gmpCreatePortRangeResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("gmp create_port_range parse error: %w", err)
+	}
+	if resp.Status != "201" {
+		return "", fmt.Errorf("gmp create_port_range failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return resp.ID, nil
+}
+
+func DeletePortRange(rangeID string) error {
+	cmd := fmt.Sprintf(`<delete_port_range port_range_id="%s"/>`, xmlEscape(rangeID))
+	data, err := GetClient().Execute(cmd)
+	if err != nil {
+		return err
+	}
+	var resp gmpDeletePortRangeResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp delete_port_range parse error: %w", err)
+	}
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp delete_port_range failed: %s - %s", resp.Status, resp.StatusText)
+	}
+	return nil
+}
+
+// ===========================
 // ModifyTask
 // ===========================
 
 type ModifyTaskParams struct {
 	Name           string
 	Comment        string
+	// Editable when task is New or Alterable
+	TargetID       string
+	ConfigID       string
+	ScannerID      string
+	Alterable      *bool
+	AddAssets      *bool
+	// Always editable
 	ApplyOverrides *bool
 	MinQoD         *int
 	MaxChecks      *int
@@ -1377,6 +1482,31 @@ func ModifyTask(id string, p ModifyTaskParams) error {
 		sb.WriteString(fmt.Sprintf(`<name>%s</name>`, xmlEscape(p.Name)))
 	}
 	sb.WriteString(fmt.Sprintf(`<comment>%s</comment>`, xmlEscape(p.Comment)))
+
+	// Fields editable only when task is New or Alterable
+	if p.TargetID != "" {
+		sb.WriteString(fmt.Sprintf(`<target id="%s"/>`, xmlEscape(p.TargetID)))
+	}
+	if p.ConfigID != "" {
+		sb.WriteString(fmt.Sprintf(`<config id="%s"/>`, xmlEscape(p.ConfigID)))
+	}
+	if p.ScannerID != "" {
+		sb.WriteString(fmt.Sprintf(`<scanner id="%s"/>`, xmlEscape(p.ScannerID)))
+	}
+	if p.Alterable != nil {
+		v := "0"
+		if *p.Alterable {
+			v = "1"
+		}
+		sb.WriteString(fmt.Sprintf(`<alterable>%s</alterable>`, v))
+	}
+	if p.AddAssets != nil {
+		v := "no"
+		if *p.AddAssets {
+			v = "yes"
+		}
+		sb.WriteString(fmt.Sprintf(`<add_assets>%s</add_assets>`, v))
+	}
 
 	if p.ApplyOverrides != nil {
 		v := "0"

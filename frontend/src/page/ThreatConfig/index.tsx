@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   FiSliders, FiKey, FiList, FiTarget, FiPlus, FiTrash2,
@@ -8,10 +8,11 @@ import {
 import { message } from "antd";
 import {
   ListGMPPortLists, CreateGMPPortList, DeleteGMPPortList, ImportGMPPortList, UpdateGMPPortList,
+  GetGMPPortListDetail, CreateGMPPortRange, DeleteGMPPortRange,
   ListGMPCredentials, CreateGMPCredential, DeleteGMPCredential, UpdateGMPCredential,
   ListGMPTargets, CreateGMPTarget, DeleteGMPTarget, UpdateGMPTarget,
   CREDENTIAL_TYPE_LABELS,
-  type GMPPortListDTO, type GMPCredentialDTO, type GMPTargetDTO,
+  type GMPPortListDTO, type GMPPortRangeDTO, type GMPCredentialDTO, type GMPTargetDTO,
   type CreatePortListRequest, type CreateCredentialRequest, type CreateTargetRequest,
   type GMPCredentialType,
 } from "../../services/gmp";
@@ -148,17 +149,28 @@ const FileTextInput: React.FC<{
 // ─────────────────────────────────────────────────────────────
 // Port Lists tab
 // ─────────────────────────────────────────────────────────────
+// IANA standard port lists — Edit is always locked, Delete allowed if not in use
+const IANA_PORT_LIST_NAMES = [
+  "All IANA assigned TCP",
+  "All IANA assigned TCP and UDP",
+  "All TCP and Nmap top 100 UDP",
+] as const;
+
+const isIANAPortList = (pl: GMPPortListDTO): boolean =>
+  IANA_PORT_LIST_NAMES.some(name => pl.name === name || pl.name.startsWith(name));
+
 const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
   const [lists,   setLists]   = useState<GMPPortListDTO[]>([]);
+  const [targets, setTargets] = useState<GMPTargetDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<GMPPortListDTO | null>(null);
   const [form, setForm] = useState<CreatePortListRequest>({ name: "Unnamed", comment: "", port_range: "T:1-5,7,9,U:1-3,5,7,9" });
   const [saving, setSaving] = useState(false);
   const [deleteItem, setDeleteItem] = useState<GMPPortListDTO | null>(null);
-  // Port range mode: manual text vs. upload file
+  // Port range mode for Create modal
   const [portRangeMode, setPortRangeMode] = useState<"manual" | "file">("manual");
   const [portRangeFile, setPortRangeFile] = useState<File | null>(null);
   const portRangeFileRef = useRef<HTMLInputElement>(null);
@@ -167,13 +179,38 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importing, setImporting] = useState(false);
   const importFileRef = useRef<HTMLInputElement>(null);
+  // Port Ranges in Edit modal
+  const [portRanges,    setPortRanges]    = useState<GMPPortRangeDTO[]>([]);
+  const [loadingRanges, setLoadingRanges] = useState(false);
+  const [newRange, setNewRange] = useState<{ start: string; end: string; protocol: "tcp" | "udp" }>({ start: "", end: "", protocol: "tcp" });
+  const [addingRange, setAddingRange] = useState(false);
 
   const hasFetched = useRef(false);
 
+  // Compute which port list IDs are in use and by which targets
+  const usedPortListIds = useMemo(
+    () => new Set(targets.map(t => t.port_list_id).filter(Boolean)),
+    [targets],
+  );
+
+  const usageMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const t of targets) {
+      if (t.port_list_id) {
+        const arr = map.get(t.port_list_id) ?? [];
+        arr.push(t.name);
+        map.set(t.port_list_id, arr);
+      }
+    }
+    return map;
+  }, [targets]);
+
+  // Fetch both port lists + targets so we know which are in-use
   const fetchLists = useCallback(async () => {
     setLoading(true);
-    const data = await ListGMPPortLists();
-    setLists(data);
+    const [pl, tg] = await Promise.all([ListGMPPortLists(), ListGMPTargets()]);
+    setLists(pl);
+    setTargets(tg);
     setLoading(false);
   }, []);
 
@@ -197,20 +234,68 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     setForm({ name: "Unnamed", comment: "", port_range: "T:1-5,7,9,U:1-3,5,7,9" });
     setPortRangeMode("manual");
     setPortRangeFile(null);
+    setPortRanges([]);
+    setNewRange({ start: "", end: "", protocol: "tcp" });
+  };
+
+  const loadPortRanges = async (id: string) => {
+    setLoadingRanges(true);
+    try {
+      const detail = await GetGMPPortListDetail(id);
+      setPortRanges(detail.port_ranges);
+    } catch { setPortRanges([]); }
+    finally { setLoadingRanges(false); }
   };
 
   const openEdit = (pl: GMPPortListDTO) => {
     setEditItem(pl);
-    setForm({ name: pl.name, comment: pl.comment, port_range: "" });
+    setForm({ name: pl.name, comment: pl.comment ?? "", port_range: "" });
     setPortRangeMode("manual");
+    setPortRanges([]);
+    setNewRange({ start: "", end: "", protocol: "tcp" });
     setShowModal(true);
+    void loadPortRanges(pl.id);
+  };
+
+  const handleAddRange = async () => {
+    if (!editItem) return;
+    const start = parseInt(newRange.start);
+    const end   = parseInt(newRange.end);
+    if (!newRange.start || !newRange.end || isNaN(start) || isNaN(end)) {
+      message.warning("Start and End ports are required"); return;
+    }
+    if (start < 1 || start > 65535) { message.warning("Start must be 1–65535"); return; }
+    if (end < start || end > 65535) { message.warning("End must be ≥ Start and ≤ 65535"); return; }
+    setAddingRange(true);
+    try {
+      await CreateGMPPortRange(editItem.id, { start, end, protocol: newRange.protocol });
+      setNewRange({ start: "", end: "", protocol: "tcp" });
+      await loadPortRanges(editItem.id);
+      void fetchLists();
+      message.success(`Port range ${start}–${end} (${newRange.protocol.toUpperCase()}) added`);
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || "Failed to add port range");
+    } finally { setAddingRange(false); }
+  };
+
+  const handleDeleteRange = async (rangeId: string) => {
+    if (!editItem) return;
+    try {
+      await DeleteGMPPortRange(editItem.id, rangeId);
+      await loadPortRanges(editItem.id);
+      void fetchLists();
+      message.success("Port range removed");
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || "Failed to remove port range");
+    }
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) { message.warning("Name is required"); return; }
 
     if (editItem) {
-      // Update — only name & comment (port ranges not editable via GMP modify)
       setSaving(true);
       try {
         await UpdateGMPPortList(editItem.id, { name: form.name.trim(), comment: form.comment });
@@ -330,37 +415,93 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
-                {lists.map(pl => (
-                  <tr key={pl.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
-                    <td className="px-5 py-3.5">
-                      <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{pl.name}</p>
-                      {pl.comment && <p className="text-[10.5px] text-slate-400 dark:text-white/30">{pl.comment}</p>}
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-[12.5px] font-semibold text-slate-700 dark:text-white/70">
-                      {pl.total.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-[12.5px] text-slate-500 dark:text-white/45">
-                      {pl.tcp.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-[12.5px] text-slate-500 dark:text-white/45">
-                      {pl.udp === 0
-                        ? <span className="text-slate-300 dark:text-white/20">0</span>
-                        : pl.udp.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button type="button" onClick={() => openEdit(pl)}
-                          className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                          <FiEdit2 className="text-[11px]" />
-                        </button>
-                        <button type="button" onClick={() => setDeleteItem(pl)}
-                          className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                          <FiTrash2 className="text-[11px]" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {lists.map(pl => {
+                  const inUse  = usedPortListIds.has(pl.id);
+                  const isIANA = isIANAPortList(pl);
+                  const usedBy = usageMap.get(pl.id) ?? [];
+                  // Edit: locked for IANA or in-use.  Delete: locked only when in-use
+                  const canEdit   = !isIANA && !inUse;
+                  const canDelete = !inUse;
+                  const editTip = isIANA
+                    ? "IANA standard port list — cannot be modified"
+                    : inUse
+                      ? `In use by: ${usedBy.join(", ")} — cannot edit`
+                      : "Edit port list";
+                  const deleteTip = inUse
+                    ? `In use by: ${usedBy.join(", ")} — cannot delete`
+                    : "Delete port list";
+
+                  return (
+                    <tr key={pl.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
+                      {/* Name + badges */}
+                      <td className="px-5 py-3.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{pl.name}</p>
+                          {isIANA && (
+                            <span className="inline-flex items-center rounded-full border border-blue-200/80 bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-500 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-400">
+                              IANA Standard
+                            </span>
+                          )}
+                          {inUse && (
+                            <span title={`Used by: ${usedBy.join(", ")}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              In use ({usedBy.length})
+                            </span>
+                          )}
+                        </div>
+                        {pl.comment && <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">{pl.comment}</p>}
+                        {inUse && (
+                          <p className="mt-0.5 text-[10px] text-slate-400 dark:text-white/25">
+                            Used by: {usedBy.join(", ")}
+                          </p>
+                        )}
+                      </td>
+
+                      {/* Total */}
+                      <td className="px-4 py-3.5 text-right text-[12.5px] font-semibold text-slate-700 dark:text-white/70">
+                        {pl.total.toLocaleString()}
+                      </td>
+                      {/* TCP */}
+                      <td className="px-4 py-3.5 text-right text-[12.5px] text-slate-500 dark:text-white/45">
+                        {pl.tcp.toLocaleString()}
+                      </td>
+                      {/* UDP */}
+                      <td className="px-4 py-3.5 text-right text-[12.5px] text-slate-500 dark:text-white/45">
+                        {pl.udp === 0 ? <span className="text-slate-300 dark:text-white/20">0</span> : pl.udp.toLocaleString()}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* Edit */}
+                          <button type="button" title={editTip}
+                            onClick={() => { if (canEdit) openEdit(pl); }}
+                            disabled={!canEdit}
+                            className={["grid h-7 w-7 place-items-center rounded-lg border transition",
+                              canEdit
+                                ? "border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 dark:border-white/8 dark:bg-white/3 dark:text-white/20",
+                            ].join(" ")}>
+                            <FiEdit2 className="text-[11px]" />
+                          </button>
+
+                          {/* Delete */}
+                          <button type="button" title={deleteTip}
+                            onClick={() => { if (canDelete) setDeleteItem(pl); }}
+                            disabled={!canDelete}
+                            className={["grid h-7 w-7 place-items-center rounded-lg border transition",
+                              canDelete
+                                ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                                : "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 dark:border-white/8 dark:bg-white/3 dark:text-white/20",
+                            ].join(" ")}>
+                            <FiTrash2 className="text-[11px]" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -371,17 +512,20 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
       {showModal && createPortal(
         <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={resetNewModal} />
-          <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-[#12101f]"
-            style={{ boxShadow: `0 24px 64px -12px ${currentColor}40` }}>
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-[#12101f]"
+            style={{ maxHeight: "90dvh", boxShadow: `0 24px 64px -12px ${currentColor}40` }}>
+
+            {/* ── Header ── */}
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
                   {editItem ? <FiEdit2 className="text-[14px]" /> : <FiList className="text-[14px]" />}
                 </span>
                 <div>
                   <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>PORT LISTS</p>
-                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{editItem ? "Edit Port List" : "New Port List"}</h3>
+                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
+                    {editItem ? `Edit Port List` : "New Port List"}
+                  </h3>
                 </div>
               </div>
               <button type="button" onClick={resetNewModal}
@@ -389,66 +533,171 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 <FiX className="text-[15px]" />
               </button>
             </div>
-            {/* Body */}
-            <div className="space-y-4 px-5 py-5">
-              <div>
-                <label className={labelCls}>Name <span className="text-red-400">*</span></label>
-                <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                  placeholder="Unnamed" className={inputCls} />
-              </div>
-              <div>
-                <label className={labelCls}>Comment</label>
-                <input type="text" value={form.comment ?? ""} onChange={e => setForm(p => ({ ...p, comment: e.target.value }))}
-                  placeholder="Optional description" className={inputCls} />
-              </div>
-              {/* Port Ranges — hidden in edit mode */}
-              {!editItem ? (
+
+            {/* ── Body (scrollable) ── */}
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <div className="space-y-4">
+
+                {/* Name */}
                 <div>
-                  <label className={labelCls}>Port Ranges</label>
-                  <div className="space-y-3">
-                    <label className="flex cursor-pointer items-start gap-2.5">
-                      <input type="radio" checked={portRangeMode === "manual"}
-                        onChange={() => setPortRangeMode("manual")} className="mt-0.5 accent-blue-500" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">Manual</span>
-                        {portRangeMode === "manual" && (
-                          <input type="text" value={form.port_range}
-                            onChange={e => setForm(p => ({ ...p, port_range: e.target.value }))}
-                            placeholder="T:1-5,7,9,U:1-3,5,7,9" className={`${inputCls} mt-1.5`} />
-                        )}
-                      </div>
-                    </label>
-                    <label className="flex cursor-pointer items-start gap-2.5">
-                      <input type="radio" checked={portRangeMode === "file"}
-                        onChange={() => setPortRangeMode("file")} className="mt-0.5 accent-blue-500" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">From file</span>
-                        {portRangeMode === "file" && (
-                          <div className="mt-1.5">
-                            <FileUploadArea file={portRangeFile} inputRef={portRangeFileRef} onChange={setPortRangeFile} />
-                          </div>
-                        )}
-                      </div>
-                    </label>
-                  </div>
+                  <label className={labelCls}>Name <span className="text-red-400">*</span></label>
+                  <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                    placeholder="Unnamed" className={inputCls} />
                 </div>
-              ) : (
-                <p className="rounded-lg border border-slate-200/70 bg-slate-50/60 px-3 py-2 text-[10.5px] text-slate-400 dark:border-white/8 dark:bg-white/3 dark:text-white/30">
-                  Port ranges cannot be changed after creation — {editItem.total.toLocaleString()} ports ({editItem.tcp.toLocaleString()} TCP · {editItem.udp.toLocaleString()} UDP)
-                </p>
-              )}
-              <div className="flex gap-2 pt-1">
-                <button type="button" onClick={resetNewModal}
-                  className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                  Cancel
-                </button>
-                <button type="button" onClick={() => void handleSave()} disabled={saving}
-                  style={{ background: accentGrad }}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
-                  {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                  {editItem ? "Update" : "Save"}
-                </button>
+
+                {/* Comment */}
+                <div>
+                  <label className={labelCls}>Comment</label>
+                  <input type="text" value={form.comment ?? ""} onChange={e => setForm(p => ({ ...p, comment: e.target.value }))}
+                    placeholder="Optional description" className={inputCls} />
+                </div>
+
+                {/* ── Port Ranges section ── */}
+                {!editItem ? (
+                  /* CREATE mode: manual text or file */
+                  <div>
+                    <label className={labelCls}>Port Ranges <span className="text-red-400">*</span></label>
+                    <div className="space-y-3">
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input type="radio" checked={portRangeMode === "manual"}
+                          onChange={() => setPortRangeMode("manual")} className="mt-0.5 accent-blue-500" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">Manual</span>
+                          {portRangeMode === "manual" && (
+                            <input type="text" value={form.port_range}
+                              onChange={e => setForm(p => ({ ...p, port_range: e.target.value }))}
+                              placeholder="T:1-5,7,9,U:1-3,5,7,9" className={`${inputCls} mt-1.5`} />
+                          )}
+                        </div>
+                      </label>
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input type="radio" checked={portRangeMode === "file"}
+                          onChange={() => setPortRangeMode("file")} className="mt-0.5 accent-blue-500" />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">From file</span>
+                          {portRangeMode === "file" && (
+                            <div className="mt-1.5">
+                              <FileUploadArea file={portRangeFile} inputRef={portRangeFileRef} onChange={setPortRangeFile} />
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  /* EDIT mode: live Port Ranges table + add form (like OpenVAS) */
+                  <div>
+                    {/* Port Ranges header */}
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className={labelCls + " mb-0"}>Port Ranges</label>
+                      {!loadingRanges && (
+                        <span className="text-[10.5px] text-slate-400 dark:text-white/30">
+                          {portRanges.length} range{portRanges.length !== 1 ? "s" : ""}
+                          {editItem.total > 0 && ` · ${editItem.total.toLocaleString()} ports`}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Ranges table */}
+                    {loadingRanges ? (
+                      <div className="space-y-1.5">
+                        {[1,2,3].map(i => <div key={i} className="h-8 animate-pulse rounded-lg bg-slate-100 dark:bg-white/8" />)}
+                      </div>
+                    ) : portRanges.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-200 py-5 text-center text-[11.5px] text-slate-400 dark:border-white/10 dark:text-white/30">
+                        No port ranges yet. Add one below.
+                      </div>
+                    ) : (
+                      <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-white/8"
+                        style={{ maxHeight: "220px", overflowY: "auto" }}>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-white/8 dark:bg-white/3">
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Start</th>
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">End</th>
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Protocol</th>
+                              <th className="px-3 py-2 text-right text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
+                            {portRanges.map(pr => (
+                              <tr key={pr.id} className="hover:bg-slate-50/60 dark:hover:bg-white/2">
+                                <td className="px-3 py-2 font-mono text-[12px] tabular-nums text-slate-700 dark:text-white/70">{pr.start}</td>
+                                <td className="px-3 py-2 font-mono text-[12px] tabular-nums text-slate-700 dark:text-white/70">{pr.end}</td>
+                                <td className="px-3 py-2">
+                                  <span className={[
+                                    "rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase",
+                                    pr.protocol === "tcp"
+                                      ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300"
+                                      : "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300",
+                                  ].join(" ")}>
+                                    {pr.protocol}
+                                  </span>
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button type="button" title="Remove range"
+                                    onClick={() => void handleDeleteRange(pr.id)}
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                                    <FiX className="text-[10px]" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Add Range inline form */}
+                    <div className="mt-3">
+                      <label className={labelCls}>Add Port Range</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min={1} max={65535} placeholder="Start"
+                          value={newRange.start}
+                          onChange={e => setNewRange(p => ({ ...p, start: e.target.value }))}
+                          className={`${inputCls} w-24 text-center`} />
+                        <span className="shrink-0 text-[12px] text-slate-400">—</span>
+                        <input type="number" min={1} max={65535} placeholder="End"
+                          value={newRange.end}
+                          onChange={e => setNewRange(p => ({ ...p, end: e.target.value }))}
+                          className={`${inputCls} w-24 text-center`} />
+                        <div className="relative shrink-0">
+                          <select value={newRange.protocol}
+                            onChange={e => setNewRange(p => ({ ...p, protocol: e.target.value as "tcp" | "udp" }))}
+                            className={`${inputCls} w-20 appearance-none pr-6`}>
+                            <option value="tcp">TCP</option>
+                            <option value="udp">UDP</option>
+                          </select>
+                          <FiChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400" />
+                        </div>
+                        <button type="button" onClick={() => void handleAddRange()} disabled={addingRange}
+                          style={{ background: accentGrad }}
+                          className="flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
+                          {addingRange
+                            ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            : <FiPlus className="text-[12px]" />}
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
+            </div>
+
+            {/* ── Footer ── */}
+            <div className="flex shrink-0 gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
+              <button type="button" onClick={resetNewModal}
+                className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
+                Cancel
+              </button>
+              <button type="button" onClick={() => void handleSave()} disabled={saving}
+                style={{ background: accentGrad }}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
+                {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+                {editItem ? "Update" : "Save"}
+              </button>
             </div>
           </div>
         </div>,
@@ -1247,7 +1496,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{tg.name}</p>
                       {tg.comment && <p className="text-[10.5px] text-slate-400 dark:text-white/30">({tg.comment})</p>}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-[12px] text-slate-600 dark:text-white/55 max-w-[160px] truncate">{tg.hosts}</td>
+                    <td className="px-4 py-3.5 font-mono text-[12px] text-slate-600 dark:text-white/55 max-w-40 truncate">{tg.hosts}</td>
                     <td className="px-4 py-3.5 text-[12px] font-medium" style={{ color: currentColor }}>{tg.max_hosts || "—"}</td>
                     <td className="px-4 py-3.5 text-[12px] text-slate-600 dark:text-white/55">
                       {tg.port_list_name || <span className="text-slate-300 dark:text-white/20">—</span>}

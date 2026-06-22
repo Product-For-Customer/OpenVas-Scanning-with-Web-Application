@@ -180,6 +180,9 @@ func main() {
 		authorized.POST("/gmp/port-lists/import", gmp.ImportGMPPortList)
 		authorized.PATCH("/gmp/port-lists/:id", gmp.UpdateGMPPortList)
 		authorized.DELETE("/gmp/port-lists/:id", gmp.DeleteGMPPortList)
+			authorized.GET("/gmp/port-lists/:id", gmp.GetGMPPortListDetail)
+			authorized.POST("/gmp/port-lists/:id/ranges", gmp.CreateGMPPortRange)
+			authorized.DELETE("/gmp/port-lists/:id/ranges/:range_id", gmp.DeleteGMPPortRange)
 		// Credentials
 		authorized.GET("/gmp/credentials", gmp.ListGMPCredentials)
 		authorized.POST("/gmp/credentials", gmp.CreateGMPCredential)
