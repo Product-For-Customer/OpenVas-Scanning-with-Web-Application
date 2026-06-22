@@ -4,6 +4,7 @@ import {
   FiCheckCircle, FiAlertTriangle, FiZap, FiDatabase,
   FiEdit2, FiSave, FiX, FiPlay,
 } from "react-icons/fi";
+import { CustomSelect } from "../../component/ui/CustomSelect";
 import { message } from "antd";
 import {
   GetGMPFeeds, GetKEVSyncStatus, TriggerKEVSync,
@@ -69,7 +70,6 @@ const FEED_META: Record<FeedType, { label: string; desc: string; color: string; 
 };
 
 const inputCls = "h-9 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80";
-const selCls   = `${inputCls} appearance-none pr-8 cursor-pointer`;
 const labelCls = "text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/30";
 
 interface ScheduleRowProps {
@@ -273,12 +273,12 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.month")}</label>
-                  <div className="relative">
-                    <select value={month} onChange={e => setMonth(parseInt(e.target.value))}
-                      className={`${selCls} w-full`}>
-                      {MONTHS.map((m, i) => <option key={m} value={i+1}>{m}</option>)}
-                    </select>
-                  </div>
+                  <CustomSelect
+                    options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                    value={String(month)}
+                    onChange={v => setMonth(parseInt(v))}
+                    searchable={false}
+                  />
                 </div>
                 <div>
                   <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.day")} (1–31)</label>

@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { createPortal } from "react-dom";
 import {
   FiSliders, FiKey, FiList, FiTarget, FiPlus, FiTrash2,
-  FiRefreshCw, FiX, FiChevronDown, FiChevronLeft, FiChevronRight,
-  FiEye, FiEyeOff, FiAlertTriangle, FiCheckCircle, FiUpload, FiEdit2, FiSearch, FiCheck,
+  FiRefreshCw, FiX, FiChevronLeft, FiChevronRight,
+  FiEye, FiEyeOff, FiAlertTriangle, FiCheckCircle, FiUpload, FiEdit2, FiSearch,
 } from "react-icons/fi";
+import { CustomSelect, CustomMultiSelect } from "../../component/ui/CustomSelect";
 import { message } from "antd";
 import {
   ListGMPPortLists, CreateGMPPortList, DeleteGMPPortList, ImportGMPPortList, UpdateGMPPortList,
@@ -53,32 +54,34 @@ const ConfirmDeleteDialog: React.FC<{
   name: string;
   onConfirm: () => void;
   onCancel: () => void;
-}> = ({ name, onConfirm, onCancel }) =>
-  createPortal(
+}> = ({ name, onConfirm, onCancel }) => {
+  const { t } = useLanguage();
+  return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onCancel} />
       <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-[#12101f]">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-500/10">
           <FiAlertTriangle className="text-[22px] text-red-500" />
         </div>
-        <h3 className="text-[15px] font-bold text-slate-800 dark:text-white/90">Confirm Delete</h3>
+        <h3 className="text-[15px] font-bold text-slate-800 dark:text-white/90">{t("threatConfig.confirmDelete")}</h3>
         <p className="mt-1.5 text-[12.5px] text-slate-500 dark:text-white/45">
-          Delete <strong className="text-slate-700 dark:text-white/70">"{name}"</strong>? This cannot be undone.
+          {t("threatConfig.deleteMsg").replace("{name}", name)}
         </p>
         <div className="mt-5 flex gap-2">
           <button type="button" onClick={onCancel}
             className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="button" onClick={onConfirm}
             className="flex-1 rounded-xl bg-red-500 py-2 text-[12.5px] font-semibold text-white transition hover:bg-red-600 focus:outline-none">
-            Delete
+            {t("common.delete")}
           </button>
         </div>
       </div>
     </div>,
     document.body
   );
+};
 
 // ─────────────────────────────────────────────────────────────
 // File upload area (shared by Port Lists tab)
@@ -164,6 +167,7 @@ const isIANAPortList = (pl: GMPPortListDTO): boolean =>
 const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
+  const { t } = useLanguage();
   const [lists,   setLists]   = useState<GMPPortListDTO[]>([]);
   const [targets, setTargets] = useState<GMPTargetDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -386,28 +390,28 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           <div className="flex shrink-0 items-center gap-2.5">
             <FiList className="text-[14px] text-slate-400 dark:text-white/35" />
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-              Port Lists
+              {t("threatConfig.tabs.portLists")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredLists.length}/{lists.length})</span>}
             </p>
           </div>
           <div className="relative flex-1 max-w-56">
             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..."
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={t("threatConfig.search")}
               className="w-full rounded-lg border border-slate-200/80 bg-white py-1.5 pl-8 pr-3 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25" />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <button type="button" onClick={() => void fetchLists()} disabled={loading} title="Refresh"
+            <button type="button" onClick={() => void fetchLists()} disabled={loading} title={t("common.refresh")}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiRefreshCw className={`text-[12px] ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={() => setShowImportModal(true)} title="Import Port List"
+            <button type="button" onClick={() => setShowImportModal(true)} title={t("threatConfig.importPortList")}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiUpload className="text-[12px]" />
             </button>
             <button type="button" onClick={() => setShowModal(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> New Port List
+              <FiPlus className="text-[13px]" /> {t("threatConfig.newPortList")}
             </button>
           </div>
         </div>
@@ -435,11 +439,11 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             <table className="w-full min-w-140">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/8">
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Name</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Total</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">TCP</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">UDP</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Actions</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.name")}</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.total")}</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.tcp")}</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.udp")}</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
@@ -465,14 +469,14 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                           <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{pl.name}</p>
                           {isIANA && (
                             <span className="inline-flex items-center rounded-full border border-blue-200/80 bg-blue-50 px-2 py-0.5 text-[9px] font-bold text-blue-500 dark:border-blue-500/25 dark:bg-blue-500/10 dark:text-blue-400">
-                              IANA Standard
+                              {t("threatConfig.ianaStandard")}
                             </span>
                           )}
                           {inUse && (
                             <span title={`Used by: ${usedBy.join(", ")}`}
                               className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              In use ({usedBy.length})
+                              {t("threatConfig.inUse")} ({usedBy.length})
                             </span>
                           )}
                         </div>
@@ -533,7 +537,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           </div>
           {plTotalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 dark:border-white/8">
-              <span className="text-[11px] text-slate-400 dark:text-white/30">Page {page} of {plTotalPages}</span>
+              <span className="text-[11px] text-slate-400 dark:text-white/30">{t("threatConfig.page")} {page} {t("threatConfig.of")} {plTotalPages}</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                   className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
@@ -573,9 +577,9 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   {editItem ? <FiEdit2 className="text-[14px]" /> : <FiList className="text-[14px]" />}
                 </span>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>PORT LISTS</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("threatConfig.tabs.portLists").toUpperCase()}</p>
                   <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
-                    {editItem ? `Edit Port List` : "New Port List"}
+                    {editItem ? t("threatConfig.editPortList") : t("threatConfig.newPortList")}
                   </h3>
                 </div>
               </div>
@@ -591,14 +595,14 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 
                 {/* Name */}
                 <div>
-                  <label className={labelCls}>Name <span className="text-red-400">*</span></label>
+                  <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                   <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                     placeholder="Unnamed" className={inputCls} />
                 </div>
 
                 {/* Comment */}
                 <div>
-                  <label className={labelCls}>Comment</label>
+                  <label className={labelCls}>{t("threatConfig.comment")}</label>
                   <input type="text" value={form.comment ?? ""} onChange={e => setForm(p => ({ ...p, comment: e.target.value }))}
                     placeholder="Optional description" className={inputCls} />
                 </div>
@@ -607,13 +611,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 {!editItem ? (
                   /* CREATE mode: manual text or file */
                   <div>
-                    <label className={labelCls}>Port Ranges <span className="text-red-400">*</span></label>
+                    <label className={labelCls}>{t("threatConfig.portRanges")} <span className="text-red-400">*</span></label>
                     <div className="space-y-3">
                       <label className="flex cursor-pointer items-start gap-2.5">
                         <input type="radio" checked={portRangeMode === "manual"}
                           onChange={() => setPortRangeMode("manual")} className="mt-0.5 accent-blue-500" />
                         <div className="flex-1 min-w-0">
-                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">Manual</span>
+                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">{t("threatConfig.portRangeManual")}</span>
                           {portRangeMode === "manual" && (
                             <input type="text" value={form.port_range}
                               onChange={e => setForm(p => ({ ...p, port_range: e.target.value }))}
@@ -625,7 +629,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                         <input type="radio" checked={portRangeMode === "file"}
                           onChange={() => setPortRangeMode("file")} className="mt-0.5 accent-blue-500" />
                         <div className="flex-1 min-w-0">
-                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">From file</span>
+                          <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">{t("threatConfig.portRangeFromFile")}</span>
                           {portRangeMode === "file" && (
                             <div className="mt-1.5">
                               <FileUploadArea file={portRangeFile} inputRef={portRangeFileRef} onChange={setPortRangeFile} />
@@ -640,13 +644,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   <div>
                     {/* Port Ranges header */}
                     <div className="mb-2 flex items-center justify-between">
-                      <label className={labelCls + " mb-0"}>Port Ranges</label>
+                      <label className={labelCls + " mb-0"}>{t("threatConfig.portRanges")}</label>
                       {!loadingRanges && (
                         <div className="flex items-center gap-2">
                           {pendingDeleteIds.size > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[9.5px] font-semibold text-red-500 dark:bg-red-500/10 dark:text-red-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                              {pendingDeleteIds.size} pending delete
+                              {pendingDeleteIds.size} {t("threatConfig.pendingDelete")}
                             </span>
                           )}
                           <span className="text-[10.5px] text-slate-400 dark:text-white/30">
@@ -664,7 +668,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       </div>
                     ) : portRanges.filter(pr => !pendingDeleteIds.has(pr.id)).length === 0 ? (
                       <div className="rounded-xl border border-dashed border-slate-200 py-5 text-center text-[11.5px] text-slate-400 dark:border-white/10 dark:text-white/30">
-                        No port ranges yet. Add one below.
+                        {t("threatConfig.noPortRangesYet")}
                       </div>
                     ) : (
                       <div className="overflow-hidden rounded-xl border border-slate-200/80 dark:border-white/8"
@@ -709,7 +713,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 
                     {/* Add Range inline form */}
                     <div className="mt-3">
-                      <label className={labelCls}>Add Port Range</label>
+                      <label className={labelCls}>{t("threatConfig.addPortRange")}</label>
                       <div className="flex items-center gap-2">
                         <input type="number" min={1} max={65535} placeholder="Start"
                           value={newRange.start}
@@ -720,14 +724,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                           value={newRange.end}
                           onChange={e => setNewRange(p => ({ ...p, end: e.target.value }))}
                           className={`${inputCls} w-24 text-center`} />
-                        <div className="relative shrink-0">
-                          <select value={newRange.protocol}
-                            onChange={e => setNewRange(p => ({ ...p, protocol: e.target.value as "tcp" | "udp" }))}
-                            className={`${inputCls} w-20 appearance-none pr-6`}>
-                            <option value="tcp">TCP</option>
-                            <option value="udp">UDP</option>
-                          </select>
-                          <FiChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400" />
+                        <div className="w-24 shrink-0">
+                          <CustomSelect
+                            options={[{ value: "tcp", label: "TCP" }, { value: "udp", label: "UDP" }]}
+                            value={newRange.protocol}
+                            onChange={v => setNewRange(p => ({ ...p, protocol: v as "tcp" | "udp" }))}
+                            searchable={false}
+                          />
                         </div>
                         <button type="button" onClick={() => void handleAddRange()} disabled={addingRange}
                           style={{ background: accentGrad }}
@@ -749,13 +752,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             <div className="flex shrink-0 gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
               <button type="button" onClick={resetNewModal}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button type="button" onClick={() => void handleSave()} disabled={saving}
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? "Update" : "Save"}
+                {editItem ? t("common.save").replace("Save", "Update") : t("common.save")}
               </button>
             </div>
           </div>
@@ -777,8 +780,8 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   <FiUpload className="text-[14px]" />
                 </span>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>PORT LISTS</p>
-                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Import Port List</h3>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("threatConfig.tabs.portLists").toUpperCase()}</p>
+                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("threatConfig.importPortList")}</h3>
                 </div>
               </div>
               <button type="button" onClick={() => { setShowImportModal(false); setImportFile(null); }}
@@ -789,7 +792,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             {/* Body */}
             <div className="space-y-4 px-5 py-5">
               <div>
-                <label className={labelCls}>Import XML Port List</label>
+                <label className={labelCls}>{t("threatConfig.importPortList")}</label>
                 <FileUploadArea
                   file={importFile}
                   inputRef={importFileRef}
@@ -800,13 +803,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => { setShowImportModal(false); setImportFile(null); }}
                   className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                  Cancel
+                  {t("common.cancel")}
                 </button>
                 <button type="button" onClick={() => void handleImport()} disabled={importing}
                   style={{ background: accentGrad }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                   {importing && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                  Import
+                  {t("common.upload")}
                 </button>
               </div>
             </div>
@@ -835,6 +838,7 @@ const PRIV_ALGO_LABEL: Record<string, string> = { aes: "AES", des: "DES", none: 
 const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
+  const { t } = useLanguage();
   const [creds,      setCreds]      = useState<GMPCredentialDTO[]>([]);
   const [tgList,     setTgList]     = useState<GMPTargetDTO[]>([]);
   const [loading,    setLoading]    = useState(false);
@@ -852,9 +856,6 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
   const [crSearch,       setCrSearch]       = useState("");
   const [crPage,         setCrPage]         = useState(1);
   const [crTypeFilter,   setCrTypeFilter]   = useState<GMPCredentialType[]>([]);
-  const [crTypeOpen,     setCrTypeOpen]     = useState(false);
-  const [crTypeSearch,   setCrTypeSearch]   = useState("");
-  const crTypeRef = useRef<HTMLDivElement | null>(null);
   const CR_PAGE = 4;
   const hasFetched = useRef(false);
 
@@ -923,15 +924,6 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
     void fetchCreds();
   }, [fetchCreds]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (crTypeRef.current && !crTypeRef.current.contains(e.target as Node)) {
-        setCrTypeOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
 
   const resetModal = () => {
     setShowModal(false);
@@ -1313,7 +1305,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
           <div className="flex shrink-0 items-center gap-2.5">
             <FiKey className="text-[14px] text-slate-400 dark:text-white/35" />
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-              Credentials
+              {t("threatConfig.tabs.credentials")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredCreds.length}/{creds.length})</span>}
             </p>
           </div>
@@ -1321,84 +1313,24 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
           {/* Search */}
           <div className="relative flex-1 max-w-52">
             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
-            <input type="text" value={crSearch} onChange={e => setCrSearch(e.target.value)} placeholder="Search..."
+            <input type="text" value={crSearch} onChange={e => setCrSearch(e.target.value)} placeholder={t("threatConfig.search")}
               className="w-full rounded-lg border border-slate-200/80 bg-white py-1.5 pl-8 pr-3 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25" />
           </div>
 
-          {/* Type multi-select dropdown */}
-          <div className="relative" ref={crTypeRef}>
-            <button type="button"
-              onClick={() => setCrTypeOpen(p => !p)}
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
-              <FiKey className="text-[11px]" />
-              <span className="max-w-32 truncate">
-                {crTypeFilter.length === 0
-                  ? "All Types"
-                  : crTypeFilter.length === 1
-                    ? (CREDENTIAL_TYPE_LABELS[crTypeFilter[0]] ?? crTypeFilter[0])
-                    : `${crTypeFilter.length} selected`}
-              </span>
-              {crTypeFilter.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-              <FiChevronDown className={`ml-0.5 text-[11px] transition-transform ${crTypeOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {crTypeOpen && (
-              <div className="absolute left-0 z-9999 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-                <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
-                    <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-                    <input type="text" value={crTypeSearch} onChange={e => setCrTypeSearch(e.target.value)}
-                      placeholder="Search type..."
-                      className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <button type="button"
-                      onClick={() => {
-                        const visible = CRED_TYPES.filter(ct => ct.label.toLowerCase().includes(crTypeSearch.toLowerCase())).map(ct => ct.value);
-                        const allSel  = visible.every(v => crTypeFilter.includes(v));
-                        setCrTypeFilter(prev =>
-                          allSel ? prev.filter(v => !visible.includes(v)) : [...new Set([...prev, ...visible])],
-                        );
-                      }}
-                      className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400">
-                      {CRED_TYPES.filter(ct => ct.label.toLowerCase().includes(crTypeSearch.toLowerCase())).every(ct => crTypeFilter.includes(ct.value)) ? "Unselect all" : "Select all"}
-                    </button>
-                    {crTypeFilter.length > 0 && (
-                      <button type="button" onClick={() => setCrTypeFilter([])}
-                        className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55">
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-36 overflow-y-auto p-2">
-                  <div className="space-y-0.5">
-                    {CRED_TYPES.filter(ct => ct.label.toLowerCase().includes(crTypeSearch.toLowerCase())).map(ct => {
-                      const count   = creds.filter(c => c.type === ct.value).length;
-                      const checked = crTypeFilter.includes(ct.value);
-                      return (
-                        <button key={ct.value} type="button"
-                          onClick={() => setCrTypeFilter(prev =>
-                            checked ? prev.filter(v => v !== ct.value) : [...prev, ct.value],
-                          )}
-                          className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
-                            checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5",
-                          ].join(" ")}>
-                          <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                            checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5",
-                          ].join(" ")}>
-                            <FiCheck className="text-[9px]" />
-                          </span>
-                          <span className="flex-1 truncate text-[11px] text-slate-700 dark:text-white/75">{ct.label}</span>
-                          <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-px text-[9.5px] font-semibold text-slate-500 dark:bg-white/8 dark:text-white/40">{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Type multi-select dropdown — using shared CustomMultiSelect */}
+          <CustomMultiSelect
+            options={CRED_TYPES.map(ct => ({
+              value: ct.value,
+              label: ct.label,
+              badge: creds.filter(c => c.type === ct.value).length,
+            }))}
+            value={crTypeFilter}
+            onChange={vals => setCrTypeFilter(vals as GMPCredentialType[])}
+            placeholder={t("threatConfig.allTypes")}
+            searchPlaceholder={t("threatConfig.searchType")}
+            icon={<FiKey />}
+            className="w-48"
+          />
 
           <div className="ml-auto flex items-center gap-2">
             <button type="button" onClick={() => void fetchCreds()} disabled={loading}
@@ -1408,7 +1340,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
             <button type="button" onClick={() => setShowModal(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> New Credential
+              <FiPlus className="text-[13px]" /> {t("threatConfig.newCredential")}
             </button>
           </div>
         </div>
@@ -1424,7 +1356,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
         ) : creds.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
             <FiKey className="text-[24px] text-slate-300 dark:text-white/20" />
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No credentials found</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("threatConfig.noCredentials")}</p>
           </div>
         ) : filteredCreds.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
@@ -1441,10 +1373,10 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
             <table className="w-full min-w-140">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/8">
-                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Name</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Type</th>
-                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Login</th>
-                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Actions</th>
+                  <th className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.name")}</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.type")}</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("threatConfig.login")}</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("common.actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
@@ -1505,7 +1437,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
           </div>
           {crTotalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 dark:border-white/8">
-              <span className="text-[11px] text-slate-400 dark:text-white/30">Page {crPage} of {crTotalPages}</span>
+              <span className="text-[11px] text-slate-400 dark:text-white/30">{t("threatConfig.page")} {crPage} {t("threatConfig.of")} {crTotalPages}</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => setCrPage(p => Math.max(1, p - 1))} disabled={crPage === 1}
                   className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
@@ -1546,8 +1478,8 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                   {editItem ? <FiEdit2 className="text-[14px]" /> : <FiKey className="text-[14px]" />}
                 </span>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>CREDENTIALS</p>
-                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{editItem ? "Edit Credential" : "New Credential"}</h3>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("threatConfig.tabs.credentials").toUpperCase()}</p>
+                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{editItem ? t("threatConfig.editCredential") : t("threatConfig.newCredential")}</h3>
                 </div>
               </div>
               <button type="button" onClick={resetModal}
@@ -1559,34 +1491,30 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
               <div>
-                <label className={labelCls}>Name <span className="text-red-400">*</span></label>
+                <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                 <input type="text" value={form.name} onChange={e => setF("name", e.target.value)}
                   placeholder="Unnamed" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Comment</label>
+                <label className={labelCls}>{t("threatConfig.comment")}</label>
                 <input type="text" value={form.comment ?? ""} onChange={e => setF("comment", e.target.value)}
                   placeholder="Optional description" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Type <span className="text-red-400">*</span></label>
-                <div className="relative">
-                  <select value={form.type}
-                    disabled={!!editItem}
-                    onChange={e => {
-                      setF("type", e.target.value as GMPCredentialType);
-                      setF("auto_generate", false);
-                      setShowPass(false); setShowPrivPass(false);
-                      setShowCommunity(false); setShowCcPass(false);
-                    }}
-                    className={`${inputCls} appearance-none pr-8 ${editItem ? "cursor-not-allowed opacity-60" : ""}`}>
-                    {CRED_TYPES.map(ct => (
-                      <option key={ct.value} value={ct.value}>{ct.label}</option>
-                    ))}
-                  </select>
-                  <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400" />
-                </div>
-                {editItem && <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">Type cannot be changed. Leave password fields empty to keep existing values.</p>}
+                <label className={labelCls}>{t("threatConfig.type")} <span className="text-red-400">*</span></label>
+                <CustomSelect
+                  options={CRED_TYPES.map(ct => ({ value: ct.value, label: ct.label }))}
+                  value={form.type}
+                  disabled={!!editItem}
+                  onChange={v => {
+                    setF("type", v as GMPCredentialType);
+                    setF("auto_generate", false);
+                    setShowPass(false); setShowPrivPass(false);
+                    setShowCommunity(false); setShowCcPass(false);
+                  }}
+                  searchable={false}
+                />
+                {editItem && <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">{t("threatConfig.typeCannotChange")}</p>}
               </div>
               {renderFormFields()}
             </div>
@@ -1601,7 +1529,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? "Update" : "Save"}
+                {editItem ? t("common.save").replace("Save","Update") : t("common.save")}
               </button>
             </div>
           </div>
@@ -1699,6 +1627,7 @@ const HostsField: React.FC<{
 const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
+  const { t } = useLanguage();
   const [targets,   setTargets]   = useState<GMPTargetDTO[]>([]);
   const [portLists, setPortLists] = useState<GMPPortListDTO[]>([]);
   const [creds,     setCreds]     = useState<GMPCredentialDTO[]>([]);
@@ -1713,12 +1642,6 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   const [tgPage,            setTgPage]            = useState(1);
   const [tgPortListFilter,  setTgPortListFilter]  = useState<string[]>([]);
   const [tgCredFilter,      setTgCredFilter]      = useState<string[]>([]);
-  const [tgPlOpen,          setTgPlOpen]          = useState(false);
-  const [tgPlSearch,        setTgPlSearch]        = useState("");
-  const [tgCredOpen,        setTgCredOpen]        = useState(false);
-  const [tgCredSearch,      setTgCredSearch]      = useState("");
-  const tgPlRef   = useRef<HTMLDivElement | null>(null);
-  const tgCredRef = useRef<HTMLDivElement | null>(null);
   const TG_PAGE = 4;
   const hasFetched = useRef(false);
 
@@ -1788,21 +1711,6 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     void fetchAll();
   }, [fetchAll]);
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (tgPlRef.current && !tgPlRef.current.contains(e.target as Node)) setTgPlOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (tgCredRef.current && !tgCredRef.current.contains(e.target as Node)) setTgCredOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   const resetModal = () => {
     setShowModal(false);
@@ -1872,7 +1780,6 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     return parts.join(" · ") || "—";
   };
 
-  const selCls = `${inputCls} appearance-none`;
   const isCustom = form.alive_test !== "Scan Config Default" && form.alive_test !== "Consider Alive";
 
   // Credential select helper
@@ -1885,16 +1792,17 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     <div>
       <label className={labelCls}>{label}</label>
       <div className="flex gap-2">
-        <div className="relative flex-1">
-          <select value={value} onChange={e => onChange(e.target.value)}
-            disabled={disabled}
-            className={`${selCls} pr-8 ${disabled ? "cursor-not-allowed opacity-50" : ""}`}>
-            <option value="">Select a Credential</option>
-            {options.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400" />
-        </div>
-        {!disabled && <PlusIconBtn title={`Create new ${label} credential`} />}
+        <CustomSelect
+          options={[
+            { value: "", label: t("threatConfig.selectCredential") },
+            ...options.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          className="flex-1"
+        />
+        {!disabled && <PlusIconBtn title={`${t("threatConfig.newCredential")} (${label})`} />}
         {!disabled && extra}
         {disabled && extra && (
           <div className="pointer-events-none opacity-50">{extra}</div>
@@ -1912,7 +1820,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           <div className="flex shrink-0 items-center gap-2.5">
             <FiTarget className="text-[14px] text-slate-400 dark:text-white/35" />
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-              Targets
+              {t("threatConfig.tabs.targets")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredTargets.length}/{targets.length})</span>}
             </p>
           </div>
@@ -1920,149 +1828,41 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           {/* Search */}
           <div className="relative w-44">
             <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
-            <input type="text" value={tgSearch} onChange={e => setTgSearch(e.target.value)} placeholder="Search..."
+            <input type="text" value={tgSearch} onChange={e => setTgSearch(e.target.value)} placeholder={t("threatConfig.search")}
               className="w-full rounded-lg border border-slate-200/80 bg-white py-1.5 pl-8 pr-3 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25" />
           </div>
 
-          {/* ── Port List multi-select dropdown ── */}
-          <div className="relative" ref={tgPlRef}>
-            <button type="button" onClick={() => { setTgPlOpen(p => !p); setTgCredOpen(false); }}
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
-              <FiList className="text-[11px]" />
-              <span className="max-w-28 truncate">
-                {tgPortListFilter.length === 0
-                  ? "Port List"
-                  : tgPortListFilter.length === 1
-                    ? (portLists.find(p => p.id === tgPortListFilter[0])?.name ?? "1 selected")
-                    : `${tgPortListFilter.length} selected`}
-              </span>
-              {tgPortListFilter.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-              <FiChevronDown className={`ml-0.5 text-[11px] transition-transform ${tgPlOpen ? "rotate-180" : ""}`} />
-            </button>
+          {/* ── Port List multi-select — shared component ── */}
+          <CustomMultiSelect
+            options={portLists.map(pl => ({
+              value: pl.id,
+              label: pl.name,
+              badge: targets.filter(tg => tg.port_list_id === pl.id).length,
+            }))}
+            value={tgPortListFilter}
+            onChange={setTgPortListFilter}
+            placeholder={t("threatConfig.portList")}
+            searchPlaceholder={t("threatConfig.searchPortList")}
+            icon={<FiList />}
+            className="w-44"
+          />
 
-            {tgPlOpen && (
-              <div className="absolute left-0 z-9999 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-                <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
-                    <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-                    <input type="text" value={tgPlSearch} onChange={e => setTgPlSearch(e.target.value)} placeholder="Search port list..."
-                      className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <button type="button"
-                      onClick={() => {
-                        const visible = portLists.filter(pl => pl.name.toLowerCase().includes(tgPlSearch.toLowerCase())).map(pl => pl.id);
-                        const allSel  = visible.every(id => tgPortListFilter.includes(id));
-                        setTgPortListFilter(prev =>
-                          allSel ? prev.filter(id => !visible.includes(id)) : [...new Set([...prev, ...visible])],
-                        );
-                      }}
-                      className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400">
-                      {portLists.filter(pl => pl.name.toLowerCase().includes(tgPlSearch.toLowerCase())).every(pl => tgPortListFilter.includes(pl.id)) ? "Unselect all" : "Select all"}
-                    </button>
-                    {tgPortListFilter.length > 0 && (
-                      <button type="button" onClick={() => setTgPortListFilter([])}
-                        className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55">Clear</button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-36 overflow-y-auto p-2">
-                  <div className="space-y-0.5">
-                    {portLists.filter(pl => pl.name.toLowerCase().includes(tgPlSearch.toLowerCase())).map(pl => {
-                      const count   = targets.filter(tg => tg.port_list_id === pl.id).length;
-                      const checked = tgPortListFilter.includes(pl.id);
-                      return (
-                        <button key={pl.id} type="button"
-                          onClick={() => setTgPortListFilter(prev =>
-                            checked ? prev.filter(id => id !== pl.id) : [...prev, pl.id],
-                          )}
-                          className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
-                            checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
-                          <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                            checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
-                            <FiCheck className="text-[9px]" />
-                          </span>
-                          <span className="flex-1 truncate text-[11px] text-slate-700 dark:text-white/75">{pl.name}</span>
-                          <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-px text-[9.5px] font-semibold text-slate-500 dark:bg-white/8 dark:text-white/40">{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Credentials multi-select dropdown ── */}
-          <div className="relative" ref={tgCredRef}>
-            <button type="button" onClick={() => { setTgCredOpen(p => !p); setTgPlOpen(false); }}
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
-              <FiKey className="text-[11px]" />
-              <span className="max-w-28 truncate">
-                {tgCredFilter.length === 0
-                  ? "Credentials"
-                  : tgCredFilter.length === 1
-                    ? (creds.find(c => c.id === tgCredFilter[0])?.name ?? "1 selected")
-                    : `${tgCredFilter.length} selected`}
-              </span>
-              {tgCredFilter.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
-              <FiChevronDown className={`ml-0.5 text-[11px] transition-transform ${tgCredOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {tgCredOpen && (
-              <div className="absolute left-0 z-9999 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-                <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
-                  <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
-                    <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-                    <input type="text" value={tgCredSearch} onChange={e => setTgCredSearch(e.target.value)} placeholder="Search credential..."
-                      className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <button type="button"
-                      onClick={() => {
-                        const visible = creds.filter(cr => cr.name.toLowerCase().includes(tgCredSearch.toLowerCase())).map(cr => cr.id);
-                        const allSel  = visible.every(id => tgCredFilter.includes(id));
-                        setTgCredFilter(prev =>
-                          allSel ? prev.filter(id => !visible.includes(id)) : [...new Set([...prev, ...visible])],
-                        );
-                      }}
-                      className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400">
-                      {creds.filter(cr => cr.name.toLowerCase().includes(tgCredSearch.toLowerCase())).every(cr => tgCredFilter.includes(cr.id)) ? "Unselect all" : "Select all"}
-                    </button>
-                    {tgCredFilter.length > 0 && (
-                      <button type="button" onClick={() => setTgCredFilter([])}
-                        className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55">Clear</button>
-                    )}
-                  </div>
-                </div>
-                <div className="max-h-36 overflow-y-auto p-2">
-                  <div className="space-y-0.5">
-                    {creds.filter(cr => cr.name.toLowerCase().includes(tgCredSearch.toLowerCase())).map(cr => {
-                      const count   = targets.filter(tg =>
-                        [tg.ssh_cred_id, tg.smb_cred_id, tg.esxi_cred_id, tg.snmp_cred_id].includes(cr.id),
-                      ).length;
-                      const checked = tgCredFilter.includes(cr.id);
-                      return (
-                        <button key={cr.id} type="button"
-                          onClick={() => setTgCredFilter(prev =>
-                            checked ? prev.filter(id => id !== cr.id) : [...prev, cr.id],
-                          )}
-                          className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
-                            checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
-                          <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                            checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
-                            <FiCheck className="text-[9px]" />
-                          </span>
-                          <span className="flex-1 truncate text-[11px] text-slate-700 dark:text-white/75">{cr.name}</span>
-                          <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-px text-[9.5px] font-semibold text-slate-500 dark:bg-white/8 dark:text-white/40">{count}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* ── Credentials multi-select — shared component ── */}
+          <CustomMultiSelect
+            options={creds.map(cr => ({
+              value: cr.id,
+              label: cr.name,
+              badge: targets.filter(tg =>
+                [tg.ssh_cred_id, tg.smb_cred_id, tg.esxi_cred_id, tg.snmp_cred_id].includes(cr.id),
+              ).length,
+            }))}
+            value={tgCredFilter}
+            onChange={setTgCredFilter}
+            placeholder={t("threatConfig.credentials")}
+            searchPlaceholder={t("threatConfig.searchCredential")}
+            icon={<FiKey />}
+            className="w-44"
+          />
 
           {/* Buttons */}
           <div className="ml-auto flex items-center gap-2">
@@ -2079,7 +1879,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             <button type="button" onClick={() => setShowModal(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> New Target
+              <FiPlus className="text-[13px]" /> {t("threatConfig.newTarget")}
             </button>
           </div>
         </div>
@@ -2108,7 +1908,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             <table className="w-full min-w-195">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/8">
-                  {["Name", "Hosts", "IPs", "Port List", "Credentials", ""].map(h => (
+                  {[t("threatConfig.name"), t("threatConfig.hosts"), t("threatConfig.ips"), t("threatConfig.portList"), t("threatConfig.credentials"), ""].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>
                   ))}
                 </tr>
@@ -2167,7 +1967,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           </div>
           {tgTotalPages > 1 && (
             <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 dark:border-white/8">
-              <span className="text-[11px] text-slate-400 dark:text-white/30">Page {tgPage} of {tgTotalPages}</span>
+              <span className="text-[11px] text-slate-400 dark:text-white/30">{t("threatConfig.page")} {tgPage} {t("threatConfig.of")} {tgTotalPages}</span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => setTgPage(p => Math.max(1, p - 1))} disabled={tgPage === 1}
                   className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
@@ -2208,8 +2008,8 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   {editItem ? <FiEdit2 className="text-[14px]" /> : <FiTarget className="text-[14px]" />}
                 </span>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>TARGETS</p>
-                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{editItem ? "Edit Target" : "New Target"}</h3>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("threatConfig.tabs.targets").toUpperCase()}</p>
+                  <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{editItem ? t("threatConfig.editTarget") : t("threatConfig.newTarget")}</h3>
                 </div>
               </div>
               <button type="button" onClick={resetModal}
@@ -2232,11 +2032,11 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       <FiAlertTriangle className="mt-0.5 shrink-0 text-[13px] text-amber-500" />
                       <div>
                         <p className="text-[12px] font-semibold text-amber-700 dark:text-amber-400">
-                          Target is in use — limited editing
+                          {t("threatConfig.targetInUseBanner")}
                         </p>
                         <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400/80">
-                          Used by task{lockedBy.length > 1 ? "s" : ""}: <strong>{lockedBy.join(", ")}</strong>.
-                          Only Name and Comment can be modified.
+                          Used by task{lockedBy.length > 1 ? "s" : ""}: <strong>{lockedBy.join(", ")}</strong>.{" "}
+                          {t("threatConfig.targetInUseDetail")}
                         </p>
                       </div>
                     </div>
@@ -2245,14 +2045,14 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 
                 {/* Name — always editable */}
                 <div>
-                  <label className={labelCls}>Name <span className="text-red-400">*</span></label>
+                  <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                   <input type="text" value={form.name} onChange={e => setF("name", e.target.value)}
                     placeholder="Unnamed" className={inputCls} />
                 </div>
 
                 {/* Comment — always editable */}
                 <div>
-                  <label className={labelCls}>Comment</label>
+                  <label className={labelCls}>{t("threatConfig.comment")}</label>
                   <input type="text" value={form.comment ?? ""} onChange={e => setF("comment", e.target.value)}
                     placeholder="Optional description" className={inputCls} />
                 </div>
@@ -2296,24 +2096,25 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 
                 {/* Port List */}
                 <div>
-                  <label className={labelCls}>Port List</label>
+                  <label className={labelCls}>{t("threatConfig.portList")}</label>
                   <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <select value={form.port_list_id ?? ""} onChange={e => setF("port_list_id", e.target.value)}
-                        disabled={isLocked}
-                        className={`${selCls} pr-8 ${isLocked ? "cursor-not-allowed opacity-50" : ""}`}>
-                        <option value="">— Select Port List —</option>
-                        {portLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name}</option>)}
-                      </select>
-                      <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400" />
-                    </div>
-                    {!isLocked && <PlusIconBtn title="Create new Port List" />}
+                    <CustomSelect
+                      options={[
+                        { value: "", label: t("threatConfig.selectPortList") },
+                        ...portLists.map(pl => ({ value: pl.id, label: pl.name })),
+                      ]}
+                      value={form.port_list_id ?? ""}
+                      onChange={v => setF("port_list_id", v)}
+                      disabled={isLocked}
+                      className="flex-1"
+                    />
+                    {!isLocked && <PlusIconBtn title={t("threatConfig.newPortList")} />}
                   </div>
                 </div>
 
                 {/* Alive Test */}
                 <div className={isLocked ? "opacity-50 pointer-events-none" : ""}>
-                  <label className={labelCls}>Alive Test</label>
+                  <label className={labelCls}>{t("threatConfig.aliveTest")}</label>
                   <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
                     {[
                       { val: "Scan Config Default", label: "Use Scan Config Default" },
@@ -2330,18 +2131,18 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       <input type="radio" checked={isCustom}
                         onChange={() => setF("alive_test", "ICMP Ping")}
                         disabled={isLocked} className="accent-blue-500" />
-                      Custom
+                      {t("threatConfig.custom")}
                     </label>
                   </div>
                   {isCustom && (
-                    <div className="relative mt-2">
-                      <select value={form.alive_test} onChange={e => setF("alive_test", e.target.value)}
-                        disabled={isLocked} className={`${selCls} pr-8`}>
-                        {ALIVE_TESTS.slice(2).map(at => (
-                          <option key={at.value} value={at.value}>{at.label}</option>
-                        ))}
-                      </select>
-                      <FiChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400" />
+                    <div className="mt-2">
+                      <CustomSelect
+                        options={ALIVE_TESTS.slice(2).map(at => ({ value: at.value, label: at.label }))}
+                        value={form.alive_test ?? "ICMP Ping"}
+                        onChange={v => setF("alive_test", v)}
+                        disabled={isLocked}
+                        searchable={false}
+                      />
                     </div>
                   )}
                 </div>
@@ -2349,7 +2150,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 {/* Credentials for authenticated checks */}
                 <div className="rounded-xl border border-slate-200/70 bg-slate-50/60 p-4 space-y-3.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-white/40">
-                    Credentials for authenticated checks
+                    {t("threatConfig.credentialsSection")}
                   </p>
 
                   <CredSelect label="SSH"
@@ -2426,7 +2227,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? "Update" : "Save"}
+                {editItem ? t("common.save").replace("Save","Update") : t("common.save")}
               </button>
             </div>
           </div>
@@ -2457,9 +2258,9 @@ const ThreatConfigPage: React.FC = () => {
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const TABS: { key: ActiveTab; label: string; icon: React.ReactNode }[] = [
-    { key: "targets",     label: "Targets",     icon: <FiTarget /> },
-    { key: "credentials", label: "Credentials", icon: <FiKey /> },
-    { key: "portlists",   label: "Port Lists",  icon: <FiList /> },
+    { key: "targets",     label: t("threatConfig.tabs.targets"),     icon: <FiTarget /> },
+    { key: "credentials", label: t("threatConfig.tabs.credentials"), icon: <FiKey /> },
+    { key: "portlists",   label: t("threatConfig.tabs.portLists"),   icon: <FiList /> },
   ];
 
   return (
@@ -2525,7 +2326,7 @@ const ThreatConfigPage: React.FC = () => {
       <div className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3.5 dark:border-white/8 dark:bg-white/3">
         <FiCheckCircle className="mt-0.5 shrink-0 text-[13px]" style={{ color: currentColor }} />
         <p className="text-[11.5px] text-slate-500 dark:text-white/45">
-          All credentials and port lists are stored directly in <strong>OpenVAS (gvmd)</strong>. Changes take effect immediately.
+          {t("threatConfig.footerNote")}
         </p>
       </div>
 
