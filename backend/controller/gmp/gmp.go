@@ -209,6 +209,11 @@ type gmpModifyTargetResponse struct {
 	gmpResponse
 }
 
+type gmpModifyTaskResponse struct {
+	XMLName xml.Name `xml:"modify_task_response"`
+	gmpResponse
+}
+
 // ── Credentials ───────────────────────────────────────────────
 type gmpGetCredentialsResponse struct {
 	XMLName     xml.Name         `xml:"get_credentials_response"`
@@ -607,21 +612,89 @@ func CreateTargetFull(p CreateTargetParams) (string, error) {
 	return resp.ID, nil
 }
 
-func CreateTask(name, targetID, configID, scannerID, comment string) (string, error) {
-	// Default OpenVAS scanner if empty
+type CreateTaskFullParams struct {
+	Name           string
+	Comment        string
+	TargetID       string
+	ConfigID       string
+	ScannerID      string
+	ApplyOverrides bool
+	MinQoD         int
+	Alterable      bool
+	AddAssets      bool
+	AutoDelete     string // "no" | "keep"
+	AutoDeleteData int
+	MaxChecks      int
+	MaxHosts       int
+}
+
+func CreateTask(p CreateTaskFullParams) (string, error) {
 	scannerPart := ""
-	if scannerID != "" {
-		scannerPart = fmt.Sprintf(`<scanner id="%s"/>`, xmlEscape(scannerID))
+	if p.ScannerID != "" {
+		scannerPart = fmt.Sprintf(`<scanner id="%s"/>`, xmlEscape(p.ScannerID))
 	}
 
-	cmd := fmt.Sprintf(
-		`<create_task><name>%s</name><comment>%s</comment><target id="%s"/><config id="%s"/>%s</create_task>`,
-		xmlEscape(name), xmlEscape(comment),
-		xmlEscape(targetID), xmlEscape(configID),
-		scannerPart,
-	)
+	applyOverridesVal := "0"
+	if p.ApplyOverrides {
+		applyOverridesVal = "1"
+	}
 
-	data, err := GetClient().Execute(cmd)
+	alterableVal := "0"
+	if p.Alterable {
+		alterableVal = "1"
+	}
+
+	addAssetsVal := "no"
+	if p.AddAssets {
+		addAssetsVal = "yes"
+	}
+
+	autoDeletePart := `<auto_delete>no</auto_delete>`
+	if p.AutoDelete == "keep" {
+		n := p.AutoDeleteData
+		if n < 1 {
+			n = 5
+		}
+		autoDeletePart = fmt.Sprintf(`<auto_delete>keep</auto_delete><auto_delete_data>%d</auto_delete_data>`, n)
+	}
+
+	maxChecks := p.MaxChecks
+	if maxChecks < 1 {
+		maxChecks = 4
+	}
+	maxHosts := p.MaxHosts
+	if maxHosts < 1 {
+		maxHosts = 20
+	}
+
+	minQoD := p.MinQoD
+	if minQoD < 0 || minQoD > 100 {
+		minQoD = 70
+	}
+
+	var sb strings.Builder
+	sb.WriteString(`<create_task>`)
+	sb.WriteString(fmt.Sprintf(`<name>%s</name>`, xmlEscape(p.Name)))
+	sb.WriteString(fmt.Sprintf(`<comment>%s</comment>`, xmlEscape(p.Comment)))
+	sb.WriteString(fmt.Sprintf(`<target id="%s"/>`, xmlEscape(p.TargetID)))
+	sb.WriteString(fmt.Sprintf(`<config id="%s"/>`, xmlEscape(p.ConfigID)))
+	sb.WriteString(scannerPart)
+	sb.WriteString(fmt.Sprintf(`<apply_overrides>%s</apply_overrides>`, applyOverridesVal))
+	sb.WriteString(fmt.Sprintf(`<min_qod>%d</min_qod>`, minQoD))
+	sb.WriteString(fmt.Sprintf(`<alterable>%s</alterable>`, alterableVal))
+	sb.WriteString(fmt.Sprintf(`<add_assets>%s</add_assets>`, addAssetsVal))
+	sb.WriteString(autoDeletePart)
+	sb.WriteString(fmt.Sprintf(
+		`<preferences><preference><scanner_name>max_checks</scanner_name><value>%d</value></preference></preferences>`,
+		maxChecks,
+	))
+	sb.WriteString(fmt.Sprintf(
+		`<preferences><preference><scanner_name>max_hosts</scanner_name><value>%d</value></preference></preferences>`,
+		maxHosts,
+	))
+	sb.WriteString(`</create_task>`)
+
+	data, err := GetClient().Execute(sb.String())
 	if err != nil {
 		return "", err
 	}
@@ -1276,6 +1349,82 @@ func DeleteTarget(targetID string) error {
 
 	if resp.Status != "200" {
 		return fmt.Errorf("gmp delete_target failed: %s - %s", resp.Status, resp.StatusText)
+	}
+
+	return nil
+}
+
+// ===========================
+// ModifyTask
+// ===========================
+
+type ModifyTaskParams struct {
+	Name           string
+	Comment        string
+	ApplyOverrides *bool
+	MinQoD         *int
+	MaxChecks      *int
+	MaxHosts       *int
+	AutoDelete     string // "no" | "keep"
+	AutoDeleteData *int
+}
+
+func ModifyTask(id string, p ModifyTaskParams) error {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf(`<modify_task task_id="%s">`, xmlEscape(id)))
+
+	if p.Name != "" {
+		sb.WriteString(fmt.Sprintf(`<name>%s</name>`, xmlEscape(p.Name)))
+	}
+	sb.WriteString(fmt.Sprintf(`<comment>%s</comment>`, xmlEscape(p.Comment)))
+
+	if p.ApplyOverrides != nil {
+		v := "0"
+		if *p.ApplyOverrides {
+			v = "1"
+		}
+		sb.WriteString(fmt.Sprintf(`<apply_overrides>%s</apply_overrides>`, v))
+	}
+
+	if p.MinQoD != nil {
+		sb.WriteString(fmt.Sprintf(`<min_qod>%d</min_qod>`, *p.MinQoD))
+	}
+
+	if p.MaxChecks != nil {
+		sb.WriteString(fmt.Sprintf(
+			`<preferences><preference><scanner_name>max_checks</scanner_name><value>%d</value></preference></preferences>`,
+			*p.MaxChecks,
+		))
+	}
+
+	if p.MaxHosts != nil {
+		sb.WriteString(fmt.Sprintf(
+			`<preferences><preference><scanner_name>max_hosts</scanner_name><value>%d</value></preference></preferences>`,
+			*p.MaxHosts,
+		))
+	}
+
+	if p.AutoDelete == "keep" || p.AutoDelete == "no" {
+		sb.WriteString(fmt.Sprintf(`<auto_delete>%s</auto_delete>`, p.AutoDelete))
+		if p.AutoDelete == "keep" && p.AutoDeleteData != nil {
+			sb.WriteString(fmt.Sprintf(`<auto_delete_data>%d</auto_delete_data>`, *p.AutoDeleteData))
+		}
+	}
+
+	sb.WriteString(`</modify_task>`)
+
+	data, err := GetClient().Execute(sb.String())
+	if err != nil {
+		return err
+	}
+
+	var resp gmpModifyTaskResponse
+	if err := xml.Unmarshal(data, &resp); err != nil {
+		return fmt.Errorf("gmp modify_task parse error: %w", err)
+	}
+
+	if resp.Status != "200" {
+		return fmt.Errorf("gmp modify_task failed: %s - %s", resp.Status, resp.StatusText)
 	}
 
 	return nil

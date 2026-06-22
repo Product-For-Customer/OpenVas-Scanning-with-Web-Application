@@ -1,15 +1,20 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
-  FiPlay, FiSquare, FiTrash2, FiPlus, FiRefreshCw,
+  FiPlay, FiTrash2, FiPlus, FiRefreshCw,
   FiSettings, FiTarget, FiAlertTriangle, FiCheckCircle,
   FiClock, FiCalendar, FiX, FiRepeat,
   FiChevronDown, FiSearch, FiCheck, FiType, FiAlignLeft,
+  FiActivity, FiTrendingUp, FiMinus, FiEdit2, FiStopCircle,
 } from "react-icons/fi";
 import { message } from "antd";
 import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from "recharts";
+import {
   GetGMPStatus, ListGMPTasks, ListGMPTargets,
-  CreateGMPTask, StartGMPTask, StopGMPTask, DeleteGMPTask,
+  CreateGMPTask, UpdateGMPTask, StartGMPTask, StopGMPTask, DeleteGMPTask,
   ListGMPScanners, ListGMPConfigs,
   getTaskStatusBg,
   ListScanSchedules, CreateScanSchedule, UpdateScanSchedule, DeleteScanSchedule,
@@ -21,7 +26,7 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
 
 // ─────────────────────────────────────────────────────────────
-// Schedule helpers
+// Helpers
 // ─────────────────────────────────────────────────────────────
 
 const MONTHS = [
@@ -51,8 +56,132 @@ const FREQ_COLOR: Record<ScheduleFrequency, { bg: string; text: string }> = {
   yearly:  { bg: "#D1FAE5", text: "#065F46" },
 };
 
+function getSeverityInfo(score: number): { label: string; bg: string } {
+  if (score === 0) return { label: "Log",      bg: "#374151" };
+  if (score < 4)  return { label: "Low",      bg: "#22c55e" };
+  if (score < 7)  return { label: "Medium",   bg: "#eab308" };
+  if (score < 9)  return { label: "High",     bg: "#f97316" };
+  return           { label: "Critical",  bg: "#ef4444" };
+}
+
 // ─────────────────────────────────────────────────────────────
-// ScanConfirmModal — minimal delete portal
+// Severity Badge — "4.8 (Medium)" style
+// ─────────────────────────────────────────────────────────────
+
+const SeverityBadge: React.FC<{ score: number }> = ({ score }) => {
+  const { label, bg } = getSeverityInfo(score);
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white" style={{ background: bg }}>
+      {score.toFixed(1)} ({label})
+    </span>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Shared: Searchable Dropdown
+// ─────────────────────────────────────────────────────────────
+
+type DropdownItem = { id: string; name: string };
+
+type SearchDropdownProps = {
+  dropRef: React.RefObject<HTMLDivElement | null>;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  search: string;
+  setSearch: (v: string) => void;
+  selectedLabel: string;
+  placeholder: string;
+  items: DropdownItem[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  disabled?: boolean;
+};
+
+const SearchDropdown: React.FC<SearchDropdownProps> = ({
+  dropRef, open, setOpen, search, setSearch,
+  selectedLabel, placeholder, items, selectedId, onSelect, disabled,
+}) => (
+  <div className="relative" ref={dropRef}>
+    <button type="button" onClick={() => setOpen(!open)} disabled={disabled}
+      className={[
+        "flex h-9 w-full items-center gap-2 rounded-xl border px-3 text-left transition",
+        open ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-400/30 dark:bg-white/10"
+             : "border-slate-200/80 bg-white hover:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+      ].join(" ")}>
+      <span className="flex-1 truncate text-[12px] text-slate-700 dark:text-white/75">
+        {disabled ? "Loading…" : (selectedLabel || placeholder)}
+      </span>
+      <FiChevronDown className={`shrink-0 text-[12px] text-slate-400 transition-transform duration-200 dark:text-white/35 ${open ? "rotate-180" : ""}`} />
+    </button>
+    {open && (
+      <div className="absolute left-0 right-0 z-60 mt-1.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+        <div className="border-b border-slate-100 p-2 dark:border-white/8">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+            <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" autoFocus
+              className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
+          </div>
+        </div>
+        <div className="max-h-44 overflow-y-auto p-1.5">
+          {items.length === 0
+            ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No items found</p>
+            : <div className="space-y-0.5">
+                {items.map(item => {
+                  const checked = item.id === selectedId;
+                  return (
+                    <button key={item.id} type="button"
+                      onClick={() => { onSelect(item.id); setOpen(false); setSearch(""); }}
+                      className={["flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+                        checked ? "bg-cyan-50 dark:bg-cyan-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
+                      <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
+                        checked ? "border-cyan-500 bg-cyan-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
+                        <FiCheck className="text-[9px]" />
+                      </span>
+                      <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{item.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+          }
+        </div>
+      </div>
+    )}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────
+// Shared: Yes/No Radio Group
+// ─────────────────────────────────────────────────────────────
+
+const YesNoRadio: React.FC<{
+  value: boolean;
+  onChange: (v: boolean) => void;
+  currentColor: string;
+}> = ({ value, onChange, currentColor }) => (
+  <div className="flex gap-4">
+    {[true, false].map(opt => (
+      <label key={String(opt)} className="flex cursor-pointer items-center gap-2">
+        <span
+          onClick={() => onChange(opt)}
+          className="relative flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition"
+          style={{
+            borderColor: value === opt ? currentColor : "#cbd5e1",
+            backgroundColor: value === opt ? currentColor : "transparent",
+          }}
+        >
+          {value === opt && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+        </span>
+        <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
+          {opt ? "Yes" : "No"}
+        </span>
+      </label>
+    ))}
+  </div>
+);
+
+// ─────────────────────────────────────────────────────────────
+// ScanConfirmModal
 // ─────────────────────────────────────────────────────────────
 
 const DELETE_GRAD = "linear-gradient(135deg, #ef4444, #dc2626)";
@@ -73,10 +202,8 @@ const ScanConfirmModal: React.FC<ScanConfirmModalProps> = ({
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={onCancel} />
-      <div
-        className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
-        style={{ boxShadow: "0 24px 64px -12px #ef444430, 0 8px 32px rgba(0,0,0,.20)" }}
-      >
+      <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: "0 24px 64px -12px #ef444430, 0 8px 32px rgba(0,0,0,.20)" }}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: DELETE_GRAD }}>
@@ -103,8 +230,7 @@ const ScanConfirmModal: React.FC<ScanConfirmModalProps> = ({
           <button type="button" onClick={() => void onConfirm()}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90"
             style={{ background: DELETE_GRAD }}>
-            <FiTrash2 className="text-[12px]" />
-            {confirmLabel}
+            <FiTrash2 className="text-[12px]" />{confirmLabel}
           </button>
         </div>
       </div>
@@ -126,9 +252,9 @@ const GMPStatusBadge: React.FC<{ status: GMPStatusResponse | null; loading: bool
     </div>
   );
   if (!status || !status.connected) return (
-    <div className="flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1.5 text-[11px] text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+    <div className="flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-3 py-1.5 text-[11px] dark:border-white/8 dark:bg-white/5 dark:text-white/40">
       <span className="h-2 w-2 rounded-full bg-red-400" />
-      <span>{t("scan.gmpDisconnected")}</span>
+      <span className="text-slate-500 dark:text-white/40">{t("scan.gmpDisconnected")}</span>
     </div>
   );
   return (
@@ -142,21 +268,20 @@ const GMPStatusBadge: React.FC<{ status: GMPStatusResponse | null; loading: bool
   );
 };
 
+
 // ─────────────────────────────────────────────────────────────
-// Progress Bar
+// Section Header (inside modals)
 // ─────────────────────────────────────────────────────────────
 
-const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
-  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
-    <div
-      className="h-full rounded-full bg-linear-to-r from-cyan-400 to-sky-500 transition-all duration-500"
-      style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-    />
+const SectionDivider: React.FC<{ label: string }> = ({ label }) => (
+  <div className="flex items-center gap-2 pt-1">
+    <span className="text-[9.5px] font-bold uppercase tracking-[0.15em] text-slate-400 dark:text-white/30">{label}</span>
+    <div className="flex-1 border-t border-slate-100 dark:border-white/8" />
   </div>
 );
 
 // ─────────────────────────────────────────────────────────────
-// Modal: Create Task — Create Diagram style via portal
+// CreateTaskModal — full OpenVAS New Task fields
 // ─────────────────────────────────────────────────────────────
 
 type CreateTaskModalProps = {
@@ -170,20 +295,31 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
+  // Basic fields
   const [name,      setName]      = useState("");
   const [comment,   setComment]   = useState("");
   const [targetId,  setTargetId]  = useState("");
   const [configId,  setConfigId]  = useState("");
   const [scannerId, setScannerId] = useState("");
+
+  // OpenVAS options (same defaults as OpenVAS New Task)
+  const [addAssets,      setAddAssets]      = useState(true);
+  const [applyOverrides, setApplyOverrides] = useState(true);
+  const [minQod,         setMinQod]         = useState(70);
+  const [alterable,      setAlterable]      = useState(false);
+  const [autoDelete,     setAutoDelete]     = useState<"no" | "keep">("no");
+  const [autoDeleteData, setAutoDeleteData] = useState(5);
+  const [maxChecks,      setMaxChecks]      = useState(4);
+  const [maxHosts,       setMaxHosts]       = useState(20);
+
   const [loading,   setLoading]   = useState(false);
   const [formError, setFormError] = useState("");
 
-  const [targets,  setTargets]  = useState<GMPTargetDTO[]>([]);
-  const [configs,  setConfigs]  = useState<GMPConfigDTO[]>([]);
-  const [scanners, setScanners] = useState<GMPScannerDTO[]>([]);
+  const [targets,     setTargets]     = useState<GMPTargetDTO[]>([]);
+  const [configs,     setConfigs]     = useState<GMPConfigDTO[]>([]);
+  const [scanners,    setScanners]    = useState<GMPScannerDTO[]>([]);
   const [loadingData, setLoadingData] = useState(false);
 
-  // ── Custom dropdowns ──────────────────────────────────────────
   const [openTarget,  setOpenTarget]  = useState(false);
   const [openConfig,  setOpenConfig]  = useState(false);
   const [openScanner, setOpenScanner] = useState(false);
@@ -195,7 +331,6 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
   const configRef  = useRef<HTMLDivElement | null>(null);
   const scannerRef = useRef<HTMLDivElement | null>(null);
 
-  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!targetRef.current?.contains(e.target as Node))  setOpenTarget(false);
@@ -206,182 +341,94 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Fetch data when opened
   useEffect(() => {
     if (!open) return;
-    const fetchData = async () => {
+    const load = async () => {
       setLoadingData(true);
       try {
-        const [t2, c, s] = await Promise.all([
-          ListGMPTargets(), ListGMPConfigs(), ListGMPScanners(),
-        ]);
-        setTargets(t2);
-        setConfigs(c);
-        setScanners(s);
-        // Default to first config
-        if (c.length > 0 && !configId) setConfigId(c[0].id);
-        // Default to first scanner
-        if (s.length > 0 && !scannerId) setScannerId(s[0].id);
+        const [t2, c, s] = await Promise.all([ListGMPTargets(), ListGMPConfigs(), ListGMPScanners()]);
+        setTargets(t2); setConfigs(c); setScanners(s);
+        if (s.length > 0) {
+          const def = s.find(x => x.name.toLowerCase().includes("openvas default")) ?? s[0];
+          setScannerId(def.id);
+        }
+        if (c.length > 0) {
+          const def = c.find(x => x.name.toLowerCase().includes("full and fast")) ?? c[0];
+          setConfigId(def.id);
+        }
       } catch { /* silent */ }
       finally { setLoadingData(false); }
     };
-    void fetchData();
+    void load();
   }, [open]);
 
   const reset = () => {
-    setName(""); setComment(""); setTargetId("");
-    setConfigId(""); setScannerId(""); setFormError("");
+    setName(""); setComment(""); setTargetId(""); setConfigId(""); setScannerId("");
+    setAddAssets(true); setApplyOverrides(true); setMinQod(70); setAlterable(false);
+    setAutoDelete("no"); setAutoDeleteData(5); setMaxChecks(4); setMaxHosts(20);
+    setFormError("");
     setOpenTarget(false); setOpenConfig(false); setOpenScanner(false);
     setSearchTarget(""); setSearchConfig(""); setSearchScanner("");
   };
-
   const handleClose = () => { reset(); onClose(); };
 
   const handleCreate = async () => {
-    if (!name.trim())    { setFormError("Task name is required"); return; }
-    if (!targetId)       { setFormError("Please select a Scan Target"); return; }
-    if (!configId)       { setFormError("Please select a Scan Config"); return; }
-    setLoading(true);
-    setFormError("");
+    if (!name.trim()) { setFormError("Task name is required"); return; }
+    if (!targetId)    { setFormError("Please select a Scan Target"); return; }
+    if (!configId)    { setFormError("Please select a Scan Config"); return; }
+    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be 0–100"); return; }
+    if (maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
+    if (maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
+
+    setLoading(true); setFormError("");
     try {
       await CreateGMPTask({
-        name:       name.trim(),
-        comment:    comment.trim(),
-        target_id:  targetId,
-        config_id:  configId,
-        scanner_id: scannerId || undefined,
+        name:             name.trim(),
+        comment:          comment.trim(),
+        target_id:        targetId,
+        config_id:        configId,
+        scanner_id:       scannerId || undefined,
+        add_assets:       addAssets,
+        apply_overrides:  applyOverrides,
+        min_qod:          minQod,
+        alterable:        alterable,
+        auto_delete:      autoDelete,
+        auto_delete_data: autoDelete === "keep" ? autoDeleteData : undefined,
+        max_checks:       maxChecks,
+        max_hosts:        maxHosts,
       });
       message.success("Task created successfully");
-      reset();
-      onCreated();
-      onClose();
+      reset(); onCreated(); onClose();
     } catch (err: unknown) {
-      const errMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setFormError(errMsg || "Failed to create task");
-    } finally {
-      setLoading(false);
-    }
+      setFormError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create task");
+    } finally { setLoading(false); }
   };
 
   if (!open) return null;
 
-  const inputCls = [
-    "h-9 w-full rounded-xl border px-3 text-[12px] outline-none transition",
-    "border-slate-200/80 bg-white text-slate-800 placeholder:text-slate-400",
-    "focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300",
-    "dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35",
-    "dark:focus:ring-white/10 dark:focus:border-cyan-400/30",
-  ].join(" ");
-
+  const inputCls = "h-9 w-full rounded-xl border border-slate-200/80 bg-white px-3 text-[12px] text-slate-800 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30";
+  const numCls   = "h-9 w-full rounded-xl border border-slate-200/80 bg-white px-3 text-[12px] text-slate-800 outline-none transition focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:focus:ring-white/10 dark:focus:border-cyan-400/30";
   const labelCls = "mb-1.5 flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35";
 
-  // Filtered lists
-  const filteredTargets  = searchTarget.trim()  ? targets.filter(t2 => t2.name.toLowerCase().includes(searchTarget.toLowerCase()))  : targets;
-  const filteredConfigs  = searchConfig.trim()  ? configs.filter(c  => c.name.toLowerCase().includes(searchConfig.toLowerCase()))   : configs;
-  const filteredScanners = searchScanner.trim() ? scanners.filter(s => s.name.toLowerCase().includes(searchScanner.toLowerCase()))  : scanners;
-
-  const selectedTarget  = targets.find(t2 => t2.id === targetId);
-  const selectedConfig  = configs.find(c  => c.id === configId);
-  const selectedScanner = scanners.find(s => s.id === scannerId);
-
-  // Reusable dropdown
-  const renderDropdown = (
-    ref: React.RefObject<HTMLDivElement | null>,
-    open2: boolean,
-    setOpen: (v: boolean) => void,
-    search: string,
-    setSearch: (v: string) => void,
-    selectedLabel: string,
-    placeholder: string,
-    items: { id: string; name: string }[],
-    selectedId: string,
-    onSelect: (id: string) => void,
-  ) => (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => { setOpen(!open2); }}
-        disabled={loadingData}
-        className={[
-          "flex h-9 w-full items-center gap-2 rounded-xl border px-3 text-left transition",
-          open2
-            ? "border-cyan-300 bg-cyan-50/40 dark:border-cyan-400/30 dark:bg-white/10"
-            : "border-slate-200/80 bg-white hover:border-cyan-300 hover:bg-cyan-50/30 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-        ].join(" ")}
-      >
-        <span className="flex-1 truncate text-[12px] text-slate-700 dark:text-white/75">
-          {loadingData ? "Loading…" : (selectedLabel || placeholder)}
-        </span>
-        <FiChevronDown className={`shrink-0 text-[12px] text-slate-400 transition-transform duration-200 dark:text-white/35 ${open2 ? "rotate-180" : ""}`} />
-      </button>
-
-      {open2 && (
-        <div className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-          {/* Search */}
-          <div className="border-b border-slate-100 p-2 dark:border-white/8">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
-              <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search…"
-                autoFocus
-                className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
-              />
-            </div>
-          </div>
-          {/* Options */}
-          <div className="max-h-44 overflow-y-auto p-1.5">
-            {items.length === 0 ? (
-              <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No items found</p>
-            ) : (
-              <div className="space-y-0.5">
-                {items.map(item => {
-                  const checked = item.id === selectedId;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => { onSelect(item.id); setOpen(false); setSearch(""); }}
-                      className={["flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                        checked ? "bg-cyan-50 dark:bg-cyan-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}
-                    >
-                      <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                        checked ? "border-cyan-500 bg-cyan-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
-                        <FiCheck className="text-[9px]" />
-                      </span>
-                      <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{item.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const fTarget  = searchTarget.trim()  ? targets.filter(x => x.name.toLowerCase().includes(searchTarget.toLowerCase()))  : targets;
+  const fConfig  = searchConfig.trim()  ? configs.filter(x  => x.name.toLowerCase().includes(searchConfig.toLowerCase()))   : configs;
+  const fScanner = searchScanner.trim() ? scanners.filter(x => x.name.toLowerCase().includes(searchScanner.toLowerCase()))  : scanners;
 
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={handleClose} />
-      <div
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
-        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 32px rgba(0,0,0,.25)` }}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ maxHeight: "90vh", boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 32px rgba(0,0,0,.25)` }}>
+
+        {/* ── Header ── */}
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex items-center gap-2.5">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
               <FiSettings className="text-[14px]" />
             </span>
             <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                SCAN MANAGEMENT · NEW TASK
-              </p>
-              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Create Scan Task</h3>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SCAN MANAGEMENT · NEW TASK</p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">New Task</h3>
             </div>
           </div>
           <button type="button" onClick={handleClose}
@@ -390,99 +437,169 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
           </button>
         </div>
 
-        {/* Body */}
-        <div className="space-y-3.5 px-5 py-4">
-          {/* Name */}
-          <div>
-            <label className={labelCls}>
-              <FiType className="text-[10px]" />
-              Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. Internal Network Scan"
-              className={inputCls}
-            />
-          </div>
+        {/* ── Body (scrollable) ── */}
+        <div className="overflow-y-auto px-5 py-4">
+          <div className="space-y-4">
 
-          {/* Comment */}
-          <div>
-            <label className={labelCls}>
-              <FiAlignLeft className="text-[10px]" />
-              Comment (optional)
-            </label>
-            <input
-              type="text"
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              placeholder="Description…"
-              className={inputCls}
-            />
-          </div>
+            {/* ── Basic Info ── */}
+            <SectionDivider label="Basic Info" />
 
-          {/* Scan Target */}
-          <div>
-            <label className={labelCls}>
-              <FiTarget className="text-[10px]" />
-              Scan Target <span className="text-red-400">*</span>
-            </label>
-            {renderDropdown(
-              targetRef, openTarget, setOpenTarget,
-              searchTarget, setSearchTarget,
-              selectedTarget?.name ?? "",
-              "Select a target…",
-              filteredTargets,
-              targetId,
-              setTargetId,
-            )}
-          </div>
-
-          {/* Scan Config */}
-          <div>
-            <label className={labelCls}>
-              <FiSettings className="text-[10px]" />
-              Scan Config <span className="text-red-400">*</span>
-            </label>
-            {renderDropdown(
-              configRef, openConfig, setOpenConfig,
-              searchConfig, setSearchConfig,
-              selectedConfig?.name ?? "",
-              "Select scan config…",
-              filteredConfigs,
-              configId,
-              setConfigId,
-            )}
-          </div>
-
-          {/* Scanner */}
-          <div>
-            <label className={labelCls}>
-              <FiTarget className="text-[10px]" />
-              Scanner
-            </label>
-            {renderDropdown(
-              scannerRef, openScanner, setOpenScanner,
-              searchScanner, setSearchScanner,
-              selectedScanner?.name ?? "",
-              "Select scanner (default: OpenVAS Default)…",
-              filteredScanners,
-              scannerId,
-              setScannerId,
-            )}
-          </div>
-
-          {/* Error */}
-          {formError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-              {formError}
+            <div>
+              <label className={labelCls}><FiType className="text-[10px]" />Name <span className="text-red-400">*</span></label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)}
+                placeholder="e.g. Internal Network Scan" className={inputCls} />
             </div>
-          )}
+
+            <div>
+              <label className={labelCls}><FiAlignLeft className="text-[10px]" />Comment (optional)</label>
+              <input type="text" value={comment} onChange={e => setComment(e.target.value)}
+                placeholder="e.g. 192.168.1.1 or description" className={inputCls} />
+            </div>
+
+            {/* ── Scan Target ── */}
+            <SectionDivider label="Scan Target" />
+
+            <div>
+              <label className={labelCls}><FiTarget className="text-[10px]" />Scan Targets <span className="text-red-400">*</span></label>
+              <SearchDropdown dropRef={targetRef} open={openTarget} setOpen={setOpenTarget}
+                search={searchTarget} setSearch={setSearchTarget}
+                selectedLabel={targets.find(x => x.id === targetId)?.name ?? ""}
+                placeholder="Select a target…" items={fTarget} selectedId={targetId}
+                onSelect={setTargetId} disabled={loadingData} />
+            </div>
+
+            {/* ── Scan Options ── */}
+            <SectionDivider label="Scan Options" />
+
+            {/* Add results to Assets */}
+            <div>
+              <label className={labelCls}>Add results to Assets</label>
+              <YesNoRadio value={addAssets} onChange={setAddAssets} currentColor={currentColor} />
+            </div>
+
+            {/* Apply Overrides */}
+            <div>
+              <label className={labelCls}>Apply Overrides</label>
+              <YesNoRadio value={applyOverrides} onChange={setApplyOverrides} currentColor={currentColor} />
+            </div>
+
+            {/* Min QoD */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className={labelCls + " mb-0"}>Min QoD</label>
+                <span className="text-[11px] font-bold tabular-nums" style={{ color: currentColor }}>{minQod}%</span>
+              </div>
+              <input type="range" min={0} max={100} step={1} value={minQod}
+                onChange={e => setMinQod(Number(e.target.value))}
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-white/15"
+                style={{ accentColor: currentColor }} />
+              <div className="mt-1 flex justify-between text-[9.5px] text-slate-400 dark:text-white/30">
+                <span>0% (all)</span>
+                <span>Only include results with QoD ≥ {minQod}%</span>
+                <span>100%</span>
+              </div>
+              <div className="mt-2">
+                <input type="number" min={0} max={100} value={minQod}
+                  onChange={e => setMinQod(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  className={numCls} />
+              </div>
+            </div>
+
+            {/* Alterable Task */}
+            <div>
+              <label className={labelCls}>Alterable Task</label>
+              <YesNoRadio value={alterable} onChange={setAlterable} currentColor={currentColor} />
+              <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
+                Alterable tasks allow changing Scan Target and Config after scanning.
+              </p>
+            </div>
+
+            {/* Auto Delete Reports */}
+            <div>
+              <label className={labelCls}>Auto Delete Reports</label>
+              <div className="space-y-2.5">
+                <div className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
+                  <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
+                    style={{ borderColor: autoDelete === "no" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "no" ? currentColor : "transparent" }}>
+                    {autoDelete === "no" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </span>
+                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">Do not automatically delete reports</span>
+                </div>
+                <div className="flex cursor-pointer items-start gap-2.5" onClick={() => setAutoDelete("keep")}>
+                  <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
+                    style={{ borderColor: autoDelete === "keep" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "keep" ? currentColor : "transparent" }}>
+                    {autoDelete === "keep" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </span>
+                  <div className="flex-1">
+                    <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
+                      Automatically delete oldest reports but always keep newest
+                    </span>
+                    {autoDelete === "keep" && (
+                      <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <input type="number" min={1} max={99} value={autoDeleteData}
+                          onChange={e => setAutoDeleteData(Math.max(1, Number(e.target.value) || 1))}
+                          className={[numCls, "w-24"].join(" ")} />
+                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">reports</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Scanner & Config ── */}
+            <SectionDivider label="Scanner & Config" />
+
+            <div>
+              <label className={labelCls}><FiTarget className="text-[10px]" />Scanner</label>
+              <SearchDropdown dropRef={scannerRef} open={openScanner} setOpen={setOpenScanner}
+                search={searchScanner} setSearch={setSearchScanner}
+                selectedLabel={scanners.find(x => x.id === scannerId)?.name ?? ""}
+                placeholder="Select scanner…" items={fScanner} selectedId={scannerId}
+                onSelect={setScannerId} disabled={loadingData} />
+            </div>
+
+            <div>
+              <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
+              <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
+                search={searchConfig} setSearch={setSearchConfig}
+                selectedLabel={configs.find(x => x.id === configId)?.name ?? ""}
+                placeholder="Select scan config…" items={fConfig} selectedId={configId}
+                onSelect={setConfigId} disabled={loadingData} />
+            </div>
+
+            {/* ── Performance ── */}
+            <SectionDivider label="Performance" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Max concurrent NVTs per host</label>
+                <input type="number" min={1} max={99} value={maxChecks}
+                  onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
+                  className={numCls} />
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 4</p>
+              </div>
+              <div>
+                <label className={labelCls}>Max concurrent scanned hosts</label>
+                <input type="number" min={1} max={999} value={maxHosts}
+                  onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
+                  className={numCls} />
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
+              </div>
+            </div>
+
+            {/* Error */}
+            {formError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[11.5px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                {formError}
+              </div>
+            )}
+
+          </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex gap-2.5 border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
+        {/* ── Footer ── */}
+        <div className="flex shrink-0 gap-2.5 border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
           <button type="button" onClick={handleClose}
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
             {t("common.cancel")}
@@ -491,8 +608,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
             style={{ background: accentGrad }}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
             {loading && <FiRefreshCw className="animate-spin text-[12px]" />}
-            <FiPlus className="text-[12px]" />
-            Create Task
+            <FiPlus className="text-[12px]" />Save
           </button>
         </div>
       </div>
@@ -502,92 +618,631 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
 };
 
 // ─────────────────────────────────────────────────────────────
-// Task Card — Start / Stop / Delete (separate buttons)
+// EditTaskModal — full OpenVAS fields, locked fields read-only
 // ─────────────────────────────────────────────────────────────
 
-type TaskCardProps = {
+type EditTaskModalProps = {
+  task: GMPTaskDTO | null;
+  onClose: () => void;
+  onSaved: () => void;
+};
+
+const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved }) => {
+  const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
+  // Editable fields
+  const [name,          setName]          = useState("");
+  const [comment,       setComment]       = useState("");
+  const [applyOverrides, setApplyOverrides] = useState(true);
+  const [minQod,         setMinQod]         = useState(70);
+  const [autoDelete,     setAutoDelete]     = useState<"no" | "keep">("no");
+  const [autoDeleteData, setAutoDeleteData] = useState(5);
+  const [maxChecks,      setMaxChecks]      = useState(8);
+  const [maxHosts,       setMaxHosts]       = useState(20);
+
+  const [loading,   setLoading]   = useState(false);
+  const [formError, setFormError] = useState("");
+
+  // Pre-fill when task changes
+  useEffect(() => {
+    if (!task) return;
+    setName(task.name);
+    setComment(task.comment ?? "");
+    setApplyOverrides(task.apply_overrides ?? true);
+    setMinQod(task.min_qod ?? 70);
+    setAutoDelete(task.auto_delete === "keep" ? "keep" : "no");
+    setAutoDeleteData(task.auto_delete_data ?? 5);
+    setMaxChecks(task.max_checks ?? 8);
+    setMaxHosts(task.max_hosts ?? 20);
+    setFormError("");
+  }, [task]);
+
+  const handleSave = async () => {
+    if (!task) return;
+    if (!name.trim())    { setFormError("Task name is required"); return; }
+    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be between 0 and 100"); return; }
+    if (maxChecks < 1)   { setFormError("Max concurrent NVTs must be at least 1"); return; }
+    if (maxHosts < 1)    { setFormError("Max concurrent hosts must be at least 1"); return; }
+
+    setLoading(true); setFormError("");
+    try {
+      await UpdateGMPTask(task.id, {
+        name:             name.trim(),
+        comment:          comment.trim(),
+        apply_overrides:  applyOverrides,
+        min_qod:          minQod,
+        max_checks:       maxChecks,
+        max_hosts:        maxHosts,
+        auto_delete:      autoDelete,
+        auto_delete_data: autoDelete === "keep" ? autoDeleteData : undefined,
+      });
+      message.success("Task updated successfully");
+      onSaved(); onClose();
+    } catch (err: unknown) {
+      setFormError(
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        || "Failed to update task"
+      );
+    } finally { setLoading(false); }
+  };
+
+  if (!task) return null;
+
+  const inputCls = "h-9 w-full rounded-xl border border-slate-200/80 bg-white px-3 text-[12px] text-slate-800 placeholder:text-slate-400 outline-none transition focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:ring-white/10 dark:focus:border-cyan-400/30";
+  const numCls   = "h-9 w-full rounded-xl border border-slate-200/80 bg-white px-3 text-[12px] text-slate-800 outline-none transition focus:ring-2 focus:ring-cyan-200 focus:border-cyan-300 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:focus:ring-white/10 dark:focus:border-cyan-400/30";
+  const labelCls = "mb-1.5 flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35";
+
+  // Read-only locked field (like OpenVAS greyed-out dropdown)
+  const LockedField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+    <div>
+      <label className={labelCls}>
+        {label}
+        <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase text-slate-400 dark:bg-white/8 dark:text-white/30">
+          locked
+        </span>
+      </label>
+      <div className="flex h-9 w-full items-center gap-2 rounded-xl border border-slate-200/60 bg-slate-50 px-3 dark:border-white/8 dark:bg-white/3">
+        <span className="truncate text-[12px] text-slate-500 dark:text-white/40">{value || "—"}</span>
+      </div>
+    </div>
+  );
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={onClose} />
+      <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ maxHeight: "90vh", boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 32px rgba(0,0,0,.25)` }}>
+
+        {/* ── Header ── */}
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
+              <FiEdit2 className="text-[13px]" />
+            </span>
+            <div>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SCAN MANAGEMENT · EDIT TASK</p>
+              <h3 className="max-w-xs truncate text-[14px] font-bold text-slate-800 dark:text-white/90">{task.name}</h3>
+            </div>
+          </div>
+          <button type="button" onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 dark:text-white/35 dark:hover:bg-white/8">
+            <FiX className="text-[15px]" />
+          </button>
+        </div>
+
+        {/* ── Body (scrollable) ── */}
+        <div className="overflow-y-auto px-5 py-4">
+          <div className="space-y-4">
+
+            {/* Task ID */}
+            <div className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2 dark:border-white/8 dark:bg-white/3">
+              <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">Task ID</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-slate-500 dark:text-white/40">{task.id}</span>
+            </div>
+
+            {/* ── Basic Info ── */}
+            <SectionDivider label="Basic Info" />
+
+            <div>
+              <label className={labelCls}><FiType className="text-[10px]" />Name <span className="text-red-400">*</span></label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Task name" className={inputCls} />
+            </div>
+
+            <div>
+              <label className={labelCls}><FiAlignLeft className="text-[10px]" />Comment (optional)</label>
+              <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder="e.g. IP address or description" className={inputCls} />
+            </div>
+
+            {/* ── Scan Configuration (read-only / locked like OpenVAS) ── */}
+            <SectionDivider label="Scan Configuration" />
+
+            <LockedField label="Scan Targets" value={task.target_name} />
+            <LockedField label="Scan Config"  value={task.config_name} />
+            <LockedField label="Scanner"      value={task.scanner_name} />
+
+            {/* ── Scan Options ── */}
+            <SectionDivider label="Scan Options" />
+
+            {/* Apply Overrides */}
+            <div>
+              <label className={labelCls}>Apply Overrides</label>
+              <YesNoRadio value={applyOverrides} onChange={setApplyOverrides} currentColor={currentColor} />
+              <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
+                Use overrides to change the severity of scan results.
+              </p>
+            </div>
+
+            {/* Min QoD */}
+            <div>
+              <div className="mb-1.5 flex items-center justify-between">
+                <label className={labelCls + " mb-0"}>Min QoD</label>
+                <span className="text-[11px] font-bold tabular-nums" style={{ color: currentColor }}>{minQod}%</span>
+              </div>
+              <input
+                type="range" min={0} max={100} step={1} value={minQod}
+                onChange={e => setMinQod(Number(e.target.value))}
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-white/15"
+                style={{ accentColor: currentColor }}
+              />
+              <div className="mt-1 flex justify-between text-[9.5px] text-slate-400 dark:text-white/30">
+                <span>0% (all)</span>
+                <span>Only include results with QoD ≥ {minQod}%</span>
+                <span>100%</span>
+              </div>
+              <div className="mt-2">
+                <input type="number" min={0} max={100} value={minQod}
+                  onChange={e => setMinQod(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                  className={numCls} />
+              </div>
+            </div>
+
+            {/* Auto Delete Reports */}
+            <div>
+              <label className={labelCls}>Auto Delete Reports</label>
+              <div className="space-y-2.5">
+                {/* Option: Do not delete */}
+                <label className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
+                  <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
+                    style={{ borderColor: autoDelete === "no" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "no" ? currentColor : "transparent" }}>
+                    {autoDelete === "no" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </span>
+                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">Do not automatically delete reports</span>
+                </label>
+                {/* Option: Auto delete, keep N */}
+                <div className="flex cursor-pointer items-start gap-2.5" onClick={() => setAutoDelete("keep")}>
+                  <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
+                    style={{ borderColor: autoDelete === "keep" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "keep" ? currentColor : "transparent" }}>
+                    {autoDelete === "keep" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                  </span>
+                  <div className="flex-1">
+                    <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
+                      Automatically delete oldest reports but always keep newest
+                    </span>
+                    {autoDelete === "keep" && (
+                      <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                        <input type="number" min={1} max={99} value={autoDeleteData}
+                          onChange={e => setAutoDeleteData(Math.max(1, Number(e.target.value) || 1))}
+                          className={[numCls, "w-24"].join(" ")} />
+                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">reports</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Performance ── */}
+            <SectionDivider label="Performance" />
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Max concurrent NVTs per host</label>
+                <input type="number" min={1} max={99} value={maxChecks}
+                  onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
+                  className={numCls} />
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 8</p>
+              </div>
+              <div>
+                <label className={labelCls}>Max concurrent scanned hosts</label>
+                <input type="number" min={1} max={999} value={maxHosts}
+                  onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
+                  className={numCls} />
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
+              </div>
+            </div>
+
+            {/* ── Current State ── */}
+            <SectionDivider label="Current State" />
+
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Status",   val: task.status || "—" },
+                { label: "Reports",  val: String(task.report_count) },
+                { label: "Severity", val: task.severity > 0 ? task.severity.toFixed(1) : "0.0 (Log)" },
+              ].map(({ label, val }) => (
+                <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 dark:border-white/8 dark:bg-white/3">
+                  <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{label}</p>
+                  <p className="mt-0.5 text-[12px] font-semibold text-slate-700 dark:text-white/70">{val}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Error */}
+            {formError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[11.5px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+                {formError}
+              </div>
+            )}
+
+          </div>
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="flex shrink-0 gap-2.5 border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <button type="button" onClick={onClose}
+            className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
+            {t("common.cancel")}
+          </button>
+          <button type="button" onClick={() => void handleSave()} disabled={loading}
+            style={{ background: accentGrad }}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
+            {loading && <FiRefreshCw className="animate-spin text-[12px]" />}
+            <FiCheck className="text-[12px]" />Save Changes
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Chart: Tasks by Status (Donut)
+// ─────────────────────────────────────────────────────────────
+
+const STATUS_COLORS: Record<string, string> = {
+  done:        "#10b981",
+  running:     "#06b6d4",
+  stopped:     "#f97316",
+  interrupted: "#f97316",
+  new:         "#3b82f6",
+  other:       "#94a3b8",
+};
+
+const StatusTooltip: React.FC<{
+  active?: boolean;
+  payload?: Array<{ payload?: { name: string; value: number; color: string } }>;
+}> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-[10.5px] font-semibold text-white shadow-xl" style={{ background: d.color }}>
+      {d.name} · <span className="tabular-nums">{d.value}</span>
+    </div>
+  );
+};
+
+const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = ({ tasks, loading }) => {
+  const data = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of tasks) {
+      const key = t.status?.toLowerCase() ?? "other";
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value, color: STATUS_COLORS[name] ?? STATUS_COLORS.other }))
+      .sort((a, b) => b.value - a.value);
+  }, [tasks]);
+
+  const total = tasks.length;
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">
+        Tasks by Status <span className="ml-1 font-bold text-slate-700 dark:text-white/70">(Total: {total})</span>
+      </p>
+      <div className="flex flex-1 items-center gap-5">
+        <div className="relative h-36 w-36 shrink-0">
+          {loading ? (
+            <div className="h-full w-full animate-pulse rounded-full bg-slate-100 dark:bg-white/10" />
+          ) : total === 0 ? (
+            <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-dashed border-slate-200 dark:border-white/10">
+              <span className="text-[10px] text-slate-400 dark:text-white/30">No data</span>
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={data} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="84%" paddingAngle={2} stroke="transparent">
+                    {data.map(e => <Cell key={e.name} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip content={<StatusTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-[24px] font-bold leading-none text-slate-900 dark:text-white">{total}</span>
+                <span className="mt-0.5 text-[9px] text-slate-400 dark:text-white/35">tasks</span>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {loading
+            ? [1,2,3].map(i => <div key={i} className="h-5 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />)
+            : data.map(d => (
+                <div key={d.name} className="flex items-center gap-2">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: d.color }} />
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-slate-600 dark:text-white/60">{d.name}</span>
+                  <span className="shrink-0 text-[12px] font-bold tabular-nums text-slate-800 dark:text-white/80">{d.value}</span>
+                </div>
+              ))
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Chart: Tasks by Severity Class (Bar)
+// ─────────────────────────────────────────────────────────────
+
+const SEV_CLASSES = [
+  { name: "Log",      min: 0,   max: 0,   exact: true,  color: "#6b7280" },
+  { name: "Low",      min: 0.1, max: 3.9, exact: false, color: "#22c55e" },
+  { name: "Medium",   min: 4,   max: 6.9, exact: false, color: "#eab308" },
+  { name: "High",     min: 7,   max: 8.9, exact: false, color: "#f97316" },
+  { name: "Critical", min: 9,   max: 10,  exact: false, color: "#ef4444" },
+];
+
+const SevBarTooltip: React.FC<{
+  active?: boolean;
+  payload?: Array<{ payload?: { name: string; count: number; color: string } }>;
+}> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-[10.5px] font-semibold text-white shadow-xl" style={{ background: d.color }}>
+      {d.name} · <span className="tabular-nums">{d.count} task{d.count !== 1 ? "s" : ""}</span>
+    </div>
+  );
+};
+
+const TasksBySeverityChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = ({ tasks, loading }) => {
+  const data = useMemo(() =>
+    SEV_CLASSES.map(cls => ({
+      name: cls.name,
+      count: tasks.filter(t => cls.exact ? t.severity === 0 : t.severity >= cls.min && t.severity <= cls.max).length,
+      color: cls.color,
+    })),
+  [tasks]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">Tasks by Severity Class</p>
+      {loading ? (
+        <div className="flex flex-1 items-end gap-2 pb-2">
+          {[1,2,3,4,5].map(i => (
+            <div key={i} className="flex-1 animate-pulse rounded-t-lg bg-slate-100 dark:bg-white/10" style={{ height: `${20 + i * 12}%` }} />
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} barCategoryGap="32%" margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(100,116,139,0.9)" }} axisLine={false} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "rgba(100,116,139,0.9)" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<SevBarTooltip />} cursor={{ fill: "rgba(148,163,184,0.08)" }} />
+              <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+                {data.map(e => <Cell key={e.name} fill={e.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Sort icon — ▲▼ / active single arrow
+// ─────────────────────────────────────────────────────────────
+
+type SortCol = "status" | "reports" | "last_report" | "severity" | "trend";
+
+const SortIcon: React.FC<{ active: boolean; dir: "asc" | "desc" }> = ({ active, dir }) => (
+  <span className="ml-1 inline-flex flex-col leading-0">
+    <span className={`text-[7px] leading-none ${active && dir === "asc" ? "opacity-100" : "opacity-25"}`}>▲</span>
+    <span className={`text-[7px] leading-none ${active && dir === "desc" ? "opacity-100" : "opacity-25"}`}>▼</span>
+  </span>
+);
+
+// ─────────────────────────────────────────────────────────────
+// StatusCell — matches OpenVAS style
+// ─────────────────────────────────────────────────────────────
+
+const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, progress }) => {
+  const sl = status?.toLowerCase() ?? "";
+
+  if (sl === "running") {
+    return (
+      <div className="space-y-1.5">
+        {/* Running pill with live dot */}
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[10px] font-bold text-cyan-700 dark:text-cyan-300">
+          <span className="relative flex h-1.5 w-1.5 shrink-0">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-500 opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+          </span>
+          Running {progress}%
+        </span>
+        {/* Real-time progress bar */}
+        <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{
+              width: `${Math.max(2, Math.min(100, progress))}%`,
+              background: "linear-gradient(90deg, #06b6d4, #0ea5e9, #06b6d4)",
+              backgroundSize: "200% 100%",
+              animation: "scanPulse 2s linear infinite",
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (sl === "stopped" || sl === "interrupted") {
+    return (
+      <div className="space-y-1.5">
+        {/* Stopped at X% — dark pill like OpenVAS */}
+        <span
+          className="inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+          style={{ background: "linear-gradient(90deg, #374151, #1f2937)" }}
+        >
+          Stopped at {progress}%
+        </span>
+        {/* Stopped progress bar — grey */}
+        <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
+          <div
+            className="h-full rounded-full bg-slate-400 dark:bg-slate-600 transition-all duration-500"
+            style={{ width: `${Math.max(1, Math.min(100, progress))}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <span className={`inline-flex w-fit whitespace-nowrap items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${getTaskStatusBg(status)}`}>
+      {status || "—"}
+    </span>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Task Table Row — icon-only actions
+// ─────────────────────────────────────────────────────────────
+
+type TaskRowProps = {
   task: GMPTaskDTO;
   onStart:  (id: string) => Promise<void>;
   onStop:   (id: string) => Promise<void>;
+  onEdit:   (task: GMPTaskDTO) => void;
   onDelete: (id: string, name: string) => void;
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, onStop, onDelete }) => {
+// Format "2026-05-19T17:28:11+07:00" → "19 May 2026 17:28"
+function fmtLastReport(raw: string): string {
+  if (!raw) return "—";
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    + " " + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDelete }) => {
   const [startBusy, setStartBusy] = useState(false);
   const [stopBusy,  setStopBusy]  = useState(false);
 
   const statusLower = task.status?.toLowerCase() ?? "";
   const isRunning   = statusLower === "running";
   const isDone      = statusLower === "done";
+  const isStopped   = statusLower === "stopped" || statusLower === "interrupted";
 
   const handleStart = async () => { setStartBusy(true); try { await onStart(task.id); } finally { setStartBusy(false); } };
   const handleStop  = async () => { setStopBusy(true);  try { await onStop(task.id);  } finally { setStopBusy(false);  } };
 
+  const iconBtn = "grid h-7 w-7 place-items-center rounded-lg border transition";
+
   return (
-    <div className="rounded-xl border border-slate-200/70 bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-white/8 dark:bg-white/4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-[13px] font-bold text-slate-800 dark:text-white/90">{task.name}</span>
-            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9.5px] font-bold ${getTaskStatusBg(task.status)}`}>{task.status}</span>
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[10.5px] text-slate-500 dark:text-white/40">
-            <span className="flex items-center gap-1"><FiTarget className="text-[10px]" />{task.target_name || "—"}</span>
-            <span>·</span>
-            <span>{task.config_name || "—"}</span>
-            {task.severity > 0 && (
-              <><span>·</span>
-              <span className={["font-semibold",
-                task.severity >= 9 ? "text-red-600 dark:text-red-400"
-                : task.severity >= 7 ? "text-orange-600 dark:text-orange-400"
-                : task.severity >= 4 ? "text-yellow-600 dark:text-yellow-400"
-                : "text-emerald-600 dark:text-emerald-400"].join(" ")}>
-                Severity {task.severity.toFixed(1)}
-              </span></>
-            )}
+    <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3">
+
+      {/* Name + Comment */}
+      <td className="px-4 py-3.5">
+        <p className="text-[12.5px] font-semibold text-slate-800 dark:text-white/88">{task.name}</p>
+        {task.comment && (
+          <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/35">({task.comment})</p>
+        )}
+      </td>
+
+      {/* Type icon */}
+      <td className="px-4 py-3.5">
+        <div className="flex justify-center">
+          <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate-100 dark:bg-white/8">
+            <FiTarget className="text-[13px] text-slate-500 dark:text-white/45" />
           </div>
         </div>
+      </td>
 
-        <div className="flex shrink-0 items-center gap-1.5">
+      {/* Status */}
+      <td className="px-4 py-3.5">
+        <StatusCell status={task.status} progress={task.progress} />
+      </td>
+
+      {/* Reports */}
+      <td className="px-4 py-3.5">
+        <span className="text-[12px] font-medium tabular-nums text-slate-600 dark:text-white/60">
+          {task.report_count}
+        </span>
+      </td>
+
+      {/* Last Report — formatted */}
+      <td className="px-4 py-3.5">
+        <span className="whitespace-nowrap text-[11px] text-slate-500 dark:text-white/40">
+          {fmtLastReport(task.last_report_at)}
+        </span>
+      </td>
+
+      {/* Severity */}
+      <td className="px-4 py-3.5">
+        <SeverityBadge score={task.severity} />
+      </td>
+
+      {/* Trend */}
+      <td className="px-4 py-3.5">
+        {isRunning
+          ? <FiActivity className="text-[14px] animate-pulse text-cyan-500" />
+          : isDone && task.severity > 0
+            ? <FiTrendingUp className="text-[14px] text-emerald-500" />
+            : isStopped
+              ? <FiMinus className="text-[14px] text-slate-400 dark:text-white/30" />
+              : <FiMinus className="text-[14px] text-slate-300 dark:text-white/20" />
+        }
+      </td>
+
+      {/* Actions */}
+      <td className="px-4 py-3.5">
+        <div className="flex items-center gap-1">
           {isRunning ? (
             <button type="button" title="Stop scan" onClick={() => void handleStop()} disabled={stopBusy}
-              className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 text-[11px] font-semibold text-orange-600 transition hover:bg-orange-100 disabled:opacity-60 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-              {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiSquare className="text-[11px]" />}
-              Stop
+              className={`${iconBtn} border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300`}>
+              {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiStopCircle className="text-[12px]" />}
             </button>
           ) : (
-            <button type="button" title={isDone ? "Re-run scan" : "Start scan"} onClick={() => void handleStart()} disabled={startBusy}
-              className={["inline-flex h-8 items-center gap-1.5 rounded-xl border px-3 text-[11px] font-semibold transition disabled:opacity-60",
-                isDone
-                  ? "border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300"
-                  : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"].join(" ")}>
+            <button type="button" title={isDone || isStopped ? "Re-run" : "Start"} onClick={() => void handleStart()} disabled={startBusy}
+              className={[iconBtn, isDone || isStopped
+                ? "border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300"
+                : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"].join(" ")}>
               {startBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiPlay className="text-[11px]" />}
-              {isDone ? "Re-run" : "Start"}
             </button>
           )}
+          <button type="button" title="Edit task" onClick={() => onEdit(task)} disabled={isRunning}
+            className={`${iconBtn} border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10`}>
+            <FiEdit2 className="text-[11px]" />
+          </button>
           <button type="button" title="Delete task" onClick={() => onDelete(task.id, task.name)}
             disabled={isRunning || stopBusy || startBusy}
-            className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+            className={`${iconBtn} border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300`}>
             <FiTrash2 className="text-[11px]" />
           </button>
         </div>
-      </div>
-
-      {isRunning && (
-        <div className="mt-3">
-          <div className="mb-1.5 flex justify-between text-[9.5px] text-slate-500 dark:text-white/40">
-            <span>Scanning in progress…</span>
-            <span>{task.progress}%</span>
-          </div>
-          <ProgressBar progress={task.progress} />
-        </div>
-      )}
-
-      <div className="mt-2 flex items-center gap-3 text-[10px] text-slate-400 dark:text-white/25">
-        <span>{task.report_count} report{task.report_count !== 1 ? "s" : ""}</span>
-        {task.last_report_at && <><span>·</span><span>Last: {task.last_report_at}</span></>}
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 };
 
@@ -596,7 +1251,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onStart, onStop, onDelete }) 
 // ─────────────────────────────────────────────────────────────
 
 const ICON_COLOR: Record<string, string> = {
-  violet: "#8b5cf6", cyan: "#06b6d4", emerald: "#10b981", sky: "#0ea5e9",
+  violet: "#8b5cf6", cyan: "#06b6d4", emerald: "#10b981", orange: "#f97316",
 };
 
 const ScanManagement: React.FC = () => {
@@ -604,33 +1259,34 @@ const ScanManagement: React.FC = () => {
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
-  const [gmpStatus,       setGmpStatus]       = useState<GMPStatusResponse | null>(null);
-  const [tasks,           setTasks]           = useState<GMPTaskDTO[]>([]);
-  const [targets,         setTargets]         = useState<GMPTargetDTO[]>([]);
-  const [loadingStatus,   setLoadingStatus]   = useState(true);
-  const [loadingTasks,    setLoadingTasks]    = useState(true);
-  const [loadingTargets,  setLoadingTargets]  = useState(true);
-  const [refreshing,      setRefreshing]      = useState(false);
-  const [activeTab,       setActiveTab]       = useState<"tasks" | "schedule">("tasks");
-  const [showCreateTask,  setShowCreateTask]  = useState(false);
+  const [gmpStatus,      setGmpStatus]      = useState<GMPStatusResponse | null>(null);
+  const [tasks,          setTasks]          = useState<GMPTaskDTO[]>([]);
+  const [loadingStatus,  setLoadingStatus]  = useState(true);
+  const [loadingTasks,   setLoadingTasks]   = useState(true);
+  const [refreshing,     setRefreshing]     = useState(false);
+  const [activeTab,      setActiveTab]      = useState<"tasks" | "schedule">("tasks");
+  const [showCreateTask, setShowCreateTask] = useState(false);
+  const [editTask,       setEditTask]       = useState<GMPTaskDTO | null>(null);
 
-  // Delete confirm
-  const [deleteTaskConfirm, setDeleteTaskConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [secondsAgo,  setSecondsAgo]  = useState(0);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const clockRef   = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Auto-scan schedule
-  const [schedules,        setSchedules]        = useState<AutoScanScheduleDTO[]>([]);
-  const [loadingSchedules, setLoadingSchedules] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+
+  const [schedules,         setSchedules]         = useState<AutoScanScheduleDTO[]>([]);
+  const [loadingSchedules,  setLoadingSchedules]  = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [schedForm, setSchedForm] = useState<{
     taskId: string; frequency: ScheduleFrequency;
     time: string; date: string; dayOfMonth: number; month: number; day: number;
   }>({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
 
-  // Custom dropdowns (schedule modal)
-  const [taskDropOpen, setTaskDropOpen] = useState(false);
-  const [taskSearch,   setTaskSearch]   = useState("");
-  const taskDropRef  = useRef<HTMLDivElement | null>(null);
+  const [taskDropOpen,  setTaskDropOpen]  = useState(false);
+  const [taskSearch,    setTaskSearch]    = useState("");
   const [monthDropOpen, setMonthDropOpen] = useState(false);
+  const taskDropRef  = useRef<HTMLDivElement | null>(null);
   const monthDropRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -649,8 +1305,7 @@ const ScanManagement: React.FC = () => {
 
   const fetchSchedules = useCallback(async () => {
     setLoadingSchedules(true);
-    const list = await ListScanSchedules();
-    setSchedules(list);
+    setSchedules(await ListScanSchedules());
     setLoadingSchedules(false);
   }, []);
 
@@ -660,45 +1315,61 @@ const ScanManagement: React.FC = () => {
 
   const hasFetched = useRef(false);
 
-  const fetchStatus  = async () => { setLoadingStatus(true);  const s = await GetGMPStatus();   setGmpStatus(s);  setLoadingStatus(false); };
-  const fetchTasks   = async () => { setLoadingTasks(true);   try { setTasks(await ListGMPTasks()); } catch { setTasks([]); } finally { setLoadingTasks(false); } };
-  const fetchTargets = async () => { setLoadingTargets(true); try { setTargets(await ListGMPTargets()); } catch { setTargets([]); } finally { setLoadingTargets(false); } };
-  const fetchAll     = async () => { await Promise.all([fetchStatus(), fetchTasks(), fetchTargets()]); };
+  const fetchTasksSilent = useCallback(async () => {
+    try { setTasks(await ListGMPTasks()); setLastUpdated(new Date()); setSecondsAgo(0); } catch { /* silent */ }
+  }, []);
+
+  const fetchAll = useCallback(async () => {
+    setLoadingStatus(true); setLoadingTasks(true);
+    await Promise.all([
+      GetGMPStatus().then(r => { setGmpStatus(r); setLoadingStatus(false); }),
+      ListGMPTasks().then(r => { setTasks(r); setLoadingTasks(false); }).catch(() => { setTasks([]); setLoadingTasks(false); }),
+    ]);
+  }, []);
 
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    void fetchAll();
+    void fetchAll().then(() => { setLastUpdated(new Date()); setSecondsAgo(0); });
     void fetchSchedules();
-  }, [fetchSchedules]);
+  }, [fetchAll, fetchSchedules]);
 
-  const handleRefresh = async () => { setRefreshing(true); await fetchAll(); setRefreshing(false); };
+  useEffect(() => {
+    const hasRunning = tasks.some(t => t.status?.toLowerCase() === "running");
+    if (hasRunning) {
+      if (!pollingRef.current) pollingRef.current = setInterval(() => { void fetchTasksSilent(); }, 8000);
+    } else {
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    }
+    return () => { if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; } };
+  }, [tasks, fetchTasksSilent]);
+
+  useEffect(() => {
+    clockRef.current = setInterval(() => setSecondsAgo(p => p + 1), 1000);
+    return () => { if (clockRef.current) clearInterval(clockRef.current); };
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true); await fetchAll();
+    setLastUpdated(new Date()); setSecondsAgo(0); setRefreshing(false);
+  };
 
   const handleStart = async (id: string) => {
-    try { await StartGMPTask(id); message.success("Scan started"); setTimeout(() => void fetchTasks(), 1500); }
-    catch (err: unknown) {
-      const m = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(m || "Failed to start scan");
-    }
+    try { await StartGMPTask(id); message.success("Scan started"); setTimeout(() => void fetchTasksSilent(), 1500); }
+    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to start scan"); }
   };
 
   const handleStop = async (id: string) => {
-    try { await StopGMPTask(id); message.success("Scan stopped"); setTimeout(() => void fetchTasks(), 1500); }
-    catch (err: unknown) {
-      const m = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(m || "Failed to stop scan");
-    }
+    try { await StopGMPTask(id); message.success("Scan stopped"); setTimeout(() => void fetchTasksSilent(), 1500); }
+    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to stop scan"); }
   };
 
-  const handleDeleteTaskConfirmed = async () => {
-    if (!deleteTaskConfirm) return;
-    const { id } = deleteTaskConfirm;
-    setDeleteTaskConfirm(null);
-    try { await DeleteGMPTask(id); message.success("Task deleted"); await fetchTasks(); }
-    catch (err: unknown) {
-      const m = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(m || "Failed to delete task");
-    }
+  const handleDeleteConfirmed = async () => {
+    if (!deleteConfirm) return;
+    const { id } = deleteConfirm;
+    setDeleteConfirm(null);
+    try { await DeleteGMPTask(id); message.success("Task deleted"); await fetchTasksSilent(); }
+    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete task"); }
   };
 
   const handleAddSchedule = useCallback(async () => {
@@ -707,8 +1378,7 @@ const ScanManagement: React.FC = () => {
     if (schedForm.frequency === "once" && !schedForm.date) { message.warning(t("scan.selectDate")); return; }
     try {
       await CreateScanSchedule({
-        task_id: schedForm.taskId, task_name: task.name, frequency: schedForm.frequency,
-        scan_time: schedForm.time,
+        task_id: schedForm.taskId, task_name: task.name, frequency: schedForm.frequency, scan_time: schedForm.time,
         schedule_at:  schedForm.frequency === "once"    ? schedForm.date       : undefined,
         day_of_month: schedForm.frequency === "monthly" ? schedForm.dayOfMonth : undefined,
         month:        schedForm.frequency === "yearly"  ? schedForm.month      : undefined,
@@ -731,15 +1401,71 @@ const ScanManagement: React.FC = () => {
     catch { message.error(t("common.noResults")); }
   }, [fetchSchedules, t]);
 
-  const runningCount = tasks.filter(tk => tk.status?.toLowerCase() === "running").length;
-  const doneCount    = tasks.filter(tk => tk.status?.toLowerCase() === "done").length;
+  const runningCount = tasks.filter(t => t.status?.toLowerCase() === "running").length;
+  const doneCount    = tasks.filter(t => t.status?.toLowerCase() === "done").length;
+  const stoppedCount = tasks.filter(t => ["stopped","interrupted"].includes(t.status?.toLowerCase() ?? "")).length;
+  const hasRunning   = runningCount > 0;
+
+  // ── Sorting ──────────────────────────────────────────────────
+  const [sortBy,  setSortBy]  = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (col: SortCol) => {
+    if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortBy(col); setSortDir("asc"); }
+  };
+
+  const sortedTasks = useMemo(() => {
+    if (!sortBy) return tasks;
+    return [...tasks].sort((a, b) => {
+      let cmp = 0;
+      const sl = (t: GMPTaskDTO) => t.status?.toLowerCase() ?? "";
+      // status priority: Running > New > Done > Stopped > Interrupted
+      const statusPriority = (t: GMPTaskDTO) => {
+        switch (sl(t)) {
+          case "running":     return 4;
+          case "new":         return 3;
+          case "done":        return 2;
+          case "stopped":     return 1;
+          case "interrupted": return 0;
+          default:            return -1;
+        }
+      };
+      switch (sortBy) {
+        case "status":
+          cmp = statusPriority(a) - statusPriority(b);
+          break;
+        case "reports":
+          cmp = a.report_count - b.report_count;
+          break;
+        case "last_report":
+          cmp = (a.last_report_at ?? "").localeCompare(b.last_report_at ?? "");
+          break;
+        case "severity":
+          cmp = a.severity - b.severity;
+          break;
+        case "trend":
+          // sort by severity desc for done tasks; running last
+          cmp = (sl(a) === "running" ? -1 : a.severity) - (sl(b) === "running" ? -1 : b.severity);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [tasks, sortBy, sortDir]);
 
   const statCards = [
-    { label: "Total Tasks", val: tasks.length,   icon: <FiSettings />,    color: "violet"  },
-    { label: "Running",     val: runningCount,    icon: <FiPlay />,        color: "cyan"    },
-    { label: "Done",        val: doneCount,       icon: <FiCheckCircle />, color: "emerald" },
-    { label: "Targets",     val: targets.length,  icon: <FiTarget />,      color: "sky"     },
+    { label: "Total Tasks", val: tasks.length,  icon: <FiSettings />,    color: "violet"  },
+    { label: "Running",     val: runningCount,   icon: <FiPlay />,        color: "cyan"    },
+    { label: "Done",        val: doneCount,      icon: <FiCheckCircle />, color: "emerald" },
+    { label: "Stopped",     val: stoppedCount,   icon: <FiStopCircle />,  color: "orange"  },
   ];
+
+  const lastUpdatedLabel = useMemo(() => {
+    if (!lastUpdated) return null;
+    if (secondsAgo < 5)  return "just now";
+    if (secondsAgo < 60) return `${secondsAgo}s ago`;
+    return `${Math.floor(secondsAgo / 60)}m ago`;
+  }, [lastUpdated, secondsAgo]);
 
   const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:focus:ring-blue-500/10";
 
@@ -747,10 +1473,8 @@ const ScanManagement: React.FC = () => {
     <div className="w-full space-y-5">
 
       {/* ── Header ── */}
-      <div
-        className="relative overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:p-6 dark:bg-[#0d0b1a]/90"
-        style={{ border: `1px solid ${currentColor}30` }}
-      >
+      <div className="relative overflow-hidden rounded-[18px] bg-white/95 p-4 shadow-sm backdrop-blur sm:rounded-[22px] sm:p-6 dark:bg-[#0d0b1a]/90"
+        style={{ border: `1px solid ${currentColor}30` }}>
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute -top-12 right-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
           <div className="absolute -bottom-12 left-10 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}14` }} />
@@ -765,10 +1489,24 @@ const ScanManagement: React.FC = () => {
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
                 THREAT INTELLIGENCE · SCANNER
               </p>
-              <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">{t("scan.title")}</h1>
-              <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
-                Start, stop &amp; schedule scan tasks via OpenVAS GMP
-              </p>
+              <h1 className="flex items-center gap-2 truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
+                {t("scan.title")}
+                {hasRunning && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[9.5px] font-bold text-cyan-600 dark:text-cyan-400">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-500 opacity-75" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+                    </span>
+                    LIVE
+                  </span>
+                )}
+              </h1>
+              {lastUpdatedLabel && (
+                <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">
+                  Updated {lastUpdatedLabel}
+                  {hasRunning && <span className="ml-1 text-cyan-500">· auto-refreshing</span>}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -789,7 +1527,7 @@ const ScanManagement: React.FC = () => {
           <div>
             <p className="text-[12px] font-semibold text-slate-700 dark:text-white/70">Cannot connect to OpenVAS GMP</p>
             <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/35">
-              {gmpStatus?.error || "Backend cannot reach gvmd socket. Check that gvmd_socket_vol is mounted."}
+              {gmpStatus?.error || "Backend cannot reach gvmd socket."}
             </p>
           </div>
         </div>
@@ -798,24 +1536,36 @@ const ScanManagement: React.FC = () => {
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {statCards.map(({ label, val, icon, color }) => (
-          <div key={label} className="rounded-xl border border-slate-200/70 bg-white px-5 py-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <div key={label} className="rounded-xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">{label}</p>
               <span style={{ color: ICON_COLOR[color] }} className="text-[15px] opacity-75">{icon}</span>
             </div>
-            <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-              {((loadingTasks && ["Total Tasks","Running","Done"].includes(label)) || (loadingTargets && label === "Targets"))
-                ? <span className="inline-block h-9 w-10 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
+            <p className="mt-2.5 text-[30px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+              {loadingTasks
+                ? <span className="inline-block h-8 w-10 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
                 : val}
             </p>
+            {label === "Running" && runningCount > 0 && (
+              <p className="mt-1 text-[9.5px] font-semibold text-cyan-500">scanning now</p>
+            )}
           </div>
         ))}
+      </div>
+
+      {/* ── Charts ── */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="min-h-50 rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <TasksByStatusChart tasks={tasks} loading={loadingTasks} />
+        </div>
+        <div className="min-h-50 rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <TasksBySeverityChart tasks={tasks} loading={loadingTasks} />
+        </div>
       </div>
 
       {/* ── Tabs + actions ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          {/* Tasks tab */}
           <button type="button" onClick={() => setActiveTab("tasks")}
             style={activeTab === "tasks" ? { background: accentGrad } : undefined}
             className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
@@ -823,7 +1573,6 @@ const ScanManagement: React.FC = () => {
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"].join(" ")}>
             {`${t("scan.tasks")} (${tasks.length})`}
           </button>
-          {/* Schedule tab */}
           <button type="button" onClick={() => setActiveTab("schedule")}
             style={activeTab === "schedule" ? { background: accentGrad } : undefined}
             className={["flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
@@ -839,33 +1588,49 @@ const ScanManagement: React.FC = () => {
             )}
           </button>
         </div>
-
         <div className="flex items-center gap-2">
           {activeTab === "tasks" && (
             <button type="button" onClick={() => setShowCreateTask(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" />
-              Add Task
+              <FiPlus className="text-[13px]" />Add Task
             </button>
           )}
           {activeTab === "schedule" && (
             <button type="button" onClick={() => setShowScheduleModal(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" />
-              {t("scan.newSchedule")}
+              <FiPlus className="text-[13px]" />{t("scan.newSchedule")}
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Tasks Tab ── */}
+      {/* ── Tasks Table ── */}
       {activeTab === "tasks" && (
         <>
           {loadingTasks ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {[1,2,3].map(i => <div key={i} className="h-28 animate-pulse rounded-xl border border-slate-200/70 bg-slate-50 dark:border-white/8 dark:bg-white/4" />)}
+            <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-white/8">
+                    {["Name","Type","Status","Reports","Last Report","Severity","Trend","Actions"].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1,2,3].map(i => (
+                    <tr key={i} className="border-b border-slate-100 dark:border-white/6">
+                      {[240,36,100,36,140,100,36,96].map((w, j) => (
+                        <td key={j} className="px-4 py-4">
+                          <div className="h-4 animate-pulse rounded-lg bg-slate-100 dark:bg-white/8" style={{ width: w }} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           ) : tasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200/70 bg-white py-16 dark:border-white/8 dark:bg-white/4">
@@ -878,25 +1643,75 @@ const ScanManagement: React.FC = () => {
                 <button type="button" onClick={() => setShowCreateTask(true)}
                   style={{ background: accentGrad }}
                   className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white transition hover:opacity-90">
-                  <FiPlus className="text-[12px]" /> Add Task
+                  <FiPlus className="text-[12px]" />Add Task
                 </button>
                 <button type="button" onClick={() => void handleRefresh()}
                   className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
-                  <FiRefreshCw className="text-[12px]" /> {t("common.refresh")}
+                  <FiRefreshCw className="text-[12px]" />{t("common.refresh")}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {tasks.map(task => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onStart={handleStart}
-                  onStop={handleStop}
-                  onDelete={(id, name) => setDeleteTaskConfirm({ id, name })}
-                />
-              ))}
+            <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-215">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
+                      {/* Name — not sortable */}
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                        Name
+                      </th>
+                      {/* Type — not sortable */}
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                        Type
+                      </th>
+                      {/* Sortable columns */}
+                      {([
+                        { col: "status"      as SortCol, label: "Status"      },
+                        { col: "reports"     as SortCol, label: "Reports"     },
+                        { col: "last_report" as SortCol, label: "Last Report" },
+                        { col: "severity"    as SortCol, label: "Severity"    },
+                        { col: "trend"       as SortCol, label: "Trend"       },
+                      ]).map(({ col, label }) => (
+                        <th key={col}
+                          className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35 cursor-pointer select-none"
+                          onClick={() => handleSort(col)}>
+                          <span className={["inline-flex items-center gap-0.5 transition-colors",
+                            sortBy === col ? "text-slate-700 dark:text-white/75" : "hover:text-slate-600 dark:hover:text-white/55"].join(" ")}>
+                            {label}
+                            <SortIcon active={sortBy === col} dir={sortDir} />
+                          </span>
+                        </th>
+                      ))}
+                      {/* Actions — not sortable */}
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedTasks.map(task => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        onStart={handleStart}
+                        onStop={handleStop}
+                        onEdit={t2 => setEditTask(t2)}
+                        onDelete={(id, name) => setDeleteConfirm({ id, name })}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+                <p className="text-[10.5px] text-slate-400 dark:text-white/30">{tasks.length} task{tasks.length !== 1 ? "s" : ""} total</p>
+                {hasRunning && (
+                  <div className="flex items-center gap-1.5 text-[10.5px] text-cyan-500">
+                    <FiActivity className="animate-pulse text-[11px]" />
+                    <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress · refreshing every 8s</span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </>
@@ -911,7 +1726,6 @@ const ScanManagement: React.FC = () => {
               {t("scan.scheduleLocalNote")} · {t("common.refresh")} เพื่ออัปเดต status
             </p>
           </div>
-
           {loadingSchedules ? (
             <div className="flex h-32 items-center justify-center">
               <FiRefreshCw className="animate-spin text-[18px] text-slate-400 dark:text-white/30" />
@@ -978,16 +1792,22 @@ const ScanManagement: React.FC = () => {
       <CreateTaskModal
         open={showCreateTask}
         onClose={() => setShowCreateTask(false)}
-        onCreated={() => void fetchTasks()}
+        onCreated={() => void fetchTasksSilent()}
+      />
+
+      <EditTaskModal
+        task={editTask}
+        onClose={() => setEditTask(null)}
+        onSaved={() => void fetchTasksSilent()}
       />
 
       <ScanConfirmModal
-        open={!!deleteTaskConfirm}
+        open={!!deleteConfirm}
         title="Delete Scan Task?"
-        description={`This action cannot be undone. The task "${deleteTaskConfirm?.name ?? ""}" and all its reports will be removed from OpenVAS.`}
+        description={`This action cannot be undone. The task "${deleteConfirm?.name ?? ""}" and all its reports will be removed from OpenVAS.`}
         confirmLabel="Delete Task"
-        onConfirm={() => void handleDeleteTaskConfirmed()}
-        onCancel={() => setDeleteTaskConfirm(null)}
+        onConfirm={() => void handleDeleteConfirmed()}
+        onCancel={() => setDeleteConfirm(null)}
       />
 
       {/* ── New Schedule Modal ── */}
@@ -996,8 +1816,6 @@ const ScanManagement: React.FC = () => {
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={closeScheduleModal} />
           <div className="relative z-10 w-full max-w-sm overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
             style={{ boxShadow: `0 24px 64px -12px ${currentColor}40, 0 8px 24px rgba(0,0,0,.18)` }}>
-
-            {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
@@ -1013,16 +1831,12 @@ const ScanManagement: React.FC = () => {
                 <FiX className="text-[15px]" />
               </button>
             </div>
-
-            {/* Body */}
             <div className="space-y-4 px-5 py-5">
-
-              {/* Task selector */}
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.selectTask")}</label>
                 <div className="relative" ref={taskDropRef}>
                   <button type="button" onClick={() => setTaskDropOpen(p => !p)}
-                    className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 text-left transition hover:border-slate-300 hover:bg-slate-50/50 focus:outline-none dark:border-white/8 dark:bg-white/5 dark:hover:bg-white/8">
+                    className="flex h-10 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 text-left transition hover:border-slate-300 focus:outline-none dark:border-white/8 dark:bg-white/5 dark:hover:bg-white/8">
                     {schedForm.taskId ? (
                       <><span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: currentColor }} />
                       <span className="flex-1 truncate text-[12.5px] font-medium text-slate-700 dark:text-white/85">
@@ -1039,40 +1853,36 @@ const ScanManagement: React.FC = () => {
                       <div className="border-b border-slate-100 p-2 dark:border-white/8">
                         <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
                           <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-                          <input type="text" value={taskSearch} onChange={e => setTaskSearch(e.target.value)}
-                            placeholder="Search task..." autoFocus
+                          <input type="text" value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search task..." autoFocus
                             className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
                         </div>
                       </div>
                       <div className="max-h-48 overflow-y-auto p-1.5">
-                        {filteredTasksForModal.length === 0 ? (
-                          <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No tasks found</p>
-                        ) : (
-                          <div className="space-y-0.5">
-                            {filteredTasksForModal.map(tk => {
-                              const isSel = schedForm.taskId === tk.id;
-                              return (
-                                <button key={tk.id} type="button"
-                                  onClick={() => { setSchedForm(p => ({ ...p, taskId: tk.id })); setTaskDropOpen(false); setTaskSearch(""); }}
-                                  className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
-                                    isSel ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
-                                  <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
-                                    isSel ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
-                                    <FiCheck className="text-[9px]" />
-                                  </span>
-                                  <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{tk.name}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                        {filteredTasksForModal.length === 0
+                          ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No tasks found</p>
+                          : <div className="space-y-0.5">
+                              {filteredTasksForModal.map(tk => {
+                                const isSel = schedForm.taskId === tk.id;
+                                return (
+                                  <button key={tk.id} type="button"
+                                    onClick={() => { setSchedForm(p => ({ ...p, taskId: tk.id })); setTaskDropOpen(false); setTaskSearch(""); }}
+                                    className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
+                                      isSel ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
+                                    <span className={["flex h-4 w-4 shrink-0 items-center justify-center rounded border transition",
+                                      isSel ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
+                                      <FiCheck className="text-[9px]" />
+                                    </span>
+                                    <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{tk.name}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                        }
                       </div>
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Frequency */}
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.scheduleType")}</label>
                 <div className="flex gap-2">
@@ -1087,7 +1897,6 @@ const ScanManagement: React.FC = () => {
                   ))}
                 </div>
               </div>
-
               {schedForm.frequency === "once" && (
                 <div>
                   <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.selectDate")}</label>
@@ -1098,16 +1907,13 @@ const ScanManagement: React.FC = () => {
                   </div>
                 </div>
               )}
-
               {schedForm.frequency === "monthly" && (
                 <div>
                   <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.dayOfMonth")} (1–31)</label>
                   <input type="number" min={1} max={31} value={schedForm.dayOfMonth}
-                    onChange={e => setSchedForm(p => ({ ...p, dayOfMonth: parseInt(e.target.value) || 1 }))}
-                    className={inputCls} />
+                    onChange={e => setSchedForm(p => ({ ...p, dayOfMonth: parseInt(e.target.value) || 1 }))} className={inputCls} />
                 </div>
               )}
-
               {schedForm.frequency === "yearly" && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -1144,12 +1950,10 @@ const ScanManagement: React.FC = () => {
                   <div>
                     <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.scheduleDay")}</label>
                     <input type="number" min={1} max={31} value={schedForm.day}
-                      onChange={e => setSchedForm(p => ({ ...p, day: parseInt(e.target.value) || 1 }))}
-                      className={inputCls} />
+                      onChange={e => setSchedForm(p => ({ ...p, day: parseInt(e.target.value) || 1 }))} className={inputCls} />
                   </div>
                 </div>
               )}
-
               <div>
                 <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.scheduleTime")}</label>
                 <div className="relative">
@@ -1158,21 +1962,19 @@ const ScanManagement: React.FC = () => {
                     className={["pl-10", inputCls].join(" ")} />
                 </div>
               </div>
-
               {schedForm.taskId && (
                 <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                     {t("scan.nextRun")}:&nbsp;
                     <span className="font-semibold text-slate-700 dark:text-white/70">
-                      {schedForm.frequency === "once" && schedForm.date ? `${schedForm.date} ${schedForm.time}`
+                      {schedForm.frequency === "once" && schedForm.date      ? `${schedForm.date} ${schedForm.time}`
                         : schedForm.frequency === "monthly" && schedForm.dayOfMonth ? `Day ${schedForm.dayOfMonth} of each month at ${schedForm.time}`
-                        : schedForm.frequency === "yearly" && schedForm.month && schedForm.day ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time}`
+                        : schedForm.frequency === "yearly"  && schedForm.month && schedForm.day ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time}`
                         : "—"}
                     </span>
                   </p>
                 </div>
               )}
-
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={closeScheduleModal}
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
@@ -1181,8 +1983,7 @@ const ScanManagement: React.FC = () => {
                 <button type="button" onClick={() => void handleAddSchedule()}
                   style={{ background: accentGrad }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90">
-                  <FiCalendar className="text-[13px]" />
-                  {t("scan.newSchedule")}
+                  <FiCalendar className="text-[13px]" />{t("scan.newSchedule")}
                 </button>
               </div>
             </div>

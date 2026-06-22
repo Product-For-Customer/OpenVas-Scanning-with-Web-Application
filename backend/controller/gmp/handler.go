@@ -82,11 +82,19 @@ type CreateTargetRequest struct {
 }
 
 type CreateTaskRequest struct {
-	Name      string `json:"name" binding:"required"`
-	TargetID  string `json:"target_id" binding:"required"`
-	ConfigID  string `json:"config_id" binding:"required"`
-	ScannerID string `json:"scanner_id"`
-	Comment   string `json:"comment"`
+	Name           string `json:"name" binding:"required"`
+	TargetID       string `json:"target_id" binding:"required"`
+	ConfigID       string `json:"config_id" binding:"required"`
+	ScannerID      string `json:"scanner_id"`
+	Comment        string `json:"comment"`
+	ApplyOverrides *bool  `json:"apply_overrides"`
+	MinQoD         *int   `json:"min_qod"`
+	Alterable      *bool  `json:"alterable"`
+	AddAssets      *bool  `json:"add_assets"`
+	AutoDelete     string `json:"auto_delete"`
+	AutoDeleteData *int   `json:"auto_delete_data"`
+	MaxChecks      *int   `json:"max_checks"`
+	MaxHosts       *int   `json:"max_hosts"`
 }
 
 type GMPStatusResponse struct {
@@ -341,7 +349,55 @@ func CreateGMPTask(c *gin.Context) {
 		return
 	}
 
-	id, err := CreateTask(req.Name, req.TargetID, req.ConfigID, req.ScannerID, req.Comment)
+	// Resolve optional fields with defaults
+	applyOverrides := true
+	if req.ApplyOverrides != nil {
+		applyOverrides = *req.ApplyOverrides
+	}
+	minQoD := 70
+	if req.MinQoD != nil {
+		minQoD = *req.MinQoD
+	}
+	alterable := false
+	if req.Alterable != nil {
+		alterable = *req.Alterable
+	}
+	addAssets := true
+	if req.AddAssets != nil {
+		addAssets = *req.AddAssets
+	}
+	autoDelete := "no"
+	if req.AutoDelete == "keep" {
+		autoDelete = "keep"
+	}
+	autoDeleteData := 5
+	if req.AutoDeleteData != nil {
+		autoDeleteData = *req.AutoDeleteData
+	}
+	maxChecks := 4
+	if req.MaxChecks != nil {
+		maxChecks = *req.MaxChecks
+	}
+	maxHosts := 20
+	if req.MaxHosts != nil {
+		maxHosts = *req.MaxHosts
+	}
+
+	id, err := CreateTask(CreateTaskFullParams{
+		Name:           req.Name,
+		Comment:        req.Comment,
+		TargetID:       req.TargetID,
+		ConfigID:       req.ConfigID,
+		ScannerID:      req.ScannerID,
+		ApplyOverrides: applyOverrides,
+		MinQoD:         minQoD,
+		Alterable:      alterable,
+		AddAssets:      addAssets,
+		AutoDelete:     autoDelete,
+		AutoDeleteData: autoDeleteData,
+		MaxChecks:      maxChecks,
+		MaxHosts:       maxHosts,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -387,6 +443,61 @@ func StopGMPTask(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "scan stopped"})
+}
+
+// PATCH /gmp/tasks/:id - แก้ไข task
+type UpdateTaskRequest struct {
+	Name           string `json:"name" binding:"required"`
+	Comment        string `json:"comment"`
+	ApplyOverrides *bool  `json:"apply_overrides"`
+	MinQoD         *int   `json:"min_qod"`
+	MaxChecks      *int   `json:"max_checks"`
+	MaxHosts       *int   `json:"max_hosts"`
+	AutoDelete     string `json:"auto_delete"`
+	AutoDeleteData *int   `json:"auto_delete_data"`
+}
+
+func UpdateGMPTask(c *gin.Context) {
+	taskID := strings.TrimSpace(c.Param("id"))
+	if taskID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "task id required"})
+		return
+	}
+
+	var req UpdateTaskRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
+		return
+	}
+
+	if req.MinQoD != nil && (*req.MinQoD < 0 || *req.MinQoD > 100) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "min_qod must be between 0 and 100"})
+		return
+	}
+
+	params := ModifyTaskParams{
+		Name:           req.Name,
+		Comment:        req.Comment,
+		ApplyOverrides: req.ApplyOverrides,
+		MinQoD:         req.MinQoD,
+		MaxChecks:      req.MaxChecks,
+		MaxHosts:       req.MaxHosts,
+		AutoDelete:     req.AutoDelete,
+		AutoDeleteData: req.AutoDeleteData,
+	}
+
+	if err := ModifyTask(taskID, params); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "task updated successfully"})
 }
 
 // DELETE /gmp/tasks/:id - ลบ task

@@ -36,6 +36,13 @@ export type GMPTaskDTO = {
   last_report_at: string;
   severity: number;
   report_count: number;
+  // Advanced OpenVAS preferences
+  apply_overrides?: boolean;
+  min_qod?: number;
+  max_checks?: number;
+  max_hosts?: number;
+  auto_delete?: string;
+  auto_delete_data?: number;
 };
 
 export type GMPTargetDTO = {
@@ -167,6 +174,14 @@ export type CreateTaskRequest = {
   config_id: string;
   scanner_id?: string;
   comment?: string;
+  apply_overrides?: boolean;
+  min_qod?: number;
+  alterable?: boolean;
+  add_assets?: boolean;
+  auto_delete?: "no" | "keep";
+  auto_delete_data?: number;
+  max_checks?: number;
+  max_hosts?: number;
 };
 
 // ===========================
@@ -350,6 +365,21 @@ export const StopGMPTask = async (taskId: string): Promise<void> => {
 
 export const DeleteGMPTask = async (taskId: string): Promise<void> => {
   await gmpApi.delete(`/gmp/tasks/${taskId}`);
+};
+
+export type UpdateTaskRequest = {
+  name: string;
+  comment?: string;
+  apply_overrides?: boolean;
+  min_qod?: number;
+  max_checks?: number;
+  max_hosts?: number;
+  auto_delete?: "no" | "keep";
+  auto_delete_data?: number;
+};
+
+export const UpdateGMPTask = async (taskId: string, req: UpdateTaskRequest): Promise<void> => {
+  await gmpApi.patch(`/gmp/tasks/${taskId}`, req);
 };
 
 export const DeleteGMPTarget = async (targetId: string): Promise<void> => {
