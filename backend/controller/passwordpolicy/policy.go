@@ -124,8 +124,13 @@ type UpdateInput struct {
 
 // PATCH /password-policy  (admin only)
 func UpdatePolicy(c *gin.Context) {
-	role, _ := c.Get("user_role")
-	if strings.ToLower(strings.TrimSpace(role.(string))) != "admin" {
+	roleRaw, exists := c.Get("user_role")
+	if !exists {
+		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
+		return
+	}
+	role, ok := roleRaw.(string)
+	if !ok || strings.ToLower(strings.TrimSpace(role)) != "admin" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
 		return
 	}

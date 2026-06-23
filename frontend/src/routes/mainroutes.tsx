@@ -31,14 +31,12 @@ const FeedStatus     = Loadable(lazy(() => import("../page/FeedStatus/index")));
 const ThreatConfig   = Loadable(lazy(() => import("../page/ThreatConfig/index")));
 const RecycleBin     = Loadable(lazy(() => import("../page/RecycleBin/index")));
 
-// ===== Login Pages =====
+// ===== Login / Utility Pages =====
 const Authentication = Loadable(lazy(() => import("../page/Authentication/index")));
-const Loader = Loadable(lazy(() => import("../component/load/Loader")));
+const Loader         = Loadable(lazy(() => import("../component/load/Loader")));
+const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
+const LogoAnimation  = Loadable(lazy(() => import("../page/Authentication/animation/index")));
 
-
-//====== Test Captuer ======
-const CaptureTest = Loadable(lazy(() => import("../page/Report/capture")));
-const LogoAnimation = Loadable(lazy(() => import("../page/Authentication/animation/index")));
 // ======================= ROUTES =======================
 
 // Admin เห็นทุกหน้า

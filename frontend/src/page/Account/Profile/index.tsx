@@ -4,10 +4,8 @@ import {
   FiEdit2,
   FiHome,
   FiBriefcase,
-  FiCamera,
   FiMail,
   FiPhone,
-  FiGlobe,
   FiSettings,
 } from "react-icons/fi";
 import { Link } from "react-router-dom";
@@ -72,7 +70,6 @@ const createCoverThumbnail = async (
 };
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
-  const [previewOpen, setPreviewOpen] = useState(false);
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [thumbLoading, setThumbLoading] = useState(false);
 
@@ -162,64 +159,30 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         </div>
 
         <div className="absolute left-1/2 bottom-0 z-10 -translate-x-1/2 translate-y-1/2">
-          <div className="relative">
-            <div
-              className={[
-                "h-16 w-16 sm:h-20 sm:w-20 rounded-[18px] shadow-md flex items-center justify-center overflow-hidden",
-                "bg-white ring-4 ring-[#f7f7f8]",
-                "dark:bg-white/10 dark:ring-4 dark:ring-white/5 dark:shadow-none",
-              ].join(" ")}
-            >
-              {profileSrc ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewOpen(true)}
-                    aria-label={`Preview ${fullName} profile image`}
-                    className="block h-full w-full overflow-hidden rounded-[14px] cursor-pointer"
-                  >
-                    <img
-                      src={thumbSrc || profileSrc}
-                      alt={fullName}
-                      draggable={false}
-                      className={[
-                        "block h-full w-full object-cover",
-                        thumbLoading ? "opacity-90" : "opacity-100",
-                      ].join(" ")}
-                      style={{
-                        objectFit: "cover",
-                        objectPosition: "center",
-                      }}
-                    />
-                  </button>
-
-                  <div className="hidden">
-                    <Image
-                      src={profileSrc}
-                      alt={fullName}
-                      preview={{
-                        visible: previewOpen,
-                        onVisibleChange: (visible) => setPreviewOpen(visible),
-                      }}
-                    />
-                  </div>
-                </>
-              ) : (
-                <span className="text-[34px]">🧑🏻‍💻</span>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className={[
-                "absolute right-0 bottom-0 h-6 w-6 rounded-full border shadow flex items-center justify-center",
-                "bg-[#ede9fe] text-[#6f5be8] border-white",
-                "dark:bg-white/10 dark:text-white/80 dark:border-white/10 dark:shadow-none",
-              ].join(" ")}
-              aria-label="Change avatar"
-            >
-              <FiCamera className="text-[12px]" />
-            </button>
+          <div
+            className={[
+              "h-16 w-16 sm:h-20 sm:w-20 rounded-[18px] shadow-md flex items-center justify-center overflow-hidden",
+              "bg-white ring-4 ring-[#f7f7f8]",
+              "dark:bg-white/10 dark:ring-4 dark:ring-white/5 dark:shadow-none",
+            ].join(" ")}
+          >
+            {profileSrc ? (
+              <div className="block h-full w-full cursor-zoom-in">
+                <Image
+                  src={thumbSrc || profileSrc}
+                  preview={{ src: profileSrc, mask: false }}
+                  alt={fullName}
+                  draggable={false}
+                  className={[
+                    "block h-full w-full object-cover",
+                    thumbLoading ? "opacity-90" : "opacity-100",
+                  ].join(" ")}
+                  style={{ objectFit: "cover", objectPosition: "center" }}
+                />
+              </div>
+            ) : (
+              <span className="text-[34px]">🧑🏻‍💻</span>
+            )}
           </div>
         </div>
       </div>
@@ -284,18 +247,6 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
           </div>
 
           <ul className="space-y-2.5">
-            <li>
-              <a
-                href="https://openvaswebv1.vercel.app/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className={linkClass}
-              >
-                <FiGlobe className={iconClass} />
-                <span className="text-blue-500">www.openvas.com</span>
-              </a>
-            </li>
-
             <li>
               <Link to="/admin/service" className={linkClass}>
                 <FiSettings className={iconClass} />

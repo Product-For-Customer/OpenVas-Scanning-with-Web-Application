@@ -69,7 +69,7 @@ const MainLayout: React.FC = () => {
         >
           <Navbar />
           {themeSettings && <ThemeSettings />}
-          <main className="relative px-2.5 pb-4 sm:px-3.5 md:px-4.5 md:pb-5 lg:px-5">
+          <main className="relative px-2.5 pt-1 pb-4 sm:px-3.5 sm:pt-1.5 md:px-4.5 md:pt-2 md:pb-5 lg:px-5 lg:pt-2.5">
             <Outlet />
           </main>
         </div>

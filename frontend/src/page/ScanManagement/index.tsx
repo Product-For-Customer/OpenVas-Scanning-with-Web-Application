@@ -1088,12 +1088,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
 // ─────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  done:        "#10b981",
-  running:     "#06b6d4",
-  stopped:     "#f97316",
-  interrupted: "#f97316",
-  new:         "#3b82f6",
-  other:       "#94a3b8",
+  done:            "#3b82f6",  // blue  — Done
+  running:         "#10b981",  // emerald — Running
+  requested:       "#94a3b8",  // slate  — Starting
+  "stop requested":"#94a3b8",  // slate  — Stopping
+  stopped:         "#f87171",  // red    — Stopped
+  interrupted:     "#f87171",  // red    — Interrupted
+  new:             "#fbbf24",  // amber  — New
+  other:           "#cbd5e1",  // grey
 };
 
 const StatusTooltip: React.FC<{
@@ -1254,24 +1256,40 @@ const SortIcon: React.FC<{ active: boolean; dir: "asc" | "desc" }> = ({ active, 
 const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, progress }) => {
   const sl = status?.toLowerCase() ?? "";
 
+  if (sl === "requested") {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
+        <FiRefreshCw className="animate-spin text-[9px]" />
+        Starting…
+      </span>
+    );
+  }
+
+  if (sl === "stop requested") {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
+        <FiRefreshCw className="animate-spin text-[9px]" />
+        Stopping…
+      </span>
+    );
+  }
+
   if (sl === "running") {
     return (
       <div className="space-y-1.5">
-        {/* Running pill with live dot */}
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[10px] font-bold text-cyan-700 dark:text-cyan-300">
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-500 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </span>
           Running {progress}%
         </span>
-        {/* Real-time progress bar */}
         <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
           <div
             className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${Math.max(2, Math.min(100, progress))}%`,
-              background: "linear-gradient(90deg, #06b6d4, #0ea5e9, #06b6d4)",
+              background: "linear-gradient(90deg, #10b981, #34d399, #10b981)",
               backgroundSize: "200% 100%",
               animation: "scanPulse 2s linear infinite",
             }}
@@ -1284,17 +1302,12 @@ const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, pr
   if (sl === "stopped" || sl === "interrupted") {
     return (
       <div className="space-y-1.5">
-        {/* Stopped at X% — dark pill like OpenVAS */}
-        <span
-          className="inline-flex whitespace-nowrap items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
-          style={{ background: "linear-gradient(90deg, #374151, #1f2937)" }}
-        >
+        <span className="inline-flex whitespace-nowrap items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[10px] font-semibold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
           Stopped at {progress}%
         </span>
-        {/* Stopped progress bar — grey */}
         <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
           <div
-            className="h-full rounded-full bg-slate-400 dark:bg-slate-600 transition-all duration-500"
+            className="h-full rounded-full bg-red-300 dark:bg-red-500/50 transition-all duration-500"
             style={{ width: `${Math.max(1, Math.min(100, progress))}%` }}
           />
         </div>
@@ -1335,12 +1348,26 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
   const [stopBusy,  setStopBusy]  = useState(false);
 
   const statusLower = task.status?.toLowerCase() ?? "";
-  const isRunning   = statusLower === "running";
-  const isDone      = statusLower === "done";
-  const isStopped   = statusLower === "stopped" || statusLower === "interrupted";
+  // "requested" = OpenVAS accepted the start command, not yet scanning
+  // "stop requested" = OpenVAS accepted the stop command, not yet stopped
+  const isRequested     = statusLower === "requested";
+  const isStopRequested = statusLower === "stop requested";
+  const isRunning       = statusLower === "running" || isRequested;
+  const isTransitioning = isRequested || isStopRequested;
+  const isDone          = statusLower === "done";
+  const isStopped       = statusLower === "stopped" || statusLower === "interrupted";
+  const isActive        = isRunning || isStopRequested; // any "in-flight" state
 
-  const handleStart = async () => { setStartBusy(true); try { await onStart(task.id); } finally { setStartBusy(false); } };
-  const handleStop  = async () => { setStopBusy(true);  try { await onStop(task.id);  } finally { setStopBusy(false);  } };
+  const handleStart = async () => {
+    setStartBusy(true);
+    try { await onStart(task.id); }
+    finally { setStartBusy(false); }
+  };
+  const handleStop = async () => {
+    setStopBusy(true);
+    try { await onStop(task.id); }
+    finally { setStopBusy(false); }
+  };
 
   const iconBtn = "grid h-7 w-7 place-items-center rounded-lg border transition";
 
@@ -1376,7 +1403,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
         </span>
       </td>
 
-      {/* Last Report — formatted */}
+      {/* Last Report */}
       <td className="px-4 py-3.5">
         <span className="whitespace-nowrap text-[11px] text-slate-500 dark:text-white/40">
           {fmtLastReport(task.last_report_at)}
@@ -1390,7 +1417,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
 
       {/* Trend */}
       <td className="px-4 py-3.5">
-        {isRunning
+        {isActive || isTransitioning
           ? <FiActivity className="text-[14px] animate-pulse text-cyan-500" />
           : isDone && task.severity > 0
             ? <FiTrendingUp className="text-[14px] text-emerald-500" />
@@ -1403,25 +1430,42 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
       {/* Actions */}
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-1">
-          {isRunning ? (
-            <button type="button" title="Stop scan" onClick={() => void handleStop()} disabled={stopBusy}
+          {/* Stop — shown when running or requested (not stop-requested, that's already stopping) */}
+          {isRunning && !isStopRequested ? (
+            <button type="button" title="Stop scan" onClick={() => void handleStop()}
+              disabled={stopBusy || isRequested}
               className={`${iconBtn} border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300`}>
               {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiStopCircle className="text-[12px]" />}
             </button>
+          ) : isStopRequested ? (
+            /* Waiting to stop — show a disabled spinner */
+            <button type="button" disabled
+              className={`${iconBtn} border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-white/5`}>
+              <FiRefreshCw className="animate-spin text-[11px]" />
+            </button>
           ) : (
-            <button type="button" title={isDone || isStopped ? "Re-run" : "Start"} onClick={() => void handleStart()} disabled={startBusy}
+            /* Idle — Start / Re-run */
+            <button type="button"
+              title={isDone || isStopped ? "Re-run" : "Start"}
+              onClick={() => void handleStart()}
+              disabled={startBusy}
               className={[iconBtn, isDone || isStopped
                 ? "border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300"
                 : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"].join(" ")}>
               {startBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiPlay className="text-[11px]" />}
             </button>
           )}
-          <button type="button" title="Edit task" onClick={() => onEdit(task)} disabled={isRunning}
+
+          {/* Edit — disabled while task is in any active/transitioning state */}
+          <button type="button" title="Edit task" onClick={() => onEdit(task)}
+            disabled={isActive || isTransitioning}
             className={`${iconBtn} border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10`}>
             <FiEdit2 className="text-[11px]" />
           </button>
+
+          {/* Delete — disabled while task is in any active/transitioning state */}
           <button type="button" title="Delete task" onClick={() => onDelete(task.id, task.name)}
-            disabled={isRunning || stopBusy || startBusy}
+            disabled={isActive || isTransitioning || stopBusy || startBusy}
             className={`${iconBtn} border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300`}>
             <FiTrash2 className="text-[11px]" />
           </button>
@@ -1455,8 +1499,10 @@ const ScanManagement: React.FC = () => {
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [secondsAgo,  setSecondsAgo]  = useState(0);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const clockRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef          = useRef<ReturnType<typeof setInterval> | null>(null);
+  const aggressiveRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const aggressiveCountRef  = useRef(0);
+  const clockRef            = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
@@ -1504,6 +1550,19 @@ const ScanManagement: React.FC = () => {
     try { setTasks(await ListGMPTasks()); setLastUpdated(new Date()); setSecondsAgo(0); } catch { /* silent */ }
   }, []);
 
+  /* Aggressive polling: poll every 2s for up to 20 iterations (40s) after start/stop */
+  const startAggressivePolling = useCallback(() => {
+    if (aggressiveRef.current) { clearInterval(aggressiveRef.current); aggressiveRef.current = null; }
+    aggressiveCountRef.current = 0;
+    aggressiveRef.current = setInterval(() => {
+      void fetchTasksSilent();
+      aggressiveCountRef.current += 1;
+      if (aggressiveCountRef.current >= 20) {
+        if (aggressiveRef.current) { clearInterval(aggressiveRef.current); aggressiveRef.current = null; }
+      }
+    }, 2000);
+  }, [fetchTasksSilent]);
+
   const fetchAll = useCallback(async () => {
     setLoadingStatus(true); setLoadingTasks(true);
     await Promise.all([
@@ -1520,9 +1579,10 @@ const ScanManagement: React.FC = () => {
   }, [fetchAll, fetchSchedules]);
 
   useEffect(() => {
-    const hasRunning = tasks.some(t => t.status?.toLowerCase() === "running");
-    if (hasRunning) {
-      if (!pollingRef.current) pollingRef.current = setInterval(() => { void fetchTasksSilent(); }, 8000);
+    const ACTIVE_STATUSES = ["running", "requested", "stop requested"];
+    const hasActive = tasks.some(t => ACTIVE_STATUSES.includes(t.status?.toLowerCase() ?? ""));
+    if (hasActive) {
+      if (!pollingRef.current) pollingRef.current = setInterval(() => { void fetchTasksSilent(); }, 4000);
     } else {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     }
@@ -1531,7 +1591,10 @@ const ScanManagement: React.FC = () => {
 
   useEffect(() => {
     clockRef.current = setInterval(() => setSecondsAgo(p => p + 1), 1000);
-    return () => { if (clockRef.current) clearInterval(clockRef.current); };
+    return () => {
+      if (clockRef.current) clearInterval(clockRef.current);
+      if (aggressiveRef.current) { clearInterval(aggressiveRef.current); aggressiveRef.current = null; }
+    };
   }, []);
 
   const handleRefresh = async () => {
@@ -1540,13 +1603,27 @@ const ScanManagement: React.FC = () => {
   };
 
   const handleStart = async (id: string) => {
-    try { await StartGMPTask(id); message.success("Scan started"); setTimeout(() => void fetchTasksSilent(), 1500); }
-    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to start scan"); }
+    try {
+      await StartGMPTask(id);
+      message.success("Scan started");
+      // Optimistic: show "Requested" immediately while OpenVAS initialises
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Requested", progress: 0 } : t));
+      startAggressivePolling();
+    } catch (err: unknown) {
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to start scan");
+    }
   };
 
   const handleStop = async (id: string) => {
-    try { await StopGMPTask(id); message.success("Scan stopped"); setTimeout(() => void fetchTasksSilent(), 1500); }
-    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to stop scan"); }
+    try {
+      await StopGMPTask(id);
+      message.success("Scan stopped");
+      // Optimistic: show "Stop Requested" immediately
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Stop Requested" } : t));
+      startAggressivePolling();
+    } catch (err: unknown) {
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to stop scan");
+    }
   };
 
   const handleDeleteConfirmed = async () => {
@@ -1586,10 +1663,11 @@ const ScanManagement: React.FC = () => {
     catch { message.error(t("common.noResults")); }
   }, [fetchSchedules, t]);
 
-  const runningCount = tasks.filter(t => t.status?.toLowerCase() === "running").length;
+  const ACTIVE_STATUSES = ["running", "requested", "stop requested"];
+  const runningCount = tasks.filter(t => ["running", "requested"].includes(t.status?.toLowerCase() ?? "")).length;
   const doneCount    = tasks.filter(t => t.status?.toLowerCase() === "done").length;
   const stoppedCount = tasks.filter(t => ["stopped","interrupted"].includes(t.status?.toLowerCase() ?? "")).length;
-  const hasRunning   = runningCount > 0;
+  const hasRunning   = tasks.some(t => ACTIVE_STATUSES.includes(t.status?.toLowerCase() ?? ""));
 
   // ── Sorting ──────────────────────────────────────────────────
   const [sortBy,  setSortBy]  = useState<SortCol | null>(null);
@@ -1893,7 +1971,7 @@ const ScanManagement: React.FC = () => {
                 {hasRunning && (
                   <div className="flex items-center gap-1.5 text-[10.5px] text-cyan-500">
                     <FiActivity className="animate-pulse text-[11px]" />
-                    <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress · refreshing every 8s</span>
+                    <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress · auto-refreshing every 4s</span>
                   </div>
                 )}
               </div>

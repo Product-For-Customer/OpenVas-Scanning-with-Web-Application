@@ -208,7 +208,7 @@ const Sidebar: React.FC = () => {
               <img
                 src={logo}
                 alt="Logo"
-                className={`shrink-0 object-contain ${isTablet ? "h-10 w-10" : "h-12 w-12"}`}
+                className={`shrink-0 object-contain ${isTablet ? "h-13 w-13" : "h-16 w-16"}`}
               />
 
               {isExpanded && (
