@@ -34,9 +34,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import ModalOTPSignUp from "../../Model/ModalOTPSignUp";
 import ModalOTP from "../../Model/ModalOTP";
 import travelPhoto from "../../assets/login-photo.jpg";
-import LoginSuccessAnimation, {
-  preloadLoginSuccessAnimationAssets,
-} from "./animation/index";
 import greenboneIcon from "../../assets/logo-light.svg";
 
 type SignUpFormData = {
@@ -99,17 +96,6 @@ const preloadImage = (src: string): Promise<void> => {
   return promise;
 };
 
-const waitForNextPaint = (): Promise<void> => {
-  if (typeof window === "undefined") {
-    return Promise.resolve();
-  }
-
-  return new Promise((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => resolve());
-    });
-  });
-};
 
 const Index: React.FC = () => {
   const navigate = useNavigate();
@@ -127,7 +113,6 @@ const Index: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
-  const [showLoginSuccessAnimation, setShowLoginSuccessAnimation] = useState(false);
 
   const [forgotEmail, setForgotEmail] = useState("");
   const [verifiedResetEmail, setVerifiedResetEmail] = useState("");
@@ -184,7 +169,6 @@ const Index: React.FC = () => {
   const isFetchingContactsRef = useRef(false);
   const isMountedRef = useRef(false);
   const isPreparingLoginAnimationRef = useRef(false);
-  const loginNavigationHandledRef = useRef(false);
 
   const inputBase =
     "h-[40px] w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/[0.06] dark:border-white/10 pl-10 pr-10 text-[12px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/70 dark:focus:ring-cyan-500/15 shadow-sm dark:shadow-none";
@@ -217,7 +201,6 @@ const Index: React.FC = () => {
   useEffect(() => {
     void preloadImage(travelPhoto);
     void preloadImage(greenboneIcon);
-    void preloadLoginSuccessAnimationAssets();
     GetPasswordPolicy().then(setPolicy).catch(() => {});
   }, []);
 
@@ -426,24 +409,12 @@ const Index: React.FC = () => {
       if (role === "admin" || role === "user") {
         message.success("login success");
 
-        if (isPreparingLoginAnimationRef.current) {
-          return;
+        try {
+          await refreshMe();
+        } catch {
+          // non-critical
         }
-
-        isPreparingLoginAnimationRef.current = true;
-
-        await Promise.all([
-          preloadImage(travelPhoto),
-          preloadImage(greenboneIcon),
-          preloadLoginSuccessAnimationAssets(),
-        ]);
-
-        await waitForNextPaint();
-
-        if (isMountedRef.current) {
-          setShowLoginSuccessAnimation(true);
-        }
-
+        navigate("/admin", { replace: true });
         return;
       } else {
         setLoginError("บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน");
@@ -834,25 +805,6 @@ const Index: React.FC = () => {
   );
 
 
-  const handleLoginSuccessAnimationFinished = useCallback(async () => {
-    if (loginNavigationHandledRef.current) {
-      return;
-    }
-
-    loginNavigationHandledRef.current = true;
-
-    try {
-      await refreshMe();
-    } catch (error) {
-      console.error("refreshMe after login animation error:", error);
-    } finally {
-      if (isMountedRef.current) {
-        setShowLoginSuccessAnimation(false);
-      }
-
-      navigate("/admin", { replace: true });
-    }
-  }, [navigate, refreshMe]);
 
   const renderPhotoPanel = () => (
     <div className="relative h-full overflow-hidden bg-slate-950">
@@ -1602,15 +1554,6 @@ const Index: React.FC = () => {
       </div>
     </div>
   );
-
-  if (showLoginSuccessAnimation) {
-    return (
-      <LoginSuccessAnimation
-        duration={5000}
-        onFinished={handleLoginSuccessAnimationFinished}
-      />
-    );
-  }
 
   return (
     <>

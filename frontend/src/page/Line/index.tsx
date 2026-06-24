@@ -2,31 +2,12 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FiBell } from "react-icons/fi";
 import HistoryNotify from "./History";
 import Notify from "./Notify";
-import Graph from "./Graph";
-import GraphIPad from "./Graph/graphIPad";
-import Count from "./Monthly";
 import {
   ListHistoryNotify,
   type HistoryNotifyResponse,
 } from "../../services";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
-
-const useDeviceView = () => {
-  const [isDesktopLike, setIsDesktopLike] = useState(false);
-
-  useEffect(() => {
-    const update = () => {
-      setIsDesktopLike(window.innerWidth >= 1280);
-    };
-
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  return { isDesktopLike };
-};
 
 const Index: React.FC = () => {
   const { currentColor } = useStateContext();
@@ -41,8 +22,6 @@ const Index: React.FC = () => {
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
   const isMountedRef = useRef(false);
-
-  const { isDesktopLike } = useDeviceView();
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -133,43 +112,11 @@ const Index: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-0">
+      <div>
         <Notify />
       </div>
 
-      <div className="mb-4 grid grid-cols-1 items-stretch gap-4 sm:mb-5 sm:gap-5 xl:grid-cols-10">
-        <div className="h-full min-w-0 xl:col-span-6">
-          <Count
-            items={items}
-            loading={loading}
-            refreshing={refreshing}
-            error={error}
-            onRefresh={fetchHistoryNotify}
-          />
-        </div>
-
-        <div className="h-full min-w-0 xl:col-span-4">
-          {isDesktopLike ? (
-            <Graph
-              items={items}
-              loading={loading}
-              refreshing={refreshing}
-              error={error}
-              onRefresh={fetchHistoryNotify}
-            />
-          ) : (
-            <GraphIPad
-              items={items}
-              loading={loading}
-              refreshing={refreshing}
-              error={error}
-              onRefresh={fetchHistoryNotify}
-            />
-          )}
-        </div>
-      </div>
-
-      <div>
+      <div className="mt-2">
         <HistoryNotify
           items={items}
           setItems={setItems}

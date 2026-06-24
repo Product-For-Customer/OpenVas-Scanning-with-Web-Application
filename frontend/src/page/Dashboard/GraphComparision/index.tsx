@@ -1729,7 +1729,7 @@ const index: React.FC = () => {
                     {/* Left — label / score / badge */}
                     <div className="min-w-0">
                       <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                        Avg Risk Score
+                        Avg Risk Score (CVSS Rating Score)
                       </p>
                       <div className="mt-2 flex items-baseline gap-2 leading-none">
                         <span

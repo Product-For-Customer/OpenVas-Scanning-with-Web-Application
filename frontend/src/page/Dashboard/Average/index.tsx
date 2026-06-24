@@ -247,7 +247,7 @@ const AverageVulnerability: React.FC = () => {
             {/* Range header */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">{t("dashboard.range")}</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">{t("dashboard.range")}(CVSS Rating Score)</p>
                 <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/45">0.00 – 10.00</p>
               </div>
             </div>

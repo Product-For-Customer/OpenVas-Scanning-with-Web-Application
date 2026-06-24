@@ -300,11 +300,6 @@ const modalBackdropClass =
 const modalCardClass =
   "relative w-full overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]";
 
-const sectionChipClass =
-  "inline-flex items-center gap-1.5 rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40";
-
-const panelClass =
-  "rounded-xl border border-slate-200/70 bg-slate-50 p-4 dark:border-white/8 dark:bg-white/3";
 
 const createGradientBtn = [
   "flex h-8 items-center justify-center gap-1.5 rounded-lg px-3.5",
@@ -1531,15 +1526,34 @@ const index: React.FC = () => {
   const renderNotificationTable = () => {
     if (loading) {
       return (
-        <div className="flex min-h-75 items-center justify-center text-[12px] text-slate-500 dark:text-white/50">
-          Loading notifications...
+        <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-white/8">
+                {["Name", "Send ID", "App", "Alert", "Type", "Actions"].map((h) => (
+                  <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3].map((i) => (
+                <tr key={i} className="border-b border-slate-100 dark:border-white/6">
+                  {[180, 140, 120, 60, 70, 90].map((w, j) => (
+                    <td key={j} className="px-4 py-4">
+                      <div className="h-4 animate-pulse rounded-lg bg-slate-100 dark:bg-white/8" style={{ width: w }} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[12px] text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[12px] text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-200">
           {error}
         </div>
       );
@@ -1547,39 +1561,34 @@ const index: React.FC = () => {
 
     if (notifications.length === 0) {
       return (
-        <div className="flex min-h-75 items-center justify-center rounded-2xl border border-dashed border-slate-200 text-[12px] text-slate-500 dark:border-white/10 dark:text-white/45">
-          {t("common.noResults")}
+        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-200/70 bg-white py-14 dark:border-white/8 dark:bg-white/4">
+          <div className="grid h-13 w-13 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25">
+            <FiBell className="text-[20px]" />
+          </div>
+          <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">No notification destinations</p>
+          <p className="text-[11px] text-slate-400 dark:text-white/30">Add a new receiver using the button above</p>
+          <button type="button" onClick={openCreate} className={notifyPrimaryGradientBtn}>
+            <FiPlus className="text-[12px]" />
+            <span className="text-[11px] font-medium">Add Notify</span>
+          </button>
         </div>
       );
     }
 
     return (
-      <div className="flex min-h-75 flex-col">
+      <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
         <div className="overflow-x-auto">
-          <table className="min-w-full border-separate border-spacing-y-2.5">
+          <table className="w-full min-w-200">
             <thead>
-              <tr>
-                <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  Name
-                </th>
-                <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  Send ID
-                </th>
-                <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  App
-                </th>
-                <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  Alert
-                </th>
-                <th className="px-3 py-2 text-left text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  Type
-                </th>
-                <th className="px-3 py-2 text-right text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45">
-                  Actions
-                </th>
+              <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Name</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Send ID</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">App</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Alert</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Type</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Actions</th>
               </tr>
             </thead>
-
             <tbody>
               {pagedNotifications.map((item) => {
                 const lineMasterName =
@@ -1587,55 +1596,28 @@ const index: React.FC = () => {
                   `Line Master #${item.app_line_master_id}`;
 
                 return (
-                  <tr key={item.id}>
-                    <td className="rounded-l-2xl border-y border-l border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <div className="min-w-37.5">
-                        <p className="truncate text-[12px] font-medium text-slate-800 dark:text-white/85">
-                          {item.name}
-                        </p>
-                      </div>
+                  <tr key={item.id} className="border-b border-slate-100/70 transition hover:bg-slate-50/60 last:border-0 dark:border-white/6 dark:hover:bg-white/3">
+                    <td className="px-4 py-3.5 align-middle">
+                      <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">{item.name}</p>
                     </td>
-
-                    <td className="border-y border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <div className="min-w-37.5">
-                        <p className="truncate font-mono text-[11px] text-slate-600 dark:text-white/60">
-                          {item.send_id}
-                        </p>
-                      </div>
+                    <td className="px-4 py-3.5 align-middle">
+                      <p className="font-mono text-[11px] text-slate-500 dark:text-white/55">{item.send_id}</p>
                     </td>
-
-                    <td className="border-y border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <div className="min-w-35">
-                        <span className="truncate text-[11.5px] text-slate-700 dark:text-white/70">
-                          {lineMasterName}
-                        </span>
-                      </div>
+                    <td className="px-4 py-3.5 align-middle">
+                      <span className="text-[11.5px] text-slate-700 dark:text-white/70">{lineMasterName}</span>
                     </td>
-
-                    <td className="border-y border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <span
-                        className={[
-                          "inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold",
-                          alertBadgeClass(item.alert),
-                        ].join(" ")}
-                      >
+                    <td className="px-4 py-3.5 align-middle">
+                      <span className={["inline-flex items-center rounded-full px-2.5 py-1 text-[10.5px] font-semibold", alertBadgeClass(item.alert)].join(" ")}>
                         {item.alert ? "On" : "Off"}
                       </span>
                     </td>
-
-                    <td className="border-y border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <span
-                        className={[
-                          "inline-flex rounded-full px-2.5 py-1 text-[10.5px] font-semibold",
-                          typeBadgeClass(item.is_group),
-                        ].join(" ")}
-                      >
+                    <td className="px-4 py-3.5 align-middle">
+                      <span className={["inline-flex items-center rounded-full px-2.5 py-1 text-[10.5px] font-semibold", typeBadgeClass(item.is_group)].join(" ")}>
                         {item.is_group ? "Group" : "Personal"}
                       </span>
                     </td>
-
-                    <td className="rounded-r-2xl border-y border-r border-slate-200 bg-white px-3 py-3 align-middle dark:border-white/10 dark:bg-white/3">
-                      <div className="flex items-center justify-end gap-1.5">
+                    <td className="px-4 py-3.5 align-middle">
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => openTestLineModal(item)}
@@ -1669,47 +1651,47 @@ const index: React.FC = () => {
           </table>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-200/70 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
-          <p className="text-[11px] text-slate-500 dark:text-white/45">
-            Showing{" "}
-            <span className="font-medium text-slate-700 dark:text-white/75">
-              {notifications.length === 0 ? 0 : (notifyPage - 1) * PAGE_SIZE + 1}
-            </span>{" "}
-            -{" "}
-            <span className="font-medium text-slate-700 dark:text-white/75">
-              {Math.min(notifyPage * PAGE_SIZE, notifications.length)}
-            </span>{" "}
-            of{" "}
-            <span className="font-medium text-slate-700 dark:text-white/75">
-              {notifications.length}
-            </span>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+          <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+            {notifications.length === 0
+              ? "0 destinations"
+              : `${(notifyPage - 1) * PAGE_SIZE + 1}–${Math.min(notifyPage * PAGE_SIZE, notifications.length)} of ${notifications.length}`}
           </p>
-
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              type="button"
-              onClick={() => setNotifyPage((prev) => Math.max(1, prev - 1))}
-              disabled={notifyPage <= 1}
-              className="inline-flex items-center gap-1 rounded-xl border border-violet-200 px-3 py-2 text-[11.5px] font-medium text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-400/20 dark:text-violet-300 dark:hover:bg-violet-500/10"
-            >
-              <FiChevronLeft className="text-[13px]" />
-              Previous
-            </button>
-
-            <div className="rounded-xl border border-slate-200 px-3 py-2 text-[11.5px] font-medium text-slate-700 dark:border-white/10 dark:text-white/70">
-              {notifyPage} / {totalNotifyPages}
+          {totalNotifyPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setNotifyPage((prev) => Math.max(1, prev - 1))}
+                disabled={notifyPage <= 1}
+                className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+              >
+                <FiChevronLeft className="text-[12px]" />
+              </button>
+              {Array.from({ length: totalNotifyPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setNotifyPage(p)}
+                  className={[
+                    "grid h-7 min-w-7 place-items-center rounded-lg px-1.5 text-[11px] font-semibold transition",
+                    notifyPage === p
+                      ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
+                      : "border border-slate-200/70 text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setNotifyPage((prev) => Math.min(totalNotifyPages, prev + 1))}
+                disabled={notifyPage >= totalNotifyPages}
+                className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+              >
+                <FiChevronRight className="text-[12px]" />
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setNotifyPage((prev) => Math.min(totalNotifyPages, prev + 1))}
-              disabled={notifyPage >= totalNotifyPages}
-              className="inline-flex items-center gap-1 rounded-xl border border-violet-200 px-3 py-2 text-[11.5px] font-medium text-violet-700 transition hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-violet-400/20 dark:text-violet-300 dark:hover:bg-violet-500/10"
-            >
-              Next
-              <FiChevronRight className="text-[13px]" />
-            </button>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -1718,19 +1700,17 @@ const index: React.FC = () => {
   return (
     <div className="relative">
       <section className={cardGlowClass}>
-
         <div className="flex h-full flex-col">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-                  {t("line.notificationDestinations")}
-                </h2>
-                <span className={sectionChipClass}>
-                  <FiBell className="text-[10px]" />
-                  Notification Center
-                </span>
-              </div>
+
+          {/* ── Top bar: title + action buttons ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                {t("line.notificationDestinations")}
+              </h2>
+              <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
+                {rows.length}
+              </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -1882,74 +1862,49 @@ const index: React.FC = () => {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-1 flex-col">
-            <div className="w-full">
-              <div className={panelClass}>
-                <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h3 className="text-[14px] font-semibold text-slate-900 dark:text-white">
-                      Receivers
-                    </h3>
-                    <p className="mt-1 text-[11px] text-slate-500 dark:text-white/45">
-                      Manage LINE receiver IDs and alert status.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative">
-                      <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/35" />
-                      <input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder={t("line.searchNotification")}
-                        className="h-10 w-55 rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-[12px] outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:border-violet-400/30 dark:focus:ring-violet-400/10"
-                      />
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setOpenSort((prev) => !prev)}
-                        className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
-                      >
-                        {sortBy}
-                        <FiChevronDown
-                          className={`text-[13px] transition ${openSort ? "rotate-180" : ""}`}
-                        />
-                      </button>
-
-                      {openSort && (
-                        <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-45 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#10192a]">
-                          {(["Newest", "Alert: On First", "Alert: Off First"] as SortKey[]).map(
-                            (item) => (
-                              <button
-                                key={item}
-                                type="button"
-                                onClick={() => {
-                                  setSortBy(item);
-                                  setOpenSort(false);
-                                }}
-                                className={[
-                                  "flex w-full items-center justify-between px-3 py-2.5 text-left text-[12px] transition hover:bg-slate-50 dark:hover:bg-white/5",
-                                  sortBy === item
-                                    ? "text-violet-700 dark:text-violet-300"
-                                    : "text-slate-700 dark:text-white/70",
-                                ].join(" ")}
-                              >
-                                {item}
-                                {sortBy === item ? <FiCheck className="text-[12px]" /> : null}
-                              </button>
-                            ),
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {renderNotificationTable()}
-              </div>
+          {/* ── Search + sort toolbar ── */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="relative">
+              <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/35" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("line.searchNotification")}
+                className="h-9 w-55 rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-[12px] outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:placeholder:text-white/35 dark:focus:border-violet-400/30 dark:focus:ring-violet-400/10"
+              />
             </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setOpenSort((prev) => !prev)}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-medium text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
+              >
+                {sortBy}
+                <FiChevronDown className={`text-[12px] transition ${openSort ? "rotate-180" : ""}`} />
+              </button>
+              {openSort && (
+                <div className="absolute right-0 top-[calc(100%+6px)] z-20 w-45 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#10192a]">
+                  {(["Newest", "Alert: On First", "Alert: Off First"] as SortKey[]).map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => { setSortBy(item); setOpenSort(false); }}
+                      className={["flex w-full items-center justify-between px-3 py-2.5 text-left text-[12px] transition hover:bg-slate-50 dark:hover:bg-white/5",
+                        sortBy === item ? "text-violet-700 dark:text-violet-300" : "text-slate-700 dark:text-white/70"].join(" ")}
+                    >
+                      {item}
+                      {sortBy === item ? <FiCheck className="text-[12px]" /> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Table ── */}
+          <div className="mt-3">
+            {renderNotificationTable()}
           </div>
         </div>
       </section>
