@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 )
@@ -1103,15 +1104,12 @@ func StartDailyFeedUpdateScheduler() {
 	feedSchedulerStarted = true
 	feedSchedulerMu.Unlock()
 
-	tzName := strings.TrimSpace(os.Getenv("TZ"))
-	if tzName == "" {
-		tzName = "Asia/Bangkok"
-	}
+	tzName := setting.GetAppTimezone()
 
 	location, err := time.LoadLocation(tzName)
 	if err != nil {
-		log.Printf("⚠️ cannot load TZ=%s, fallback to Asia/Bangkok: %v\n", tzName, err)
-		location = time.FixedZone("Asia/Bangkok", 7*60*60)
+		log.Printf("⚠️ cannot load TZ=%s, fallback to UTC: %v\n", tzName, err)
+		location = time.UTC
 	}
 
 	log.Printf("🕑 Daily feed update scheduler started with TZ=%s\n", tzName)

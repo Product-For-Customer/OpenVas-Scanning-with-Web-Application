@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/manage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -295,7 +296,6 @@ SELECT
   TO_CHAR(
     (
       to_timestamp(aa.creation_time)
-      AT TIME ZONE 'UTC'
       AT TIME ZONE 'Asia/Bangkok'
     ),
     'Mon'
@@ -304,7 +304,6 @@ SELECT
   EXTRACT(
     MONTH FROM (
       to_timestamp(aa.creation_time)
-      AT TIME ZONE 'UTC'
       AT TIME ZONE 'Asia/Bangkok'
     )
   )::int AS month_no,
@@ -321,7 +320,7 @@ ORDER BY
 `
 
 	out := make([]ReportVulnerabilityMonthDTO, 0)
-
+	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
 	if err := db.Raw(query).Scan(&out).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

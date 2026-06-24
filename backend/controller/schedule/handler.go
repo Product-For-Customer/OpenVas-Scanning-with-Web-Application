@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/gmp"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 )
@@ -23,7 +24,8 @@ type ScheduleDTO struct {
 	TaskName   string  `json:"task_name"`
 	Frequency  string  `json:"frequency"`
 	ScanTime   string  `json:"scan_time"`
-	ScheduleAt *string `json:"schedule_at,omitempty"` // "YYYY-MM-DD"
+	Timezone   string  `json:"timezone"` // reflects the global timezone at time of creation
+	ScheduleAt *string `json:"schedule_at,omitempty"`
 	DayOfMonth *int    `json:"day_of_month,omitempty"`
 	Month      *int    `json:"month,omitempty"`
 	Day        *int    `json:"day,omitempty"`
@@ -34,11 +36,11 @@ type ScheduleDTO struct {
 }
 
 type CreateScheduleRequest struct {
-	TaskID     string  `json:"task_id"    binding:"required"`
+	TaskID     string  `json:"task_id"   binding:"required"`
 	TaskName   string  `json:"task_name"`
-	Frequency  string  `json:"frequency"  binding:"required"`
-	ScanTime   string  `json:"scan_time"  binding:"required"` // "HH:mm"
-	ScheduleAt *string `json:"schedule_at,omitempty"`         // "YYYY-MM-DD" for once
+	Frequency  string  `json:"frequency" binding:"required"`
+	ScanTime   string  `json:"scan_time" binding:"required"` // "HH:mm"
+	ScheduleAt *string `json:"schedule_at,omitempty"`        // "YYYY-MM-DD" for once
 	DayOfMonth *int    `json:"day_of_month,omitempty"`
 	Month      *int    `json:"month,omitempty"`
 	Day        *int    `json:"day,omitempty"`
@@ -59,6 +61,7 @@ func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 		TaskName:   s.TaskName,
 		Frequency:  s.Frequency,
 		ScanTime:   s.ScanTime,
+		Timezone:   s.Timezone,
 		DayOfMonth: s.DayOfMonth,
 		Month:      s.Month,
 		Day:        s.Day,
@@ -80,8 +83,15 @@ func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 	return dto
 }
 
+// computeNextRun always uses the current global timezone from SystemConfig.
 func computeNextRun(freq, scanTime string, scheduleAt *string, dayOfMonth, month, day *int) *time.Time {
-	now := time.Now()
+	tz := setting.GetAppTimezone()
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		loc = time.UTC
+	}
+	now := time.Now().In(loc)
+
 	parts := strings.Split(scanTime, ":")
 	if len(parts) < 2 {
 		return nil
@@ -97,18 +107,18 @@ func computeNextRun(freq, scanTime string, scheduleAt *string, dayOfMonth, month
 		if scheduleAt == nil {
 			return nil
 		}
-		base, err := time.ParseInLocation("2006-01-02", *scheduleAt, now.Location())
+		base, err := time.ParseInLocation("2006-01-02", *scheduleAt, loc)
 		if err != nil {
 			return nil
 		}
-		t := time.Date(base.Year(), base.Month(), base.Day(), h, m, 0, 0, now.Location())
+		t := time.Date(base.Year(), base.Month(), base.Day(), h, m, 0, 0, loc)
 		return &t
 
 	case "monthly":
 		if dayOfMonth == nil {
 			return nil
 		}
-		d := time.Date(now.Year(), now.Month(), *dayOfMonth, h, m, 0, 0, now.Location())
+		d := time.Date(now.Year(), now.Month(), *dayOfMonth, h, m, 0, 0, loc)
 		if !d.After(now) {
 			d = d.AddDate(0, 1, 0)
 		}
@@ -118,7 +128,7 @@ func computeNextRun(freq, scanTime string, scheduleAt *string, dayOfMonth, month
 		if month == nil || day == nil {
 			return nil
 		}
-		d := time.Date(now.Year(), time.Month(*month), *day, h, m, 0, 0, now.Location())
+		d := time.Date(now.Year(), time.Month(*month), *day, h, m, 0, 0, loc)
 		if !d.After(now) {
 			d = d.AddDate(1, 0, 0)
 		}
@@ -156,6 +166,14 @@ func CreateSchedule(c *gin.Context) {
 		return
 	}
 
+	// Always use the current global timezone
+	tz := setting.GetAppTimezone()
+	loc, _ := time.LoadLocation(tz)
+	if loc == nil {
+		loc = time.UTC
+		tz = "UTC"
+	}
+
 	nextRun := computeNextRun(req.Frequency, req.ScanTime, req.ScheduleAt, req.DayOfMonth, req.Month, req.Day)
 
 	s := entity.AutoScanSchedule{
@@ -163,6 +181,7 @@ func CreateSchedule(c *gin.Context) {
 		TaskName:   req.TaskName,
 		Frequency:  req.Frequency,
 		ScanTime:   req.ScanTime,
+		Timezone:   tz,
 		DayOfMonth: req.DayOfMonth,
 		Month:      req.Month,
 		Day:        req.Day,
@@ -170,9 +189,9 @@ func CreateSchedule(c *gin.Context) {
 		NextRunAt:  nextRun,
 	}
 	if req.ScheduleAt != nil {
-		base, err := time.ParseInLocation("2006-01-02", *req.ScheduleAt, time.Now().Location())
+		base, err := time.ParseInLocation("2006-01-02", *req.ScheduleAt, loc)
 		if err == nil {
-			t := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, time.Now().Location())
+			t := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, loc)
 			s.ScheduleAt = &t
 		}
 	}
@@ -238,14 +257,15 @@ func runDueSchedules() {
 	var schedules []entity.AutoScanSchedule
 	db.Where("enabled = true AND next_run_at IS NOT NULL AND next_run_at <= ?", time.Now()).Find(&schedules)
 	for _, s := range schedules {
-		s := s // capture loop var
+		s := s
 		go triggerScheduledScan(s)
 	}
 }
 
 func triggerScheduledScan(s entity.AutoScanSchedule) {
 	db := config.DB()
-	log.Printf("🎯 Auto scan triggered: task=%q id=%d freq=%s\n", s.TaskName, s.ID, s.Frequency)
+	tz := setting.GetAppTimezone()
+	log.Printf("🎯 Auto scan triggered: task=%q id=%d freq=%s tz=%s\n", s.TaskName, s.ID, s.Frequency, tz)
 
 	if _, err := gmp.StartTask(s.TaskID); err != nil {
 		log.Printf("❌ Auto scan failed: task=%q err=%v\n", s.TaskName, err)
@@ -255,6 +275,7 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 
 	now := time.Now()
 	s.LastRunAt = &now
+	s.Timezone = tz // keep in sync with global
 
 	if s.Frequency == "once" {
 		s.Enabled = false
@@ -273,4 +294,3 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 		log.Printf("⚠️ Auto scan schedule save error: %v\n", err)
 	}
 }
-

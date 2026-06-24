@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 )
@@ -225,7 +226,10 @@ func StartKEVSyncScheduler() {
 		}
 	}()
 
-	location := time.FixedZone("Asia/Bangkok", 7*60*60)
+	location, _ := time.LoadLocation(setting.GetAppTimezone())
+	if location == nil {
+		location = time.UTC
+	}
 	for {
 		now := time.Now().In(location)
 		next := time.Date(now.Year(), now.Month(), now.Day(), 3, 0, 0, 0, location)

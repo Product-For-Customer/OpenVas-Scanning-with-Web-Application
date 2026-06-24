@@ -100,10 +100,12 @@ const formatDateTime = (value?: string): string => {
   }
   if (!d || Number.isNaN(d.getTime())) return raw;
 
+  const tz = localStorage.getItem("appTimezone") ?? "Asia/Bangkok";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit", month: "short", year: "2-digit",
     hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(new Date(d.getTime() + 7 * 60 * 60 * 1000));
+    timeZone: tz,
+  }).format(d);
 };
 
 // ─────────────────────────────────────────────────────────────

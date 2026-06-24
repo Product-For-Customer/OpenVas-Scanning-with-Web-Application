@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/clause"
@@ -185,7 +186,7 @@ func StartEPSSSyncScheduler() {
 		time.Sleep(60 * time.Second)
 		SyncEPSSForKnownCVEs()
 
-		loc, _ := time.LoadLocation("Asia/Bangkok")
+		loc, _ := time.LoadLocation(setting.GetAppTimezone())
 		for {
 			now := time.Now().In(loc)
 			next := time.Date(now.Year(), now.Month(), now.Day(), 4, 30, 0, 0, loc)

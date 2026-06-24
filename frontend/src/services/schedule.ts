@@ -18,6 +18,7 @@ export type AutoScanScheduleDTO = {
   task_name: string;
   frequency: ScheduleFrequency;
   scan_time: string;          // "HH:mm"
+  timezone: string;           // IANA timezone, e.g. "Asia/Bangkok"
   schedule_at?: string;       // "YYYY-MM-DD" — for once
   day_of_month?: number;      // 1-31 — for monthly
   month?: number;             // 1-12 — for yearly
@@ -33,6 +34,7 @@ export type CreateScheduleRequest = {
   task_name: string;
   frequency: ScheduleFrequency;
   scan_time: string;
+  timezone: string;           // IANA timezone, e.g. "Asia/Bangkok"
   schedule_at?: string;
   day_of_month?: number;
   month?: number;

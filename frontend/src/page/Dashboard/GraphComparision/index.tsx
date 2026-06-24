@@ -401,6 +401,14 @@ const getRiskHeatColor = (risk: number) => {
   return interpolateColor(orange, red, t);
 };
 
+const getRiskLabel = (score: number): { label: string; color: string } => {
+  if (score >= 9)  return { label: "CRITICAL", color: "#ef4444" };
+  if (score >= 7)  return { label: "HIGH",     color: "#f97316" };
+  if (score >= 4)  return { label: "MEDIUM",   color: "#eab308" };
+  if (score > 0)   return { label: "LOW",      color: "#22c55e" };
+  return                   { label: "NONE",    color: "#94a3b8" };
+};
+
 const getVisibleTickIndexSet = (
   length: number,
   maxLabels: number
@@ -1712,15 +1720,47 @@ const index: React.FC = () => {
               </p>
             </div>
 
-            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
-              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                Avg Risk Score
-              </p>
-              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-                {formatRisk(detailMode ? detailAvgRisk : summary.avgLatestRisk)}
-                <span className="ml-1 text-[13px] font-normal text-slate-400 dark:text-white/30">/ 10</span>
-              </p>
-            </div>
+            {(() => {
+              const avgScore = detailMode ? detailAvgRisk : summary.avgLatestRisk;
+              const { label: riskLabel, color: labelColor } = getRiskLabel(avgScore);
+              return (
+                <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
+                  <div className="flex items-center justify-between gap-3">
+                    {/* Left — label / score / badge */}
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
+                        Avg Risk Score
+                      </p>
+                      <div className="mt-2 flex items-baseline gap-2 leading-none">
+                        <span
+                          className="text-[22px] font-bold tracking-tight"
+                          style={{ color: labelColor }}
+                        >
+                          {formatRisk(avgScore)}
+                        </span>
+                        <span className="text-[13px] font-normal text-slate-400 dark:text-white/30">
+                          / 10
+                        </span>
+                        <span
+                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                          style={{ backgroundColor: `${labelColor}14`, color: labelColor }}
+                        >
+                          {riskLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right — colored square */}
+                    <div
+                      className="h-11 w-11 shrink-0 rounded-xl"
+                      style={{
+                        background: `linear-gradient(135deg, ${labelColor}cc 0%, ${labelColor}88 100%)`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
               <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">

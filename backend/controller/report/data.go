@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/manage"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -377,11 +378,7 @@ SELECT
     tp.nvt_oid::text AS vulnerability_id,
     tp.vulnerability_name,
 
-    (
-        to_timestamp(tp.report_creation_time)
-        AT TIME ZONE 'UTC'
-        AT TIME ZONE 'Asia/Bangkok'
-    ) AS detected_date,
+    to_timestamp(tp.report_creation_time) AS detected_date,
 
     tp.severity,
     COALESCE(ca.cve_list, 'N/A') AS cve_list,
@@ -405,7 +402,7 @@ LIMIT COALESCE(NULLIF(?, '')::int, 50);
 `
 
 	out := make([]CriticalForReportDTO, 0)
-
+	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
 	if err := db.Raw(query, taskIDRaw, allowedTaskIDs, taskIDRaw, limit).Scan(&out).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed to load critical findings for report",

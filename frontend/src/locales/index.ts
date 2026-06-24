@@ -267,6 +267,8 @@ export const translations = {
     "scan.selectDate": "Scheduled Date",
     "scan.scheduleEnabled": "Enabled",
     "scan.scheduleDisabled": "Disabled",
+    "scan.timezone": "Timezone",
+    "scan.selectTimezone": "Select Timezone",
 
     // ── Feed Status page ──────────────────────────────────
     "feed.title": "Feed Status",
@@ -905,6 +907,8 @@ export const translations = {
     "scan.selectDate": "วันที่กำหนด",
     "scan.scheduleEnabled": "เปิดใช้งาน",
     "scan.scheduleDisabled": "ปิดใช้งาน",
+    "scan.timezone": "เขตเวลา",
+    "scan.selectTimezone": "เลือกเขตเวลา",
 
     // ── Feed Status page ──────────────────────────────────
     "feed.title": "สถานะ Feed",
@@ -1539,6 +1543,8 @@ export const translations = {
     "scan.selectDate": "计划日期",
     "scan.scheduleEnabled": "已启用",
     "scan.scheduleDisabled": "已禁用",
+    "scan.timezone": "时区",
+    "scan.selectTimezone": "选择时区",
 
     // ── Feed Status page ──────────────────────────────────
     "feed.title": "订阅状态",

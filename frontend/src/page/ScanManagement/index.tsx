@@ -34,12 +34,113 @@ const MONTHS = [
   "July","August","September","October","November","December",
 ];
 
-function fmtNextRun(iso: string | undefined): string {
+// Comprehensive IANA timezone list (same set as OpenVAS)
+const IANA_TIMEZONES: string[] = [
+  "Africa/Abidjan","Africa/Accra","Africa/Addis_Ababa","Africa/Algiers","Africa/Asmara",
+  "Africa/Bamako","Africa/Bangui","Africa/Banjul","Africa/Bissau","Africa/Blantyre",
+  "Africa/Brazzaville","Africa/Bujumbura","Africa/Cairo","Africa/Casablanca","Africa/Ceuta",
+  "Africa/Conakry","Africa/Dakar","Africa/Dar_es_Salaam","Africa/Djibouti","Africa/Douala",
+  "Africa/El_Aaiun","Africa/Freetown","Africa/Gaborone","Africa/Harare","Africa/Johannesburg",
+  "Africa/Juba","Africa/Kampala","Africa/Khartoum","Africa/Kigali","Africa/Kinshasa",
+  "Africa/Lagos","Africa/Libreville","Africa/Lome","Africa/Luanda","Africa/Lubumbashi",
+  "Africa/Lusaka","Africa/Malabo","Africa/Maputo","Africa/Maseru","Africa/Mbabane",
+  "Africa/Mogadishu","Africa/Monrovia","Africa/Nairobi","Africa/Ndjamena","Africa/Niamey",
+  "Africa/Nouakchott","Africa/Ouagadougou","Africa/Porto-Novo","Africa/Sao_Tome","Africa/Tripoli",
+  "Africa/Tunis","Africa/Windhoek",
+  "America/Adak","America/Anchorage","America/Anguilla","America/Antigua","America/Araguaina",
+  "America/Argentina/Buenos_Aires","America/Argentina/Catamarca","America/Argentina/Cordoba",
+  "America/Argentina/Jujuy","America/Argentina/La_Rioja","America/Argentina/Mendoza",
+  "America/Argentina/Rio_Gallegos","America/Argentina/Salta","America/Argentina/San_Juan",
+  "America/Argentina/San_Luis","America/Argentina/Tucuman","America/Argentina/Ushuaia",
+  "America/Aruba","America/Asuncion","America/Atikokan","America/Bahia","America/Bahia_Banderas",
+  "America/Barbados","America/Belem","America/Belize","America/Blanc-Sablon","America/Boa_Vista",
+  "America/Bogota","America/Boise","America/Cambridge_Bay","America/Campo_Grande","America/Cancun",
+  "America/Caracas","America/Cayenne","America/Cayman","America/Chicago","America/Chihuahua",
+  "America/Costa_Rica","America/Creston","America/Cuiaba","America/Curacao","America/Danmarkshavn",
+  "America/Dawson","America/Dawson_Creek","America/Denver","America/Detroit","America/Dominica",
+  "America/Edmonton","America/Eirunepe","America/El_Salvador","America/Fortaleza","America/Glace_Bay",
+  "America/Godthab","America/Goose_Bay","America/Grand_Turk","America/Grenada","America/Guadeloupe",
+  "America/Guatemala","America/Guayaquil","America/Guyana","America/Halifax","America/Havana",
+  "America/Hermosillo","America/Indiana/Indianapolis","America/Indiana/Knox","America/Indiana/Marengo",
+  "America/Indiana/Petersburg","America/Indiana/Tell_City","America/Indiana/Vevay",
+  "America/Indiana/Vincennes","America/Indiana/Winamac","America/Inuvik","America/Iqaluit",
+  "America/Jamaica","America/Juneau","America/Kentucky/Louisville","America/Kentucky/Monticello",
+  "America/Kralendijk","America/La_Paz","America/Lima","America/Los_Angeles","America/Lower_Princes",
+  "America/Maceio","America/Managua","America/Manaus","America/Marigot","America/Martinique",
+  "America/Matamoros","America/Mazatlan","America/Menominee","America/Merida","America/Metlakatla",
+  "America/Mexico_City","America/Miquelon","America/Moncton","America/Monterrey","America/Montevideo",
+  "America/Montserrat","America/Nassau","America/New_York","America/Nipigon","America/Nome",
+  "America/Noronha","America/North_Dakota/Beulah","America/North_Dakota/Center",
+  "America/North_Dakota/New_Salem","America/Ojinaga","America/Panama","America/Pangnirtung",
+  "America/Paramaribo","America/Phoenix","America/Port-au-Prince","America/Port_of_Spain",
+  "America/Porto_Velho","America/Puerto_Rico","America/Rainy_River","America/Rankin_Inlet",
+  "America/Recife","America/Regina","America/Resolute","America/Rio_Branco","America/Santa_Isabel",
+  "America/Santarem","America/Santiago","America/Santo_Domingo","America/Sao_Paulo",
+  "America/Scoresbysund","America/Sitka","America/St_Barthelemy","America/St_Johns",
+  "America/St_Kitts","America/St_Lucia","America/St_Thomas","America/St_Vincent",
+  "America/Swift_Current","America/Tegucigalpa","America/Thule","America/Thunder_Bay",
+  "America/Tijuana","America/Toronto","America/Tortola","America/Vancouver","America/Whitehorse",
+  "America/Winnipeg","America/Yakutat","America/Yellowknife",
+  "Antarctica/Casey","Antarctica/Davis","Antarctica/DumontDUrville","Antarctica/Macquarie",
+  "Antarctica/Mawson","Antarctica/McMurdo","Antarctica/Palmer","Antarctica/Rothera",
+  "Antarctica/Syowa","Antarctica/Troll","Antarctica/Vostok",
+  "Asia/Aden","Asia/Almaty","Asia/Amman","Asia/Anadyr","Asia/Aqtau","Asia/Aqtobe",
+  "Asia/Ashgabat","Asia/Baghdad","Asia/Bahrain","Asia/Baku","Asia/Bangkok","Asia/Beirut",
+  "Asia/Bishkek","Asia/Brunei","Asia/Choibalsan","Asia/Chongqing","Asia/Colombo","Asia/Damascus",
+  "Asia/Dhaka","Asia/Dili","Asia/Dubai","Asia/Dushanbe","Asia/Gaza","Asia/Harbin","Asia/Hebron",
+  "Asia/Ho_Chi_Minh","Asia/Hong_Kong","Asia/Hovd","Asia/Irkutsk","Asia/Jakarta","Asia/Jayapura",
+  "Asia/Jerusalem","Asia/Kabul","Asia/Kamchatka","Asia/Karachi","Asia/Kashgar","Asia/Kathmandu",
+  "Asia/Khandyga","Asia/Kolkata","Asia/Krasnoyarsk","Asia/Kuala_Lumpur","Asia/Kuching",
+  "Asia/Kuwait","Asia/Macau","Asia/Magadan","Asia/Makassar","Asia/Manila","Asia/Muscat",
+  "Asia/Nicosia","Asia/Novokuznetsk","Asia/Novosibirsk","Asia/Omsk","Asia/Oral","Asia/Phnom_Penh",
+  "Asia/Pontianak","Asia/Pyongyang","Asia/Qatar","Asia/Qyzylorda","Asia/Rangoon","Asia/Riyadh",
+  "Asia/Sakhalin","Asia/Samarkand","Asia/Seoul","Asia/Shanghai","Asia/Singapore","Asia/Taipei",
+  "Asia/Tashkent","Asia/Tbilisi","Asia/Tehran","Asia/Thimphu","Asia/Tokyo","Asia/Ulaanbaatar",
+  "Asia/Urumqi","Asia/Ust-Nera","Asia/Vientiane","Asia/Vladivostok","Asia/Yakutsk",
+  "Asia/Yekaterinburg","Asia/Yerevan",
+  "Atlantic/Azores","Atlantic/Bermuda","Atlantic/Canary","Atlantic/Cape_Verde","Atlantic/Faroe",
+  "Atlantic/Madeira","Atlantic/Reykjavik","Atlantic/South_Georgia","Atlantic/St_Helena",
+  "Atlantic/Stanley",
+  "Australia/Adelaide","Australia/Brisbane","Australia/Broken_Hill","Australia/Currie",
+  "Australia/Darwin","Australia/Eucla","Australia/Hobart","Australia/Lindeman",
+  "Australia/Lord_Howe","Australia/Melbourne","Australia/Perth","Australia/Sydney",
+  "Europe/Amsterdam","Europe/Andorra","Europe/Athens","Europe/Belgrade","Europe/Berlin",
+  "Europe/Bratislava","Europe/Brussels","Europe/Bucharest","Europe/Budapest","Europe/Busingen",
+  "Europe/Chisinau","Europe/Copenhagen","Europe/Dublin","Europe/Gibraltar","Europe/Guernsey",
+  "Europe/Helsinki","Europe/Isle_of_Man","Europe/Istanbul","Europe/Jersey","Europe/Kaliningrad",
+  "Europe/Kiev","Europe/Lisbon","Europe/Ljubljana","Europe/London","Europe/Luxembourg",
+  "Europe/Madrid","Europe/Malta","Europe/Mariehamn","Europe/Minsk","Europe/Monaco",
+  "Europe/Moscow","Europe/Nicosia","Europe/Oslo","Europe/Paris","Europe/Podgorica",
+  "Europe/Prague","Europe/Riga","Europe/Rome","Europe/Samara","Europe/San_Marino",
+  "Europe/Sarajevo","Europe/Simferopol","Europe/Skopje","Europe/Sofia","Europe/Stockholm",
+  "Europe/Tallinn","Europe/Tirane","Europe/Uzhgorod","Europe/Vaduz","Europe/Vatican",
+  "Europe/Vienna","Europe/Vilnius","Europe/Volgograd","Europe/Warsaw","Europe/Zagreb",
+  "Europe/Zaporozhye","Europe/Zurich",
+  "Indian/Antananarivo","Indian/Chagos","Indian/Christmas","Indian/Cocos","Indian/Comoro",
+  "Indian/Kerguelen","Indian/Mahe","Indian/Maldives","Indian/Mauritius","Indian/Mayotte",
+  "Indian/Reunion",
+  "Pacific/Apia","Pacific/Auckland","Pacific/Chatham","Pacific/Chuuk","Pacific/Easter",
+  "Pacific/Efate","Pacific/Enderbury","Pacific/Fakaofo","Pacific/Fiji","Pacific/Funafuti",
+  "Pacific/Galapagos","Pacific/Gambier","Pacific/Guadalcanal","Pacific/Guam","Pacific/Honolulu",
+  "Pacific/Johnston","Pacific/Kiritimati","Pacific/Kosrae","Pacific/Kwajalein","Pacific/Majuro",
+  "Pacific/Marquesas","Pacific/Midway","Pacific/Nauru","Pacific/Niue","Pacific/Norfolk",
+  "Pacific/Noumea","Pacific/Pago_Pago","Pacific/Palau","Pacific/Pitcairn","Pacific/Pohnpei",
+  "Pacific/Port_Moresby","Pacific/Rarotonga","Pacific/Saipan","Pacific/Tahiti","Pacific/Tarawa",
+  "Pacific/Tongatapu","Pacific/Wake","Pacific/Wallis",
+  "UTC",
+];
+
+function fmtNextRun(iso: string | undefined, tz: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" })
-    + " " + d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+  try {
+    return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric", timeZone: tz })
+      + " " + d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit", timeZone: tz });
+  } catch {
+    return d.toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" })
+      + " " + d.toLocaleTimeString("en-GB", { hour:"2-digit", minute:"2-digit" });
+  }
 }
 
 function freqBadge(s: AutoScanScheduleDTO): string {
@@ -1485,7 +1586,7 @@ const ICON_COLOR: Record<string, string> = {
 
 const ScanManagement: React.FC = () => {
   const { t } = useLanguage();
-  const { currentColor } = useStateContext();
+  const { currentColor, appTimezone, setAppTimezone } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [gmpStatus,      setGmpStatus]      = useState<GMPStatusResponse | null>(null);
@@ -1514,16 +1615,24 @@ const ScanManagement: React.FC = () => {
     time: string; date: string; dayOfMonth: number; month: number; day: number;
   }>({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
 
+  // Global timezone picker (in schedule tab header)
+  const [tzDropOpen,   setTzDropOpen]   = useState(false);
+  const [tzSearch,     setTzSearch]     = useState("");
+  const [savingTz,     setSavingTz]     = useState(false);
+  const [pendingTz,    setPendingTz]    = useState<string | null>(null); // selection before save
+
   const [taskDropOpen,  setTaskDropOpen]  = useState(false);
   const [taskSearch,    setTaskSearch]    = useState("");
   const [monthDropOpen, setMonthDropOpen] = useState(false);
   const taskDropRef  = useRef<HTMLDivElement | null>(null);
   const monthDropRef = useRef<HTMLDivElement | null>(null);
+  const tzDropRef    = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (!taskDropRef.current?.contains(e.target as Node))  setTaskDropOpen(false);
       if (!monthDropRef.current?.contains(e.target as Node)) setMonthDropOpen(false);
+      if (!tzDropRef.current?.contains(e.target as Node))    setTzDropOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -1641,6 +1750,7 @@ const ScanManagement: React.FC = () => {
     try {
       await CreateScanSchedule({
         task_id: schedForm.taskId, task_name: task.name, frequency: schedForm.frequency, scan_time: schedForm.time,
+        timezone:     appTimezone,   // always uses the global app timezone
         schedule_at:  schedForm.frequency === "once"    ? schedForm.date       : undefined,
         day_of_month: schedForm.frequency === "monthly" ? schedForm.dayOfMonth : undefined,
         month:        schedForm.frequency === "yearly"  ? schedForm.month      : undefined,
@@ -1651,7 +1761,7 @@ const ScanManagement: React.FC = () => {
       setSchedForm({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
       void fetchSchedules();
     } catch { message.error(t("common.noResults")); }
-  }, [schedForm, tasks, fetchSchedules, t, closeScheduleModal]);
+  }, [schedForm, appTimezone, tasks, fetchSchedules, t, closeScheduleModal]);
 
   const toggleSchedule = useCallback(async (id: number, enabled: boolean) => {
     try { await UpdateScanSchedule(id, !enabled); void fetchSchedules(); }
@@ -1662,6 +1772,7 @@ const ScanManagement: React.FC = () => {
     try { await DeleteScanSchedule(id); message.success(t("scan.scheduleDeleted")); void fetchSchedules(); }
     catch { message.error(t("common.noResults")); }
   }, [fetchSchedules, t]);
+
 
   const ACTIVE_STATUSES = ["running", "requested", "stop requested"];
   const runningCount = tasks.filter(t => ["running", "requested"].includes(t.status?.toLowerCase() ?? "")).length;
@@ -1772,8 +1883,64 @@ const ScanManagement: React.FC = () => {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
             <GMPStatusBadge status={gmpStatus} loading={loadingStatus} />
+
+            {/* ── Global Timezone Picker ── */}
+            <div className="relative" ref={tzDropRef}>
+              <button type="button" onClick={() => { setTzDropOpen(p => !p); setTzSearch(""); }}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
+                <FiCalendar className="text-[11px]" style={{ color: currentColor }} />
+                <span className="max-w-[120px] truncate">{pendingTz ?? appTimezone}</span>
+                <FiChevronDown className={`text-[10px] text-slate-400 transition-transform ${tzDropOpen ? "rotate-180" : ""}`} />
+              </button>
+              {tzDropOpen && (
+                <div className="absolute right-0 z-[9999] mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                  <div className="border-b border-slate-100 p-2 dark:border-white/8">
+                    <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("scan.timezone")}</p>
+                    <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
+                      <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
+                      <input type="text" value={tzSearch} onChange={e => setTzSearch(e.target.value)}
+                        placeholder="Search timezone…" autoFocus
+                        className="h-7 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
+                    </div>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto p-1.5">
+                    {(() => {
+                      const kw = tzSearch.trim().toLowerCase();
+                      const filtered = kw ? IANA_TIMEZONES.filter(tz => tz.toLowerCase().includes(kw)) : IANA_TIMEZONES;
+                      if (filtered.length === 0)
+                        return <p className="py-4 text-center text-[11px] text-slate-400">No results</p>;
+                      return (
+                        <div className="space-y-0.5">
+                          {filtered.map(tz => {
+                            const isSel = (pendingTz ?? appTimezone) === tz;
+                            return (
+                              <button key={tz} type="button"
+                                onClick={() => { setPendingTz(tz); setTzDropOpen(false); setTzSearch(""); void (async () => { setSavingTz(true); try { await setAppTimezone(tz); } finally { setSavingTz(false); setPendingTz(null); } })(); }}
+                                className={["flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition",
+                                  isSel ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5"].join(" ")}>
+                                <span className={["flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border transition",
+                                  isSel ? "border-blue-500 bg-blue-500 text-white" : "border-slate-300 bg-white text-transparent dark:border-white/20 dark:bg-white/5"].join(" ")}>
+                                  <FiCheck className="text-[8px]" />
+                                </span>
+                                <span className="truncate text-[11.5px] text-slate-700 dark:text-white/75">{tz}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  {savingTz && (
+                    <div className="border-t border-slate-100 px-3 py-2 text-[10.5px] text-slate-400 dark:border-white/8">
+                      <FiRefreshCw className="mr-1.5 inline animate-spin text-[10px]" />Saving…
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <button type="button" onClick={() => void handleRefresh()} disabled={refreshing}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:bg-white/5 dark:text-white/50"
               title={t("common.refresh")}>
@@ -1983,10 +2150,10 @@ const ScanManagement: React.FC = () => {
       {/* ── Schedule Tab ── */}
       {activeTab === "schedule" && (
         <div className="space-y-3">
-          <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/3">
+          <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-2.5 dark:border-white/8 dark:bg-white/3">
             <FiClock className="mt-0.5 shrink-0 text-[12px] text-slate-400 dark:text-white/30" />
             <p className="text-[11px] text-slate-500 dark:text-white/40">
-              {t("scan.scheduleLocalNote")} · {t("common.refresh")} เพื่ออัปเดต status
+              Auto scans fire at local time in <strong className="text-slate-700 dark:text-white/70">{appTimezone}</strong> — change timezone using the selector in the header above
             </p>
           </div>
           {loadingSchedules ? (
@@ -2023,9 +2190,17 @@ const ScanManagement: React.FC = () => {
                         <span className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold"
                           style={{ backgroundColor: fc.bg, color: fc.text }}>{freqBadge(s)}</span>
                       </div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-white/35">
-                        <FiClock className="text-[10px]" />
-                        <span>{t("scan.nextRun")}: <strong className="text-slate-600 dark:text-white/55">{fmtNextRun(s.next_run_at)}</strong></span>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-slate-400 dark:text-white/35">
+                        <span className="flex items-center gap-1">
+                          <FiClock className="text-[10px]" />
+                          {t("scan.nextRun")}: <strong className="text-slate-600 dark:text-white/55">{fmtNextRun(s.next_run_at, appTimezone)}</strong>
+                        </span>
+                        {s.timezone && (
+                          <span className="flex items-center gap-1">
+                            <FiCalendar className="text-[10px]" />
+                            <span className="text-slate-500 dark:text-white/40">{s.timezone}</span>
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -2225,14 +2400,23 @@ const ScanManagement: React.FC = () => {
                     className={["pl-10", inputCls].join(" ")} />
                 </div>
               </div>
+
+              {/* Timezone info (read-only, controlled globally above) */}
+              <div className="flex items-center gap-2 rounded-xl border border-slate-100 bg-slate-50/40 px-3.5 py-2 dark:border-white/8 dark:bg-white/3">
+                <FiCalendar className="shrink-0 text-[11px] text-slate-400 dark:text-white/30" />
+                <p className="text-[10.5px] text-slate-500 dark:text-white/40">
+                  {t("scan.timezone")}: <strong className="text-slate-700 dark:text-white/70">{appTimezone}</strong>
+                </p>
+              </div>
+
               {schedForm.taskId && (
                 <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                     {t("scan.nextRun")}:&nbsp;
                     <span className="font-semibold text-slate-700 dark:text-white/70">
-                      {schedForm.frequency === "once" && schedForm.date      ? `${schedForm.date} ${schedForm.time}`
-                        : schedForm.frequency === "monthly" && schedForm.dayOfMonth ? `Day ${schedForm.dayOfMonth} of each month at ${schedForm.time}`
-                        : schedForm.frequency === "yearly"  && schedForm.month && schedForm.day ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time}`
+                      {schedForm.frequency === "once" && schedForm.date      ? `${schedForm.date} ${schedForm.time} (${appTimezone})`
+                        : schedForm.frequency === "monthly" && schedForm.dayOfMonth ? `Day ${schedForm.dayOfMonth} of each month at ${schedForm.time} (${appTimezone})`
+                        : schedForm.frequency === "yearly"  && schedForm.month && schedForm.day ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time} (${appTimezone})`
                         : "—"}
                     </span>
                   </p>

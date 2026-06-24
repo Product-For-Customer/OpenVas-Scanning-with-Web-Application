@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import type { ReactNode, ChangeEvent } from "react";
+import { GetAppSettings, UpdateAppSetting } from "../services/setting";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -49,6 +50,10 @@ interface StateContextType {
 
   userRefreshTrigger: number;
   triggerUserRefresh: () => void;
+
+  // ── Global timezone ──────────────────────────────────────────
+  appTimezone: string;
+  setAppTimezone: (tz: string) => Promise<void>;
 }
 
 const initialState: InitialState = {
@@ -64,9 +69,11 @@ const StateContext = createContext<StateContextType | undefined>(undefined);
 // Storage keys
 // ─────────────────────────────────────────────────────────────
 
-const STORAGE_KEY_MODE  = "themeMode";
-const STORAGE_KEY_COLOR = "colorMode";
-const DEFAULT_COLOR     = "#1A97F5";
+const STORAGE_KEY_MODE     = "themeMode";
+const STORAGE_KEY_COLOR    = "colorMode";
+const STORAGE_KEY_TIMEZONE = "appTimezone";
+const DEFAULT_COLOR        = "#1A97F5";
+const DEFAULT_TIMEZONE     = "Asia/Bangkok";
 
 // ─────────────────────────────────────────────────────────────
 // DOM helpers
@@ -98,6 +105,11 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [isClicked, setIsClicked]           = useState<InitialState>(initialState);
   const [userRefreshTrigger, setUserRefreshTrigger] = useState<number>(0);
 
+  // Global app timezone — loaded from API, falls back to localStorage → default
+  const [appTimezone, _setAppTimezone] = useState<string>(
+    () => localStorage.getItem(STORAGE_KEY_TIMEZONE) ?? DEFAULT_TIMEZONE
+  );
+
   // ── Init from localStorage ──────────────────────────────────
   useEffect(() => {
     const savedMode  = localStorage.getItem(STORAGE_KEY_MODE);
@@ -116,12 +128,23 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
     applyAccentColor(color);
   }, []);
 
+  // ── Fetch timezone from backend on mount ────────────────────
+  useEffect(() => {
+    GetAppSettings().then((settings) => {
+      const tz = settings["timezone"];
+      if (tz) {
+        _setAppTimezone(tz);
+        localStorage.setItem(STORAGE_KEY_TIMEZONE, tz);
+      }
+    }).catch(() => { /* keep localStorage fallback */ });
+  }, []);
+
   // ── Keep .dark class in sync with currentMode ───────────────
   useEffect(() => {
     applyTheme(currentMode);
   }, [currentMode]);
 
-  // ── Cross-tab sync (both mode AND color) ────────────────────
+  // ── Cross-tab sync (mode, color, timezone) ──────────────────
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY_MODE && e.newValue) {
@@ -132,6 +155,9 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
         setCurrentColor(e.newValue);
         applyAccentColor(e.newValue);
       }
+      if (e.key === STORAGE_KEY_TIMEZONE && e.newValue) {
+        _setAppTimezone(e.newValue);
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -139,7 +165,6 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
 
   // ── Methods ─────────────────────────────────────────────────
 
-  /** Set dark/light mode — applies CSS class + persists to localStorage */
   const setTheme = useCallback((mode: ThemeMode) => {
     setCurrentMode(mode);
     localStorage.setItem(STORAGE_KEY_MODE, mode);
@@ -156,7 +181,6 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
     setTheme(currentMode === "Dark" ? "Light" : "Dark");
   }, [currentMode, setTheme]);
 
-  /** Set accent color — applies CSS variable + persists to localStorage */
   const setColor = useCallback((color: string) => {
     setCurrentColor(color);
     applyAccentColor(color);
@@ -173,6 +197,13 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
     () => setUserRefreshTrigger((prev) => prev + 1),
     []
   );
+
+  /** Save timezone to backend + localStorage + React state */
+  const setAppTimezone = useCallback(async (tz: string) => {
+    _setAppTimezone(tz);
+    localStorage.setItem(STORAGE_KEY_TIMEZONE, tz);
+    await UpdateAppSetting("timezone", tz);
+  }, []);
 
   // ── Context value ────────────────────────────────────────────
   const value = useMemo<StateContextType>(
@@ -197,6 +228,8 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
       toggleMode,
       userRefreshTrigger,
       triggerUserRefresh,
+      appTimezone,
+      setAppTimezone,
     }),
     [
       currentColor,
@@ -211,6 +244,8 @@ export const ContextProvider: React.FC<{ children: ReactNode }> = ({ children })
       toggleMode,
       userRefreshTrigger,
       triggerUserRefresh,
+      appTimezone,
+      setAppTimezone,
     ]
   );
 

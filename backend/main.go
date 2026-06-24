@@ -20,6 +20,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
 	"github.com/Tawunchai/openvas/controller/schedule"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/controller/threat"
 	totpctrl "github.com/Tawunchai/openvas/controller/totp"
 	"github.com/Tawunchai/openvas/controller/feedschedule"
@@ -30,9 +31,10 @@ import (
 )
 
 func main() {
-	config.ConnectDB() // เชื่อมต่อฐานข้อมูล
+	config.ConnectDB()     // เชื่อมต่อฐานข้อมูล
 	config.SetupDatabase() // สร้างตารางและข้อมูลเริ่มต้น
-	config.SeedDatabase() // เติมข้อมูลเริ่มต้นเพิ่มเติม
+	config.SeedDatabase()  // เติมข้อมูลเริ่มต้นเพิ่มเติม
+	setting.InitTimezoneCache() // โหลด timezone จาก DB เข้า memory cache
 
 	go line.StartLineStatusListener()
 	go automation.StartDailyFeedUpdateScheduler()
@@ -200,6 +202,10 @@ func main() {
 		authorized.DELETE("/gmp/targets/:id", gmp.DeleteGMPTarget)
 		authorized.GET("/gmp/scanners", gmp.ListGMPScanners)
 		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)
+
+		// ===== App Settings (timezone, etc.) =====
+		authorized.GET("/settings", setting.GetSettings)
+		authorized.PUT("/settings", setting.UpdateSetting)
 
 		// ===== Auto Scan Schedule =====
 		authorized.GET("/scan-schedules", schedule.ListSchedules)

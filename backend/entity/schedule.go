@@ -9,6 +9,7 @@ type AutoScanSchedule struct {
 	TaskName   string     `gorm:"column:task_name"`
 	Frequency  string     `gorm:"column:frequency;not null"` // once | monthly | yearly
 	ScanTime   string     `gorm:"column:scan_time;not null"` // "HH:mm" 24-hr
+	Timezone   string     `gorm:"column:timezone;default:'UTC'"` // IANA timezone, e.g. "Asia/Bangkok"
 	ScheduleAt *time.Time `gorm:"column:schedule_at"`        // for "once" — full datetime
 	DayOfMonth *int       `gorm:"column:day_of_month"`       // for "monthly" (1-31)
 	Month      *int       `gorm:"column:month"`              // for "yearly" (1-12)

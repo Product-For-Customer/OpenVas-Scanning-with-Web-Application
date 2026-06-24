@@ -204,7 +204,7 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
       day: "2-digit",
       month: "short",
       year: "numeric",
-      timeZone: "Asia/Bangkok",
+      timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
     });
 
     const timeText = date.toLocaleTimeString("th-TH", {
@@ -212,7 +212,7 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
-      timeZone: "Asia/Bangkok",
+      timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
     });
 
     return `${dateText} ${timeText} น.`;
@@ -226,7 +226,7 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
         day: "2-digit",
         month: "short",
         year: "numeric",
-        timeZone: "Asia/Bangkok",
+        timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
       });
 
       const timeText = date.toLocaleTimeString("th-TH", {
@@ -234,7 +234,7 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
         minute: "2-digit",
         second: "2-digit",
         hour12: false,
-        timeZone: "Asia/Bangkok",
+        timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
       });
 
       return `${dateText} ${timeText} น.`;

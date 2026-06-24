@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 )
@@ -274,7 +275,8 @@ ORDER BY va.severity DESC, va.vuln_name
 `
 
 	var rows []vulnRow
-	if err := db.Raw(vulnSQL, ip).Scan(&rows).Error; err != nil {
+	finalVulnSQL := strings.ReplaceAll(vulnSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	if err := db.Raw(finalVulnSQL, ip).Scan(&rows).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -532,7 +534,8 @@ ORDER BY
 `
 
 	var items []SLABreachItem
-	if err := db.Raw(slaSQL).Scan(&items).Error; err != nil {
+	finalSlaSQL := strings.ReplaceAll(slaSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	if err := db.Raw(finalSlaSQL).Scan(&items).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

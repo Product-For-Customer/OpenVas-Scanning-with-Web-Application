@@ -430,5 +430,21 @@ func SeedDatabase() {
 		}
 	}
 
+	// =========================
+	// Seed SystemConfig: default timezone
+	// ใช้ FirstOrCreate เพื่อไม่ทับค่าที่ user อาจตั้งไว้แล้ว
+	// =========================
+	var tzConfig entity.SystemConfig
+	if err := db.Where("key = ?", "timezone").First(&tzConfig).Error; err != nil {
+		tzConfig = entity.SystemConfig{Key: "timezone", Value: "Asia/Bangkok"}
+		if err2 := db.Create(&tzConfig).Error; err2 != nil {
+			log.Printf("⚠️ Failed to seed SystemConfig timezone: %v", err2)
+		} else {
+			fmt.Println("✅ Seeded SystemConfig timezone = Asia/Bangkok")
+		}
+	} else {
+		fmt.Println("⏭️ Skip seeding SystemConfig timezone: already exists")
+	}
+
 	fmt.Println("✅ SeedDatabase completed")
 }

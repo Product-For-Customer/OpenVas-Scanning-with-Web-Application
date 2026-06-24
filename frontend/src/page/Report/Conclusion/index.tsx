@@ -1156,10 +1156,7 @@ const index: React.FC<ConclusionProps> = ({
                                             return raw;
                                           }
 
-                                          const bangkokTime = new Date(
-                                            d.getTime() + 7 * 60 * 60 * 1000
-                                          );
-
+                                          const tz = localStorage.getItem("appTimezone") ?? "Asia/Bangkok";
                                           return new Intl.DateTimeFormat("en-GB", {
                                             day: "2-digit",
                                             month: "2-digit",
@@ -1168,7 +1165,8 @@ const index: React.FC<ConclusionProps> = ({
                                             minute: "2-digit",
                                             second: "2-digit",
                                             hour12: false,
-                                          }).format(bangkokTime);
+                                            timeZone: tz,
+                                          }).format(d);
                                         })()
                                       : "-"}
                                   </span>
