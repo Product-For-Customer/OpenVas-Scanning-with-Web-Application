@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/gmp"
+	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
@@ -24,7 +26,7 @@ type ScheduleDTO struct {
 	TaskName   string  `json:"task_name"`
 	Frequency  string  `json:"frequency"`
 	ScanTime   string  `json:"scan_time"`
-	Timezone   string  `json:"timezone"` // reflects the global timezone at time of creation
+	Timezone   string  `json:"timezone"`
 	ScheduleAt *string `json:"schedule_at,omitempty"`
 	DayOfMonth *int    `json:"day_of_month,omitempty"`
 	Month      *int    `json:"month,omitempty"`
@@ -39,8 +41,8 @@ type CreateScheduleRequest struct {
 	TaskID     string  `json:"task_id"   binding:"required"`
 	TaskName   string  `json:"task_name"`
 	Frequency  string  `json:"frequency" binding:"required"`
-	ScanTime   string  `json:"scan_time" binding:"required"` // "HH:mm"
-	ScheduleAt *string `json:"schedule_at,omitempty"`        // "YYYY-MM-DD" for once
+	ScanTime   string  `json:"scan_time" binding:"required"`
+	ScheduleAt *string `json:"schedule_at,omitempty"`
 	DayOfMonth *int    `json:"day_of_month,omitempty"`
 	Month      *int    `json:"month,omitempty"`
 	Day        *int    `json:"day,omitempty"`
@@ -53,6 +55,18 @@ type UpdateScheduleRequest struct {
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
+
+func resolveLocation(tz string) *time.Location {
+	t := strings.TrimSpace(tz)
+	if t == "" {
+		return time.UTC
+	}
+	loc, err := time.LoadLocation(t)
+	if err != nil {
+		return time.UTC
+	}
+	return loc
+}
 
 func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 	dto := ScheduleDTO{
@@ -69,7 +83,9 @@ func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 		CreatedAt:  s.CreatedAt.Format(time.RFC3339),
 	}
 	if s.ScheduleAt != nil {
-		str := s.ScheduleAt.Format("2006-01-02")
+		// Format date in the schedule's own timezone to avoid UTC date drift
+		loc := resolveLocation(s.Timezone)
+		str := s.ScheduleAt.In(loc).Format("2006-01-02")
 		dto.ScheduleAt = &str
 	}
 	if s.LastRunAt != nil {
@@ -86,10 +102,7 @@ func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 // computeNextRun always uses the current global timezone from SystemConfig.
 func computeNextRun(freq, scanTime string, scheduleAt *string, dayOfMonth, month, day *int) *time.Time {
 	tz := setting.GetAppTimezone()
-	loc, err := time.LoadLocation(tz)
-	if err != nil {
-		loc = time.UTC
-	}
+	loc := resolveLocation(tz)
 	now := time.Now().In(loc)
 
 	parts := strings.Split(scanTime, ":")
@@ -138,6 +151,115 @@ func computeNextRun(freq, scanTime string, scheduleAt *string, dayOfMonth, month
 }
 
 // ─────────────────────────────────────────────────────────────
+// LINE notification helpers
+// ─────────────────────────────────────────────────────────────
+
+func nowInTZ(tz string) string {
+	loc := resolveLocation(tz)
+	return time.Now().In(loc).Format("02/01/2006 15:04")
+}
+
+func buildScanStartMessage(s entity.AutoScanSchedule, targetName string) string {
+	tz := s.Timezone
+	if tz == "" {
+		tz = setting.GetAppTimezone()
+	}
+	target := targetName
+	if target == "" {
+		target = "-"
+	}
+	return fmt.Sprintf(
+		"🚀 Auto Scan เริ่มต้นแล้วครับ\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Task    : %s\n"+
+			"🎯 Target  : %s\n"+
+			"⏰ เวลา    : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"ระบบกำลังสแกนหา Vulnerability ครับ",
+		s.TaskName, target, nowInTZ(tz), tz,
+	)
+}
+
+func buildScanDoneMessage(s entity.AutoScanSchedule, status, targetName string) string {
+	tz := s.Timezone
+	if tz == "" {
+		tz = setting.GetAppTimezone()
+	}
+	target := targetName
+	if target == "" {
+		target = "-"
+	}
+	emoji := "✅"
+	label := "เสร็จสิ้นแล้วครับ"
+	desc := "การสแกนเสร็จสมบูรณ์ครับ"
+	if strings.EqualFold(status, "stopped") || strings.EqualFold(status, "interrupted") {
+		emoji = "⚠️"
+		label = "ถูกหยุดแล้วครับ"
+		desc = fmt.Sprintf("การสแกนถูกหยุด (สถานะ: %s)", status)
+	}
+	return fmt.Sprintf(
+		"%s Auto Scan %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Task    : %s\n"+
+			"🎯 Target  : %s\n"+
+			"⏰ เวลา    : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"%s",
+		emoji, label, s.TaskName, target, nowInTZ(tz), tz, desc,
+	)
+}
+
+// getTaskTargetName tries to resolve the target name from GMP for the given task ID.
+func getTaskTargetName(taskID string) string {
+	tasks, err := gmp.GetTasks()
+	if err != nil {
+		return ""
+	}
+	for _, t := range tasks {
+		if t.ID == taskID {
+			return t.Target.Name
+		}
+	}
+	return ""
+}
+
+// pollForScanCompletion runs in a goroutine and sends a LINE notification when the scan finishes.
+func pollForScanCompletion(s entity.AutoScanSchedule, targetName string) {
+	ticker := time.NewTicker(30 * time.Second)
+	timeout := time.NewTimer(24 * time.Hour)
+	defer ticker.Stop()
+	defer timeout.Stop()
+
+	for {
+		select {
+		case <-timeout.C:
+			log.Printf("⏱ pollForScanCompletion timeout: task=%q", s.TaskName)
+			return
+
+		case <-ticker.C:
+			tasks, err := gmp.GetTasks()
+			if err != nil {
+				continue
+			}
+			for _, t := range tasks {
+				if t.ID != s.TaskID {
+					continue
+				}
+				st := strings.ToLower(t.Status)
+				if st == "done" || st == "stopped" || st == "interrupted" {
+					msg := buildScanDoneMessage(s, t.Status, targetName)
+					line.SendScanNotification(msg)
+					log.Printf("📲 LINE scan-done sent: task=%q status=%s", s.TaskName, t.Status)
+				}
+				return
+			}
+		}
+	}
+}
+
+// ─────────────────────────────────────────────────────────────
 // HTTP Handlers
 // ─────────────────────────────────────────────────────────────
 
@@ -166,13 +288,8 @@ func CreateSchedule(c *gin.Context) {
 		return
 	}
 
-	// Always use the current global timezone
 	tz := setting.GetAppTimezone()
-	loc, _ := time.LoadLocation(tz)
-	if loc == nil {
-		loc = time.UTC
-		tz = "UTC"
-	}
+	loc := resolveLocation(tz)
 
 	nextRun := computeNextRun(req.Frequency, req.ScanTime, req.ScheduleAt, req.DayOfMonth, req.Month, req.Day)
 
@@ -191,7 +308,7 @@ func CreateSchedule(c *gin.Context) {
 	if req.ScheduleAt != nil {
 		base, err := time.ParseInLocation("2006-01-02", *req.ScheduleAt, loc)
 		if err == nil {
-			t := time.Date(base.Year(), base.Month(), base.Day(), 0, 0, 0, 0, loc)
+			t := time.Date(base.Year(), base.Month(), base.Day(), 12, 0, 0, 0, loc) // noon avoids UTC date flip
 			s.ScheduleAt = &t
 		}
 	}
@@ -219,9 +336,22 @@ func UpdateSchedule(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "schedule not found"})
 		return
 	}
+
 	if req.Enabled != nil {
 		s.Enabled = *req.Enabled
+		// When re-enabling a "once" schedule that was already fired (next_run_at = nil),
+		// recompute next_run_at so it can fire again.
+		if *req.Enabled && s.NextRunAt == nil {
+			var schedAtStr *string
+			if s.ScheduleAt != nil {
+				loc := resolveLocation(s.Timezone)
+				str := s.ScheduleAt.In(loc).Format("2006-01-02")
+				schedAtStr = &str
+			}
+			s.NextRunAt = computeNextRun(s.Frequency, s.ScanTime, schedAtStr, s.DayOfMonth, s.Month, s.Day)
+		}
 	}
+
 	db.Save(&s)
 	c.JSON(http.StatusOK, toDTO(s))
 }
@@ -238,11 +368,13 @@ func DeleteSchedule(c *gin.Context) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Background Scheduler — checks every minute for due schedules
+// Background Scheduler
 // ─────────────────────────────────────────────────────────────
 
 func StartAutoScanScheduler() {
 	log.Println("🕑 Auto scan scheduler started — checking every minute")
+	// Run once immediately so schedules due at startup aren't delayed 1 min
+	runDueSchedules()
 	ticker := time.NewTicker(1 * time.Minute)
 	for range ticker.C {
 		runDueSchedules()
@@ -267,23 +399,37 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 	tz := setting.GetAppTimezone()
 	log.Printf("🎯 Auto scan triggered: task=%q id=%d freq=%s tz=%s\n", s.TaskName, s.ID, s.Frequency, tz)
 
+	// Resolve target name once for both notifications
+	targetName := getTaskTargetName(s.TaskID)
+
 	if _, err := gmp.StartTask(s.TaskID); err != nil {
 		log.Printf("❌ Auto scan failed: task=%q err=%v\n", s.TaskName, err)
+		// Notify LINE that scan FAILED to start
+		failMsg := fmt.Sprintf(
+			"❌ Auto Scan เริ่มไม่ได้ครับ\n📋 Task: %s\n⏰ %s (%s)\nข้อผิดพลาด: %v",
+			s.TaskName, nowInTZ(tz), tz, err,
+		)
+		go line.SendScanNotification(failMsg)
 	} else {
 		log.Printf("✅ Auto scan started: task=%q\n", s.TaskName)
+		// Notify LINE: scan started
+		go line.SendScanNotification(buildScanStartMessage(s, targetName))
+		// Poll until done then notify again
+		go pollForScanCompletion(s, targetName)
 	}
 
 	now := time.Now()
 	s.LastRunAt = &now
-	s.Timezone = tz // keep in sync with global
+	s.Timezone = tz
 
 	if s.Frequency == "once" {
 		s.Enabled = false
 		s.NextRunAt = nil
 	} else {
+		loc := resolveLocation(s.Timezone)
 		var schedAtStr *string
 		if s.ScheduleAt != nil {
-			str := s.ScheduleAt.Format("2006-01-02")
+			str := s.ScheduleAt.In(loc).Format("2006-01-02")
 			schedAtStr = &str
 		}
 		next := computeNextRun(s.Frequency, s.ScanTime, schedAtStr, s.DayOfMonth, s.Month, s.Day)

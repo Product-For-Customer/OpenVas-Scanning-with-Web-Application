@@ -4,7 +4,7 @@ import {
   FiPlay, FiTrash2, FiPlus, FiRefreshCw,
   FiSettings, FiTarget, FiAlertTriangle, FiCheckCircle,
   FiClock, FiCalendar, FiX, FiRepeat,
-  FiChevronDown, FiSearch, FiCheck, FiType, FiAlignLeft,
+  FiChevronDown, FiChevronLeft, FiChevronRight, FiSearch, FiCheck, FiType, FiAlignLeft,
   FiActivity, FiTrendingUp, FiMinus, FiEdit2, FiStopCircle,
 } from "react-icons/fi";
 import { message } from "antd";
@@ -1781,30 +1781,36 @@ const ScanManagement: React.FC = () => {
   const hasRunning   = tasks.some(t => ACTIVE_STATUSES.includes(t.status?.toLowerCase() ?? ""));
 
   // ── Sorting ──────────────────────────────────────────────────
-  const [sortBy,  setSortBy]  = useState<SortCol | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [sortBy,      setSortBy]      = useState<SortCol | null>(null);
+  const [sortDir,     setSortDir]     = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const TASKS_PER_PAGE = 10;
 
   const handleSort = (col: SortCol) => {
     if (sortBy === col) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortBy(col); setSortDir("asc"); }
+    setCurrentPage(1);
+  };
+
+  // Status priority: Running → Stopped → New → Done → other
+  const statusPriority = (t: GMPTaskDTO): number => {
+    switch (t.status?.toLowerCase() ?? "") {
+      case "running":          return 4;
+      case "stop requested":   return 4; // treat as running-ish
+      case "stopped":          return 3;
+      case "interrupted":      return 3;
+      case "new":              return 2;
+      case "done":             return 1;
+      default:                 return 0;
+    }
   };
 
   const sortedTasks = useMemo(() => {
-    if (!sortBy) return tasks;
-    return [...tasks].sort((a, b) => {
+    const base = [...tasks].sort((a, b) => statusPriority(b) - statusPriority(a));
+    if (!sortBy) return base;
+
+    return base.sort((a, b) => {
       let cmp = 0;
-      const sl = (t: GMPTaskDTO) => t.status?.toLowerCase() ?? "";
-      // status priority: Running > New > Done > Stopped > Interrupted
-      const statusPriority = (t: GMPTaskDTO) => {
-        switch (sl(t)) {
-          case "running":     return 4;
-          case "new":         return 3;
-          case "done":        return 2;
-          case "stopped":     return 1;
-          case "interrupted": return 0;
-          default:            return -1;
-        }
-      };
       switch (sortBy) {
         case "status":
           cmp = statusPriority(a) - statusPriority(b);
@@ -1819,13 +1825,21 @@ const ScanManagement: React.FC = () => {
           cmp = a.severity - b.severity;
           break;
         case "trend":
-          // sort by severity desc for done tasks; running last
-          cmp = (sl(a) === "running" ? -1 : a.severity) - (sl(b) === "running" ? -1 : b.severity);
+          cmp = (statusPriority(a) >= 4 ? -1 : a.severity) - (statusPriority(b) >= 4 ? -1 : b.severity);
           break;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [tasks, sortBy, sortDir]);
+
+  const totalPages  = Math.max(1, Math.ceil(sortedTasks.length / TASKS_PER_PAGE));
+  const pagedTasks  = useMemo(() => {
+    const start = (currentPage - 1) * TASKS_PER_PAGE;
+    return sortedTasks.slice(start, start + TASKS_PER_PAGE);
+  }, [sortedTasks, currentPage]);
+
+  // Reset to page 1 when task list or sort changes
+  useEffect(() => { setCurrentPage(1); }, [tasks.length, sortBy, sortDir]);
 
   const statCards = [
     { label: "Total Tasks", val: tasks.length,  icon: <FiSettings />,    color: "violet"  },
@@ -1891,11 +1905,11 @@ const ScanManagement: React.FC = () => {
               <button type="button" onClick={() => { setTzDropOpen(p => !p); setTzSearch(""); }}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
                 <FiCalendar className="text-[11px]" style={{ color: currentColor }} />
-                <span className="max-w-[120px] truncate">{pendingTz ?? appTimezone}</span>
+                <span className="max-w-30 truncate">{pendingTz ?? appTimezone}</span>
                 <FiChevronDown className={`text-[10px] text-slate-400 transition-transform ${tzDropOpen ? "rotate-180" : ""}`} />
               </button>
               {tzDropOpen && (
-                <div className="absolute right-0 z-[9999] mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0d0b1a]">
+                <div className="absolute right-0 z-9999 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0d0b1a]">
                   <div className="border-b border-slate-100 p-2 dark:border-white/8">
                     <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("scan.timezone")}</p>
                     <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
@@ -2120,7 +2134,7 @@ const ScanManagement: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedTasks.map(task => (
+                    {pagedTasks.map(task => (
                       <TaskRow
                         key={task.id}
                         task={task}
@@ -2133,12 +2147,73 @@ const ScanManagement: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
-                <p className="text-[10.5px] text-slate-400 dark:text-white/30">{tasks.length} task{tasks.length !== 1 ? "s" : ""} total</p>
-                {hasRunning && (
-                  <div className="flex items-center gap-1.5 text-[10.5px] text-cyan-500">
-                    <FiActivity className="animate-pulse text-[11px]" />
-                    <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress · auto-refreshing every 4s</span>
+
+              {/* ── Footer: info + pagination ── */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+
+                {/* Left: count + live badge */}
+                <div className="flex items-center gap-3">
+                  <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                    {sortedTasks.length > TASKS_PER_PAGE
+                      ? `${(currentPage - 1) * TASKS_PER_PAGE + 1}–${Math.min(currentPage * TASKS_PER_PAGE, sortedTasks.length)} of ${sortedTasks.length} tasks`
+                      : `${tasks.length} task${tasks.length !== 1 ? "s" : ""} total`}
+                  </p>
+                  {hasRunning && (
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-cyan-500">
+                      <FiActivity className="animate-pulse text-[11px]" />
+                      <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: pagination controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+                    >
+                      <FiChevronLeft className="text-[12px]" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && typeof arr[idx - 1] === "number" && (p as number) - (arr[idx - 1] as number) > 1)
+                          acc.push("…");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === "…" ? (
+                          <span key={`gap-${idx}`} className="px-1 text-[11px] text-slate-400 dark:text-white/30">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setCurrentPage(p as number)}
+                            className={[
+                              "grid h-7 min-w-7 place-items-center rounded-lg px-1.5 text-[11px] font-semibold transition",
+                              currentPage === p
+                                ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
+                                : "border border-slate-200/70 text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5",
+                            ].join(" ")}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+                    >
+                      <FiChevronRight className="text-[12px]" />
+                    </button>
                   </div>
                 )}
               </div>
