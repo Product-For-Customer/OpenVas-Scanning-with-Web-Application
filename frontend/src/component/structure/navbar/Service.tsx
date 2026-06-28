@@ -10,6 +10,7 @@ import {
   UpdateSendEmailByID,
   type SendEmailResponse,
 } from "../../../services";
+import { GetAppSettings, UpdateAppSetting } from "../../../services/setting";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 
@@ -141,9 +142,35 @@ const Service: React.FC = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const data = await ListSendEmails();
+      const [emailData, settings] = await Promise.all([
+        ListSendEmails(),
+        GetAppSettings().catch(() => ({} as Record<string, string>)),
+      ]);
       if (!isMounted.current) return;
-      const item = data?.[0] ?? null;
+
+      // ── Apply DB values (authoritative source), sync back to localStorage ──
+      const applyBool = (key: string, setter: (v: boolean) => void, defaultWhenMissing: boolean) => {
+        if (settings[key] !== undefined) {
+          const val = key === OTP_LOGIN_KEY
+            ? settings[key] !== "false"   // login OTP: default true → truthy unless explicitly "false"
+            : settings[key] === "true";
+          setter(val);
+          localStorage.setItem(key, String(val));
+        } else {
+          // Key not in DB yet — keep localStorage value as initial state
+          setter(defaultWhenMissing);
+        }
+      };
+
+      applyBool(FA2_KEY,        setTwoFA,       localStorage.getItem(FA2_KEY)        === "true");
+      applyBool(TOTP_KEY,       setTotpEnabled, localStorage.getItem(TOTP_KEY)       === "true");
+      applyBool(MAINT_KEY,      setMaintenance, localStorage.getItem(MAINT_KEY)      === "true");
+      applyBool(OTP_LOGIN_KEY,  setOtpLogin,    localStorage.getItem(OTP_LOGIN_KEY)  !== "false");
+      applyBool(OTP_REG_KEY,    setOtpRegister, localStorage.getItem(OTP_REG_KEY)    === "true");
+      applyBool(OTP_RESET_KEY,  setOtpReset,    localStorage.getItem(OTP_RESET_KEY)  === "true");
+
+      // ── Email config ──
+      const item = emailData?.[0] ?? null;
       setEmailRecord(item);
       if (item) setForm({ email: item.email || "", pass_app: item.pass_app || "" });
     } catch {
@@ -185,33 +212,41 @@ const Service: React.FC = () => {
     setShowPass(false);
   };
 
+  const persistSetting = (key: string, value: boolean) => {
+    localStorage.setItem(key, String(value));
+    UpdateAppSetting(key, String(value)).catch(() => {
+      // Warn admin — without DB persistence, other browsers/devices won't enforce the setting
+      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ — ค่าถูกบันทึกเฉพาะในเบราว์เซอร์นี้เท่านั้น");
+    });
+  };
+
   const toggleTwoFA = () => {
     const next = !twoFA;
     setTwoFA(next);
-    localStorage.setItem(FA2_KEY, String(next));
+    persistSetting(FA2_KEY, next);
     message.success(next ? t("service.enabled") : t("service.disabled"));
   };
 
   const toggleOtpLogin = () => {
     const next = !otpLogin;
     setOtpLogin(next);
-    localStorage.setItem(OTP_LOGIN_KEY, String(next));
+    persistSetting(OTP_LOGIN_KEY, next);
   };
   const toggleOtpRegister = () => {
     const next = !otpRegister;
     setOtpRegister(next);
-    localStorage.setItem(OTP_REG_KEY, String(next));
+    persistSetting(OTP_REG_KEY, next);
   };
   const toggleOtpReset = () => {
     const next = !otpReset;
     setOtpReset(next);
-    localStorage.setItem(OTP_RESET_KEY, String(next));
+    persistSetting(OTP_RESET_KEY, next);
   };
 
   const toggleTotp = () => {
     const next = !totpEnabled;
     setTotpEnabled(next);
-    localStorage.setItem(TOTP_KEY, String(next));
+    persistSetting(TOTP_KEY, next);
     message.success(next ? t("service.enabled") : t("service.disabled"));
   };
 

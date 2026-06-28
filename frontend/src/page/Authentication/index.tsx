@@ -17,7 +17,11 @@ import {
   FiServer,
 } from "react-icons/fi";
 import { FaNetworkWired } from "react-icons/fa";
-import { Login } from "../../services/auth";
+import {
+  Login, GetServiceSettings, VerifyLoginEmailOTP,
+  DirectSignUp, DirectResetPassword,
+  type ServiceSettings,
+} from "../../services/auth";
 import { VerifyTOTPLogin } from "../../services/totp";
 import {
   SendOTPForSignUp,
@@ -32,6 +36,7 @@ import {
 } from "../../services/passwordpolicy";
 import { pathOpenVas } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 import ModalOTPSignUp from "../../Model/ModalOTPSignUp";
 import ModalOTP from "../../Model/ModalOTP";
 import travelPhoto from "../../assets/login-photo.jpg";
@@ -47,7 +52,7 @@ type SignUpFormData = {
   position: string;
 };
 
-type ViewMode = "login" | "signup" | "forgot" | "reset" | "totp";
+type ViewMode = "login" | "signup" | "forgot" | "reset" | "totp" | "email_otp";
 
 type EmailAndPhoneNumberResponse = {
   id: number;
@@ -101,6 +106,20 @@ const preloadImage = (src: string): Promise<void> => {
 const Index: React.FC = () => {
   const navigate = useNavigate();
   const { refreshMe } = useAuth();
+  const { currentColor } = useStateContext();
+  const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
+  // ── Service settings — initialized from localStorage immediately so there is
+  // no gap between first render and the async backend fetch completing.
+  // The async fetch overwrites with the authoritative DB value once resolved.
+  const [svcSettings, setSvcSettings] = useState<ServiceSettings>(() => {
+    const fa2 = localStorage.getItem("argus_2fa_enabled") === "true";
+    return {
+      login_otp:    fa2 && localStorage.getItem("argus_otp_login") !== "false",
+      register_otp: fa2 && localStorage.getItem("argus_otp_register") === "true",
+      reset_otp:    fa2 && localStorage.getItem("argus_otp_reset_password") === "true",
+    };
+  });
 
   const [viewMode, setViewMode] = useState<ViewMode>("login");
 
@@ -119,6 +138,12 @@ const Index: React.FC = () => {
   const [totpCode,        setTotpCode]        = useState("");
   const [totpSubmitting,  setTotpSubmitting]  = useState(false);
   const [totpError,       setTotpError]       = useState("");
+
+  // Email OTP step (Login OTP service)
+  const [emailOtpCode,       setEmailOtpCode]       = useState("");
+  const [emailOtpSubmitting, setEmailOtpSubmitting] = useState(false);
+  const [emailOtpError,      setEmailOtpError]      = useState("");
+  const [emailOtpMasked,     setEmailOtpMasked]     = useState("");
 
   const [forgotEmail, setForgotEmail] = useState("");
   const [verifiedResetEmail, setVerifiedResetEmail] = useState("");
@@ -177,22 +202,21 @@ const Index: React.FC = () => {
   const isPreparingLoginAnimationRef = useRef(false);
 
   const inputBase =
-    "h-[40px] w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/[0.06] dark:border-white/10 pl-10 pr-10 text-[12px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/70 dark:focus:ring-cyan-500/15 shadow-sm dark:shadow-none";
+    "h-[40px] w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/[0.06] dark:border-white/10 pl-10 pr-10 text-[12px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-(--accent) dark:focus:border-(--accent) focus:ring-4 focus:ring-(--accent)/15 dark:focus:ring-(--accent)/10 shadow-sm dark:shadow-none";
 
   const labelBase =
     "mb-1 block pl-1 text-[9px] font-semibold uppercase tracking-[0.10em] text-slate-500 dark:text-white/45";
 
+  // gradient applied via style={{ backgroundImage: accentGrad }} at each usage
   const panelTitleClass =
-    "bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 bg-clip-text text-transparent font-extrabold leading-none";
-
-  const sectionBadgeClass =
-    "mb-3 inline-flex items-center gap-1.5 rounded-full border border-cyan-200/70 bg-cyan-50/80 dark:bg-cyan-500/10 dark:border-cyan-400/20 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300 shadow-sm dark:shadow-none";
+    "bg-clip-text text-transparent font-extrabold leading-none";
 
   const subtleCardClass =
     "rounded-[16px] border border-slate-200/80 dark:border-white/10 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.68)_0%,rgba(2,6,23,0.92)_100%)] p-3 shadow-[0_12px_30px_rgba(47,128,237,0.08)] dark:shadow-none";
 
+  // background applied via style={{ background: accentGrad }} at each usage
   const primaryButtonClass =
-    "inline-flex h-[38px] min-w-[130px] items-center justify-center rounded-2xl bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-white shadow-sm shadow-[0_18px_34px_rgba(47,128,237,0.28)] transition-all duration-300 hover:translate-y-[-1px] hover:shadow-[0_20px_36px_rgba(47,128,237,0.34)] disabled:cursor-not-allowed disabled:opacity-70";
+    "inline-flex h-[38px] min-w-[130px] items-center justify-center rounded-2xl text-white shadow-sm transition-all duration-300 hover:translate-y-[-1px] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-70";
 
   const duplicateFieldClass =
     "mt-1 pl-1 text-[11px] font-medium text-red-600 dark:text-red-400";
@@ -208,6 +232,8 @@ const Index: React.FC = () => {
     void preloadImage(travelPhoto);
     void preloadImage(greenboneIcon);
     GetPasswordPolicy().then(setPolicy).catch(() => {});
+    // Load service settings (OTP flags) from backend
+    GetServiceSettings().then(s => { if (isMountedRef.current) setSvcSettings(s); }).catch(() => {});
   }, []);
 
   const normalizeEmail = (value: string) => value.trim().toLowerCase();
@@ -407,26 +433,38 @@ const Index: React.FC = () => {
 
       const res = await Login({ email: loginEmail, password: loginPassword });
 
-      // Backend requires TOTP verification
-      if (res?.require_totp) {
+      // Backend requires TOTP verification — redirect to TOTP step
+      if (res.require_totp) {
         setTotpCode("");
         setTotpError("");
         setViewMode("totp");
         return;
       }
 
-      const role = (res?.user?.role ?? "").toLowerCase();
+      // Backend requires email OTP verification
+      if (res.require_email_otp) {
+        setEmailOtpCode("");
+        setEmailOtpError("");
+        setEmailOtpMasked(res.masked_email ?? "");
+        setViewMode("email_otp");
+        return;
+      }
+
+      const role = (res.user?.role ?? "").toLowerCase();
 
       if (role === "admin" || role === "user") {
         message.success("login success");
         try { await refreshMe(); } catch { /* non-critical */ }
         navigate("/admin", { replace: true });
         return;
-      } else {
-        setLoginError("บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน");
       }
+
+      setLoginError("บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน");
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || "Login ไม่สำเร็จ กรุณาลองใหม่";
+      const msg =
+        err?.response?.data?.error ||
+        err?.message ||
+        "Login ไม่สำเร็จ กรุณาลองใหม่";
       setLoginError(msg);
     } finally {
       isPreparingLoginAnimationRef.current = false;
@@ -454,6 +492,27 @@ const Index: React.FC = () => {
       setTotpError(msg);
     } finally {
       if (isMountedRef.current) setTotpSubmitting(false);
+    }
+  };
+
+  const handleEmailOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailOtpError("");
+    if (emailOtpCode.length !== 6) {
+      setEmailOtpError("กรุณากรอกรหัส 6 หลักจาก Email ของคุณ");
+      return;
+    }
+    try {
+      setEmailOtpSubmitting(true);
+      await VerifyLoginEmailOTP(emailOtpCode);
+      message.success("login success");
+      try { await refreshMe(); } catch { /* non-critical */ }
+      navigate("/admin", { replace: true });
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || "รหัส OTP ไม่ถูกต้องหรือหมดอายุ";
+      setEmailOtpError(msg);
+    } finally {
+      if (isMountedRef.current) setEmailOtpSubmitting(false);
     }
   };
 
@@ -529,9 +588,19 @@ const Index: React.FC = () => {
     try {
       setResetSubmitting(true);
 
-      const sendRes = await SendOTP({
-        email: verifiedResetEmail,
-      });
+      // If Reset Password OTP is disabled → direct reset without email OTP
+      if (!svcSettings.reset_otp) {
+        await DirectResetPassword(verifiedResetEmail, newPassword);
+        message.success("เปลี่ยนรหัสผ่านสำเร็จ");
+        setVerifiedResetEmail("");
+        setForgotEmail("");
+        resetForgotAndResetState();
+        setViewMode("login");
+        return;
+      }
+
+      // Reset OTP is enabled → send OTP email first
+      const sendRes = await SendOTP({ email: verifiedResetEmail });
 
       if (!sendRes) {
         setResetError("ส่ง OTP ไม่สำเร็จ");
@@ -546,7 +615,6 @@ const Index: React.FC = () => {
       message.success((sendRes as any).message || "ส่ง OTP ไปยังอีเมลแล้ว");
       setOpenResetOTPModal(true);
     } catch (err: any) {
-      console.error("Send OTP error:", err);
       setResetError(
         err?.response?.data?.error ||
         err?.message ||
@@ -707,9 +775,17 @@ const Index: React.FC = () => {
     try {
       setSignupSubmitting(true);
 
-      const result = await SendOTPForSignUp({
-        email: payload.email,
-      });
+      // If Register OTP is disabled → direct signup without email verification
+      if (!svcSettings.register_otp) {
+        await DirectSignUp(payload);
+        message.success("สมัครสมาชิกสำเร็จ");
+        resetSignUpForm();
+        setViewMode("login");
+        return;
+      }
+
+      // Register OTP is enabled → send OTP email first
+      const result = await SendOTPForSignUp({ email: payload.email });
 
       if (!result) {
         message.error("ไม่สามารถส่ง OTP ได้");
@@ -723,11 +799,8 @@ const Index: React.FC = () => {
 
       setPendingSignupData(payload);
       setOtpOpen(true);
-      message.success(
-        (result as any).message || "ส่ง OTP สำเร็จ กรุณายืนยันอีเมล"
-      );
+      message.success((result as any).message || "ส่ง OTP สำเร็จ กรุณายืนยันอีเมล");
     } catch (error: any) {
-      console.error("Send OTP error:", error);
       message.error(
         error?.response?.data?.error ||
         error?.message ||
@@ -811,18 +884,12 @@ const Index: React.FC = () => {
   const renderDeviceDecoration = () => (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-14.5 overflow-hidden">
       <div className="absolute bottom-3 left-4 flex items-center gap-2">
-        <span
-          className="h-2 w-2 rounded-full bg-cyan-400"
-          style={{ animation: "pulseGlow 2.6s ease-in-out infinite" }}
-        />
-        <span className="h-px w-14 bg-linear-to-r from-cyan-400 via-sky-400 to-violet-400 opacity-80" />
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, animation: "pulseGlow 2.6s ease-in-out infinite" }} />
+        <span className="h-px w-14 opacity-80" style={{ background: accentGrad }} />
       </div>
       <div className="absolute bottom-3 right-4 flex items-center gap-2">
-        <span className="h-px w-14 bg-linear-to-r from-violet-400 via-sky-400 to-cyan-400 opacity-80" />
-        <span
-          className="h-2 w-2 rounded-full bg-violet-400"
-          style={{ animation: "pulseGlow 2.6s ease-in-out infinite 0.6s" }}
-        />
+        <span className="h-px w-14 opacity-80" style={{ background: accentGrad }} />
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, opacity: 0.75, animation: "pulseGlow 2.6s ease-in-out infinite 0.6s" }} />
       </div>
     </div>
   );
@@ -869,25 +936,16 @@ const Index: React.FC = () => {
 
           <div className="rounded-full border border-white/10 bg-white/10 px-3 py-1.5 backdrop-blur-md">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold text-white/90">
-              <FiShield className="text-cyan-300" />
+              <FiShield style={{ color: currentColor }} />
               Protected
             </div>
           </div>
         </div>
 
         <div className="mt-5 flex items-center gap-2">
-          <span
-            className="h-2 w-2 rounded-full bg-cyan-400"
-            style={{ animation: "pulseGlow 2.2s ease-in-out infinite" }}
-          />
-          <span
-            className="h-px w-16 bg-white/20"
-            style={{ animation: "orbitLine 2.8s ease-in-out infinite" }}
-          />
-          <span
-            className="h-2 w-2 rounded-full bg-sky-400"
-            style={{ animation: "pulseGlow 2.2s ease-in-out infinite 0.4s" }}
-          />
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, animation: "pulseGlow 2.2s ease-in-out infinite" }} />
+          <span className="h-px w-16 bg-white/20" style={{ animation: "orbitLine 2.8s ease-in-out infinite" }} />
+          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, opacity: 0.8, animation: "pulseGlow 2.2s ease-in-out infinite 0.4s" }} />
         </div>
       </div>
 
@@ -943,15 +1001,18 @@ const Index: React.FC = () => {
   const renderTopWire = () => (
     <div className="pointer-events-none absolute right-5 top-5">
       <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_14px_rgba(34,211,238,0.95)]" />
-        <span className="h-px w-8 bg-linear-to-r from-cyan-400 via-sky-400 to-violet-400" />
-        <span className="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_14px_rgba(167,139,250,0.95)]" />
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, boxShadow: `0 0 14px ${currentColor}` }} />
+        <span className="h-px w-8" style={{ background: accentGrad }} />
+        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: currentColor, opacity: 0.75, boxShadow: `0 0 14px ${currentColor}99` }} />
       </div>
     </div>
   );
 
   const renderSectionBadge = (label: string) => (
-    <div className={sectionBadgeClass}>
+    <div
+      className="mb-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] shadow-sm"
+      style={{ borderColor: `${currentColor}55`, backgroundColor: `${currentColor}14`, color: currentColor }}
+    >
       <FaNetworkWired className="text-[9px]" />
       {label}
     </div>
@@ -968,7 +1029,10 @@ const Index: React.FC = () => {
     <div className="w-full max-w-[320px]">
       <div className="text-center">
         {renderSectionBadge("2-Factor Auth")}
-        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}>
+        <h2
+          className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}
+          style={{ backgroundImage: accentGrad }}
+        >
           Authenticator
         </h2>
         <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/55">
@@ -986,7 +1050,7 @@ const Index: React.FC = () => {
         <div>
           <label className={labelBase}>รหัส TOTP</label>
           <div className="relative">
-            <FiShield className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
+            <FiShield className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
             <input
               type="text"
               inputMode="numeric"
@@ -995,7 +1059,7 @@ const Index: React.FC = () => {
               onChange={e => { setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setTotpError(""); }}
               placeholder="000 000"
               autoFocus
-              className="h-10 w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/6 dark:border-white/10 pl-10 pr-4 text-center font-mono text-[18px] tracking-[0.35em] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/70 dark:focus:ring-cyan-500/15 shadow-sm dark:shadow-none"
+              className="h-10 w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/6 dark:border-white/10 pl-10 pr-4 text-center font-mono text-[18px] tracking-[0.35em] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 focus:border-(--accent) dark:focus:border-(--accent) focus:ring-4 focus:ring-(--accent)/15 dark:focus:ring-(--accent)/10 shadow-sm dark:shadow-none"
             />
           </div>
           <p className="mt-1.5 pl-1 text-[10px] text-slate-400 dark:text-white/30">
@@ -1008,6 +1072,7 @@ const Index: React.FC = () => {
             type="submit"
             disabled={totpSubmitting || totpCode.length !== 6}
             className={primaryButtonClass}
+            style={{ background: accentGrad }}
           >
             {totpSubmitting ? "Verifying..." : "Verify & Sign In"}
           </button>
@@ -1017,7 +1082,78 @@ const Index: React.FC = () => {
           <button
             type="button"
             onClick={() => { setViewMode("login"); setTotpCode(""); setTotpError(""); }}
-            className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
+            className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white"
+          >
+            ← กลับไปหน้า Login
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderEmailOTPForm = () => (
+    <div className="w-full max-w-[320px]">
+      <div className="text-center">
+        {renderSectionBadge("Email Verification")}
+        <h2
+          className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}
+          style={{ backgroundImage: accentGrad }}
+        >
+          Verify Email
+        </h2>
+        <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/55">
+          กรอกรหัส 6 หลักที่ส่งไปยัง
+        </p>
+        {emailOtpMasked && (
+          <p className="mt-0.5 text-[12px] font-semibold" style={{ color: currentColor }}>
+            {emailOtpMasked}
+          </p>
+        )}
+      </div>
+
+      {emailOtpError && (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-center text-[12px] text-red-600 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+          {emailOtpError}
+        </div>
+      )}
+
+      <form onSubmit={handleEmailOTPSubmit} className="mt-5 space-y-4">
+        <div>
+          <label className={labelBase}>รหัส OTP</label>
+          <div className="relative">
+            <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={emailOtpCode}
+              onChange={e => { setEmailOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setEmailOtpError(""); }}
+              placeholder="000 000"
+              autoFocus
+              className="h-10 w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/6 dark:border-white/10 pl-10 pr-4 text-center font-mono text-[18px] tracking-[0.35em] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 focus:border-(--accent) dark:focus:border-(--accent) focus:ring-4 focus:ring-(--accent)/15 dark:focus:ring-(--accent)/10 shadow-sm dark:shadow-none"
+            />
+          </div>
+          <p className="mt-1.5 pl-1 text-[10px] text-slate-400 dark:text-white/30">
+            ตรวจสอบกล่องจดหมายของคุณ — รหัสหมดอายุใน 5 นาที
+          </p>
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            disabled={emailOtpSubmitting || emailOtpCode.length !== 6}
+            className={primaryButtonClass}
+            style={{ background: accentGrad }}
+          >
+            {emailOtpSubmitting ? "Verifying..." : "Verify & Sign In"}
+          </button>
+        </div>
+
+        <div className="text-center text-[12px] text-slate-600 dark:text-white/65">
+          <button
+            type="button"
+            onClick={() => { setViewMode("login"); setEmailOtpCode(""); setEmailOtpError(""); }}
+            className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white"
           >
             ← กลับไปหน้า Login
           </button>
@@ -1029,17 +1165,13 @@ const Index: React.FC = () => {
   const renderLoginForm = (compact = false) => (
     <div className={compact ? "w-full max-w-170" : "w-full max-w-77.5"}>
       <div className="text-center">
-
         <h2
-          className={`${panelTitleClass} ${compact ? "text-[34px] sm:text-[38px]" : "text-[30px]"
-            } tracking-[-0.04em]`}
+          className={`${panelTitleClass} ${compact ? "text-[34px] sm:text-[38px]" : "text-[30px]"} tracking-[-0.04em]`}
+          style={{ backgroundImage: accentGrad }}
         >
           Welcome
         </h2>
-        <p
-          className={`mt-1.5 ${compact ? "text-[12px] sm:text-[13px]" : "text-[11px]"
-            } text-slate-500 dark:text-white/55`}
-        >
+        <p className={`mt-1.5 ${compact ? "text-[12px] sm:text-[13px]" : "text-[11px]"} text-slate-500 dark:text-white/55`}>
           Sign in to the security scan console
         </p>
       </div>
@@ -1049,19 +1181,13 @@ const Index: React.FC = () => {
       <form onSubmit={handleLoginSubmit} className={compact ? "mt-6" : "mt-5"}>
         <div className={compact ? "space-y-4" : "space-y-3"}>
           <div>
-            <label
-              className={
-                compact
-                  ? "mb-1.5 block pl-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45"
-                  : labelBase
-              }
-            >
+            <label className={compact ? "mb-1.5 block pl-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45" : labelBase}>
               Email Address
             </label>
             <div className="relative">
               <FiMail
-                className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${compact ? "text-[15px]" : "text-[13px]"
-                  } text-cyan-600 dark:text-cyan-300`}
+                className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${compact ? "text-[15px]" : "text-[13px]"}`}
+                style={{ color: currentColor }}
               />
               <input
                 type="email"
@@ -1069,29 +1195,21 @@ const Index: React.FC = () => {
                 onChange={(e) => setLoginEmail(e.target.value)}
                 placeholder="admin@network.local"
                 autoComplete="email"
-                className={
-                  compact
-                    ? "h-12.5 sm:h-14 w-full rounded-2xl border border-slate-200/90 bg-white/92 dark:bg-white/6 dark:border-white/10 pl-11 pr-11 text-[13px] sm:text-[15px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/75 dark:focus:ring-cyan-500/15 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:shadow-none"
-                    : inputBase
-                }
+                className={compact
+                  ? "h-12.5 sm:h-14 w-full rounded-2xl border border-slate-200/90 bg-white/92 dark:bg-white/6 dark:border-white/10 pl-11 pr-11 text-[13px] sm:text-[15px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-(--accent) dark:focus:border-(--accent) focus:ring-4 focus:ring-(--accent)/15 dark:focus:ring-(--accent)/10 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:shadow-none"
+                  : inputBase}
               />
             </div>
           </div>
 
           <div>
-            <label
-              className={
-                compact
-                  ? "mb-1.5 block pl-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45"
-                  : labelBase
-              }
-            >
+            <label className={compact ? "mb-1.5 block pl-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-white/45" : labelBase}>
               Password
             </label>
             <div className="relative">
               <FiLock
-                className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${compact ? "text-[15px]" : "text-[13px]"
-                  } text-cyan-600 dark:text-cyan-300`}
+                className={`pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 ${compact ? "text-[15px]" : "text-[13px]"}`}
+                style={{ color: currentColor }}
               />
               <input
                 type={showLoginPassword ? "text" : "password"}
@@ -1099,23 +1217,17 @@ const Index: React.FC = () => {
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="Enter secure password"
                 autoComplete="current-password"
-                className={
-                  compact
-                    ? "h-12.5 sm:h-14 w-full rounded-2xl border border-slate-200/90 bg-white/92 dark:bg-white/6 dark:border-white/10 pl-11 pr-11 text-[13px] sm:text-[15px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/75 dark:focus:ring-cyan-500/15 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:shadow-none"
-                    : inputBase
-                }
+                className={compact
+                  ? "h-12.5 sm:h-14 w-full rounded-2xl border border-slate-200/90 bg-white/92 dark:bg-white/6 dark:border-white/10 pl-11 pr-11 text-[13px] sm:text-[15px] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 placeholder:text-slate-400 dark:placeholder:text-white/30 focus:border-(--accent) dark:focus:border-(--accent) focus:ring-4 focus:ring-(--accent)/15 dark:focus:ring-(--accent)/10 shadow-[0_10px_24px_rgba(15,23,42,0.04)] dark:shadow-none"
+                  : inputBase}
               />
               <button
                 type="button"
                 onClick={() => setShowLoginPassword((prev) => !prev)}
-                className={`absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-600 dark:text-white/40 dark:hover:text-cyan-300`}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:opacity-75 dark:text-white/40"
                 aria-label={showLoginPassword ? "Hide password" : "Show password"}
               >
-                {showLoginPassword ? (
-                  <FiEyeOff className={compact ? "text-[16px]" : "text-[14px]"} />
-                ) : (
-                  <FiEye className={compact ? "text-[16px]" : "text-[14px]"} />
-                )}
+                {showLoginPassword ? <FiEyeOff className={compact ? "text-[16px]" : "text-[14px]"} /> : <FiEye className={compact ? "text-[16px]" : "text-[14px]"} />}
               </button>
             </div>
           </div>
@@ -1123,14 +1235,8 @@ const Index: React.FC = () => {
 
         <div className="mt-3.5 flex items-center justify-between gap-2">
           {compact ? (
-            <button
-              type="button"
-              onClick={() => {
-                setLoginError("");
-                setViewMode("signup");
-              }}
-              className="rounded-full bg-[#f2f8ff] px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:text-cyan-600 dark:bg-white/8 dark:text-white/65 dark:hover:text-cyan-300"
-            >
+            <button type="button" onClick={() => { setLoginError(""); setViewMode("signup"); }}
+              className="rounded-full bg-[#f2f8ff] px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 transition hover:opacity-75 dark:bg-white/8 dark:text-white/65">
               Sign Up
             </button>
           ) : (
@@ -1138,33 +1244,20 @@ const Index: React.FC = () => {
               Authorized access
             </div>
           )}
-
-          <button
-            type="button"
-            onClick={() => {
-              setForgotError("");
-              setForgotEmail(loginEmail.trim());
-              setViewMode("forgot");
-            }}
-            className={
-              compact
-                ? "text-[11px] font-semibold text-slate-500 transition hover:text-cyan-600 dark:text-white/55 dark:hover:text-cyan-300"
-                : "text-[10px] font-semibold text-slate-500 transition hover:text-cyan-600 dark:text-white/55 dark:hover:text-cyan-300"
-            }
+          <button type="button"
+            onClick={() => { setForgotError(""); setForgotEmail(loginEmail.trim()); setViewMode("forgot"); }}
+            className={`${compact ? "text-[11px]" : "text-[10px]"} font-semibold text-slate-500 transition hover:opacity-75 dark:text-white/55`}
           >
             Forgot your password?
           </button>
         </div>
 
         <div className="mt-6 flex justify-center">
-          <button
-            type="submit"
-            disabled={loginSubmitting}
-            className={
-              compact
-                ? "inline-flex h-11 min-w-42.5 items-center justify-center rounded-2xl bg-linear-to-r from-cyan-500 via-sky-500 to-violet-500 text-[15px] text-white shadow-[0_18px_34px_rgba(47,128,237,0.28)] transition-all duration-300 hover:translate-y-px hover:shadow-[0_20px_36px_rgba(47,128,237,0.34)] disabled:cursor-not-allowed disabled:opacity-70"
-                : primaryButtonClass
-            }
+          <button type="submit" disabled={loginSubmitting}
+            className={compact
+              ? "inline-flex h-11 min-w-42.5 items-center justify-center rounded-2xl text-[15px] text-white transition-all duration-300 hover:opacity-90 hover:translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
+              : primaryButtonClass}
+            style={{ background: accentGrad }}
           >
             {loginSubmitting ? "Logging In..." : "Login"}
           </button>
@@ -1174,22 +1267,13 @@ const Index: React.FC = () => {
           <>
             <div className="mt-6 flex items-center gap-2">
               <div className="h-px flex-1 bg-[#d7e6fb] dark:bg-white/10" />
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-white/30">
-                OR
-              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-white/30">OR</span>
               <div className="h-px flex-1 bg-[#d7e6fb] dark:bg-white/10" />
             </div>
-
             <div className="mt-4 text-center text-[12px] text-slate-600 dark:text-white/65">
               Don&apos;t have an account?{" "}
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginError("");
-                  setViewMode("signup");
-                }}
-                className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
-              >
+              <button type="button" onClick={() => { setLoginError(""); setViewMode("signup"); }}
+                className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white">
                 Sign Up
               </button>
             </div>
@@ -1203,7 +1287,7 @@ const Index: React.FC = () => {
     <div className="w-full max-w-[320px]">
       <div className="text-center">
         {renderSectionBadge("Recovery")}
-        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}>
+        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`} style={{ backgroundImage: accentGrad }}>
           Forgot Password
         </h2>
         <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/55">
@@ -1217,53 +1301,36 @@ const Index: React.FC = () => {
         <div>
           <label className={labelBase}>Email Address</label>
           <div className="relative">
-            <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-            <input
-              type="email"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-              placeholder="admin@network.local"
-              autoComplete="email"
-              className={inputBase}
-            />
+            <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+            <input type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="admin@network.local" autoComplete="email" className={inputBase} />
           </div>
         </div>
 
         <div className={`mt-3 ${subtleCardClass}`}>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 rounded-lg bg-[#e9f6ff] p-2 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-300">
+            <div className="mt-0.5 rounded-lg p-2" style={{ backgroundColor: `${currentColor}18`, color: currentColor }}>
               <FiRefreshCw className="text-[14px]" />
             </div>
-
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">
-                Secure recovery pipeline
-              </p>
+              <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">Secure recovery pipeline</p>
               <p className="mt-1 text-[11px] leading-4.5 text-slate-500 dark:text-white/55">
-                The system checks your email first, then allows the OTP-based
-                reset process to continue safely.
+                The system checks your email first, then allows the OTP-based reset process to continue safely.
               </p>
             </div>
           </div>
         </div>
 
         <div className="mt-5 flex justify-center">
-          <button
-            type="submit"
-            disabled={forgotSubmitting}
-            className={primaryButtonClass}
-          >
+          <button type="submit" disabled={forgotSubmitting} className={primaryButtonClass} style={{ background: accentGrad }}>
             {forgotSubmitting ? "Checking..." : "Continue"}
           </button>
         </div>
 
         <div className="mt-4 text-center text-[12px] text-slate-600 dark:text-white/65">
           Remember your password?{" "}
-          <button
-            type="button"
-            onClick={() => setViewMode("login")}
-            className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
-          >
+          <button type="button" onClick={() => setViewMode("login")}
+            className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white">
             Sign In
           </button>
         </div>
@@ -1275,15 +1342,12 @@ const Index: React.FC = () => {
     <div className="w-full max-w-82.5">
       <div className="text-center">
         {renderSectionBadge("Reset")}
-        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}>
+        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`} style={{ backgroundImage: accentGrad }}>
           Reset Password
         </h2>
         <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/55">
-          Set a new password for
-          <br />
-          <span className="font-semibold text-slate-700 dark:text-white/85">
-            {verifiedResetEmail || "your account"}
-          </span>
+          Set a new password for<br />
+          <span className="font-semibold text-slate-700 dark:text-white/85">{verifiedResetEmail || "your account"}</span>
         </p>
       </div>
 
@@ -1293,27 +1357,13 @@ const Index: React.FC = () => {
         <div>
           <label className={labelBase}>New Password</label>
           <div className="relative">
-            <FiKey className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-            <input
-              type={showResetPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Set new password"
-              className={inputBase}
-            />
-            <button
-              type="button"
-              onClick={() => setShowResetPassword((prev) => !prev)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-600 dark:text-white/40 dark:hover:text-cyan-300"
-              aria-label={
-                showResetPassword ? "Hide new password" : "Show new password"
-              }
-            >
-              {showResetPassword ? (
-                <FiEyeOff className="text-[14px]" />
-              ) : (
-                <FiEye className="text-[14px]" />
-              )}
+            <FiKey className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+            <input type={showResetPassword ? "text" : "password"} value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)} placeholder="Set new password" className={inputBase} />
+            <button type="button" onClick={() => setShowResetPassword((prev) => !prev)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:opacity-75 dark:text-white/40"
+              aria-label={showResetPassword ? "Hide new password" : "Show new password"}>
+              {showResetPassword ? <FiEyeOff className="text-[14px]" /> : <FiEye className="text-[14px]" />}
             </button>
           </div>
         </div>
@@ -1321,63 +1371,34 @@ const Index: React.FC = () => {
         <div>
           <label className={labelBase}>Confirm Password</label>
           <div className="relative">
-            <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-            <input
-              type={showConfirmResetPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-              className={inputBase}
-            />
-            <button
-              type="button"
-              onClick={() => setShowConfirmResetPassword((prev) => !prev)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-600 dark:text-white/40 dark:hover:text-cyan-300"
-              aria-label={
-                showConfirmResetPassword
-                  ? "Hide confirm password"
-                  : "Show confirm password"
-              }
-            >
-              {showConfirmResetPassword ? (
-                <FiEyeOff className="text-[14px]" />
-              ) : (
-                <FiEye className="text-[14px]" />
-              )}
+            <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+            <input type={showConfirmResetPassword ? "text" : "password"} value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm password" className={inputBase} />
+            <button type="button" onClick={() => setShowConfirmResetPassword((prev) => !prev)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:opacity-75 dark:text-white/40"
+              aria-label={showConfirmResetPassword ? "Hide confirm password" : "Show confirm password"}>
+              {showConfirmResetPassword ? <FiEyeOff className="text-[14px]" /> : <FiEye className="text-[14px]" />}
             </button>
           </div>
         </div>
 
         <div className={subtleCardClass}>
           <div className="flex items-start gap-2">
-            <div className="mt-0.5 rounded-lg bg-[#e9f6ff] p-2 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-300">
+            <div className="mt-0.5 rounded-lg p-2" style={{ backgroundColor: `${currentColor}18`, color: currentColor }}>
               <FiShield className="text-[14px]" />
             </div>
-
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">
-                Credential hardening
-              </p>
+              <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">Credential hardening</p>
               <p className="mt-1 text-[11px] leading-4.5 text-slate-500 dark:text-white/55">
-                Use at least 8 characters with uppercase, lowercase, numbers,
-                and symbols for stronger protection.
+                Use at least 8 characters with uppercase, lowercase, numbers, and symbols for stronger protection.
               </p>
-
               <div className="mt-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-medium text-slate-500 dark:text-white/50">
-                    Password strength
-                  </span>
-                  <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-300">
-                    {passwordStrengthLabel}
-                  </span>
+                  <span className="text-[10px] font-medium text-slate-500 dark:text-white/50">Password strength</span>
+                  <span className="text-[10px] font-semibold" style={{ color: currentColor }}>{passwordStrengthLabel}</span>
                 </div>
-
                 <div className="h-2 overflow-hidden rounded-full bg-[#dfeaf8] dark:bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#22c1f1,#3b82f6,#8b5cf6)] transition-all duration-300"
-                    style={{ width: `${passwordStrength}%` }}
-                  />
+                  <div className="h-full rounded-full transition-all duration-300" style={{ width: `${passwordStrength}%`, background: accentGrad }} />
                 </div>
               </div>
             </div>
@@ -1385,22 +1406,17 @@ const Index: React.FC = () => {
         </div>
 
         <div className="flex justify-center pt-1">
-          <button
-            type="submit"
-            disabled={resetSubmitting}
-            className={primaryButtonClass}
-          >
-            {resetSubmitting ? "Sending OTP..." : "Confirm Reset"}
+          <button type="submit" disabled={resetSubmitting} className={primaryButtonClass} style={{ background: accentGrad }}>
+            {resetSubmitting
+              ? (svcSettings.reset_otp ? "Sending OTP..." : "Resetting...")
+              : "Confirm Reset"}
           </button>
         </div>
 
         <div className="text-center text-[14px] text-slate-600 dark:text-white/65">
           Back to{" "}
-          <button
-            type="button"
-            onClick={() => setViewMode("login")}
-            className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
-          >
+          <button type="button" onClick={() => setViewMode("login")}
+            className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white">
             Sign In
           </button>
         </div>
@@ -1411,7 +1427,7 @@ const Index: React.FC = () => {
   const renderSignUpForm = () => (
     <div className="w-full max-w-110">
       <div className="text-center">
-        <h2 className={`${panelTitleClass} text-[29px] tracking-[-0.04em]`}>
+        <h2 className={`${panelTitleClass} text-[29px] tracking-[-0.04em]`} style={{ backgroundImage: accentGrad }}>
           Create Account
         </h2>
         <p className="mt-1.5 text-[11px] text-slate-500 dark:text-white/55">
@@ -1425,30 +1441,15 @@ const Index: React.FC = () => {
             <div>
               <label className={labelBase}>First Name</label>
               <div className="relative">
-                <FiUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type="text"
-                  name="first_name"
-                  value={signupForm.first_name}
-                  onChange={handleSignupChange}
-                  placeholder="Argus"
-                  className={inputBase}
-                />
+                <FiUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type="text" name="first_name" value={signupForm.first_name} onChange={handleSignupChange} placeholder="Argus" className={inputBase} />
               </div>
             </div>
-
             <div>
               <label className={labelBase}>Last Name</label>
               <div className="relative">
-                <FiUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type="text"
-                  name="last_name"
-                  value={signupForm.last_name}
-                  onChange={handleSignupChange}
-                  placeholder="Scanner"
-                  className={inputBase}
-                />
+                <FiUser className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type="text" name="last_name" value={signupForm.last_name} onChange={handleSignupChange} placeholder="Scanner" className={inputBase} />
               </div>
             </div>
           </div>
@@ -1456,70 +1457,37 @@ const Index: React.FC = () => {
           <div>
             <label className={labelBase}>Email Address</label>
             <div className="relative">
-              <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-              <input
-                type="email"
-                name="email"
-                value={signupForm.email}
-                onChange={handleSignupChange}
-                placeholder="admin@network.local"
-                autoComplete="email"
-                className={inputBase}
-              />
+              <FiMail className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+              <input type="email" name="email" value={signupForm.email} onChange={handleSignupChange}
+                placeholder="admin@network.local" autoComplete="email" className={inputBase} />
             </div>
-            {duplicateErrors.email ? (
-              <div className={duplicateFieldClass}>{duplicateErrors.email}</div>
-            ) : null}
+            {duplicateErrors.email ? <div className={duplicateFieldClass}>{duplicateErrors.email}</div> : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className={labelBase}>Phone Number</label>
               <div className="relative">
-                <FiPhone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type="text"
-                  name="phone_number"
-                  value={signupForm.phone_number}
-                  onChange={handleSignupChange}
-                  placeholder="0812345678"
-                  inputMode="numeric"
-                  maxLength={10}
-                  className={inputBase}
-                />
+                <FiPhone className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type="text" name="phone_number" value={signupForm.phone_number} onChange={handleSignupChange}
+                  placeholder="0812345678" inputMode="numeric" maxLength={10} className={inputBase} />
               </div>
-              {phoneValidationError ? (
-                <div className={duplicateFieldClass}>{phoneValidationError}</div>
-              ) : duplicateErrors.phone_number ? (
-                <div className={duplicateFieldClass}>
-                  {duplicateErrors.phone_number}
-                </div>
-              ) : null}
+              {phoneValidationError
+                ? <div className={duplicateFieldClass}>{phoneValidationError}</div>
+                : duplicateErrors.phone_number
+                  ? <div className={duplicateFieldClass}>{duplicateErrors.phone_number}</div>
+                  : null}
             </div>
-
             <div>
               <label className={labelBase}>Password</label>
               <div className="relative">
-                <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type={showSignUpPassword ? "text" : "password"}
-                  name="password"
-                  value={signupForm.password}
-                  onChange={handleSignupChange}
-                  placeholder="At least 8 characters"
-                  className={inputBase}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSignUpPassword((prev) => !prev)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-cyan-600 dark:text-white/40 dark:hover:text-cyan-300"
-                  aria-label={showSignUpPassword ? "Hide password" : "Show password"}
-                >
-                  {showSignUpPassword ? (
-                    <FiEyeOff className="text-[14px]" />
-                  ) : (
-                    <FiEye className="text-[14px]" />
-                  )}
+                <FiLock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type={showSignUpPassword ? "text" : "password"} name="password" value={signupForm.password}
+                  onChange={handleSignupChange} placeholder="At least 8 characters" className={inputBase} />
+                <button type="button" onClick={() => setShowSignUpPassword((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 transition hover:opacity-75 dark:text-white/40"
+                  aria-label={showSignUpPassword ? "Hide password" : "Show password"}>
+                  {showSignUpPassword ? <FiEyeOff className="text-[14px]" /> : <FiEye className="text-[14px]" />}
                 </button>
               </div>
             </div>
@@ -1529,57 +1497,34 @@ const Index: React.FC = () => {
             <div>
               <label className={labelBase}>Location</label>
               <div className="relative">
-                <FiMapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type="text"
-                  name="location"
-                  value={signupForm.location}
-                  onChange={handleSignupChange}
-                  placeholder="Bangkok"
-                  className={inputBase}
-                />
+                <FiMapPin className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type="text" name="location" value={signupForm.location} onChange={handleSignupChange} placeholder="Bangkok" className={inputBase} />
               </div>
             </div>
-
             <div>
               <label className={labelBase}>Position</label>
               <div className="relative">
-                <FiBriefcase className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
-                <input
-                  type="text"
-                  name="position"
-                  value={signupForm.position}
-                  onChange={handleSignupChange}
-                  placeholder="Network Analyst"
-                  className={inputBase}
-                />
+                <FiBriefcase className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: currentColor }} />
+                <input type="text" name="position" value={signupForm.position} onChange={handleSignupChange} placeholder="Network Analyst" className={inputBase} />
               </div>
             </div>
           </div>
         </div>
 
         <div className="mt-5 flex justify-center">
-          <button
-            type="submit"
-            disabled={
-              signupSubmitting ||
-              !!duplicateErrors.email ||
-              !!duplicateErrors.phone_number ||
-              !!phoneValidationError
-            }
-            className={primaryButtonClass}
-          >
-            {signupSubmitting ? "Sending OTP..." : "Sign Up"}
+          <button type="submit"
+            disabled={signupSubmitting || !!duplicateErrors.email || !!duplicateErrors.phone_number || !!phoneValidationError}
+            className={primaryButtonClass} style={{ background: accentGrad }}>
+            {signupSubmitting
+              ? (svcSettings.register_otp ? "Sending OTP..." : "Creating Account...")
+              : "Sign Up"}
           </button>
         </div>
 
         <div className="mt-4 text-center text-[12px] text-slate-600 dark:text-white/65">
           Have an account?{" "}
-          <button
-            type="button"
-            onClick={() => setViewMode("login")}
-            className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
-          >
+          <button type="button" onClick={() => setViewMode("login")}
+            className="font-extrabold text-slate-900 transition hover:opacity-75 dark:text-white">
             Sign In
           </button>
         </div>
@@ -1592,16 +1537,16 @@ const Index: React.FC = () => {
       <div className="mx-auto flex min-h-[calc(100vh-1rem)] w-full max-w-125 items-center justify-center py-4 sm:max-w-300 sm:py-5 lg:max-w-7xl">
         <div className="relative w-full max-w-115 px-3 sm:max-w-260 sm:px-8 lg:max-w-295">
           <div
-            className="pointer-events-none absolute -left-6 top-8 h-24 w-24 rounded-full bg-cyan-200/55 blur-3xl dark:bg-cyan-500/15 sm:h-32 sm:w-32"
-            style={{ animation: "compactOrbFloat 5.4s ease-in-out infinite" }}
+            className="pointer-events-none absolute -left-6 top-8 h-24 w-24 rounded-full blur-3xl sm:h-32 sm:w-32"
+            style={{ backgroundColor: `${currentColor}30`, animation: "compactOrbFloat 5.4s ease-in-out infinite" }}
           />
           <div
-            className="pointer-events-none absolute -right-8 bottom-8 h-24 w-24 rounded-full bg-violet-200/55 blur-3xl dark:bg-violet-500/16 sm:h-32 sm:w-32"
-            style={{ animation: "compactOrbFloat 6.2s ease-in-out infinite 0.6s" }}
+            className="pointer-events-none absolute -right-8 bottom-8 h-24 w-24 rounded-full blur-3xl sm:h-32 sm:w-32"
+            style={{ backgroundColor: `${currentColor}22`, animation: "compactOrbFloat 6.2s ease-in-out infinite 0.6s" }}
           />
           <div
-            className="pointer-events-none absolute left-1/2 top-0 h-20 w-20 -translate-x-1/2 rounded-full bg-sky-200/40 blur-3xl dark:bg-sky-500/10"
-            style={{ animation: "compactGlowPulse 3s ease-in-out infinite" }}
+            className="pointer-events-none absolute left-1/2 top-0 h-20 w-20 -translate-x-1/2 rounded-full blur-3xl"
+            style={{ backgroundColor: `${currentColor}20`, animation: "compactGlowPulse 3s ease-in-out infinite" }}
           />
 
           <div
@@ -1611,17 +1556,19 @@ const Index: React.FC = () => {
             <div className="pointer-events-none absolute inset-0 opacity-[0.18] dark:opacity-[0.08]">
               <div className="h-full w-full bg-[linear-gradient(rgba(59,130,246,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.06)_1px,transparent_1px)] bg-size-[24px_24px]" />
             </div>
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-cyan-300 to-transparent opacity-80 dark:via-cyan-400/70" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px opacity-70"
+              style={{ background: `linear-gradient(to right, transparent, ${currentColor}, transparent)` }} />
             <div
-              className="pointer-events-none absolute left-0 top-0 h-px w-28 bg-linear-to-r from-transparent via-cyan-300 to-transparent opacity-80"
-              style={{ animation: "compactBorderScan 4.8s linear infinite" }}
+              className="pointer-events-none absolute left-0 top-0 h-px w-28 opacity-70"
+              style={{ background: `linear-gradient(to right, transparent, ${currentColor}, transparent)`, animation: "compactBorderScan 4.8s linear infinite" }}
             />
-            <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px bg-linear-to-r from-transparent via-violet-200 to-transparent opacity-80 dark:via-violet-400/40" />
+            <div className="pointer-events-none absolute inset-x-4 bottom-0 h-px opacity-60"
+              style={{ background: `linear-gradient(to right, transparent, ${currentColor}80, transparent)` }} />
 
             <div className="pointer-events-none absolute left-6 top-6 flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]" />
-              <span className="h-px w-12 bg-linear-to-r from-cyan-300 via-sky-300 to-violet-300" />
-              <span className="h-2.5 w-2.5 rounded-full bg-violet-400 shadow-[0_0_12px_rgba(167,139,250,0.45)]" />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: currentColor, boxShadow: `0 0 12px ${currentColor}70` }} />
+              <span className="h-px w-12" style={{ background: accentGrad }} />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: currentColor, boxShadow: `0 0 12px ${currentColor}70`, opacity: 0.75 }} />
             </div>
 
             <div
@@ -1629,11 +1576,12 @@ const Index: React.FC = () => {
               className="relative flex min-h-125 items-center justify-center sm:min-h-117.5"
               style={{ animation: `compactContentReveal 420ms ${ANIM_EASE}` }}
             >
-              {viewMode === "login" && renderLoginForm(true)}
-              {viewMode === "forgot" && renderForgotForm()}
-              {viewMode === "reset" && renderResetForm()}
-              {viewMode === "signup" && renderSignUpForm()}
-              {viewMode === "totp" && renderTOTPForm()}
+              {viewMode === "login"     && renderLoginForm(true)}
+              {viewMode === "forgot"    && renderForgotForm()}
+              {viewMode === "reset"     && renderResetForm()}
+              {viewMode === "signup"    && renderSignUpForm()}
+              {viewMode === "totp"      && renderTOTPForm()}
+              {viewMode === "email_otp" && renderEmailOTPForm()}
             </div>
           </div>
         </div>
@@ -1647,10 +1595,10 @@ const Index: React.FC = () => {
 
       <div className="relative min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#f8fbff_0%,#eef4fa_48%,#e9f1fb_100%)] px-2 py-2.5 dark:bg-[radial-gradient(circle_at_top,rgba(14,165,233,0.14),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.12),transparent_26%),linear-gradient(180deg,#020617_0%,#081120_45%,#0b1220_100%)] sm:px-3 lg:px-4">
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute left-35 top-30 h-55 w-55 rounded-full bg-cyan-300/25 blur-3xl dark:bg-cyan-500/12" />
-          <div className="absolute -right-25 top-22.5 h-45 w-45 rounded-full bg-sky-300/20 blur-3xl dark:bg-violet-500/12" />
-          <div className="absolute -bottom-40 left-[12%] h-45 w-55 rounded-full bg-blue-200/25 blur-3xl dark:bg-blue-500/10" />
-          <div className="absolute bottom-[4%] right-[8%] h-40 w-40 rounded-full bg-violet-200/20 blur-3xl dark:bg-cyan-400/10" />
+          <div className="absolute left-35 top-30 h-55 w-55 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}28` }} />
+          <div className="absolute -right-25 top-22.5 h-45 w-45 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}1e` }} />
+          <div className="absolute -bottom-40 left-[12%] h-45 w-55 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}18` }} />
+          <div className="absolute bottom-[4%] right-[8%] h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${currentColor}16` }} />
           <div className="absolute inset-0 opacity-[0.25] dark:opacity-[0.08]">
             <div className="h-full w-full bg-[linear-gradient(rgba(59,130,246,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.08)_1px,transparent_1px)] bg-size-[28px_28px] dark:bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)]" />
           </div>
@@ -1769,6 +1717,23 @@ const Index: React.FC = () => {
                       }}
                     >
                       {renderTOTPForm()}
+                    </div>
+
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        opacity: viewMode === "email_otp" ? 1 : 0,
+                        transform:
+                          viewMode === "email_otp"
+                            ? "translateX(0px) scale(1)"
+                            : "translateX(22px) scale(0.96)",
+                        filter: viewMode === "email_otp" ? "blur(0px)" : "blur(3px)",
+                        transition: `opacity 620ms ${ANIM_EASE}, transform 760ms ${ANIM_EASE}, filter 760ms ${ANIM_EASE}`,
+                        transitionDelay: viewMode === "email_otp" ? "60ms" : "0ms",
+                        pointerEvents: viewMode === "email_otp" ? "auto" : "none",
+                      }}
+                    >
+                      {renderEmailOTPForm()}
                     </div>
                   </div>
                 </div>

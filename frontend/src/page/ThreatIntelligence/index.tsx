@@ -84,16 +84,13 @@ const KEVBadge: React.FC<{ isRansomware?: boolean }> = ({ isRansomware }) => (
 // KEV Table Row (Full Catalog)
 // ─────────────────────────────────────────────────────────────
 
-const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry, index }) => {
+const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <>
       <tr
-        className={[
-          "cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-white/3",
-          index % 2 === 0 ? "bg-white dark:bg-white/2" : "bg-slate-50/50 dark:bg-white/1",
-        ].join(" ")}
+        className="border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3"
         onClick={() => setExpanded((p) => !p)}
       >
         <td className="px-4 py-3">
@@ -133,7 +130,7 @@ const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry, index 
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-slate-50/80 dark:bg-white/2">
+        <tr className="border-b border-slate-100 dark:border-white/6">
           <td colSpan={5} className="px-4 pb-4 pt-0">
             <div className="rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-white/8 dark:bg-white/4">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -186,10 +183,7 @@ const HostScanRow: React.FC<{
   return (
     <tr
       onClick={onClick}
-      className={[
-        "group cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-white/3",
-        index % 2 === 0 ? "bg-white dark:bg-white/2" : "bg-slate-50/50 dark:bg-white/1",
-      ].join(" ")}
+      className="group border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3"
     >
       <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-400 dark:text-white/30">
         {index + 1}
@@ -272,7 +266,6 @@ const ThreatIntelligence: React.FC = () => {
     hasFetched.current = true;
     void fetchAll();
   }, []);
-
 
   const handleHostClick = (host: KEVByHost) => {
     navigate(
@@ -415,7 +408,7 @@ const ThreatIntelligence: React.FC = () => {
 
       {/* ── Tab: KEV in Scans ── */}
       {activeTab === "scans" && (
-        <div className="rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+        <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
           {loadingSummary ? (
             <div className="space-y-2 p-5">
               {[1, 2, 3].map((i) => (
@@ -435,36 +428,43 @@ const ThreatIntelligence: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-130">
-                <thead>
-                  <tr className="border-b border-slate-100 dark:border-white/8">
-                    <th className="w-10 px-4 py-3 text-left text-[10px] font-semibold uppercase text-slate-400 dark:text-white/30">#</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase text-slate-500 dark:text-white/40">Host / Task</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase text-slate-500 dark:text-white/40">KEV CVEs</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase text-slate-500 dark:text-white/40">Ransomware</th>
-                    <th className="w-10 px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/70 dark:divide-white/5">
-                  {kevByHostList.map((host, i) => (
-                    <HostScanRow
-                      key={`${host.host_ip}-${host.task_name}-${i}`}
-                      host={host}
-                      index={i}
-                      onClick={() => handleHostClick(host)}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-130">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
+                      <th className="whitespace-nowrap w-10 px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">#</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Host / Task</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">KEV CVEs</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Ransomware</th>
+                      <th className="w-10 px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kevByHostList.map((host, i) => (
+                      <HostScanRow
+                        key={`${host.host_ip}-${host.task_name}-${i}`}
+                        host={host}
+                        index={i}
+                        onClick={() => handleHostClick(host)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+                <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                  {kevByHostList.length} host{kevByHostList.length !== 1 ? "s" : ""} at risk
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}
 
       {/* ── Tab: Full Catalog ── */}
       {activeTab === "catalog" && (
-        <div className="rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+        <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
           {/* Search & Filter */}
           <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/8">
             <div className="relative min-w-48 flex-1">
@@ -490,9 +490,6 @@ const ThreatIntelligence: React.FC = () => {
               <FiZap className="text-[11px]" />
               Ransomware Only
             </button>
-            <span className="text-[11px] text-slate-500 dark:text-white/40">
-              {filteredCatalog.length.toLocaleString()} entries
-            </span>
           </div>
 
           {loadingCatalog ? (
@@ -506,32 +503,40 @@ const ThreatIntelligence: React.FC = () => {
               No KEV entries found
             </div>
           ) : (
-            <div className="overflow-y-auto overflow-x-auto" style={{ maxHeight: "calc(100vh - 420px)" }}>
-              <table className="w-full min-w-160">
-                <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
-                  <tr className="border-b border-slate-100 dark:border-white/8">
-                    {["CVE ID", "Vulnerability", "Tags", "Date Added", "Required Action"].map((h, i) => (
-                      <th
-                        key={h}
-                        className={`px-4 py-2.5 text-left text-[10px] font-semibold uppercase text-slate-500 dark:text-white/40 ${i === 2 ? "hidden md:table-cell" : ""} ${i === 3 ? "hidden lg:table-cell" : ""}`}
-                      >
-                        {h}
-                      </th>
+            <>
+              <div className="overflow-y-auto overflow-x-auto" style={{ maxHeight: "calc(100vh - 420px)" }}>
+                <table className="w-full min-w-160">
+                  <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
+                    <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
+                      {["CVE ID", "Vulnerability", "Tags", "Date Added", "Required Action"].map((h, i) => (
+                        <th
+                          key={h}
+                          className={[
+                            "whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35",
+                            i === 2 ? "hidden md:table-cell" : "",
+                            i === 3 ? "hidden lg:table-cell" : "",
+                          ].join(" ")}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCatalog.slice(0, 200).map((entry, i) => (
+                      <KEVRow key={entry.cve_id} entry={entry} index={i} />
                     ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
-                  {filteredCatalog.slice(0, 200).map((entry, i) => (
-                    <KEVRow key={entry.cve_id} entry={entry} index={i} />
-                  ))}
-                </tbody>
-              </table>
-              {filteredCatalog.length > 200 && (
-                <div className="border-t border-slate-100 px-4 py-3 text-center text-[11px] text-slate-400 dark:border-white/8 dark:text-white/35">
-                  Showing first 200 of {filteredCatalog.length.toLocaleString()} entries. Use search to filter.
-                </div>
-              )}
-            </div>
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+                <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                  {filteredCatalog.length > 200
+                    ? `Showing first 200 of ${filteredCatalog.length.toLocaleString()} entries. Use search to filter.`
+                    : `${filteredCatalog.length.toLocaleString()} entries`}
+                </p>
+              </div>
+            </>
           )}
         </div>
       )}

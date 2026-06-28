@@ -2197,9 +2197,10 @@ const ScanManagement: React.FC = () => {
                             className={[
                               "grid h-7 min-w-7 place-items-center rounded-lg px-1.5 text-[11px] font-semibold transition",
                               currentPage === p
-                                ? "bg-slate-800 text-white dark:bg-white dark:text-slate-900"
+                                ? "text-white"
                                 : "border border-slate-200/70 text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5",
                             ].join(" ")}
+                            style={currentPage === p ? { background: accentGrad } : undefined}
                           >
                             {p}
                           </button>

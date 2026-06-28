@@ -65,7 +65,13 @@ func main() {
 	r.POST("/send-otp", otp.SendOTP) // ใช้สำหรับส่ง OTP เมื่อผู้ใช้ต้องการเปลี่ยนรหัสผ่าน
 	r.POST("/verify-otp-password", otp.VerifyOTPAddUpdatePassword) // ใช้สำหรับตรวจสอบ OTP และอัปเดตรหัสผ่านใหม่เมื่อผู้ใช้ต้องการเปลี่ยนรหัสผ่าน
 	r.POST("/auth/logout", auth.Logout) // ใช้สำหรับออกจากระบบโดยการลบคุกกี้ auth_token
-	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber) // ใช้สำหรับดึงรายชื่ออีเมลและหมายเลขโทรศัพท์ของผู้ใช้ทั้งหมด
+	r.POST("/auth/totp/verify-login",       auth.VerifyTOTPLoginHandler)      // PUBLIC: TOTP verify after password login
+	r.POST("/auth/verify-email-otp",         auth.VerifyEmailLoginOTPHandler)  // PUBLIC: email OTP verify after password login
+	r.GET("/auth/service-settings",          auth.GetServiceSettingsHandler)   // PUBLIC: OTP service flags for auth page
+	r.POST("/auth/direct-signup",            auth.DirectSignUpHandler)         // PUBLIC: register without OTP
+	r.POST("/auth/direct-reset-password",    auth.DirectResetPasswordHandler)  // PUBLIC: reset password without OTP
+	r.GET("/settings",                       setting.GetSettings)              // PUBLIC: app settings (timezone, etc.)
+	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
 
 	// เปิดให้รูปที่แคปไว้เข้าถึงผ่าน URL
 	r.Static("/public/reports", "./tmp/reports")
@@ -204,7 +210,7 @@ func main() {
 		authorized.GET("/gmp/configs", gmp.ListGMPConfigs)
 
 		// ===== App Settings (timezone, etc.) =====
-		authorized.GET("/settings", setting.GetSettings)
+		// GET /settings is public (registered above); PUT is protected
 		authorized.PUT("/settings", setting.UpdateSetting)
 
 		// ===== Auto Scan Schedule =====

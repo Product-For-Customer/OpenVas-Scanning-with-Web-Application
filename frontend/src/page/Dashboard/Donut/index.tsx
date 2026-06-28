@@ -330,7 +330,7 @@ const DonutVulnerability: React.FC<Props> = ({
                     <Cell key={entry.name} fill={entry.color} style={{ cursor: "pointer" }} />
                   ))}
                 </Pie>
-                <Tooltip content={<CustomTooltip total={total} />} />
+                <Tooltip content={<CustomTooltip total={total} />} wrapperStyle={{ zIndex: 9999 }} />
               </PieChart>
             </ResponsiveContainer>
 
