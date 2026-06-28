@@ -19,6 +19,9 @@ import {
   FiX,
   FiArrowLeft,
   FiCalendar,
+  FiServer,
+  FiActivity,
+  FiBarChart2,
 } from "react-icons/fi";
 import {
   ListTargetDiffer,
@@ -1710,66 +1713,116 @@ const index: React.FC = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
-              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                {detailMode ? "Data Points" : "Total Targets"}
-              </p>
-              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-                {detailMode ? detailRows.length : summary.totalAssets}
-              </p>
+          <div className="grid grid-cols-3 gap-2.5">
+
+            {/* ── Card 1 : Total Targets / Data Points ── */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-white/6 dark:bg-white/3">
+              <div className="h-1 w-full bg-linear-to-r from-blue-400 to-blue-300 dark:from-blue-500 dark:to-blue-400" />
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+                    {detailMode ? "Data Points" : "Total Targets"}
+                  </p>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[15px] text-blue-500 dark:bg-blue-500/10 dark:text-blue-300">
+                    <FiServer />
+                  </span>
+                </div>
+                <p className="mt-3.5 text-[34px] font-black leading-none tracking-tight text-slate-900 dark:text-white">
+                  {loading ? "—" : (detailMode ? detailRows.length : summary.totalAssets)}
+                </p>
+                <p className="mt-1.5 text-[9px] text-slate-400 dark:text-white/25">
+                  {detailMode ? "scan records" : "monitored assets"}
+                </p>
+              </div>
             </div>
 
+            {/* ── Card 2 : Avg Risk Score ── */}
             {(() => {
               const avgScore = detailMode ? detailAvgRisk : summary.avgLatestRisk;
               const { label: riskLabel, color: labelColor } = getRiskLabel(avgScore);
               return (
-                <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Left — label / score / badge */}
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                        Avg Risk Score (CVSS Rating Score)
+                <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-white/6 dark:bg-white/3">
+                  <div className="h-1 w-full transition-all duration-500" style={{ background: `linear-gradient(to right, ${labelColor}, ${labelColor}88)` }} />
+                  <div className="px-4 py-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+                        Avg Risk Score
                       </p>
-                      <div className="mt-2 flex items-baseline gap-2 leading-none">
-                        <span
-                          className="text-[22px] font-bold tracking-tight"
-                          style={{ color: labelColor }}
-                        >
-                          {formatRisk(avgScore)}
-                        </span>
-                        <span className="text-[13px] font-normal text-slate-400 dark:text-white/30">
-                          / 10
-                        </span>
-                        <span
-                          className="inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-                          style={{ backgroundColor: `${labelColor}14`, color: labelColor }}
-                        >
-                          {riskLabel}
-                        </span>
-                      </div>
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[15px]"
+                        style={{ color: labelColor, backgroundColor: `${labelColor}15` }}
+                      >
+                        <FiActivity />
+                      </span>
                     </div>
-
-                    {/* Right — colored square */}
-                    <div
-                      className="h-11 w-11 shrink-0 rounded-xl"
-                      style={{
-                        background: `linear-gradient(135deg, ${labelColor}cc 0%, ${labelColor}88 100%)`,
-                      }}
-                    />
+                    <div className="mt-3.5 flex items-baseline gap-1.5 leading-none">
+                      <span className="text-[34px] font-black tracking-tight" style={{ color: labelColor }}>
+                        {formatRisk(avgScore)}
+                      </span>
+                      <span className="text-[11px] text-slate-400 dark:text-white/25">/ 10</span>
+                    </div>
+                    <span
+                      className="mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                      style={{ backgroundColor: `${labelColor}12`, color: labelColor }}
+                    >
+                      {riskLabel}
+                    </span>
                   </div>
                 </div>
               );
             })()}
 
-            <div className="rounded-xl border border-slate-200/70 bg-white px-4 py-3 dark:border-white/8 dark:bg-white/4">
-              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                {detailMode ? "Risk Range" : "↑ / ↓ Targets"}
-              </p>
-              <p className="mt-2 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-                {detailMode ? "0–10" : `${summary.increasedCount} / ${summary.decreasedCount}`}
-              </p>
+            {/* ── Card 3 : Risk Change / CVSS Range ── */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-white/6 dark:bg-white/3">
+              <div className="h-1 w-full bg-linear-to-r from-slate-300 to-slate-200 dark:from-white/12 dark:to-white/6" />
+              <div className="px-4 py-4">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+                    {detailMode ? "CVSS Range" : "Risk Change"}
+                  </p>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[15px] text-slate-500 dark:bg-white/10 dark:text-white/40">
+                    <FiBarChart2 />
+                  </span>
+                </div>
+                {detailMode ? (
+                  <div className="mt-3.5">
+                    <p className="text-[34px] font-black leading-none tracking-tight text-slate-900 dark:text-white">
+                      0 – 10
+                    </p>
+                    <p className="mt-1.5 text-[9px] text-slate-400 dark:text-white/25">CVSS v3.1 scale</p>
+                  </div>
+                ) : (
+                  <div className="mt-3.5 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" />
+                        <span className="text-[10px] text-slate-500 dark:text-white/35">Risk Increased</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MdTrendingUp className="text-[14px] text-rose-400" />
+                        <span className="text-[22px] font-black leading-none text-slate-800 dark:text-white">
+                          {loading ? "—" : summary.increasedCount}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-px w-full bg-slate-100 dark:bg-white/6" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
+                        <span className="text-[10px] text-slate-500 dark:text-white/35">Risk Decreased</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MdTrendingDown className="text-[14px] text-emerald-400" />
+                        <span className="text-[22px] font-black leading-none text-slate-800 dark:text-white">
+                          {loading ? "—" : summary.decreasedCount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
           </div>
         </div>
 
@@ -1800,7 +1853,7 @@ const index: React.FC = () => {
               <ResponsiveContainer width="100%" height={chartHeight} minWidth={0}>
                 <BarChart
                   data={detailRows}
-                  margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
+                  margin={{ top: 18, right: 8, left: 8, bottom: 22 }}
                   barCategoryGap="22%"
                 >
                   <CartesianGrid
@@ -1819,7 +1872,17 @@ const index: React.FC = () => {
                     axisLine={false}
                     tickLine={false}
                     interval={0}
-                    height={72}
+                    height={82}
+                    label={{
+                      value: "Scan Date",
+                      position: "insideBottom",
+                      offset: 2,
+                      style: {
+                        fill: isDarkMode() ? "rgba(255,255,255,0.30)" : "#94a3b8",
+                        fontSize: 10,
+                        fontWeight: 600,
+                      },
+                    }}
                   />
 
                   <YAxis
@@ -1829,9 +1892,21 @@ const index: React.FC = () => {
                     }}
                     axisLine={false}
                     tickLine={false}
-                    width={38}
+                    width={44}
                     domain={[0, 10]}
                     ticks={[0, 2, 4, 6, 8, 10]}
+                    label={{
+                      value: "CVSS Score",
+                      angle: -90,
+                      position: "insideLeft",
+                      offset: 14,
+                      style: {
+                        fill: isDarkMode() ? "rgba(255,255,255,0.30)" : "#94a3b8",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textAnchor: "middle",
+                      },
+                    }}
                   />
 
                   <Tooltip
@@ -1911,7 +1986,7 @@ const index: React.FC = () => {
                   >
                     <BarChart
                       data={chartData}
-                      margin={{ top: 18, right: 8, left: -12, bottom: 6 }}
+                      margin={{ top: 18, right: 8, left: 8, bottom: 22 }}
                       barCategoryGap="14%"
                       barGap="-100%"
                     >
@@ -1933,7 +2008,17 @@ const index: React.FC = () => {
                         axisLine={false}
                         tickLine={false}
                         interval={0}
-                        height={42}
+                        height={52}
+                        label={{
+                          value: "Target Name",
+                          position: "insideBottom",
+                          offset: 2,
+                          style: {
+                            fill: isDarkMode() ? "rgba(255,255,255,0.30)" : "#94a3b8",
+                            fontSize: 10,
+                            fontWeight: 600,
+                          },
+                        }}
                       />
 
                       <YAxis
@@ -1945,9 +2030,21 @@ const index: React.FC = () => {
                         }}
                         axisLine={false}
                         tickLine={false}
-                        width={38}
+                        width={44}
                         domain={[0, maxRisk]}
                         ticks={yTicks}
+                        label={{
+                          value: "CVSS Score",
+                          angle: -90,
+                          position: "insideLeft",
+                          offset: 14,
+                          style: {
+                            fill: isDarkMode() ? "rgba(255,255,255,0.30)" : "#94a3b8",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            textAnchor: "middle",
+                          },
+                        }}
                       />
 
                       <Tooltip

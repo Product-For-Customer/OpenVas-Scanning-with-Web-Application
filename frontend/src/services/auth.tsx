@@ -33,6 +33,7 @@ export type LoginUser = {
 export type LoginResponse = {
   message: string;
   user: LoginUser;
+  require_totp?: boolean;
 };
 
 export type MeResponse = {

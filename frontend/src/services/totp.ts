@@ -41,3 +41,8 @@ export const VerifyTOTPSetup = async (code: string): Promise<void> => {
 export const DisableTOTP = async (): Promise<void> => {
   await totpApi.delete("/auth/totp");
 };
+
+// Used after Login returns require_totp: true — verifies code and finalises session
+export const VerifyTOTPLogin = async (code: string): Promise<void> => {
+  await totpApi.post("/auth/totp/verify-login", { code });
+};

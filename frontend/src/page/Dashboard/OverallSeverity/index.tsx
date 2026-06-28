@@ -25,6 +25,8 @@ type CardDef = {
   title: SeverityKey;
   icon: React.ReactNode;
   color: string;
+  rgb: string;
+  cvssRange: string;
 };
 
 type TargetOption = {
@@ -54,24 +56,14 @@ interface Props {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Micro-components (Example-Web-Application style)
+// Skeleton helpers
 // ─────────────────────────────────────────────────────────────
 
 const Pulse: React.FC = () => (
   <span className="inline-block h-9 w-14 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
 );
-
 const SubPulse: React.FC = () => (
-  <span className="inline-block h-3.5 w-32 animate-pulse rounded bg-slate-100 dark:bg-white/10" />
-);
-
-const Bar: React.FC<{ pct: number; color: string }> = ({ pct, color }) => (
-  <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/8">
-    <div
-      className="h-full rounded-full transition-all duration-700"
-      style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }}
-    />
-  </div>
+  <span className="inline-block h-3 w-20 animate-pulse rounded bg-slate-100 dark:bg-white/10" />
 );
 
 // ─────────────────────────────────────────────────────────────
@@ -80,15 +72,8 @@ const Bar: React.FC<{ pct: number; color: string }> = ({ pct, color }) => (
 
 const getTargetHost = (item: any) => {
   const host =
-    item?.host ??
-    item?.host_ip ??
-    item?.ip ??
-    item?.target_ip ??
-    item?.ip_host ??
-    item?.asset_ip ??
-    item?.target_host ??
-    item?.target ??
-    "";
+    item?.host ?? item?.host_ip ?? item?.ip ?? item?.target_ip ??
+    item?.ip_host ?? item?.asset_ip ?? item?.target_host ?? item?.target ?? "";
   return String(host).trim() || "-";
 };
 
@@ -96,15 +81,15 @@ const getTargetKey   = (t: string, h: string) => `${t.trim() || "-"}__${h.trim()
 const getTargetLabel = (t: string, h: string) => `${t.trim() || "-"} - ${h.trim() || "-"}`;
 
 // ─────────────────────────────────────────────────────────────
-// Card definitions (static — no styling logic)
+// Card definitions — CVSS v3.1 score ranges (official)
 // ─────────────────────────────────────────────────────────────
 
 const CARDS: CardDef[] = [
-  { id: 1, title: "Critical", icon: <FiAlertOctagon />, color: "#ef4444" },
-  { id: 2, title: "High",     icon: <FiAlertTriangle />, color: "#f97316" },
-  { id: 3, title: "Medium",   icon: <FiInfo />,          color: "#eab308" },
-  { id: 4, title: "Low",      icon: <FiMinusCircle />,   color: "#22c55e" },
-  { id: 5, title: "Info",     icon: <FiShield />,        color: "#3b82f6" },
+  { id: 1, title: "Critical", icon: <FiAlertOctagon />, color: "#ef4444", rgb: "239,68,68",  cvssRange: "9.0 – 10.0" },
+  { id: 2, title: "High",     icon: <FiAlertTriangle />, color: "#f97316", rgb: "249,115,22", cvssRange: "7.0 – 8.9"  },
+  { id: 3, title: "Medium",   icon: <FiInfo />,           color: "#eab308", rgb: "234,179,8",  cvssRange: "4.0 – 6.9"  },
+  { id: 4, title: "Low",      icon: <FiMinusCircle />,    color: "#22c55e", rgb: "34,197,94",  cvssRange: "0.1 – 3.9"  },
+  { id: 5, title: "Info",     icon: <FiShield />,         color: "#3b82f6", rgb: "59,130,246", cvssRange: "0.0"         },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -118,18 +103,16 @@ const OverallSeverity: React.FC<Props> = ({
   const navigate = useNavigate();
   const { t } = useLanguage();
 
-  const [openTargetQuery, setOpenTargetQuery]   = useState(false);
+  const [openTargetQuery, setOpenTargetQuery]     = useState(false);
   const [targetQuerySearch, setTargetQuerySearch] = useState("");
-  const [selectedTargets, setSelectedTargets]   = useState<string[]>([]);
+  const [selectedTargets, setSelectedTargets]     = useState<string[]>([]);
 
   const targetRef = useRef<HTMLDivElement | null>(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (targetRef.current && !targetRef.current.contains(e.target as Node)) {
+      if (targetRef.current && !targetRef.current.contains(e.target as Node))
         setOpenTargetQuery(false);
-      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -145,9 +128,12 @@ const OverallSeverity: React.FC<Props> = ({
       const host     = getTargetHost(item);
       const key      = getTargetKey(taskName, host);
       const label    = getTargetLabel(taskName, host);
-
       if (!map.has(key)) {
-        map.set(key, { task_id: taskID, task_name: taskName, host, target_key: key, target_label: label, critical: 0, high: 0, medium: 0, low: 0, info: 0 });
+        map.set(key, {
+          task_id: taskID, task_name: taskName, host,
+          target_key: key, target_label: label,
+          critical: 0, high: 0, medium: 0, low: 0, info: 0,
+        });
       }
       const row = map.get(key)!;
       const n   = Number(item?.total ?? 0);
@@ -206,18 +192,16 @@ const OverallSeverity: React.FC<Props> = ({
 
   const selectedTargetPairs = useMemo(() => {
     return selectedTargetOptions.map(o => ({
-      key: o.key, label: o.label, task_id: o.task_id, task_name: o.task_name, host: o.host, host_ip: o.host,
+      key: o.key, label: o.label, task_id: o.task_id,
+      task_name: o.task_name, host: o.host, host_ip: o.host,
     }));
   }, [selectedTargetOptions]);
 
   const totals = useMemo(() => {
     let critical = 0, high = 0, medium = 0, low = 0, info = 0;
     for (const r of filteredRows) {
-      critical += r.critical;
-      high     += r.high;
-      medium   += r.medium;
-      low      += r.low;
-      info     += r.info;
+      critical += r.critical; high += r.high;
+      medium   += r.medium;   low  += r.low; info += r.info;
     }
     return { totalAll: critical + high + medium + low + info, critical, high, medium, low, info };
   }, [filteredRows]);
@@ -269,13 +253,13 @@ const OverallSeverity: React.FC<Props> = ({
     navigate("/admin/vulnerability-by-level", {
       state: {
         level,
-        scopeTask: selectedTargets.length > 0 ? selectedTaskNames : "all",
-        task_id:      selectedTaskIDs.length   === 1 ? selectedTaskIDs[0]   : undefined,
-        task_ids:     selectedTaskIDs.length   >  0  ? selectedTaskIDs      : undefined,
-        task_names:   selectedTaskNames.length >  0  ? selectedTaskNames    : undefined,
-        target_keys:  selectedTargets.length   >  0  ? selectedTargets      : undefined,
-        target_hosts: selectedTargetHosts.length > 0 ? selectedTargetHosts  : undefined,
-        target_pairs: selectedTargetPairs.length > 0 ? selectedTargetPairs  : undefined,
+        scopeTask:    selectedTargets.length > 0 ? selectedTaskNames : "all",
+        task_id:      selectedTaskIDs.length   === 1 ? selectedTaskIDs[0]  : undefined,
+        task_ids:     selectedTaskIDs.length   >  0  ? selectedTaskIDs     : undefined,
+        task_names:   selectedTaskNames.length >  0  ? selectedTaskNames   : undefined,
+        target_keys:  selectedTargets.length   >  0  ? selectedTargets     : undefined,
+        target_hosts: selectedTargetHosts.length > 0 ? selectedTargetHosts : undefined,
+        target_pairs: selectedTargetPairs.length > 0 ? selectedTargetPairs : undefined,
       },
     });
   };
@@ -289,8 +273,6 @@ const OverallSeverity: React.FC<Props> = ({
 
       {/* ── Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-
-        {/* Left: title + finding count */}
         <div className="flex items-center gap-2.5">
           <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
             {t("dashboard.overallSeverity")}
@@ -300,7 +282,6 @@ const OverallSeverity: React.FC<Props> = ({
           </span>
         </div>
 
-        {/* Right: scope label + filter button */}
         <div className="flex items-center gap-2">
           {selectedTargets.length > 0 && (
             <span className="flex items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/30">
@@ -322,11 +303,8 @@ const OverallSeverity: React.FC<Props> = ({
               />
             </button>
 
-            {/* Dropdown */}
             {openTargetQuery && (
               <div className="absolute right-0 z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-
-                {/* Search + controls */}
                 <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
                   <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
                     <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
@@ -356,7 +334,6 @@ const OverallSeverity: React.FC<Props> = ({
                   </div>
                 </div>
 
-                {/* Options list */}
                 <div className="max-h-56 overflow-y-auto p-2">
                   {filteredTargetOptions.length === 0 ? (
                     <p className="py-6 text-center text-[11px] text-slate-400 dark:text-white/35">
@@ -373,9 +350,7 @@ const OverallSeverity: React.FC<Props> = ({
                             onClick={() => toggleTarget(opt.key)}
                             className={[
                               "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition",
-                              checked
-                                ? "bg-blue-50 dark:bg-blue-500/10"
-                                : "hover:bg-slate-50 dark:hover:bg-white/5",
+                              checked ? "bg-blue-50 dark:bg-blue-500/10" : "hover:bg-slate-50 dark:hover:bg-white/5",
                             ].join(" ")}
                           >
                             <span
@@ -413,35 +388,97 @@ const OverallSeverity: React.FC<Props> = ({
             card.title === "Low"      ? totals.low      :
             totals.info;
 
+          const pct = percent(rawNumber);
+
           return (
             <button
               key={card.id}
               type="button"
               onClick={() => handleNavigateByLevel(card.title)}
-              className="rounded-xl border border-slate-200/70 bg-white px-5 py-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/8 dark:bg-[#0d0b1a]/80"
+              className="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/6 dark:bg-white/3"
             >
-              {/* Label + Icon */}
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
-                  {card.title}
-                </p>
-                <span style={{ color: card.color }} className="text-[15px] opacity-75">
-                  {card.icon}
-                </span>
+              {/* ── Left accent strip (replaces inline border-left) ── */}
+              <span
+                className="absolute left-0 top-0 h-full w-[3.5px]"
+                style={{ backgroundColor: card.color }}
+                aria-hidden
+              />
+
+              {/* ── Soft radial glow top-right ── */}
+              <div
+                className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full blur-2xl transition-opacity duration-300"
+                style={{ backgroundColor: card.color, opacity: 0.07 }}
+                aria-hidden
+              />
+
+              {/* ── Large icon watermark bottom-right ── */}
+              <div
+                className="pointer-events-none absolute -bottom-2 -right-1 text-[62px] leading-none transition-opacity duration-300 group-hover:opacity-[0.09]"
+                style={{ color: card.color, opacity: 0.045 }}
+                aria-hidden
+              >
+                {card.icon}
               </div>
 
-              {/* Value */}
-              <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-                {loading ? <Pulse /> : rawNumber.toLocaleString()}
-              </p>
+              {/* ── Content ── */}
+              <div className="relative pl-5 pr-4 pb-4 pt-4">
 
-              {/* Sub */}
-              <p className="mt-2 text-[11px] text-slate-400 dark:text-white/35">
-                {loading ? <SubPulse /> : makeSubtitle(rawNumber)}
-              </p>
+                {/* Row 1 — title + icon badge */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10.5px] font-semibold uppercase tracking-widest text-slate-500 dark:text-white/45">
+                    {card.title}
+                  </p>
+                  <span
+                    className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg text-[13px] transition-transform duration-200 group-hover:scale-110"
+                    style={{ color: card.color, background: `rgba(${card.rgb},0.13)` }}
+                  >
+                    {card.icon}
+                  </span>
+                </div>
 
-              {/* Bar */}
-              <Bar pct={percent(rawNumber)} color={card.color} />
+                {/* Row 2 — CVSS range */}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className="text-[9px] font-medium text-slate-400 dark:text-white/25">CVSS</span>
+                  <span
+                    className="rounded-full px-2 py-px text-[9.5px] font-semibold tabular-nums"
+                    style={{ color: card.color, background: `rgba(${card.rgb},0.10)` }}
+                  >
+                    {card.cvssRange}
+                  </span>
+                </div>
+
+                {/* Row 3 — number */}
+                <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+                  {loading ? <Pulse /> : rawNumber.toLocaleString()}
+                </p>
+
+                {/* Row 4 — divider */}
+                <div className="my-3 h-px w-full bg-slate-100 dark:bg-white/6" />
+
+                {/* Row 5 — subtitle + % */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="truncate text-[10.5px] text-slate-400 dark:text-white/30">
+                    {loading ? <SubPulse /> : makeSubtitle(rawNumber)}
+                  </p>
+                  {!loading && totals.totalAll > 0 && (
+                    <span
+                      className="shrink-0 text-[10.5px] font-semibold tabular-nums"
+                      style={{ color: card.color }}
+                    >
+                      {pct.toFixed(1)}%
+                    </span>
+                  )}
+                </div>
+
+                {/* Row 6 — progress bar */}
+                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/7">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: card.color }}
+                  />
+                </div>
+
+              </div>
             </button>
           );
         })}

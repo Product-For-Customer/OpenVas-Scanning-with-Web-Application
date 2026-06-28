@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
 import StatusTarget from "./Status";
-import RiskScoreGraph from "./GraphComparision";
 import TableTarget from "./TableTarget";
 import DeviceMap from "./Map";
 import { ListDeviceRisk, type DeviceRiskDTO } from "../../services";
@@ -66,10 +65,6 @@ const Target: React.FC = () => {
 
       <div className="mb-4 sm:mb-5">
         <DeviceMap />
-      </div>
-
-      <div className="mb-4 sm:mb-5">
-        <RiskScoreGraph />
       </div>
 
       <div className="mb-2">

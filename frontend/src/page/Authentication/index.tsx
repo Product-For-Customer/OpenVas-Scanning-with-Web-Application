@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { FaNetworkWired } from "react-icons/fa";
 import { Login } from "../../services/auth";
+import { VerifyTOTPLogin } from "../../services/totp";
 import {
   SendOTPForSignUp,
   CheckUserEmail,
@@ -46,7 +47,7 @@ type SignUpFormData = {
   position: string;
 };
 
-type ViewMode = "login" | "signup" | "forgot" | "reset";
+type ViewMode = "login" | "signup" | "forgot" | "reset" | "totp";
 
 type EmailAndPhoneNumberResponse = {
   id: number;
@@ -113,6 +114,11 @@ const Index: React.FC = () => {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
+
+  // TOTP step
+  const [totpCode,        setTotpCode]        = useState("");
+  const [totpSubmitting,  setTotpSubmitting]  = useState(false);
+  const [totpError,       setTotpError]       = useState("");
 
   const [forgotEmail, setForgotEmail] = useState("");
   const [verifiedResetEmail, setVerifiedResetEmail] = useState("");
@@ -399,38 +405,55 @@ const Index: React.FC = () => {
     try {
       setLoginSubmitting(true);
 
-      const res = await Login({
-        email: loginEmail,
-        password: loginPassword,
-      });
+      const res = await Login({ email: loginEmail, password: loginPassword });
+
+      // Backend requires TOTP verification
+      if (res?.require_totp) {
+        setTotpCode("");
+        setTotpError("");
+        setViewMode("totp");
+        return;
+      }
 
       const role = (res?.user?.role ?? "").toLowerCase();
 
       if (role === "admin" || role === "user") {
         message.success("login success");
-
-        try {
-          await refreshMe();
-        } catch {
-          // non-critical
-        }
+        try { await refreshMe(); } catch { /* non-critical */ }
         navigate("/admin", { replace: true });
         return;
       } else {
         setLoginError("บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน");
       }
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.error ||
-        err?.message ||
-        "Login ไม่สำเร็จ กรุณาลองใหม่";
+      const msg = err?.response?.data?.error || err?.message || "Login ไม่สำเร็จ กรุณาลองใหม่";
       setLoginError(msg);
     } finally {
       isPreparingLoginAnimationRef.current = false;
+      if (isMountedRef.current) setLoginSubmitting(false);
+    }
+  };
 
-      if (isMountedRef.current) {
-        setLoginSubmitting(false);
-      }
+  const handleTOTPSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTotpError("");
+
+    if (totpCode.length !== 6) {
+      setTotpError("กรุณากรอกรหัส 6 หลักจาก Authenticator App");
+      return;
+    }
+
+    try {
+      setTotpSubmitting(true);
+      await VerifyTOTPLogin(totpCode);
+      message.success("login success");
+      try { await refreshMe(); } catch { /* non-critical */ }
+      navigate("/admin", { replace: true });
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || "รหัส TOTP ไม่ถูกต้องหรือหมดอายุ";
+      setTotpError(msg);
+    } finally {
+      if (isMountedRef.current) setTotpSubmitting(false);
     }
   };
 
@@ -940,6 +963,68 @@ const Index: React.FC = () => {
         {text}
       </div>
     ) : null;
+
+  const renderTOTPForm = () => (
+    <div className="w-full max-w-[320px]">
+      <div className="text-center">
+        {renderSectionBadge("2-Factor Auth")}
+        <h2 className={`${panelTitleClass} text-[27px] tracking-[-0.04em]`}>
+          Authenticator
+        </h2>
+        <p className="mt-1.5 text-[11px] leading-5 text-slate-500 dark:text-white/55">
+          กรอกรหัส 6 หลักจาก Authenticator App ของคุณ
+        </p>
+      </div>
+
+      {totpError ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-center text-[12px] text-red-600 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+          {totpError}
+        </div>
+      ) : null}
+
+      <form onSubmit={handleTOTPSubmit} className="mt-5 space-y-4">
+        <div>
+          <label className={labelBase}>รหัส TOTP</label>
+          <div className="relative">
+            <FiShield className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-cyan-600 dark:text-cyan-300" />
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={totpCode}
+              onChange={e => { setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setTotpError(""); }}
+              placeholder="000 000"
+              autoFocus
+              className="h-10 w-full rounded-xl border border-slate-200/90 bg-white/85 dark:bg-white/6 dark:border-white/10 pl-10 pr-4 text-center font-mono text-[18px] tracking-[0.35em] text-slate-700 dark:text-white/85 outline-none transition-all duration-300 focus:border-cyan-400 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-100/70 dark:focus:ring-cyan-500/15 shadow-sm dark:shadow-none"
+            />
+          </div>
+          <p className="mt-1.5 pl-1 text-[10px] text-slate-400 dark:text-white/30">
+            รหัสจาก Google Authenticator หรือ Authy
+          </p>
+        </div>
+
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            disabled={totpSubmitting || totpCode.length !== 6}
+            className={primaryButtonClass}
+          >
+            {totpSubmitting ? "Verifying..." : "Verify & Sign In"}
+          </button>
+        </div>
+
+        <div className="text-center text-[12px] text-slate-600 dark:text-white/65">
+          <button
+            type="button"
+            onClick={() => { setViewMode("login"); setTotpCode(""); setTotpError(""); }}
+            className="font-extrabold text-slate-900 transition hover:text-cyan-600 dark:text-white dark:hover:text-cyan-300"
+          >
+            ← กลับไปหน้า Login
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 
   const renderLoginForm = (compact = false) => (
     <div className={compact ? "w-full max-w-170" : "w-full max-w-77.5"}>
@@ -1548,6 +1633,7 @@ const Index: React.FC = () => {
               {viewMode === "forgot" && renderForgotForm()}
               {viewMode === "reset" && renderResetForm()}
               {viewMode === "signup" && renderSignUpForm()}
+              {viewMode === "totp" && renderTOTPForm()}
             </div>
           </div>
         </div>
@@ -1666,6 +1752,23 @@ const Index: React.FC = () => {
                       }}
                     >
                       {renderSignUpForm()}
+                    </div>
+
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{
+                        opacity: viewMode === "totp" ? 1 : 0,
+                        transform:
+                          viewMode === "totp"
+                            ? "translateX(0px) scale(1)"
+                            : "translateX(22px) scale(0.96)",
+                        filter: viewMode === "totp" ? "blur(0px)" : "blur(3px)",
+                        transition: `opacity 620ms ${ANIM_EASE}, transform 760ms ${ANIM_EASE}, filter 760ms ${ANIM_EASE}`,
+                        transitionDelay: viewMode === "totp" ? "60ms" : "0ms",
+                        pointerEvents: viewMode === "totp" ? "auto" : "none",
+                      }}
+                    >
+                      {renderTOTPForm()}
                     </div>
                   </div>
                 </div>

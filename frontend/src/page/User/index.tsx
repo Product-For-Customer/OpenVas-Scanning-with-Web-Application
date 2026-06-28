@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiChevronDown,
+  FiChevronLeft,
+  FiChevronRight,
   FiEdit2,
   FiInfo,
   FiMail,
@@ -23,6 +25,8 @@ import { message } from "antd";
 import ModalCreateandUpdateUser from "../../Model/ModalCreateandUpdateUser";
 
 type SortKey = "Newest" | "Role: Admin First" | "Role: User First" | "Name A-Z";
+
+const USERS_PER_PAGE = 5;
 
 type UiUser = {
   id: number;
@@ -47,9 +51,10 @@ const Index: React.FC = () => {
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("Newest");
-  const [openSort, setOpenSort] = useState(false);
+  const [search,       setSearch]       = useState("");
+  const [sortBy,       setSortBy]       = useState<SortKey>("Newest");
+  const [openSort,     setOpenSort]     = useState(false);
+  const [currentPage,  setCurrentPage]  = useState(1);
 
   const [rows, setRows] = useState<UiUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -176,6 +181,11 @@ const Index: React.FC = () => {
 
     return filtered;
   }, [rows, search, sortBy]);
+
+  const totalPages   = useMemo(() => Math.max(1, Math.ceil(users.length / USERS_PER_PAGE)), [users.length]);
+  const pagedUsers   = useMemo(() => users.slice((currentPage - 1) * USERS_PER_PAGE, currentPage * USERS_PER_PAGE), [users, currentPage]);
+
+  useEffect(() => { setCurrentPage(1); }, [search, sortBy]);
 
   const handleEdit = (user: UiUser) => {
     setSelectedUser(user);
@@ -393,159 +403,167 @@ const Index: React.FC = () => {
             )}
           </div>
 
-          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-white/3">
-            <div className="min-w-280">
-              <table className="w-full border-separate border-spacing-0">
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/80">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-175">
                 <thead>
-                  <tr className="text-left">
-                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[34%]">
-                      User
-                    </th>
-                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[30%]">
-                      Contact
-                    </th>
-                    <th className="border-b border-gray-200/80 px-3 py-2 text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[22%]">
-                      Location
-                    </th>
-                    <th className="border-b border-gray-200/80 px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:border-white/10 dark:text-white/60 w-[14%]">
-                      Action
-                    </th>
+                  <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">User</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Contact</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Location</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Action</th>
                   </tr>
                 </thead>
-              </table>
-
-              <div className="max-h-82.5 overflow-y-auto">
-                <table className="w-full border-separate border-spacing-0">
-                  <tbody>
-                    {!loading &&
-                      users.map((user, idx) => {
-                        const isCurrentUser =
-                          currentUserId !== null && user.id === currentUserId;
-
-                        return (
-                          <tr
-                            key={user.id}
-                            className="transition-colors hover:bg-violet-50/40 dark:hover:bg-white/4"
-                          >
-                            <td
-                              className={`px-3 py-2 w-[34%] ${
-                                idx !== users.length - 1
-                                  ? "border-b border-gray-100 dark:border-white/10"
-                                  : ""
-                              }`}
-                            >
-                              <div className="min-w-0 flex items-center gap-2.5">
-                                <div className="shrink-0">{renderAvatar(user)}</div>
-
-                                <div className="min-w-0">
-                                  <p className="truncate text-[11px] font-semibold text-slate-900 dark:text-white/85">
-                                    {user.first_name} {user.last_name}
-                                  </p>
-
-                                  <div className="mt-0.5 space-y-0.5">
-                                    <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
-                                      Role : {user.role || "-"}
-                                    </p>
-                                    <p className="truncate text-[10px] text-slate-500 dark:text-white/50">
-                                      Position : {user.position || "-"}
-                                    </p>
-                                  </div>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b border-slate-100 dark:border-white/5">
+                        <td className="px-4 py-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-8 w-8 animate-pulse rounded-xl bg-slate-100 dark:bg-white/10" />
+                            <div>
+                              <div className="h-3 w-28 animate-pulse rounded bg-slate-100 dark:bg-white/10" />
+                              <div className="mt-1.5 h-2.5 w-20 animate-pulse rounded bg-slate-100 dark:bg-white/10" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5"><div className="h-3 w-36 animate-pulse rounded bg-slate-100 dark:bg-white/10" /></td>
+                        <td className="px-4 py-3.5"><div className="h-3 w-24 animate-pulse rounded bg-slate-100 dark:bg-white/10" /></td>
+                        <td className="px-4 py-3.5"><div className="ml-auto h-7 w-16 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" /></td>
+                      </tr>
+                    ))
+                  ) : pagedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/45">
+                        {t("common.noResults")}
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedUsers.map((user) => {
+                      const isCurrentUser = currentUserId !== null && user.id === currentUserId;
+                      return (
+                        <tr key={user.id} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/3">
+                          {/* User */}
+                          <td className="min-w-60 px-4 py-3.5">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              <div className="shrink-0">{renderAvatar(user)}</div>
+                              <div className="min-w-0">
+                                <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-white/85">
+                                  {user.first_name} {user.last_name}
+                                </p>
+                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                  <span className="text-[10px] text-slate-400 dark:text-white/30">
+                                    {user.role || "-"}
+                                  </span>
+                                  {user.position && (
+                                    <span className="text-[10px] text-slate-400 dark:text-white/30">· {user.position}</span>
+                                  )}
                                 </div>
                               </div>
-                            </td>
+                            </div>
+                          </td>
 
-                            <td
-                              className={`px-3 py-2 w-[30%] ${
-                                idx !== users.length - 1
-                                  ? "border-b border-gray-100 dark:border-white/10"
-                                  : ""
-                              }`}
-                            >
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                                  <FiMail className="text-[10px] text-cyan-600 dark:text-cyan-300" />
-                                  <span className="truncate">{user.email}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                                  <FiPhone className="text-[10px] text-violet-600 dark:text-violet-300" />
-                                  <span>{user.phone_number || "-"}</span>
-                                </div>
+                          {/* Contact */}
+                          <td className="min-w-52 px-4 py-3.5">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-white/65">
+                                <FiMail className="shrink-0 text-[10px] text-cyan-500 dark:text-cyan-300" />
+                                <span className="truncate">{user.email}</span>
                               </div>
-                            </td>
-
-                            <td
-                              className={`px-3 py-2 w-[22%] ${
-                                idx !== users.length - 1
-                                  ? "border-b border-gray-100 dark:border-white/10"
-                                  : ""
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 text-[10.5px] text-slate-700 dark:text-white/75">
-                                <FiMapPin className="text-[10px] text-emerald-600 dark:text-emerald-300" />
-                                <span className="truncate">{user.location || "-"}</span>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-white/65">
+                                <FiPhone className="shrink-0 text-[10px] text-violet-500 dark:text-violet-300" />
+                                <span>{user.phone_number || "-"}</span>
                               </div>
-                            </td>
+                            </div>
+                          </td>
 
-                            <td
-                              className={`px-3 py-2 text-right w-[14%] ${
-                                idx !== users.length - 1
-                                  ? "border-b border-gray-100 dark:border-white/10"
-                                  : ""
-                              }`}
-                            >
-                              <div className="inline-flex items-center gap-2">
+                          {/* Location */}
+                          <td className="min-w-40 px-4 py-3.5">
+                            <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-white/65">
+                              <FiMapPin className="shrink-0 text-[10px] text-emerald-500 dark:text-emerald-300" />
+                              <span className="truncate">{user.location || "-"}</span>
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right">
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleEdit(user)}
+                                className={editGradientIconBtn}
+                                title="Edit user"
+                                aria-label="Edit user"
+                              >
+                                <FiEdit2 className="text-[11px]" />
+                              </button>
+                              {!isCurrentUser && (
                                 <button
                                   type="button"
-                                  onClick={() => handleEdit(user)}
-                                  className={editGradientIconBtn}
-                                  title="Edit user"
-                                  aria-label="Edit user"
+                                  onClick={() => openDeleteModal(user)}
+                                  className={deleteGradientIconBtn}
+                                  title="Delete user"
+                                  aria-label="Delete user"
                                 >
-                                  <FiEdit2 className="text-[11px]" />
+                                  <FiTrash2 className="text-[11px]" />
                                 </button>
-
-                                {!isCurrentUser && (
-                                  <button
-                                    type="button"
-                                    onClick={() => openDeleteModal(user)}
-                                    className={deleteGradientIconBtn}
-                                    title="Delete user"
-                                    aria-label="Delete user"
-                                  >
-                                    <FiTrash2 className="text-[11px]" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                    {!loading && users.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
-                        >
-                          {t("common.noResults")}
-                        </td>
-                      </tr>
-                    )}
-
-                    {loading && (
-                      <tr>
-                        <td
-                          colSpan={4}
-                          className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/50"
-                        >
-                          Loading...
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
+
+            {/* ── Footer: count + pagination ── */}
+            {!loading && users.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+                <p className="text-[10.5px] text-slate-400 dark:text-white/30">
+                  {users.length > USERS_PER_PAGE
+                    ? `${(currentPage - 1) * USERS_PER_PAGE + 1}–${Math.min(currentPage * USERS_PER_PAGE, users.length)} of ${users.length} users`
+                    : `${users.length} user${users.length !== 1 ? "s" : ""} total`}
+                </p>
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+                    >
+                      <FiChevronLeft className="text-[12px]" />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        style={currentPage === page ? { backgroundColor: currentColor } : undefined}
+                        className={[
+                          "grid h-7 min-w-7 place-items-center rounded-lg px-1.5 text-[11px] font-semibold transition",
+                          currentPage === page
+                            ? "text-white"
+                            : "border border-slate-200/70 text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5",
+                        ].join(" ")}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5"
+                    >
+                      <FiChevronRight className="text-[12px]" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>
