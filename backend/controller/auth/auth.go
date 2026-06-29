@@ -23,13 +23,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// ── Service-setting keys (must match frontend localStorage keys) ──────────────
+// ── Service-setting keys ──────────────────────────────────────────────────────
 
 const (
 	keyFA2Enabled  = "argus_2fa_enabled"
 	keyOTPLogin    = "argus_otp_login"
 	keyOTPRegister = "argus_otp_register"
 	keyOTPReset    = "argus_otp_reset_password"
+	keyTOTPEnabled = "argus_totp_enabled"
 )
 
 // getServiceSetting reads a key from SystemConfig; returns defaultVal when missing.
@@ -60,6 +61,12 @@ func registerOTPEnabled(db *gorm.DB) bool {
 func resetOTPEnabled(db *gorm.DB) bool {
 	return getServiceSetting(db, keyFA2Enabled, "false") == "true" &&
 		getServiceSetting(db, keyOTPReset, "false") == "true"
+}
+
+// totpServiceEnabled returns true when both 2FA master toggle AND TOTP service are on.
+func totpServiceEnabled(db *gorm.DB) bool {
+	return getServiceSetting(db, keyFA2Enabled, "false") == "true" &&
+		getServiceSetting(db, keyTOTPEnabled, "false") == "true"
 }
 
 // maskEmail hides most of the local part, e.g. "admin@example.com" → "a***@example.com"
@@ -310,8 +317,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Priority 1: user-level TOTP (strongest — always wins)
-	if user.TOTPEnabled {
+	// Priority 1: user-level TOTP — only when TOTP service is globally enabled
+	if totpServiceEnabled(db) && user.TOTPEnabled {
 		if err := setPendingTOTPCookie(c, user.ID, user.Email); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initiate TOTP challenge"})
 			return
@@ -427,13 +434,14 @@ func VerifyEmailLoginOTPHandler(c *gin.Context) {
 	})
 }
 
-// GetServiceSettingsHandler — PUBLIC. Returns OTP service flags for the auth page.
+// GetServiceSettingsHandler — PUBLIC. Returns OTP/TOTP service flags for the auth page.
 func GetServiceSettingsHandler(c *gin.Context) {
 	db := config.DB()
 	c.JSON(http.StatusOK, gin.H{
 		"login_otp":    loginOTPEnabled(db),
 		"register_otp": registerOTPEnabled(db),
 		"reset_otp":    resetOTPEnabled(db),
+		"totp_enabled": totpServiceEnabled(db),
 	})
 }
 

@@ -91,6 +91,7 @@ export type ServiceSettings = {
   login_otp: boolean;
   register_otp: boolean;
   reset_otp: boolean;
+  totp_enabled?: boolean;
 };
 
 export const GetServiceSettings = async (): Promise<ServiceSettings> => {
@@ -98,13 +99,7 @@ export const GetServiceSettings = async (): Promise<ServiceSettings> => {
     const res = await authApi.get("/auth/service-settings");
     return res.data as ServiceSettings;
   } catch {
-    // fallback: read from localStorage (set by admin on same device)
-    const FA2   = localStorage.getItem("argus_2fa_enabled") === "true";
-    return {
-      login_otp:    FA2 && localStorage.getItem("argus_otp_login") !== "false",
-      register_otp: FA2 && localStorage.getItem("argus_otp_register") === "true",
-      reset_otp:    FA2 && localStorage.getItem("argus_otp_reset_password") === "true",
-    };
+    return { login_otp: false, register_otp: false, reset_otp: false, totp_enabled: false };
   }
 };
 

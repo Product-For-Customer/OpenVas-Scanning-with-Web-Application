@@ -21,6 +21,7 @@ import {
 } from "../../services/totp";
 import { useAuth } from "../../contexts/AuthContext";
 import { useStateContext } from "../../contexts/ProviderContext";
+import { GetAppSettings } from "../../services/setting";
 import profileBanner from "../../assets/background_profile.jpg";
 
 // ─────────────────────────────────────────────────────────────
@@ -332,8 +333,9 @@ const Account: React.FC = () => {
   const [submitting,  setSubmitting]  = useState(false);
 
   // TOTP
-  const [totpStatus,    setTotpStatus]    = useState<TOTPStatus | null>(null);
-  const [showTotpModal, setShowTotpModal] = useState(false);
+  const [totpStatus,        setTotpStatus]        = useState<TOTPStatus | null>(null);
+  const [showTotpModal,     setShowTotpModal]     = useState(false);
+  const [totpServiceEnabled, setTotpServiceEnabled] = useState(true);
 
   // Form
   const [form, setForm] = useState({
@@ -362,10 +364,11 @@ const Account: React.FC = () => {
     if (!currentUserId || auth?.isLoading) return;
     setLoadingUser(true);
     try {
-      const [result, contacts, totp] = await Promise.all([
+      const [result, contacts, totp, appSettings] = await Promise.all([
         ListUserByID(currentUserId),
         ListEmailAndPhoneNumber(),
         GetTOTPStatus().catch(() => null),
+        GetAppSettings().catch(() => ({} as Record<string, string>)),
       ]);
       if (!isMounted.current) return;
       if (result) {
@@ -381,6 +384,12 @@ const Account: React.FC = () => {
       }
       setExistingContacts(Array.isArray(contacts) ? contacts : []);
       if (totp) setTotpStatus(totp);
+      // TOTP service is enabled only when both master 2FA and totp toggle are on
+      const settings = appSettings as Record<string, string>;
+      setTotpServiceEnabled(
+        settings["argus_2fa_enabled"] === "true" &&
+        settings["argus_totp_enabled"] === "true"
+      );
     } catch { /* ignore */ } finally {
       if (isMounted.current) setLoadingUser(false);
     }
@@ -658,7 +667,18 @@ const Account: React.FC = () => {
 
             {/* ── TOTP button — pushed to bottom ── */}
             <div className="mt-auto border-t border-slate-100 px-5 py-4 dark:border-white/8">
-              {totpStatus === null ? (
+              {!totpServiceEnabled ? (
+                /* Service disabled by admin */
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <FiAlertTriangle className="text-[13px] text-amber-400" />
+                    <p className="text-[12px] font-medium text-slate-500 dark:text-white/45">TOTP Unavailable</p>
+                  </div>
+                  <p className="text-[11px] text-slate-400 dark:text-white/30">
+                    Authenticator App is disabled by the administrator.
+                  </p>
+                </div>
+              ) : totpStatus === null ? (
                 /* Loading */
                 <div className="flex items-center gap-2 text-[11.5px] text-slate-400 dark:text-white/30">
                   <FiRefreshCw className="animate-spin text-[11px]" /> Loading security status…

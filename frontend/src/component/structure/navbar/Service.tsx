@@ -115,15 +115,15 @@ const Service: React.FC = () => {
   const [form,          setForm]          = useState({ email: "", pass_app: "" });
   const [showPass,      setShowPass]      = useState(false);
 
-  // ── Toggle state (localStorage-backed) ───────────────────
-  const [twoFA,       setTwoFA]       = useState(() => localStorage.getItem(FA2_KEY)   === "true");
-  const [totpEnabled, setTotpEnabled] = useState(() => localStorage.getItem(TOTP_KEY)  === "true");
-  const [maintenance, setMaintenance] = useState(() => localStorage.getItem(MAINT_KEY) === "true");
+  // ── Toggle state (DB-backed, loaded from GetAppSettings) ─────────────────────
+  const [twoFA,       setTwoFA]       = useState(false);
+  const [totpEnabled, setTotpEnabled] = useState(false);
+  const [maintenance, setMaintenance] = useState(false);
 
   // OTP sub-options (only active when twoFA is on)
-  const [otpLogin,    setOtpLogin]    = useState(() => localStorage.getItem(OTP_LOGIN_KEY) !== "false");
-  const [otpRegister, setOtpRegister] = useState(() => localStorage.getItem(OTP_REG_KEY)   === "true");
-  const [otpReset,    setOtpReset]    = useState(() => localStorage.getItem(OTP_RESET_KEY)  === "true");
+  const [otpLogin,    setOtpLogin]    = useState(true);
+  const [otpRegister, setOtpRegister] = useState(false);
+  const [otpReset,    setOtpReset]    = useState(false);
 
   const hasFetched = useRef(false);
   const isMounted  = useRef(false);
@@ -148,26 +148,24 @@ const Service: React.FC = () => {
       ]);
       if (!isMounted.current) return;
 
-      // ── Apply DB values (authoritative source), sync back to localStorage ──
+      // ── Apply DB values (authoritative source) ──────────────────────────────
       const applyBool = (key: string, setter: (v: boolean) => void, defaultWhenMissing: boolean) => {
         if (settings[key] !== undefined) {
           const val = key === OTP_LOGIN_KEY
             ? settings[key] !== "false"   // login OTP: default true → truthy unless explicitly "false"
             : settings[key] === "true";
           setter(val);
-          localStorage.setItem(key, String(val));
         } else {
-          // Key not in DB yet — keep localStorage value as initial state
           setter(defaultWhenMissing);
         }
       };
 
-      applyBool(FA2_KEY,        setTwoFA,       localStorage.getItem(FA2_KEY)        === "true");
-      applyBool(TOTP_KEY,       setTotpEnabled, localStorage.getItem(TOTP_KEY)       === "true");
-      applyBool(MAINT_KEY,      setMaintenance, localStorage.getItem(MAINT_KEY)      === "true");
-      applyBool(OTP_LOGIN_KEY,  setOtpLogin,    localStorage.getItem(OTP_LOGIN_KEY)  !== "false");
-      applyBool(OTP_REG_KEY,    setOtpRegister, localStorage.getItem(OTP_REG_KEY)    === "true");
-      applyBool(OTP_RESET_KEY,  setOtpReset,    localStorage.getItem(OTP_RESET_KEY)  === "true");
+      applyBool(FA2_KEY,        setTwoFA,       false);
+      applyBool(TOTP_KEY,       setTotpEnabled, false);
+      applyBool(MAINT_KEY,      setMaintenance, false);
+      applyBool(OTP_LOGIN_KEY,  setOtpLogin,    true);
+      applyBool(OTP_REG_KEY,    setOtpRegister, false);
+      applyBool(OTP_RESET_KEY,  setOtpReset,    false);
 
       // ── Email config ──
       const item = emailData?.[0] ?? null;
@@ -213,10 +211,8 @@ const Service: React.FC = () => {
   };
 
   const persistSetting = (key: string, value: boolean) => {
-    localStorage.setItem(key, String(value));
     UpdateAppSetting(key, String(value)).catch(() => {
-      // Warn admin — without DB persistence, other browsers/devices won't enforce the setting
-      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ — ค่าถูกบันทึกเฉพาะในเบราว์เซอร์นี้เท่านั้น");
+      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
     });
   };
 
@@ -253,7 +249,9 @@ const Service: React.FC = () => {
   const toggleMaintenance = () => {
     const next = !maintenance;
     setMaintenance(next);
-    localStorage.setItem(MAINT_KEY, String(next));
+    UpdateAppSetting(MAINT_KEY, String(next)).catch(() => {
+      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+    });
     message.success(next ? t("service.systemInMaintenance") : t("service.systemOperational"));
   };
 
