@@ -243,6 +243,9 @@ const ThreatIntelligence: React.FC = () => {
   const [activeTab, setActiveTab]     = useState<"scans" | "catalog">("scans");
   const [search, setSearch]           = useState("");
   const [ransomwareOnly, setRansomwareOnly] = useState(false);
+  const [scansPage, setScansPage]     = useState(1);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const PAGE_SIZE = 5;
 
   const hasFetched = useRef(false);
 
@@ -290,7 +293,13 @@ const ThreatIntelligence: React.FC = () => {
     return list;
   }, [catalog, search, ransomwareOnly]);
 
+  useEffect(() => { setCatalogPage(1); }, [search, ransomwareOnly]);
+
   const kevByHostList = summary?.kev_by_host ?? [];
+  const scansTotalPages   = Math.max(1, Math.ceil(kevByHostList.length / PAGE_SIZE));
+  const pagedScans        = kevByHostList.slice((scansPage - 1) * PAGE_SIZE, scansPage * PAGE_SIZE);
+  const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalog.length / PAGE_SIZE));
+  const pagedCatalog      = filteredCatalog.slice((catalogPage - 1) * PAGE_SIZE, catalogPage * PAGE_SIZE);
 
   return (
     <div className="w-full space-y-5 py-0 sm:py-0">
@@ -441,21 +450,42 @@ const ThreatIntelligence: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {kevByHostList.map((host, i) => (
+                    {pagedScans.map((host, i) => (
                       <HostScanRow
                         key={`${host.host_ip}-${host.task_name}-${i}`}
                         host={host}
-                        index={i}
+                        index={(scansPage - 1) * PAGE_SIZE + i}
                         onClick={() => handleHostClick(host)}
                       />
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div className="border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
+              <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                   {kevByHostList.length} host{kevByHostList.length !== 1 ? "s" : ""} at risk
                 </p>
+                {scansTotalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setScansPage((p) => Math.max(1, p - 1))} disabled={scansPage === 1}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                      <FiChevronRight className="rotate-180 text-[12px]" />
+                    </button>
+                    {Array.from({ length: scansTotalPages }, (_, i) => i + 1).map((n) => (
+                      <button key={n} type="button" onClick={() => setScansPage(n)}
+                        style={n === scansPage ? { background: accentGrad } : undefined}
+                        className={["grid h-7 w-7 place-items-center rounded-lg text-[11.5px] font-semibold transition",
+                          n === scansPage ? "text-white" : "border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50",
+                        ].join(" ")}>
+                        {n}
+                      </button>
+                    ))}
+                    <button type="button" onClick={() => setScansPage((p) => Math.min(scansTotalPages, p + 1))} disabled={scansPage === scansTotalPages}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                      <FiChevronRight className="text-[12px]" />
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -504,9 +534,9 @@ const ThreatIntelligence: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="overflow-y-auto overflow-x-auto" style={{ maxHeight: "calc(100vh - 420px)" }}>
+              <div className="overflow-x-auto">
                 <table className="w-full min-w-160">
-                  <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
+                  <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
                       {["CVE ID", "Vulnerability", "Tags", "Date Added", "Required Action"].map((h, i) => (
                         <th
@@ -523,18 +553,54 @@ const ThreatIntelligence: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredCatalog.slice(0, 200).map((entry, i) => (
-                      <KEVRow key={entry.cve_id} entry={entry} index={i} />
+                    {pagedCatalog.map((entry, i) => (
+                      <KEVRow key={entry.cve_id} entry={entry} index={(catalogPage - 1) * PAGE_SIZE + i} />
                     ))}
                   </tbody>
                 </table>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                  {filteredCatalog.length > 200
-                    ? `Showing first 200 of ${filteredCatalog.length.toLocaleString()} entries. Use search to filter.`
-                    : `${filteredCatalog.length.toLocaleString()} entries`}
+                  {filteredCatalog.length.toLocaleString()} entries · page {catalogPage} of {catalogTotalPages}
                 </p>
+                {catalogTotalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setCatalogPage((p) => Math.max(1, p - 1))} disabled={catalogPage === 1}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                      <FiChevronRight className="rotate-180 text-[12px]" />
+                    </button>
+                    {(() => {
+                      const total = catalogTotalPages;
+                      const cur   = catalogPage;
+                      const delta = 2;
+                      const pages: (number | "…")[] = [];
+                      for (let n = 1; n <= total; n++) {
+                        if (n === 1 || n === total || (n >= cur - delta && n <= cur + delta)) {
+                          pages.push(n);
+                        } else if (pages[pages.length - 1] !== "…") {
+                          pages.push("…");
+                        }
+                      }
+                      return pages.map((n, idx) =>
+                        n === "…" ? (
+                          <span key={`ellipsis-${idx}`} className="px-1 text-[11px] text-slate-400 dark:text-white/30">…</span>
+                        ) : (
+                          <button key={n} type="button" onClick={() => setCatalogPage(n as number)}
+                            style={n === cur ? { background: accentGrad } : undefined}
+                            className={["grid h-7 w-7 place-items-center rounded-lg text-[11.5px] font-semibold transition",
+                              n === cur ? "text-white" : "border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50",
+                            ].join(" ")}>
+                            {n}
+                          </button>
+                        )
+                      );
+                    })()}
+                    <button type="button" onClick={() => setCatalogPage((p) => Math.min(catalogTotalPages, p + 1))} disabled={catalogPage === catalogTotalPages}
+                      className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                      <FiChevronRight className="text-[12px]" />
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}

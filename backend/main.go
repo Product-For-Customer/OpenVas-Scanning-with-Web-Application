@@ -37,6 +37,7 @@ func main() {
 	setting.InitTimezoneCache() // โหลด timezone จาก DB เข้า memory cache
 
 	go line.StartLineStatusListener()
+	go line.StartHistoryNotifyAutoCleanup()
 	go automation.StartDailyFeedUpdateScheduler()
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
 	go risk.StartEPSSSyncScheduler()
@@ -116,8 +117,9 @@ func main() {
 		authorized.DELETE("/delete-locations/:id", location.DeleteLocationByID) // complete
 
 		// ===== Protected Routes for Line Notify History Authorization =====
-		authorized.GET("/history-notifies", line.ListHistoryNotify) // complete
-		authorized.DELETE("/delete-history-notifies", line.DeleteHistoryNotifyByIDs) // complete
+		authorized.GET("/history-notifies", line.ListHistoryNotify)                   // complete
+		authorized.DELETE("/delete-history-notifies", line.DeleteHistoryNotifyByIDs)  // complete
+		authorized.POST("/history-notifies/cleanup", line.TriggerHistoryNotifyCleanup) // manual 6-month cleanup
 
 		// ===== Protected Routes for User Management Authorization =====
 		authorized.GET("/users", user.ListUser) // complete

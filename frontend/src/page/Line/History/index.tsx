@@ -19,9 +19,11 @@ import {
   FiAlertCircle,
   FiCalendar,
   FiCheck,
+  FiDatabase,
 } from "react-icons/fi";
 import {
   DeleteHistoryNotifyByIDs,
+  TriggerHistoryNotifyCleanup,
   type HistoryNotifyResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -722,6 +724,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
   setItems,
   loading,
   error,
+  onRefresh,
 }) => {
   const { t } = useLanguage();
   const [search, setSearch] = useState("");
@@ -735,6 +738,9 @@ const Index: React.FC<HistoryNotifyProps> = ({
   const [deleteOpen, setDeleteOpen] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>("");
+
+  const [cleaning, setCleaning] = useState<boolean>(false);
+  const [cleanupMsg, setCleanupMsg] = useState<string>("");
 
   const [openDateFilter, setOpenDateFilter] = useState(false);
   const [dateFilterSearch, setDateFilterSearch] = useState("");
@@ -1111,6 +1117,30 @@ const Index: React.FC<HistoryNotifyProps> = ({
     return items.filter((item) => selectedSet.has(item.id));
   }, [items, selected]);
 
+  const handleCleanup = async () => {
+    if (cleaning) return;
+    setCleaning(true);
+    setCleanupMsg("");
+    try {
+      const res = await TriggerHistoryNotifyCleanup();
+      if (!res) {
+        setCleanupMsg("Cleanup failed. Please try again.");
+        return;
+      }
+      const label =
+        res.deleted_count === 0
+          ? "No records older than 6 months found."
+          : `Deleted ${res.deleted_count} record${res.deleted_count !== 1 ? "s" : ""} older than ${res.cutoff}.`;
+      setCleanupMsg(label);
+      message.success(label);
+      // Refresh list so removed records disappear immediately
+      await onRefresh(true);
+    } catch {
+      setCleanupMsg("Cleanup failed. Please try again.");
+    } finally {
+      setCleaning(false);
+    }
+  };
 
   return (
     <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
@@ -1121,6 +1151,40 @@ const Index: React.FC<HistoryNotifyProps> = ({
               <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
                 {t("line.notificationHistory")}
               </h2>
+            </div>
+
+            {/* Auto-delete policy banner */}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
+                <FiDatabase className="shrink-0 text-[10px]" />
+                <span>Auto Delete: records older than 6 months are removed daily</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => void handleCleanup()}
+                disabled={cleaning}
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition",
+                  cleaning
+                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
+                    : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15",
+                ].join(" ")}
+                title="Delete all records older than 6 months right now"
+              >
+                {cleaning ? (
+                  <FiRotateCw className="animate-spin text-[10px]" />
+                ) : (
+                  <FiTrash2 className="text-[10px]" />
+                )}
+                {cleaning ? "Running…" : "Run cleanup now"}
+              </button>
+
+              {cleanupMsg && (
+                <span className="text-[10px] text-slate-500 dark:text-white/40">
+                  {cleanupMsg}
+                </span>
+              )}
             </div>
           </div>
 

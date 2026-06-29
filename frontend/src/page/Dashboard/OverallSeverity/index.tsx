@@ -272,32 +272,69 @@ const OverallSeverity: React.FC<Props> = ({
     <div className="space-y-4">
 
       {/* ── Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-            {t("dashboard.overallSeverity")}
-          </h2>
-          <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-            {loading ? t("common.loadingShort") : `${totals.totalAll.toLocaleString()} findings`}
-          </span>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 shadow-sm dark:border-white/8 dark:bg-[#0d0b1a]/80">
+
+        {/* Left — icon badge + title + findings + subtitle */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-indigo-50 to-slate-50 ring-1 ring-slate-200/80 dark:from-indigo-500/10 dark:to-white/4 dark:ring-white/8">
+            <FiLayers className="text-base text-indigo-500 dark:text-indigo-400" />
+          </div>
+
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[14px] font-bold tracking-tight text-slate-800 dark:text-white/90">
+                {t("dashboard.overallSeverity")}
+              </h2>
+
+              {loading ? (
+                <span className="h-5 w-20 animate-pulse rounded-full bg-slate-100 dark:bg-white/8" />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400 dark:bg-white/35" />
+                  {totals.totalAll.toLocaleString()} {t("common.findings")}
+                </span>
+              )}
+            </div>
+
+            <p className="mt-0.5 text-[10px] text-slate-400 dark:text-white/30">
+              CVSS v3 Severity Distribution
+              {selectedTargets.length > 0 && (
+                <> · <span className="font-medium text-slate-500 dark:text-white/45">{selectedScopeLabel}</span></>
+              )}
+            </p>
+          </div>
         </div>
 
+        {/* Right — clear + filter button */}
         <div className="flex items-center gap-2">
           {selectedTargets.length > 0 && (
-            <span className="flex items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/30">
-              <FiLayers className="shrink-0" />
-              <span className="max-w-48 truncate">{selectedScopeLabel}</span>
-            </span>
+            <button
+              type="button"
+              onClick={clearAll}
+              className="flex h-7 items-center rounded-lg border border-slate-200/70 px-2.5 text-[10px] font-medium text-slate-500 transition hover:border-slate-300 hover:text-slate-700 dark:border-white/8 dark:text-white/35 dark:hover:border-white/15 dark:hover:text-white/55"
+            >
+              {t("common.clear")}
+            </button>
           )}
 
           <div className="relative" ref={targetRef}>
             <button
               type="button"
               onClick={() => setOpenTargetQuery(p => !p)}
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
+              className={[
+                "flex h-8 items-center gap-1.5 rounded-lg border px-3 text-[10.5px] font-medium shadow-sm transition",
+                selectedTargets.length > 0
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-400/25 dark:bg-indigo-500/10 dark:text-indigo-300 dark:hover:bg-indigo-500/15"
+                  : "border-slate-200/70 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
+              ].join(" ")}
             >
               <FiShield className="text-[11px]" />
               <span className="max-w-36 truncate">{targetButtonLabel}</span>
+              {selectedTargets.length > 0 && (
+                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-1 text-[9px] font-bold text-white">
+                  {selectedTargets.length}
+                </span>
+              )}
               <FiChevronDown
                 className={`ml-0.5 text-[11px] transition-transform ${openTargetQuery ? "rotate-180" : ""}`}
               />
@@ -395,9 +432,10 @@ const OverallSeverity: React.FC<Props> = ({
               key={card.id}
               type="button"
               onClick={() => handleNavigateByLevel(card.title)}
-              className="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-white/6 dark:bg-white/3"
+              className="group relative overflow-hidden rounded-xl border bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-white/3"
+              style={{ borderColor: `rgba(${card.rgb},0.45)` }}
             >
-              {/* ── Left accent strip (replaces inline border-left) ── */}
+              {/* ── Left accent strip ── */}
               <span
                 className="absolute left-0 top-0 h-full w-[3.5px]"
                 style={{ backgroundColor: card.color }}
