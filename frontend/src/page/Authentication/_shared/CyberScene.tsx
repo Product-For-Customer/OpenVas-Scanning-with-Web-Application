@@ -3,16 +3,22 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import * as THREE from "three";
 
-const TRAIL_LEN = 60;
+const TRAIL_LEN = 90;
 
-// ─── Rocket with glowing trail ────────────────────────────────────────────────
+// ─── Rocket with realistic flame, banking, and multi-layer trail ──────────────
 const Rocket: React.FC<{ color: THREE.Color }> = ({ color }) => {
-  const group     = useRef<THREE.Group>(null!);
-  const innerGlow = useRef<THREE.MeshBasicMaterial>(null!);
-  const outerGlow = useRef<THREE.MeshBasicMaterial>(null!);
-  const flameCone = useRef<THREE.Mesh>(null!);
+  const group      = useRef<THREE.Group>(null!);
+  const flameInner = useRef<THREE.Mesh>(null!);
+  const flameMid   = useRef<THREE.Mesh>(null!);
+  const flameOuter = useRef<THREE.Mesh>(null!);
+  const innerMat   = useRef<THREE.MeshBasicMaterial>(null!);
+  const midMat     = useRef<THREE.MeshBasicMaterial>(null!);
+  const outerMat   = useRef<THREE.MeshBasicMaterial>(null!);
+  const glowMat    = useRef<THREE.MeshBasicMaterial>(null!);
+  const coreMat    = useRef<THREE.MeshBasicMaterial>(null!);
+  const bankSmooth = useRef(0);
 
-  // Trail: a BufferGeometry in world space updated every frame
+  // Shared trail geometry – reused by all three point layers
   const trailGeo = useMemo(() => {
     const buf = new Float32Array(TRAIL_LEN * 3);
     const g   = new THREE.BufferGeometry();
@@ -20,7 +26,7 @@ const Rocket: React.FC<{ color: THREE.Color }> = ({ color }) => {
     return g;
   }, []);
 
-  // Big looping flight path around the scene
+  // Big looping flight path
   const curve = useMemo(() => new THREE.CatmullRomCurve3([
     new THREE.Vector3(  2,  3,  13),
     new THREE.Vector3( 12,  5,   3),
@@ -31,134 +37,175 @@ const Rocket: React.FC<{ color: THREE.Color }> = ({ color }) => {
     new THREE.Vector3( -6, -6,  11),
   ], true, "catmullrom", 0.5), []);
 
-  const up     = useMemo(() => new THREE.Vector3(0, 1, 0), []);
-  const quat   = useMemo(() => new THREE.Quaternion(), []);
-  const white  = useMemo(() => new THREE.Color(2.6, 2.6, 2.6), []);
-  const cyan   = useMemo(() => new THREE.Color(1.2, 2.2, 2.6), []);
-  const flame  = useMemo(() => new THREE.Color(3.0, 1.4, 0.1), []);
-  const flameO = useMemo(() => new THREE.Color(1.8, 0.45, 0.0), []);
+  const up    = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const quat  = useMemo(() => new THREE.Quaternion(), []);
+
+  const white  = useMemo(() => new THREE.Color(3.2, 3.2, 3.0), []);
+  const yellow = useMemo(() => new THREE.Color(4.5, 3.2, 0.4), []);
+  const orange = useMemo(() => new THREE.Color(3.2, 1.2, 0.05), []);
+  const cyan   = useMemo(() => new THREE.Color(0.6, 1.6, 3.2), []);
 
   useFrame(({ clock }) => {
     const t       = (clock.getElapsedTime() * 0.048) % 1;
+    const t2      = clock.getElapsedTime();
     const pos     = curve.getPoint(t);
     const tangent = curve.getTangent(t).normalize();
 
-    // Move & orient rocket — nose (+Y) points in direction of travel
-    group.current.position.copy(pos);
+    // Base orientation: nose (+Y local) points along travel direction
     quat.setFromUnitVectors(up, tangent);
-    group.current.quaternion.copy(quat);
 
-    // Prepend current world position into trail buffer (circular shift right)
+    // Banking: project curvature onto the rocket's local right axis
+    const tN      = (t + 0.005) % 1;
+    const tangN   = curve.getTangent(tN).normalize();
+    const curvVec = new THREE.Vector3().subVectors(tangN, tangent);
+    const localRight = new THREE.Vector3(1, 0, 0).applyQuaternion(quat);
+    const rawBank = curvVec.dot(localRight) * -80; // scale → degrees
+    bankSmooth.current += (rawBank - bankSmooth.current) * 0.06;
+    const bankQ = new THREE.Quaternion().setFromAxisAngle(up, bankSmooth.current * (Math.PI / 180));
+
+    group.current.position.copy(pos);
+    group.current.quaternion.copy(quat).multiply(bankQ);
+
+    // Update trail (circular shift into world-space buffer)
     const attr = trailGeo.attributes.position as THREE.BufferAttribute;
     const arr  = attr.array as Float32Array;
     arr.copyWithin(3, 0, (TRAIL_LEN - 1) * 3);
-    arr[0] = pos.x;
-    arr[1] = pos.y;
-    arr[2] = pos.z;
+    arr[0] = pos.x; arr[1] = pos.y; arr[2] = pos.z;
     attr.needsUpdate = true;
 
-    // Animate engine flame
-    const t2    = clock.getElapsedTime();
-    const pulse = Math.sin(t2 * 15) * 0.28 + 0.72;
-    if (innerGlow.current) innerGlow.current.opacity = pulse;
-    if (outerGlow.current) outerGlow.current.opacity = pulse * 0.40;
-    if (flameCone.current) {
-      flameCone.current.scale.set(1, 0.86 + Math.sin(t2 * 22) * 0.16, 1);
-    }
+    // Flame animation – layered high-frequency flicker
+    const f1    = Math.sin(t2 * 35) * 0.16 + Math.sin(t2 * 53) * 0.09;
+    const flick = 0.75 + f1;
+    const pulse = Math.sin(t2 * 18) * 0.18 + 0.82;
+    const snap  = Math.random() > 0.96 ? 1.28 : 1.0; // occasional brightness snap
+
+    if (flameInner.current) flameInner.current.scale.set(
+      0.88 + Math.sin(t2 * 39) * 0.13,
+      (0.82 + Math.sin(t2 * 29) * 0.20) * flick * snap,
+      0.88 + Math.sin(t2 * 39) * 0.13,
+    );
+    if (flameMid.current) flameMid.current.scale.set(
+      1 + Math.sin(t2 * 21) * 0.09,
+      0.88 + Math.sin(t2 * 27) * 0.15,
+      1 + Math.sin(t2 * 21) * 0.09,
+    );
+    if (flameOuter.current) flameOuter.current.scale.set(
+      1 + Math.sin(t2 * 13) * 0.14,
+      0.78 + Math.sin(t2 * 17) * 0.26,
+      1 + Math.sin(t2 * 13) * 0.14,
+    );
+    if (innerMat.current) innerMat.current.opacity = Math.min(1, 0.90 * flick * snap);
+    if (midMat.current)   midMat.current.opacity   = 0.55 * pulse;
+    if (outerMat.current) outerMat.current.opacity = 0.22 * flick;
+    if (coreMat.current)  coreMat.current.opacity  = Math.min(1, 0.96 * snap);
+    if (glowMat.current)  glowMat.current.opacity  = 0.38 * pulse;
   });
 
   return (
     <>
-      {/* ─── Trail (world-space points, not inside the rocket group) ─── */}
+      {/* ─── Three-layer trail (outer halo → bright body → hot core) ─── */}
       <points geometry={trailGeo}>
-        <pointsMaterial
-          color={flameO}
-          size={0.13}
-          transparent
-          opacity={0.52}
-          sizeAttenuation
-          toneMapped={false}
-        />
+        <pointsMaterial color={orange} size={0.34} transparent opacity={0.15} sizeAttenuation toneMapped={false} />
+      </points>
+      <points geometry={trailGeo}>
+        <pointsMaterial color={orange} size={0.17} transparent opacity={0.58} sizeAttenuation toneMapped={false} />
+      </points>
+      <points geometry={trailGeo}>
+        <pointsMaterial color={yellow} size={0.07} transparent opacity={0.80} sizeAttenuation toneMapped={false} />
       </points>
 
       {/* ─── Rocket mesh ─── */}
-      <group ref={group} scale={0.46}>
+      <group ref={group} scale={0.50}>
 
-        {/* Nose cone */}
-        <mesh position={[0, 1.12, 0]}>
-          <coneGeometry args={[0.14, 0.72, 8]} />
+        {/* Pointed nose cone */}
+        <mesh position={[0, 1.38, 0]}>
+          <coneGeometry args={[0.096, 1.10, 8]} />
           <meshBasicMaterial color={white} toneMapped={false} />
         </mesh>
 
-        {/* Upper body – white */}
-        <mesh position={[0, 0.54, 0]}>
-          <cylinderGeometry args={[0.14, 0.14, 0.72, 10]} />
+        {/* Upper body (slight taper) */}
+        <mesh position={[0, 0.62, 0]}>
+          <cylinderGeometry args={[0.096, 0.128, 0.84, 10]} />
           <meshBasicMaterial color={white} toneMapped={false} />
         </mesh>
 
-        {/* Accent color band */}
-        <mesh position={[0, 0.17, 0]}>
-          <cylinderGeometry args={[0.145, 0.145, 0.065, 10]} />
-          <meshBasicMaterial color={color} toneMapped={false} />
-        </mesh>
-
-        {/* Lower body – accent color */}
-        <mesh position={[0, -0.18, 0]}>
-          <cylinderGeometry args={[0.145, 0.158, 0.64, 10]} />
-          <meshBasicMaterial color={color} toneMapped={false} />
-        </mesh>
-
-        {/* Porthole window (cyan glow) */}
-        <mesh position={[0.148, 0.50, 0]}>
-          <sphereGeometry args={[0.045, 8, 8]} />
+        {/* Porthole window */}
+        <mesh position={[0.133, 0.70, 0]}>
+          <sphereGeometry args={[0.032, 8, 8]} />
           <meshBasicMaterial color={cyan} toneMapped={false} />
         </mesh>
 
-        {/* Engine skirt */}
-        <mesh position={[0, -0.56, 0]}>
-          <cylinderGeometry args={[0.19, 0.21, 0.2, 10]} />
+        {/* Color accent band */}
+        <mesh position={[0, 0.20, 0]}>
+          <cylinderGeometry args={[0.133, 0.133, 0.058, 10]} />
           <meshBasicMaterial color={color} toneMapped={false} />
         </mesh>
 
-        {/* 4 swept fins */}
+        {/* Lower body */}
+        <mesh position={[0, -0.17, 0]}>
+          <cylinderGeometry args={[0.133, 0.150, 0.74, 10]} />
+          <meshBasicMaterial color={color} toneMapped={false} />
+        </mesh>
+
+        {/* Engine block */}
+        <mesh position={[0, -0.62, 0]}>
+          <cylinderGeometry args={[0.172, 0.192, 0.26, 10]} />
+          <meshBasicMaterial color={color} toneMapped={false} />
+        </mesh>
+
+        {/* 4 swept delta fins (main panel + leading-edge brace) */}
         {[0, 1, 2, 3].map(i => {
-          const a  = (i / 4) * Math.PI * 2;
-          const cx = Math.cos(a);
-          const cz = Math.sin(a);
+          const a = (i / 4) * Math.PI * 2;
           return (
-            <mesh
-              key={i}
-              position={[cx * 0.24, -0.46, cz * 0.24]}
-              rotation={[0, a, -0.30]}
-            >
-              <boxGeometry args={[0.036, 0.44, 0.30]} />
-              <meshBasicMaterial color={color} toneMapped={false} />
-            </mesh>
+            <group key={i} rotation={[0, a, 0]}>
+              <mesh position={[0.22, -0.56, 0]} rotation={[0, 0, -0.16]}>
+                <boxGeometry args={[0.32, 0.52, 0.024]} />
+                <meshBasicMaterial color={color} toneMapped={false} />
+              </mesh>
+              <mesh position={[0.25, -0.32, 0]} rotation={[0, 0, -0.55]}>
+                <boxGeometry args={[0.15, 0.30, 0.020]} />
+                <meshBasicMaterial color={color} toneMapped={false} />
+              </mesh>
+            </group>
           );
         })}
 
-        {/* Nozzle ring */}
-        <mesh position={[0, -0.70, 0]}>
-          <cylinderGeometry args={[0.11, 0.14, 0.10, 10]} />
+        {/* Nozzle bell (expands toward exit) */}
+        <mesh position={[0, -0.79, 0]}>
+          <cylinderGeometry args={[0.088, 0.168, 0.22, 12]} />
           <meshBasicMaterial color={white} toneMapped={false} />
         </mesh>
 
-        {/* Animated flame cone */}
-        <mesh ref={flameCone} position={[0, -0.94, 0]} rotation={[Math.PI, 0, 0]}>
-          <coneGeometry args={[0.14, 0.62, 8]} />
-          <meshBasicMaterial color={flameO} transparent opacity={0.40} toneMapped={false} />
+        {/* ─── Flame system – 3 layers ─── */}
+
+        {/* Inner core: hot yellow-white */}
+        <mesh ref={flameInner} position={[0, -1.02, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.062, 0.65, 8]} />
+          <meshBasicMaterial ref={innerMat} color={yellow} transparent opacity={0.90} toneMapped={false} />
         </mesh>
 
-        {/* Outer engine glow */}
-        <mesh position={[0, -0.73, 0]}>
-          <sphereGeometry args={[0.21, 10, 10]} />
-          <meshBasicMaterial ref={outerGlow} color={flameO} transparent toneMapped={false} />
+        {/* Mid cone: orange body */}
+        <mesh ref={flameMid} position={[0, -1.14, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.124, 1.00, 10]} />
+          <meshBasicMaterial ref={midMat} color={orange} transparent opacity={0.55} toneMapped={false} />
         </mesh>
 
-        {/* Inner bright core */}
-        <mesh position={[0, -0.70, 0]}>
-          <sphereGeometry args={[0.10, 10, 10]} />
-          <meshBasicMaterial ref={innerGlow} color={flame} transparent toneMapped={false} />
+        {/* Outer flare: large semi-transparent exhaust plume */}
+        <mesh ref={flameOuter} position={[0, -1.32, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.22, 1.40, 10]} />
+          <meshBasicMaterial ref={outerMat} color={orange} transparent opacity={0.22} toneMapped={false} />
+        </mesh>
+
+        {/* Engine glow sphere */}
+        <mesh position={[0, -0.82, 0]}>
+          <sphereGeometry args={[0.26, 12, 12]} />
+          <meshBasicMaterial ref={glowMat} color={orange} transparent opacity={0.38} toneMapped={false} />
+        </mesh>
+
+        {/* Hot inner core dot */}
+        <mesh position={[0, -0.84, 0]}>
+          <sphereGeometry args={[0.095, 10, 10]} />
+          <meshBasicMaterial ref={coreMat} color={yellow} transparent opacity={0.96} toneMapped={false} />
         </mesh>
 
       </group>
@@ -166,7 +213,7 @@ const Rocket: React.FC<{ color: THREE.Color }> = ({ color }) => {
   );
 };
 
-// ─── Rotating network graph – anchored to the left ────────────────────────────
+// ─── Rotating network graph – pushed to the far left ─────────────────────────
 const Network: React.FC<{ color: THREE.Color }> = ({ color }) => {
   const group = useRef<THREE.Group>(null!);
 
@@ -218,8 +265,8 @@ const Network: React.FC<{ color: THREE.Color }> = ({ color }) => {
   const white = useMemo(() => new THREE.Color(2, 2, 2), []);
 
   return (
-    // Shift the entire network to the left side of the canvas
-    <group position={[-5, 0, 0]}>
+    // Anchored to the far left of the canvas
+    <group position={[-14, 0, 0]}>
       <group ref={group}>
         <lineSegments geometry={edgeGeo}>
           <lineBasicMaterial color={color} transparent opacity={0.22} toneMapped={false} />

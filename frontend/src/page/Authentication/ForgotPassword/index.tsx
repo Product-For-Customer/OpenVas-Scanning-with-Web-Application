@@ -56,11 +56,12 @@ const ForgotPasswordPage: React.FC = () => {
 
   return (
     <AuthLayout variant="login">
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
-        Forgot password?
+      {/* ── Heading ── */}
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
+        Argus
       </h2>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7 leading-relaxed max-w-xs mx-auto">
-        Enter the email address associated with your account.
+      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+        Recover your password
       </p>
 
       {error && (
@@ -90,7 +91,7 @@ const ForgotPasswordPage: React.FC = () => {
           style={{ backgroundColor: loading ? undefined : currentColor }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
-          {loading ? "Checking..." : "Continue"}
+          {loading ? "Checking..." : "Send Me Email"}
         </button>
       </form>
 

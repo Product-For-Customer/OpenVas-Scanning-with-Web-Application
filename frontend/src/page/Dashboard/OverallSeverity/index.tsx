@@ -26,6 +26,8 @@ type CardDef = {
   icon: React.ReactNode;
   color: string;
   rgb: string;
+  gradFrom: string;
+  gradTo: string;
   cvssRange: string;
 };
 
@@ -55,16 +57,110 @@ interface Props {
   loading?: boolean;
 }
 
+
 // ─────────────────────────────────────────────────────────────
-// Skeleton helpers
+// Per-severity danger decorations (SVG art, white on gradient)
 // ─────────────────────────────────────────────────────────────
 
-const Pulse: React.FC = () => (
-  <span className="inline-block h-9 w-14 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
-);
-const SubPulse: React.FC = () => (
-  <span className="inline-block h-3 w-20 animate-pulse rounded bg-slate-100 dark:bg-white/10" />
-);
+const getSeverityDeco = (title: SeverityKey): React.ReactNode => {
+  switch (title) {
+    // Critical — virus particle (spiky ball = biohazard/pathogen)
+    case "Critical":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" aria-hidden>
+          <circle cx="50" cy="50" r="17" fill="white" />
+          {/* Cardinal spikes */}
+          <line x1="50" y1="33" x2="50" y2="16" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="50" y1="67" x2="50" y2="84" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="33" y1="50" x2="16" y2="50" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="67" y1="50" x2="84" y2="50" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Diagonal spikes */}
+          <line x1="38" y1="38" x2="27" y2="27" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="62" y1="38" x2="73" y2="27" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="38" y1="62" x2="27" y2="73" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="62" y1="62" x2="73" y2="73" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Tip balls */}
+          <circle cx="50" cy="12" r="4.5" fill="white" />
+          <circle cx="50" cy="88" r="4.5" fill="white" />
+          <circle cx="12" cy="50" r="4.5" fill="white" />
+          <circle cx="88" cy="50" r="4.5" fill="white" />
+          <circle cx="23" cy="23" r="4.5" fill="white" />
+          <circle cx="77" cy="23" r="4.5" fill="white" />
+          <circle cx="23" cy="77" r="4.5" fill="white" />
+          <circle cx="77" cy="77" r="4.5" fill="white" />
+        </svg>
+      );
+
+    // High — flame silhouette
+    case "High":
+      return (
+        <svg viewBox="0 0 100 100" fill="white" aria-hidden>
+          <path d="M50 92 C33 92 19 77 19 59 C19 45 28 37 34 26 C37 20 35 12 31 5 C44 14 52 29 47 43 C52 36 58 27 56 16 C69 29 73 46 67 59 C73 51 77 43 74 32 C85 45 89 60 89 70 C89 83 71 92 50 92Z" />
+          {/* Inner lighter flame */}
+          <path d="M50 80 C39 80 31 71 31 61 C31 53 37 47 41 38 C43 48 50 52 50 62 C54 52 58 44 56 34 C65 46 67 58 63 66 C69 57 71 50 69 40 C78 53 80 66 73 73 C71 79 61 84 50 80Z" fillOpacity="0.55" />
+        </svg>
+      );
+
+    // Medium — warning triangle with circuit traces
+    case "Medium":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeLinecap="round" aria-hidden>
+          <polygon points="50,8 93,83 7,83" strokeWidth="5.5" strokeLinejoin="round" />
+          <line x1="50" y1="34" x2="50" y2="60" strokeWidth="5.5" />
+          <circle cx="50" cy="72" r="4.5" fill="white" stroke="none" />
+          {/* Corner circuit traces */}
+          <polyline points="7,83 0,93 15,93" strokeWidth="2.5" />
+          <circle cx="15" cy="93" r="3" fill="white" stroke="none" />
+          <polyline points="93,83 100,93 85,93" strokeWidth="2.5" />
+          <circle cx="85" cy="93" r="3" fill="white" stroke="none" />
+          <line x1="50" y1="83" x2="50" y2="97" strokeWidth="2.5" />
+          <circle cx="50" cy="97" r="3" fill="white" stroke="none" />
+        </svg>
+      );
+
+    // Low — bug / insect
+    case "Low":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeLinecap="round" aria-hidden>
+          {/* Body */}
+          <ellipse cx="50" cy="63" rx="16" ry="24" strokeWidth="4.5" />
+          {/* Head */}
+          <circle cx="50" cy="33" r="15" strokeWidth="4.5" />
+          {/* Antennae */}
+          <line x1="43" y1="20" x2="31" y2="6" strokeWidth="3" />
+          <line x1="57" y1="20" x2="69" y2="6" strokeWidth="3" />
+          <circle cx="31" cy="6"  r="4" fill="white" stroke="none" />
+          <circle cx="69" cy="6"  r="4" fill="white" stroke="none" />
+          {/* Legs (3 pairs) */}
+          <line x1="34" y1="54" x2="15" y2="44" strokeWidth="3" />
+          <line x1="34" y1="63" x2="13" y2="63" strokeWidth="3" />
+          <line x1="34" y1="72" x2="15" y2="82" strokeWidth="3" />
+          <line x1="66" y1="54" x2="85" y2="44" strokeWidth="3" />
+          <line x1="66" y1="63" x2="87" y2="63" strokeWidth="3" />
+          <line x1="66" y1="72" x2="85" y2="82" strokeWidth="3" />
+        </svg>
+      );
+
+    // Info — radar sweep
+    case "Info":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="white" aria-hidden>
+          <circle cx="50" cy="50" r="46" strokeWidth="1.5" strokeDasharray="9 5" />
+          <circle cx="50" cy="50" r="34" strokeWidth="1.5" strokeDasharray="6 4" />
+          <circle cx="50" cy="50" r="22" strokeWidth="2" />
+          <circle cx="50" cy="50" r="5.5" fill="white" stroke="none" />
+          {/* Crosshairs */}
+          <line x1="50" y1="4"  x2="50" y2="96" strokeWidth="1" strokeDasharray="3 4" />
+          <line x1="4"  y1="50" x2="96" y2="50" strokeWidth="1" strokeDasharray="3 4" />
+          {/* Sweep sector */}
+          <path d="M50 50 L96 50 A46 46 0 0 1 71.5 89.5Z" fill="white" fillOpacity="0.22" stroke="none" />
+        </svg>
+      );
+
+    default:
+      return null;
+  }
+};
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -85,11 +181,11 @@ const getTargetLabel = (t: string, h: string) => `${t.trim() || "-"} - ${h.trim(
 // ─────────────────────────────────────────────────────────────
 
 const CARDS: CardDef[] = [
-  { id: 1, title: "Critical", icon: <FiAlertOctagon />, color: "#ef4444", rgb: "239,68,68",  cvssRange: "9.0 – 10.0" },
-  { id: 2, title: "High",     icon: <FiAlertTriangle />, color: "#f97316", rgb: "249,115,22", cvssRange: "7.0 – 8.9"  },
-  { id: 3, title: "Medium",   icon: <FiInfo />,           color: "#eab308", rgb: "234,179,8",  cvssRange: "4.0 – 6.9"  },
-  { id: 4, title: "Low",      icon: <FiMinusCircle />,    color: "#22c55e", rgb: "34,197,94",  cvssRange: "0.1 – 3.9"  },
-  { id: 5, title: "Info",     icon: <FiShield />,         color: "#3b82f6", rgb: "59,130,246", cvssRange: "0.0"         },
+  { id: 1, title: "Critical", icon: <FiAlertOctagon />,  color: "#ef4444", rgb: "239,68,68",   gradFrom: "#ff6b7a", gradTo: "#c2182e", cvssRange: "9.0 – 10.0" },
+  { id: 2, title: "High",     icon: <FiAlertTriangle />, color: "#f97316", rgb: "249,115,22",  gradFrom: "#ffaa40", gradTo: "#d46200", cvssRange: "7.0 – 8.9"  },
+  { id: 3, title: "Medium",   icon: <FiInfo />,           color: "#d97706", rgb: "217,119,6",   gradFrom: "#ffc840", gradTo: "#c07a00", cvssRange: "4.0 – 6.9"  },
+  { id: 4, title: "Low",      icon: <FiMinusCircle />,    color: "#16a34a", rgb: "22,163,74",   gradFrom: "#4ecb71", gradTo: "#1a8c3a", cvssRange: "0.1 – 3.9"  },
+  { id: 5, title: "Info",     icon: <FiShield />,         color: "#2563eb", rgb: "37,99,235",   gradFrom: "#56aaff", gradTo: "#1460c8", cvssRange: "0.0"        },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -208,12 +304,6 @@ const OverallSeverity: React.FC<Props> = ({
 
   const percent = (n: number) =>
     totals.totalAll ? Number(((n / totals.totalAll) * 100).toFixed(2)) : 0;
-
-  const makeSubtitle = (n: number) => {
-    if (loading) return "";
-    if (!totals.totalAll) return t("dashboard.noFindings");
-    return `${percent(n).toFixed(1)}${t("dashboard.ofTotalFindings")}`;
-  };
 
   // ── Filter helpers ────────────────────────────────────────
 
@@ -432,90 +522,74 @@ const OverallSeverity: React.FC<Props> = ({
               key={card.id}
               type="button"
               onClick={() => handleNavigateByLevel(card.title)}
-              className="group relative overflow-hidden rounded-xl border bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:bg-white/3"
-              style={{ borderColor: `rgba(${card.rgb},0.45)` }}
+              className="group relative overflow-hidden rounded-3xl text-left shadow-md transition-all duration-200 hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]"
+              style={{ background: `linear-gradient(145deg, ${card.gradFrom}, ${card.gradTo})` }}
             >
-              {/* ── Left accent strip ── */}
-              <span
-                className="absolute left-0 top-0 h-full w-[3.5px]"
-                style={{ backgroundColor: card.color }}
-                aria-hidden
-              />
-
-              {/* ── Soft radial glow top-right ── */}
-              <div
-                className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full blur-2xl transition-opacity duration-300"
-                style={{ backgroundColor: card.color, opacity: 0.07 }}
-                aria-hidden
-              />
-
-              {/* ── Large icon watermark bottom-right ── */}
-              <div
-                className="pointer-events-none absolute -bottom-2 -right-1 text-[62px] leading-none transition-opacity duration-300 group-hover:opacity-[0.09]"
-                style={{ color: card.color, opacity: 0.045 }}
-                aria-hidden
-              >
-                {card.icon}
+              {/* ── Danger-level decoration ── */}
+              <div className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 opacity-[0.16] transition-opacity duration-300 group-hover:opacity-[0.30]" aria-hidden>
+                {getSeverityDeco(card.title)}
               </div>
 
               {/* ── Content ── */}
-              <div className="relative pl-5 pr-4 pb-4 pt-4">
+              <div className="relative flex flex-col p-4">
 
-                {/* Row 1 — title + icon badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[10.5px] font-semibold uppercase tracking-widest text-slate-500 dark:text-white/45">
-                    {card.title}
-                  </p>
-                  <span
-                    className="flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg text-[13px] transition-transform duration-200 group-hover:scale-110"
-                    style={{ color: card.color, background: `rgba(${card.rgb},0.13)` }}
-                  >
+                {/* Row 1 — icon circle + count badge */}
+                <div className="mb-3 flex items-start justify-between">
+                  {/* Icon circle */}
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/25 text-white text-[20px] ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-105">
                     {card.icon}
-                  </span>
+                  </div>
+                  {/* Count badge (like "Ranking" in reference) */}
+                  <div className="flex min-w-11.5 flex-col items-center rounded-2xl bg-white/20 px-2 pt-2 pb-1.5 text-center ring-1 ring-white/15 backdrop-blur-sm">
+                    <p className="text-[20px] font-black leading-none text-white">
+                      {loading ? "—" : rawNumber.toLocaleString()}
+                    </p>
+                    <p className="mt-0.5 text-[7px] font-semibold uppercase tracking-widest text-white/55">
+                      found
+                    </p>
+                  </div>
                 </div>
 
-                {/* Row 2 — CVSS range */}
-                <div className="mt-2 flex items-center gap-1.5">
-                  <span className="text-[9px] font-medium text-slate-400 dark:text-white/25">CVSS</span>
-                  <span
-                    className="rounded-full px-2 py-px text-[9.5px] font-semibold tabular-nums"
-                    style={{ color: card.color, background: `rgba(${card.rgb},0.10)` }}
-                  >
-                    {card.cvssRange}
-                  </span>
-                </div>
-
-                {/* Row 3 — number */}
-                <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
-                  {loading ? <Pulse /> : rawNumber.toLocaleString()}
+                {/* Row 2 — title + CVSS */}
+                <p className="text-[13.5px] font-extrabold leading-tight tracking-wide text-white">
+                  {card.title}
+                </p>
+                <p className="mb-4 text-[10px] text-white/55">
+                  CVSS {card.cvssRange}
                 </p>
 
-                {/* Row 4 — divider */}
-                <div className="my-3 h-px w-full bg-slate-100 dark:bg-white/6" />
-
-                {/* Row 5 — subtitle + % */}
-                <div className="flex items-center justify-between gap-2">
-                  <p className="truncate text-[10.5px] text-slate-400 dark:text-white/30">
-                    {loading ? <SubPulse /> : makeSubtitle(rawNumber)}
-                  </p>
-                  {!loading && totals.totalAll > 0 && (
-                    <span
-                      className="shrink-0 text-[10.5px] font-semibold tabular-nums"
-                      style={{ color: card.color }}
-                    >
-                      {pct.toFixed(1)}%
-                    </span>
+                {/* Row 3 — stats */}
+                <div className="mb-2.5 flex items-center gap-3">
+                  <div>
+                    <p className="text-[13px] font-bold leading-none text-white">
+                      {loading ? "—" : rawNumber.toLocaleString()}
+                    </p>
+                    <p className="mt-0.5 text-[8px] uppercase tracking-wider text-white/45">
+                      Total
+                    </p>
+                  </div>
+                  {totals.totalAll > 0 && (
+                    <>
+                      <span className="h-5 w-px bg-white/20" />
+                      <div>
+                        <p className="text-[13px] font-bold leading-none text-white">
+                          {loading ? "—" : `${pct.toFixed(1)}%`}
+                        </p>
+                        <p className="mt-0.5 text-[8px] uppercase tracking-wider text-white/45">
+                          Share
+                        </p>
+                      </div>
+                    </>
                   )}
                 </div>
 
-                {/* Row 6 — progress bar */}
-                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/7">
+                {/* Row 4 — progress bar */}
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
                   <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: card.color }}
+                    className="h-full rounded-full bg-white/65 transition-all duration-700"
+                    style={{ width: `${Math.min(pct, 100)}%` }}
                   />
                 </div>
-
               </div>
             </button>
           );

@@ -177,14 +177,12 @@ const RegisterPage: React.FC = () => {
 
   return (
     <AuthLayout variant="register">
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
-        Create an Account
+      {/* ── Heading ── */}
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
+        Argus
       </h2>
       <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-        Already have an account?{" "}
-        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-          Sign In
-        </Link>
+        Register for create an account
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -278,9 +276,16 @@ const RegisterPage: React.FC = () => {
         >
           {submitting
             ? svcSettings.register_otp ? "Sending OTP..." : "Creating Account..."
-            : "Create Account"}
+            : "Register"}
         </button>
       </form>
+
+      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
+        Already have an account?{" "}
+        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+          Sign In
+        </Link>
+      </p>
 
       <ModalOTPSignUp
         open={otpOpen}

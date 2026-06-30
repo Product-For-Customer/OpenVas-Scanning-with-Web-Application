@@ -6,6 +6,7 @@ import { Login } from "../../../services/auth";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import AuthLayout from "../_shared/AuthLayout";
+import AnimationSuccess from "../animation";
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
@@ -28,6 +29,7 @@ const LoginPage: React.FC = () => {
   const [showPw,     setShowPw]     = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
+  const [showAnim,   setShowAnim]   = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +58,9 @@ const LoginPage: React.FC = () => {
       const role = (res.user?.role ?? "").toLowerCase();
       if (role === "admin" || role === "user") {
         message.success("Login success");
-        try { await refreshMe(); } catch { /* non-critical */ }
-        navigate("/admin", { replace: true });
+        // Show animation FIRST — before refreshMe so LoginPage stays mounted.
+        // onFinished will call refreshMe then navigate once animation ends.
+        setShowAnim(true);
         return;
       }
 
@@ -72,94 +75,110 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <AuthLayout variant="login">
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
-        Sign In
-      </h2>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-        New to Argus?{" "}
-        <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-          Create an Account
-        </Link>
-      </p>
+    <>
+      <AuthLayout variant="login">
+        {/* ── Heading ── */}
+        <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
+          Argus
+        </h2>
+        <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+          Login into your pages account
+        </p>
 
-      {error && (
-        <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+            {error}
+          </div>
+        )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Username or Email Address
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="Enter Your Email"
-            autoComplete="email"
-            className={inputCls}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Password
-          </label>
-          <div className="relative">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+              Username or Email Address
+            </label>
             <input
-              type={showPw ? "text" : "password"}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="Enter Password"
-              autoComplete="current-password"
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="Enter Your Email"
+              autoComplete="email"
               className={inputCls}
             />
-            <button
-              type="button"
-              onClick={() => setShowPw(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
-              aria-label={showPw ? "Hide" : "Show"}
-            >
-              {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-            </button>
           </div>
-        </div>
 
-        {/* Keep signed in  ←→  Authorized access */}
-        <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              className="w-4 h-4 border-gray-300 cursor-pointer"
-              style={{ accentColor: currentColor }}
-            />
-            <span className="text-sm text-gray-600 dark:text-white/55">Keep me signed in</span>
-          </label>
-          <span className="text-xs text-gray-400 dark:text-white/30 whitespace-nowrap">
-            Authorized access
-          </span>
-        </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPw ? "text" : "password"}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="Enter Password"
+                autoComplete="current-password"
+                className={inputCls}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw(p => !p)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+                aria-label={showPw ? "Hide" : "Show"}
+              >
+                {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+              </button>
+            </div>
+          </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{ backgroundColor: submitting ? undefined : currentColor }}
-          className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
-        >
-          {submitting ? "Signing In..." : "Sign In"}
-        </button>
-      </form>
+          {/* Keep signed in  ←→  Forgot Password */}
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 border-gray-300 cursor-pointer"
+                style={{ accentColor: currentColor }}
+              />
+              <span className="text-sm text-gray-600 dark:text-white/55">Keep me signed in</span>
+            </label>
+            <Link
+              to="/forgot-password"
+              style={{ color: currentColor }}
+              className="text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
+            >
+              Forgot Password
+            </Link>
+          </div>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
-        Need to find{" "}
-        <Link to="/forgot-password" style={{ color: currentColor }} className="hover:opacity-80 transition-opacity">
-          your password
-        </Link>?
-      </p>
-    </AuthLayout>
+          <button
+            type="submit"
+            disabled={submitting}
+            style={{ backgroundColor: submitting ? undefined : currentColor }}
+            className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
+          >
+            {submitting ? "Signing In..." : "Sign In"}
+          </button>
+        </form>
+
+        <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
+          New to Argus?{" "}
+          <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+            Create an Account
+          </Link>
+        </p>
+      </AuthLayout>
+
+      {/* ── Success animation overlay — rendered while still on /login (unauthenticated),
+               so LoginPage stays mounted the full 3.8 s. refreshMe is called inside
+               onFinished so auth updates only AFTER the animation completes. ── */}
+      {showAnim && (
+        <AnimationSuccess
+          onFinished={async () => {
+            try { await refreshMe(); } catch { /* non-critical */ }
+            navigate("/admin", { replace: true });
+          }}
+        />
+      )}
+    </>
   );
 };
 
