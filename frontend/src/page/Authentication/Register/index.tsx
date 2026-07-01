@@ -18,6 +18,7 @@ import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
+import argusWordmark from "../../../assets/argus-font-sidebar.png";
 
 type FormData = {
   first_name: string;
@@ -169,9 +170,14 @@ const RegisterPage: React.FC = () => {
   return (
     <AuthLayout variant="register">
       {/* ── Heading ── */}
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
-        Argus
-      </h2>
+      <div className="flex justify-center mb-2">
+        <img
+          src={argusWordmark}
+          alt="Argus"
+          className="h-8 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          draggable={false}
+        />
+      </div>
       <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
         {t("auth.registerSubtitle")}
       </p>

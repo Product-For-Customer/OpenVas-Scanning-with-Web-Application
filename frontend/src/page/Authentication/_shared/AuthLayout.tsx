@@ -27,7 +27,7 @@ const AuthLayout: React.FC<Props> = ({ children }) => {
      * Outer wrapper — sets the background colour behind the canvas.
      * `relative` + `z-0` is needed so the fixed canvas sits behind the card.
      */
-    <div className="relative min-h-screen bg-[#f5f7fa] dark:bg-[#0e1120] flex items-center justify-center py-8 px-4">
+    <div className="relative min-h-screen bg-[#f5f7fa] dark:bg-[#0e1120] flex items-center justify-center py-4 px-4">
 
       {/* ── Background layer (position: fixed → always covers viewport) ── */}
       {BACKGROUND_MODE === "particles" ? (
@@ -55,18 +55,19 @@ const AuthLayout: React.FC<Props> = ({ children }) => {
         className={[
           "relative z-10",
           "w-full",
+          "border border-gray-100 dark:border-white/10",
           "bg-white dark:bg-[#16182e]",
           // overflow-y-auto so tall forms (Register) scroll inside the card
           "overflow-y-auto",
         ].join(" ")}
         style={{
           maxWidth:  490,
-          maxHeight: "calc(100vh - 64px)",
+          maxHeight: "calc(100vh - 32px)",
           boxShadow: "0 4px 32px rgba(0,0,0,0.09), 0 1px 6px rgba(0,0,0,0.06)",
         }}
       >
         {/* Inner padding */}
-        <div className="px-10 py-10">
+        <div className="px-8 py-6">
           {children}
         </div>
       </div>

@@ -16,6 +16,7 @@ import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
+import argusWordmark from "../../../assets/argus-font-sidebar.png";
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
@@ -117,6 +118,14 @@ const ResetPasswordPage: React.FC = () => {
 
   return (
     <AuthLayout variant="login">
+      <div className="flex justify-center mb-2">
+        <img
+          src={argusWordmark}
+          alt="Argus"
+          className="h-8 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          draggable={false}
+        />
+      </div>
       <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
         {t("auth.resetPasswordTitle")}
       </h2>

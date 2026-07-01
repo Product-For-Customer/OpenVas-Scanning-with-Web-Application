@@ -7,15 +7,17 @@ import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import { preloadLoginSuccessAnimationAssets } from "../animation";
+import argusLogo from "../../../assets/argus-logo-real.png";
+import argusWordmark from "../../../assets/argus-font-sidebar.png";
 
 const inputCls = [
-  "w-full border px-4 py-2.5 text-sm outline-none transition",
+  "w-full rounded-xl border px-3.5 py-2 text-sm outline-none transition",
   "border-gray-300 dark:border-white/10",
   "bg-white dark:bg-white/5",
   "text-gray-800 dark:text-white/85",
   "placeholder:text-gray-400 dark:placeholder:text-white/25",
-  "focus:border-gray-500 dark:focus:border-white/30",
-  "focus:ring-2 focus:ring-gray-100 dark:focus:ring-white/5",
+  "focus:border-blue-400 dark:focus:border-white/30",
+  "focus:ring-4 focus:ring-blue-100 dark:focus:ring-white/5",
 ].join(" ");
 
 const LoginPage: React.FC = () => {
@@ -86,22 +88,33 @@ const LoginPage: React.FC = () => {
   return (
     <AuthLayout variant="login">
       {/* ── Heading ── */}
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
-        Argus
-      </h2>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+      <div className="flex flex-col items-center mb-1">
+        <img
+          src={argusLogo}
+          alt=""
+          className="h-16 w-auto object-contain select-none mb-1"
+          draggable={false}
+        />
+        <img
+          src={argusWordmark}
+          alt="Argus"
+          className="h-6 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          draggable={false}
+        />
+      </div>
+      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-3">
         {t("auth.loginSubtitle")}
       </p>
 
       {error && (
-        <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+        <div className="mb-4 rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1">
             {t("auth.usernameOrEmail")}
           </label>
           <input
@@ -115,7 +128,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1">
             {t("auth.password")}
           </label>
           <div className="relative">
@@ -143,7 +156,7 @@ const LoginPage: React.FC = () => {
           <label className="flex items-center gap-2 cursor-pointer select-none">
             <input
               type="checkbox"
-              className="w-4 h-4 border-gray-300 cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 cursor-pointer"
               style={{ accentColor: currentColor }}
             />
             <span className="text-sm text-gray-600 dark:text-white/55">{t("auth.rememberMe")}</span>
@@ -151,7 +164,7 @@ const LoginPage: React.FC = () => {
           <Link
             to="/forgot-password"
             style={{ color: currentColor }}
-            className="text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
+            className="text-sm font-medium hover:opacity-80 transition-opacity whitespace-nowrap"
           >
             {t("auth.forgotPassword")}
           </Link>
@@ -161,37 +174,37 @@ const LoginPage: React.FC = () => {
           type="submit"
           disabled={submitting}
           style={{ backgroundColor: submitting ? undefined : currentColor }}
-          className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
+          className="w-full text-white font-semibold py-3 text-sm shadow-md shadow-blue-500/20 transition-all hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
         >
           {submitting ? t("auth.signingIn") : t("auth.signIn")}
         </button>
       </form>
 
       {/* ── Type of Scan ── */}
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-3">
         <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
         <span className="shrink-0 text-sm text-gray-400 dark:text-white/35">{t("auth.typeOfScan")}</span>
         <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#4f46e5] py-2 text-white shadow-sm">
+        <div className="flex items-center justify-center gap-1.5 bg-linear-to-br from-blue-600 to-sky-500 py-2 text-white shadow-sm shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-110">
           <FiServer size={13} />
           <span className="text-[10px] font-semibold">{t("auth.scanTypeNetwork")}</span>
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#0891b2] py-2 text-white shadow-sm">
+        <div className="flex items-center justify-center gap-1.5 bg-linear-to-br from-teal-500 to-emerald-500 py-2 text-white shadow-sm shadow-emerald-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-110">
           <FiWifi size={13} />
           <span className="text-[10px] font-semibold">{t("auth.scanTypeWireless")}</span>
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#9333ea] py-2 text-white shadow-sm">
+        <div className="flex items-center justify-center gap-1.5 bg-linear-to-br from-violet-600 to-fuchsia-500 py-2 text-white shadow-sm shadow-fuchsia-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-110">
           <FiCpu size={13} />
           <span className="text-[10px] font-semibold">{t("auth.scanTypeVirtualDevice")}</span>
         </div>
       </div>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
+      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-4">
         {t("auth.newToArgus")}{" "}
         <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
           {t("auth.createAccount")}
