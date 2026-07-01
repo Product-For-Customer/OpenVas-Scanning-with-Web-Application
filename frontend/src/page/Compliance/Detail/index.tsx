@@ -11,28 +11,30 @@ import {
 } from "react-icons/fi";
 import type { ControlStatus, FrameworkScore } from "../../../services";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-const statusMeta = (s: string) => {
+const statusMeta = (s: string, t: (key: TranslationKey, vars?: Record<string, string | number>) => string) => {
   if (s === "compliant")
     return {
       icon: <FiCheckCircle className="text-[18px] text-emerald-500" />,
       badge: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300",
-      label: "COMPLIANT",
+      label: t("complianceDetail.statusCompliantLabel"),
       dot: "bg-emerald-500",
     };
   if (s === "warning")
     return {
       icon: <FiAlertTriangle className="text-[18px] text-yellow-500" />,
       badge: "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/25 dark:bg-yellow-500/10 dark:text-yellow-300",
-      label: "WARNING",
+      label: t("complianceDetail.statusWarningLabel"),
       dot: "bg-yellow-500",
     };
   return {
     icon: <FiXCircle className="text-[18px] text-red-500" />,
     badge: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300",
-    label: "NON COMPLIANT",
+    label: t("complianceDetail.statusNonCompliantLabel"),
     dot: "bg-red-500",
   };
 };
@@ -68,7 +70,8 @@ const RadialScore: React.FC<{ score: number }> = ({ score }) => {
 // ── ControlRow ─────────────────────────────────────────────────────────────────
 
 const ControlRow: React.FC<{ ctrl: ControlStatus; accent: string }> = ({ ctrl, accent }) => {
-  const meta = statusMeta(ctrl.status);
+  const { t } = useLanguage();
+  const meta = statusMeta(ctrl.status, t);
   return (
     <div className="flex items-start gap-4 rounded-2xl border border-slate-100 bg-white p-4 dark:border-white/8 dark:bg-white/3">
       <div className="mt-0.5 shrink-0">{meta.icon}</div>
@@ -100,7 +103,7 @@ const ControlRow: React.FC<{ ctrl: ControlStatus; accent: string }> = ({ ctrl, a
         <div className="shrink-0 text-right">
           <span className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
             <FiAlertOctagon className="text-[11px]" />
-            {ctrl.violations} violation{ctrl.violations > 1 ? "s" : ""}
+            {t("complianceDetail.violationsCount", { n: ctrl.violations })}
           </span>
         </div>
       )}
@@ -116,6 +119,7 @@ type LocationState = {
 };
 
 const ComplianceDetail: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   useParams<{ framework: string }>();
   const location = useLocation();
@@ -130,14 +134,14 @@ const ComplianceDetail: React.FC = () => {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <FiShield className="text-[40px] text-slate-300 dark:text-white/20" />
-        <p className="text-[13px] text-slate-400 dark:text-white/35">No framework data found.</p>
+        <p className="text-[13px] text-slate-400 dark:text-white/35">{t("complianceDetail.noFrameworkData")}</p>
         <button
           type="button"
           onClick={() => navigate("/admin/compliance")}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5"
         >
           <FiArrowLeft className="text-[12px]" />
-          Back to Compliance
+          {t("complianceDetail.backToCompliance")}
         </button>
       </div>
     );
@@ -169,7 +173,7 @@ const ComplianceDetail: React.FC = () => {
             className="mb-4 inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-1.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8"
           >
             <FiArrowLeft className="text-[12px]" />
-            Back
+            {t("complianceDetail.back")}
           </button>
           <div className="flex flex-wrap items-center gap-5">
             <div
@@ -180,7 +184,7 @@ const ComplianceDetail: React.FC = () => {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: currentColor }}>
-                ANALYTICS · COMPLIANCE
+                {t("complianceDetail.analyticsLabel")}
               </p>
               <h1 className="text-[20px] font-extrabold text-slate-900 dark:text-white/90">{fw.full_name}</h1>
               <p className="text-[11px] text-slate-400 dark:text-white/35">{fw.framework.replace("_", " ")}</p>
@@ -193,10 +197,10 @@ const ComplianceDetail: React.FC = () => {
       {/* ── Summary cards ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Compliant",     value: compliantCount,    cls: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/8 dark:text-emerald-300", dot: "bg-emerald-500" },
-          { label: "Warning",       value: warningCount,      cls: "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-500/8 dark:text-yellow-300",   dot: "bg-yellow-500"  },
-          { label: "Non-Compliant", value: nonCompliantCount, cls: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-300",                      dot: "bg-red-500"     },
-          { label: "Total Violations", value: totalViolations, cls: "border-slate-200 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/4 dark:text-white/70",                  dot: "bg-slate-400"   },
+          { label: t("complianceDetail.compliant"),     value: compliantCount,    cls: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/8 dark:text-emerald-300", dot: "bg-emerald-500" },
+          { label: t("complianceDetail.warning"),       value: warningCount,      cls: "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-500/8 dark:text-yellow-300",   dot: "bg-yellow-500"  },
+          { label: t("complianceDetail.nonCompliant"), value: nonCompliantCount, cls: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-300",                      dot: "bg-red-500"     },
+          { label: t("complianceDetail.totalViolations"), value: totalViolations, cls: "border-slate-200 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/4 dark:text-white/70",                  dot: "bg-slate-400"   },
         ].map(({ label, value, cls, dot }) => (
           <div key={label} className={`rounded-2xl border p-4 ${cls}`}>
             <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider opacity-70">
@@ -211,14 +215,19 @@ const ComplianceDetail: React.FC = () => {
       {/* ── Score card ── */}
       <div className="flex items-center gap-4 rounded-2xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">Framework Score</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("complianceDetail.frameworkScore")}</p>
           <p className={`text-[38px] font-extrabold leading-none ${scoreTxt}`}>
             {fw.score}<span className="text-[18px]">%</span>
           </p>
         </div>
         <div className="h-12 w-px bg-slate-100 dark:bg-white/8" />
         <p className="text-[11.5px] leading-6 text-slate-500 dark:text-white/45">
-          {compliantCount} of {fw.controls.length} controls are compliant.{warningCount > 0 ? ` ${warningCount} need attention.` : ""}{nonCompliantCount > 0 ? ` ${nonCompliantCount} non-compliant.` : ""}
+          {t("complianceDetail.summaryText", {
+            compliant: compliantCount,
+            total: fw.controls.length,
+            warningPart: warningCount > 0 ? t("complianceDetail.summaryWarningPart", { n: warningCount }) : "",
+            nonCompliantPart: nonCompliantCount > 0 ? t("complianceDetail.summaryNonCompliantPart", { n: nonCompliantCount }) : "",
+          })}
         </p>
       </div>
 
@@ -226,14 +235,14 @@ const ComplianceDetail: React.FC = () => {
       <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-50/50 dark:border-white/8 dark:bg-white/2">
         <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <FiList className="text-[14px]" style={{ color: currentColor }} />
-          <span className="text-[13px] font-bold text-slate-700 dark:text-white/80">Controls</span>
+          <span className="text-[13px] font-bold text-slate-700 dark:text-white/80">{t("complianceDetail.controls")}</span>
           <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
             {fw.controls.length}
           </span>
         </div>
         <div className="space-y-2 p-3">
           {fw.controls.length === 0 ? (
-            <p className="py-8 text-center text-[12px] text-slate-400 dark:text-white/35">No controls found.</p>
+            <p className="py-8 text-center text-[12px] text-slate-400 dark:text-white/35">{t("complianceDetail.noControlsFound")}</p>
           ) : (
             fw.controls.map((ctrl) => (
               <ControlRow key={ctrl.control_id} ctrl={ctrl} accent={currentColor} />

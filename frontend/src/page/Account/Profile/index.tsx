@@ -11,6 +11,7 @@ import {
 import { Link } from "react-router-dom";
 import type { UserResponse } from "../../../services/user";
 import profileBanner from "../../../assets/background_profile.jpg";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type ProfileProps = {
   user: UserResponse;
@@ -70,11 +71,12 @@ const createCoverThumbnail = async (
 };
 
 const Profile: React.FC<ProfileProps> = ({ user }) => {
+  const { t } = useLanguage();
   const [thumbSrc, setThumbSrc] = useState<string>("");
   const [thumbLoading, setThumbLoading] = useState(false);
 
   const fullName =
-    `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || "Unknown User";
+    `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim() || t("accountProfile.unknownUser");
 
   const itemClass =
     "flex items-center gap-2.5 text-[12px] text-[#1f2240] dark:text-white/70";
@@ -193,7 +195,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         </h3>
 
         <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45">
-          {user.role || "No role"}
+          {user.role || t("accountProfile.noRole")}
         </p>
       </div>
 
@@ -201,12 +203,12 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         <div className="border-t border-gray-200/80 pt-4 dark:border-white/10">
           <div className="mb-3 flex items-center justify-between">
             <h4 className="text-[14px] font-semibold text-[#1f2240] dark:text-white/85">
-              About
+              {t("accountProfile.about")}
             </h4>
             <button
               type="button"
               className="text-gray-400 hover:text-gray-600 transition-colors dark:text-white/35 dark:hover:text-white/65"
-              aria-label="Edit about"
+              aria-label={t("accountProfile.editAbout")}
             >
               <FiEdit2 className="text-[13px]" />
             </button>
@@ -216,25 +218,25 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             <li className={itemClass}>
               <FiHome className={iconClass} />
               <span>
-                {user.location ? `Lives in ${user.location}` : "No location"}
+                {user.location ? t("accountProfile.livesIn", { location: user.location }) : t("accountProfile.noLocation")}
               </span>
             </li>
 
             <li className={itemClass}>
               <FiBriefcase className={iconClass} />
               <span>
-                {user.position ? `Works as ${user.position}` : "No position"}
+                {user.position ? t("accountProfile.worksAs", { position: user.position }) : t("accountProfile.noPosition")}
               </span>
             </li>
 
             <li className={itemClass}>
               <FiMail className={iconClass} />
-              <span>{user.email || "No email"}</span>
+              <span>{user.email || t("accountProfile.noEmail")}</span>
             </li>
 
             <li className={itemClass}>
               <FiPhone className={iconClass} />
-              <span>{user.phone_number || "No phone number"}</span>
+              <span>{user.phone_number || t("accountProfile.noPhoneNumber")}</span>
             </li>
           </ul>
         </div>
@@ -242,7 +244,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
         <div className="border-t border-gray-200/80 pt-4 dark:border-white/10">
           <div className="mb-3 flex items-center justify-between">
             <h4 className="text-[14px] font-semibold text-[#1f2240] dark:text-white/85">
-              Other
+              {t("accountProfile.other")}
             </h4>
           </div>
 
@@ -250,7 +252,7 @@ const Profile: React.FC<ProfileProps> = ({ user }) => {
             <li>
               <Link to="/admin/service" className={linkClass}>
                 <FiSettings className={iconClass} />
-                <span className="text-blue-500">Service</span>
+                <span className="text-blue-500">{t("accountProfile.service")}</span>
               </Link>
             </li>
           </ul>

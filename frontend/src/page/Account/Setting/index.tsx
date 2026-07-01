@@ -9,6 +9,7 @@ import {
 } from "../../../services/user";
 import { ListEmailAndPhoneNumber } from "../../../services";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type SettingProps = {
   user: UserResponse;
@@ -92,6 +93,7 @@ const createCoverThumbnail = async (
 };
 
 const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
+  const { t } = useLanguage();
   const { triggerUserRefresh } = useStateContext();
 
   const createInitialForm = (userData: UserResponse): SettingForm => ({
@@ -234,12 +236,12 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   const normalizePhone = (value: string) => value.replace(/\D/g, "").trim();
 
   const validateFirstName = (value: string) => {
-    if (!value.trim()) return "Please enter first name";
+    if (!value.trim()) return t("accountSetting.enterFirstName");
     return "";
   };
 
   const validateLastName = (value: string) => {
-    if (!value.trim()) return "Please enter last name";
+    if (!value.trim()) return t("accountSetting.enterLastName");
     return "";
   };
 
@@ -253,15 +255,15 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
       return sameEmail && !isCurrentUser;
     });
 
-    return isDuplicate ? "This email is already in use" : "";
+    return isDuplicate ? t("accountSetting.emailInUse") : "";
   };
 
   const validateEmail = (value: string) => {
     const email = value.trim();
-    if (!email) return "Please enter email";
+    if (!email) return t("accountSetting.enterEmail");
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return "Invalid email format";
+    if (!emailRegex.test(email)) return t("accountSetting.invalidEmailFormat");
 
     const duplicateError = validateEmailDuplicate(email);
     if (duplicateError) return duplicateError;
@@ -279,15 +281,15 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
       return samePhone && !isCurrentUser;
     });
 
-    return isDuplicate ? "This phone number is already in use" : "";
+    return isDuplicate ? t("accountSetting.phoneInUse") : "";
   };
 
   const validatePhone = (value: string) => {
     const phone = normalizePhone(value);
 
-    if (!phone) return "Please enter phone number";
-    if (!phone.startsWith("0")) return "Phone number must start with 0";
-    if (phone.length !== 10) return "Phone number must be 10 digits";
+    if (!phone) return t("accountSetting.enterPhone");
+    if (!phone.startsWith("0")) return t("accountSetting.phoneMustStartWith0");
+    if (phone.length !== 10) return t("accountSetting.phoneMustBe10Digits");
 
     const duplicateError = validatePhoneDuplicate(phone);
     if (duplicateError) return duplicateError;
@@ -296,12 +298,12 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
   };
 
   const validateLocation = (value: string) => {
-    if (!value.trim()) return "Please enter location";
+    if (!value.trim()) return t("accountSetting.enterLocation");
     return "";
   };
 
   const validatePosition = (value: string) => {
-    if (!value.trim()) return "Please enter position";
+    if (!value.trim()) return t("accountSetting.enterPosition");
     return "";
   };
 
@@ -314,7 +316,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
       location: validateLocation(form.location),
       position: validatePosition(form.position),
     }),
-    [form, existingContacts, user.id]
+    [form, existingContacts, user.id, t]
   );
 
   const isFormValid = useMemo(() => {
@@ -373,7 +375,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     }
 
     if (!file.type.startsWith("image/")) {
-      message.warning("Please upload image only");
+      message.warning(t("accountSetting.uploadImageOnly"));
       return;
     }
 
@@ -399,17 +401,17 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
     });
 
     if (!user?.id) {
-      message.error("User ID not found");
+      message.error(t("accountSetting.userIdNotFound"));
       return;
     }
 
     if (!hasFormChanged) {
-      message.warning("No changes");
+      message.warning(t("accountSetting.noChanges"));
       return;
     }
 
     if (!isFormValid) {
-      message.error("Please fix invalid fields");
+      message.error(t("accountSetting.fixInvalidFields"));
       return;
     }
 
@@ -429,7 +431,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
       const updated = await UpdateUserByID(user.id, payload);
 
       if (!updated) {
-        message.error("Update failed");
+        message.error(t("accountSetting.updateFailed"));
         return;
       }
 
@@ -445,13 +447,13 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
         position: false,
       });
 
-      message.success("Save success");
+      message.success(t("accountSetting.saveSuccess"));
       onUpdated();
       triggerUserRefresh();
     } catch (err: any) {
       console.error("Update profile error:", err);
       const msg =
-        err?.response?.data?.error || err?.message || "Update failed";
+        err?.response?.data?.error || err?.message || t("accountSetting.updateFailed");
       message.error(msg);
     } finally {
       setSubmitting(false);
@@ -518,10 +520,10 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
 
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-600 dark:text-cyan-300">
-                  Profile
+                  {t("accountSetting.profileKicker")}
                 </p>
                 <h2 className="truncate text-[18px] font-semibold tracking-tight text-[#1f2240] dark:text-white/90 sm:text-[20px]">
-                  Account Settings
+                  {t("accountSetting.accountSettings")}
                 </h2>
               </div>
             </div>
@@ -535,7 +537,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
             ].join(" ")}
           >
             <FiShield className="text-[12px]" />
-            <span className="text-[11px] font-semibold">My Profile</span>
+            <span className="text-[11px] font-semibold">{t("accountSetting.myProfile")}</span>
           </div>
         </div>
       </div>
@@ -582,7 +584,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
               />
 
               <p className="text-[11px] text-gray-500 dark:text-white/45">
-                Click to upload profile image
+                {t("accountSetting.clickToUploadProfileImage")}
               </p>
             </div>
           </div>
@@ -590,7 +592,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
           <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                First Name
+                {t("accountSetting.firstName")}
               </label>
               <input
                 name="firstName"
@@ -605,7 +607,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
 
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                Last Name
+                {t("accountSetting.lastName")}
               </label>
               <input
                 name="lastName"
@@ -620,7 +622,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
 
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                Email Address
+                {t("accountSetting.emailAddress")}
               </label>
               <input
                 name="email"
@@ -635,7 +637,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
 
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                Phone No
+                {t("accountSetting.phoneNo")}
               </label>
               <input
                 name="phone"
@@ -645,20 +647,20 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
                 type="text"
                 inputMode="numeric"
                 maxLength={10}
-                placeholder="0XXXXXXXXX"
+                placeholder={t("accountSetting.phonePlaceholder")}
                 className={getInputClass("phone", errors.phone)}
               />
               {renderFieldError("phone", errors.phone)}
               {!touched.phone && (
                 <p className="mt-1 text-[11px] text-gray-500 dark:text-white/40">
-                  Must be 10 digits and start with 0
+                  {t("accountSetting.phoneHint")}
                 </p>
               )}
             </div>
 
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                Location
+                {t("accountSetting.location")}
               </label>
               <input
                 name="location"
@@ -673,7 +675,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
 
             <div>
               <label className="mb-1.5 block text-[12px] font-medium text-[#374151] dark:text-white/65">
-                Position
+                {t("accountSetting.position")}
               </label>
               <input
                 name="position"
@@ -682,7 +684,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
                 onBlur={() => handleBlur("position")}
                 type="text"
                 className={getInputClass("position", errors.position)}
-                placeholder="Enter position"
+                placeholder={t("accountSetting.positionPlaceholder")}
               />
               {renderFieldError("position", errors.position)}
             </div>
@@ -702,7 +704,7 @@ const Setting: React.FC<SettingProps> = ({ user, onUpdated }) => {
             ].join(" ")}
           >
             <FiCheckCircle className="text-[14px]" />
-            {submitting ? "Saving..." : "Save Changes"}
+            {submitting ? t("accountSetting.saving") : t("accountSetting.saveChanges")}
           </button>
         </div>
       </form>

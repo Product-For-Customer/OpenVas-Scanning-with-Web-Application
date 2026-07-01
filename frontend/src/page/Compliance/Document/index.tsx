@@ -16,93 +16,90 @@ import {
 } from "react-icons/fi";
 import type { FrameworkScore, ControlStatus } from "../../../services";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
+
+type TFunc = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 const scoreRingColor = (s: number) => {
   if (s >= 80) return "#10b981";
   if (s >= 60) return "#eab308";
   return "#ef4444";
 };
-const scoreLabel = (s: number) => {
-  if (s >= 80) return "GOOD";
-  if (s >= 60) return "FAIR";
-  return "POOR";
+const scoreLabel = (s: number, t: TFunc) => {
+  if (s >= 80) return t("complianceDocument.scoreGood");
+  if (s >= 60) return t("complianceDocument.scoreFair");
+  return t("complianceDocument.scorePoor");
 };
 
-const statusMeta = (s: string) => {
+const statusMeta = (s: string, t: TFunc) => {
   if (s === "compliant")
     return {
       icon: <FiCheckCircle className="text-[13px] text-emerald-500" />,
       badge: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/8 dark:text-emerald-300",
-      label: "Compliant",
+      label: t("complianceDocument.statusCompliant"),
       bar: "bg-emerald-500",
     };
   if (s === "warning")
     return {
       icon: <FiAlertTriangle className="text-[13px] text-yellow-500" />,
       badge: "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/20 dark:bg-yellow-500/8 dark:text-yellow-300",
-      label: "Warning",
+      label: t("complianceDocument.statusWarning"),
       bar: "bg-yellow-500",
     };
   return {
     icon: <FiXCircle className="text-[13px] text-red-500" />,
     badge: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-300",
-    label: "Non-Compliant",
+    label: t("complianceDocument.statusNonCompliant"),
     bar: "bg-red-500",
   };
 };
 
-const frameworkDescriptions: Record<string, { abbr: string; desc: string; purpose: string; scope: string }> = {
+const frameworkDescriptions = (t: TFunc): Record<string, { abbr: string; desc: string; purpose: string; scope: string }> => ({
   PCI_DSS: {
     abbr: "PCI DSS v4.0",
     desc: "Payment Card Industry Data Security Standard",
-    purpose:
-      "กำหนดมาตรฐานความปลอดภัยสำหรับองค์กรที่จัดเก็บ ประมวลผล หรือส่งข้อมูลบัตรชำระเงิน เพื่อปกป้องข้อมูลผู้ถือบัตรจากการละเมิดและการฉ้อโกง",
-    scope:
-      "ระบบ network, แอปพลิเคชัน, อุปกรณ์จัดเก็บข้อมูล และกระบวนการที่เกี่ยวข้องกับข้อมูลบัตรชำระเงิน",
+    purpose: t("complianceDocument.frameworkPciDssPurpose"),
+    scope: t("complianceDocument.frameworkPciDssScope"),
   },
   ISO_27001: {
     abbr: "ISO/IEC 27001:2022",
     desc: "Information Security Management System",
-    purpose:
-      "กำหนดข้อกำหนดสำหรับการจัดตั้ง นำไปใช้ บำรุงรักษา และปรับปรุงระบบการจัดการความปลอดภัยของข้อมูลอย่างต่อเนื่อง",
-    scope:
-      "ทรัพย์สินสารสนเทศทั้งหมดขององค์กร รวมถึงข้อมูล ระบบ บุคลากร และกระบวนการทางธุรกิจ",
+    purpose: t("complianceDocument.frameworkIso27001Purpose"),
+    scope: t("complianceDocument.frameworkIso27001Scope"),
   },
   NIST_CSF: {
     abbr: "NIST CSF 2.0",
     desc: "NIST Cybersecurity Framework",
-    purpose:
-      "ให้แนวทางและแนวปฏิบัติที่ดีที่สุดสำหรับการจัดการความเสี่ยงด้านความปลอดภัยทางไซเบอร์ โดยเน้นการระบุ ป้องกัน ตรวจจับ ตอบสนอง และฟื้นฟู",
-    scope:
-      "โครงสร้างพื้นฐานที่สำคัญ ระบบสารสนเทศ และเทคโนโลยีดิจิทัลทั่วทั้งองค์กร",
+    purpose: t("complianceDocument.frameworkNistCsfPurpose"),
+    scope: t("complianceDocument.frameworkNistCsfScope"),
   },
   CIS_CONTROLS: {
     abbr: "CIS Controls v8",
     desc: "Center for Internet Security Critical Security Controls",
-    purpose:
-      "ชุดของการควบคุมความปลอดภัยที่ได้รับการจัดลำดับความสำคัญ เพื่อป้องกันภัยคุกคามทางไซเบอร์ที่พบบ่อยและมีผลกระทบสูงสุด",
-    scope:
-      "สินทรัพย์ฮาร์ดแวร์และซอฟต์แวร์ การจัดการ vulnerability และการป้องกันเครือข่าย",
+    purpose: t("complianceDocument.frameworkCisControlsPurpose"),
+    scope: t("complianceDocument.frameworkCisControlsScope"),
   },
-};
+});
 
-const recommendationsByStatus = (ctrl: ControlStatus): string => {
-  if (ctrl.status === "compliant") return "ควบคุมนี้เป็นไปตามข้อกำหนด ให้คงการติดตามและทบทวนเป็นระยะ";
+const recommendationsByStatus = (ctrl: ControlStatus, t: TFunc): string => {
+  if (ctrl.status === "compliant") return t("complianceDocument.recommendationCompliant");
   if (ctrl.status === "warning") {
     if (ctrl.violations > 0)
-      return `ตรวจพบ ${ctrl.violations} จุดที่ต้องแก้ไข ให้ดำเนินการแก้ไขช่องโหว่ที่มีความเสี่ยงสูงและกำหนดแผนการแก้ไขภายใน 30 วัน`;
-    return "ต้องปรับปรุงกระบวนการ ให้ทบทวนนโยบายและขั้นตอนปฏิบัติงานที่เกี่ยวข้อง";
+      return t("complianceDocument.recommendationWarningWithViolations", { n: ctrl.violations });
+    return t("complianceDocument.recommendationWarningNoViolations");
   }
   if (ctrl.violations > 0)
-    return `ไม่เป็นไปตามข้อกำหนด ตรวจพบ ${ctrl.violations} ช่องโหว่ที่ต้องแก้ไขทันที ต้องดำเนินการแก้ไขเร่งด่วนภายใน 7 วัน`;
-  return "ไม่เป็นไปตามข้อกำหนด ต้องดำเนินการแก้ไขกระบวนการและระบบที่เกี่ยวข้องโดยเร่งด่วน";
+    return t("complianceDocument.recommendationNonCompliantWithViolations", { n: ctrl.violations });
+  return t("complianceDocument.recommendationNonCompliantNoViolations");
 };
 
 // ── Radial gauge ──────────────────────────────────────────────────────────────
 
 const RadialGauge: React.FC<{ score: number }> = ({ score }) => {
+  const { t } = useLanguage();
   const r = 44, circ = 2 * Math.PI * r;
   const color = scoreRingColor(score);
   return (
@@ -115,7 +112,7 @@ const RadialGauge: React.FC<{ score: number }> = ({ score }) => {
         stroke={color}
       />
       <text x="55" y="50" textAnchor="middle" fontSize="22" fontWeight="800" fill={color}>{score}</text>
-      <text x="55" y="66" textAnchor="middle" fontSize="9" fontWeight="700" fill={color}>{scoreLabel(score)}</text>
+      <text x="55" y="66" textAnchor="middle" fontSize="9" fontWeight="700" fill={color}>{scoreLabel(score, t)}</text>
     </svg>
   );
 };
@@ -125,7 +122,8 @@ const RadialGauge: React.FC<{ score: number }> = ({ score }) => {
 const ControlRow: React.FC<{ ctrl: ControlStatus; idx: number; accent: string; onDetail: () => void }> = ({
   ctrl, idx, accent, onDetail,
 }) => {
-  const meta = statusMeta(ctrl.status);
+  const { t } = useLanguage();
+  const meta = statusMeta(ctrl.status, t);
   return (
     <tr className="border-b border-slate-100 dark:border-white/6 last:border-0">
       <td className="py-3 pl-4 pr-2 text-[10.5px] font-medium text-slate-400 dark:text-white/30 w-6">{idx + 1}</td>
@@ -157,7 +155,7 @@ const ControlRow: React.FC<{ ctrl: ControlStatus; idx: number; accent: string; o
           className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[9.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/4 dark:text-white/55 dark:hover:bg-white/8"
           style={{ borderColor: `${accent}40`, color: accent }}
         >
-          Detail →
+          {t("complianceDocument.detailAction")}
         </button>
       </td>
     </tr>
@@ -169,6 +167,7 @@ const ControlRow: React.FC<{ ctrl: ControlStatus; idx: number; accent: string; o
 type LocationState = { framework: FrameworkScore; generatedAt?: string };
 
 const ComplianceDocument: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const { currentColor } = useStateContext();
@@ -184,20 +183,20 @@ const ComplianceDocument: React.FC = () => {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <FiFileText className="text-[40px] text-slate-300 dark:text-white/20" />
-        <p className="text-[13px] text-slate-400 dark:text-white/35">No framework data found.</p>
+        <p className="text-[13px] text-slate-400 dark:text-white/35">{t("complianceDocument.noFrameworkData")}</p>
         <button
           type="button"
           onClick={() => navigate("/admin/compliance")}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/60"
         >
           <FiArrowLeft className="text-[12px]" />
-          Back to Compliance
+          {t("complianceDocument.backToCompliance")}
         </button>
       </div>
     );
   }
 
-  const fwInfo = frameworkDescriptions[fw.framework] ?? {
+  const fwInfo = frameworkDescriptions(t)[fw.framework] ?? {
     abbr: fw.full_name,
     desc: fw.full_name,
     purpose: "",
@@ -235,11 +234,11 @@ const ComplianceDocument: React.FC = () => {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65"
           >
             <FiArrowLeft className="text-[11px]" />
-            Compliance
+            {t("complianceDocument.breadcrumbCompliance")}
           </button>
           <span className="text-[11px] text-slate-300 dark:text-white/20">/</span>
           <span className="rounded-xl px-3 py-1.5 text-[11px] font-bold" style={{ color: currentColor }}>
-            {fw.framework.replace(/_/g, " ")} — Document
+            {fw.framework.replace(/_/g, " ")} {t("complianceDocument.documentSuffix")}
           </span>
           <div className="ml-auto">
             <button
@@ -248,7 +247,7 @@ const ComplianceDocument: React.FC = () => {
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65"
             >
               <FiPrinter className="text-[11px]" />
-              Print / Export
+              {t("complianceDocument.printExport")}
             </button>
           </div>
         </div>
@@ -273,7 +272,7 @@ const ComplianceDocument: React.FC = () => {
                   <FiShield className="text-[22px] text-white" />
                 </div>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-white/60">COMPLIANCE DOCUMENT</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-white/60">{t("complianceDocument.documentLabel")}</p>
                   <h1 className="text-[20px] font-extrabold text-white">{fw.full_name}</h1>
                 </div>
               </div>
@@ -287,11 +286,11 @@ const ComplianceDocument: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1.5 rounded-xl bg-white/15 px-3 py-1.5">
                   <FiLayers className="text-[10px] text-white/70" />
-                  <span className="text-[10.5px] text-white/80">{fw.controls.length} Controls</span>
+                  <span className="text-[10.5px] text-white/80">{t("complianceDocument.controlsCount", { n: fw.controls.length })}</span>
                 </div>
                 <div className="flex items-center gap-1.5 rounded-xl bg-white/15 px-3 py-1.5">
                   <FiTarget className="text-[10px] text-white/70" />
-                  <span className="text-[10.5px] text-white/80">{totalViolations} Total Violations</span>
+                  <span className="text-[10.5px] text-white/80">{t("complianceDocument.totalViolationsCount", { n: totalViolations })}</span>
                 </div>
               </div>
             </div>
@@ -304,18 +303,18 @@ const ComplianceDocument: React.FC = () => {
           <div className="rounded-2xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-white/3">
             <div className="mb-3 flex items-center gap-2">
               <FiFileText className="text-[13px]" style={{ color: currentColor }} />
-              <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">เกี่ยวกับ {fwInfo.abbr}</span>
+              <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">{t("complianceDocument.aboutFramework", { abbr: fwInfo.abbr })}</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {fwInfo.purpose && (
                 <div>
-                  <p className="mb-1 text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">วัตถุประสงค์</p>
+                  <p className="mb-1 text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.purpose")}</p>
                   <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{fwInfo.purpose}</p>
                 </div>
               )}
               {fwInfo.scope && (
                 <div>
-                  <p className="mb-1 text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">ขอบเขตการใช้งาน</p>
+                  <p className="mb-1 text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.scope")}</p>
                   <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{fwInfo.scope}</p>
                 </div>
               )}
@@ -327,7 +326,7 @@ const ComplianceDocument: React.FC = () => {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             {
-              label: "Compliance Score",
+              label: t("complianceDocument.complianceScore"),
               value: `${fw.score}%`,
               icon: <FiBarChart2 className="text-[16px]" />,
               color: scoreRingColor(fw.score),
@@ -335,7 +334,7 @@ const ComplianceDocument: React.FC = () => {
               border: fw.score >= 80 ? "border-emerald-200 dark:border-emerald-500/20" : fw.score >= 60 ? "border-yellow-200 dark:border-yellow-500/20" : "border-red-200 dark:border-red-500/20",
             },
             {
-              label: "Compliant Controls",
+              label: t("complianceDocument.compliantControls"),
               value: `${fw.compliant} / ${fw.total}`,
               icon: <FiCheckCircle className="text-[16px]" />,
               color: "#10b981",
@@ -343,7 +342,7 @@ const ComplianceDocument: React.FC = () => {
               border: "border-emerald-200 dark:border-emerald-500/20",
             },
             {
-              label: "Warning Controls",
+              label: t("complianceDocument.warningControls"),
               value: String(fw.warning),
               icon: <FiAlertTriangle className="text-[16px]" />,
               color: "#eab308",
@@ -351,7 +350,7 @@ const ComplianceDocument: React.FC = () => {
               border: "border-yellow-200 dark:border-yellow-500/20",
             },
             {
-              label: "Total Violations",
+              label: t("complianceDocument.totalViolations"),
               value: String(totalViolations),
               icon: <FiAlertOctagon className="text-[16px]" />,
               color: "#ef4444",
@@ -372,7 +371,7 @@ const ComplianceDocument: React.FC = () => {
           <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
             <FiLayers className="text-[13px]" style={{ color: currentColor }} />
             <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">
-              รายการควบคุมทั้งหมด
+              {t("complianceDocument.allControls")}
             </span>
             <span className="ml-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
               {fw.controls.length}
@@ -382,12 +381,12 @@ const ComplianceDocument: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-white/6 dark:bg-white/2">
-                  <th className="py-2.5 pl-4 pr-2 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">#</th>
-                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Control ID</th>
-                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Control Name</th>
-                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Status</th>
-                  <th className="py-2.5 pr-3 text-center text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Violations</th>
-                  <th className="py-2.5 pr-4 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Action</th>
+                  <th className="py-2.5 pl-4 pr-2 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnNumber")}</th>
+                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnControlId")}</th>
+                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnControlName")}</th>
+                  <th className="py-2.5 pr-3 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnStatus")}</th>
+                  <th className="py-2.5 pr-3 text-center text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnViolations")}</th>
+                  <th className="py-2.5 pr-4 text-left text-[9.5px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceDocument.columnAction")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -409,11 +408,11 @@ const ComplianceDocument: React.FC = () => {
         <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-white/3">
           <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
             <FiFileText className="text-[13px]" style={{ color: currentColor }} />
-            <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">รายละเอียดและคำแนะนำแต่ละ Control</span>
+            <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">{t("complianceDocument.controlDetailsAndRecommendations")}</span>
           </div>
           <div className="divide-y divide-slate-100/70 dark:divide-white/5">
             {fw.controls.map((ctrl) => {
-              const meta = statusMeta(ctrl.status);
+              const meta = statusMeta(ctrl.status, t);
               return (
                 <div key={ctrl.control_id} className="px-5 py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -428,7 +427,7 @@ const ComplianceDocument: React.FC = () => {
                           </span>
                           {ctrl.violations > 0 && (
                             <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9.5px] font-bold text-red-700 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-300">
-                              {ctrl.violations} violation{ctrl.violations !== 1 ? "s" : ""}
+                              {t("complianceDocument.violationsCount", { n: ctrl.violations })}
                             </span>
                           )}
                         </div>
@@ -450,10 +449,10 @@ const ComplianceDocument: React.FC = () => {
                               : ctrl.status === "warning" ? "text-yellow-600 dark:text-yellow-400"
                               : "text-red-600 dark:text-red-400",
                           ].join(" ")}>
-                            คำแนะนำ
+                            {t("complianceDocument.recommendation")}
                           </p>
                           <p className="text-[11px] leading-5.5 text-slate-600 dark:text-white/55">
-                            {recommendationsByStatus(ctrl)}
+                            {recommendationsByStatus(ctrl, t)}
                           </p>
                         </div>
                       </div>
@@ -464,7 +463,7 @@ const ComplianceDocument: React.FC = () => {
                       className="shrink-0 rounded-xl border px-3 py-1.5 text-[10.5px] font-semibold transition hover:opacity-90"
                       style={{ borderColor: `${currentColor}40`, color: currentColor, backgroundColor: `${currentColor}08` }}
                     >
-                      ดูช่องโหว่ →
+                      {t("complianceDocument.viewViolations")}
                     </button>
                   </div>
                 </div>
@@ -479,7 +478,7 @@ const ComplianceDocument: React.FC = () => {
             <div className="mb-3 flex items-center gap-2">
               <FiAlertOctagon className="text-[14px] text-red-600 dark:text-red-400" />
               <span className="text-[12.5px] font-bold text-red-700 dark:text-red-300">
-                สรุปการแก้ไขเร่งด่วน ({nonCompliantCtrls.length} รายการ)
+                {t("complianceDocument.urgentRemediationSummary", { n: nonCompliantCtrls.length })}
               </span>
             </div>
             <div className="space-y-2">
@@ -490,7 +489,7 @@ const ComplianceDocument: React.FC = () => {
                     <span className="text-[11px] font-bold text-red-700 dark:text-red-300">{c.control_id}</span>
                     <span className="ml-2 text-[10.5px] text-red-600/80 dark:text-red-300/70">{c.control_name}</span>
                     {c.violations > 0 && (
-                      <span className="ml-2 text-[10px] text-red-500 dark:text-red-400">— {c.violations} violation{c.violations !== 1 ? "s" : ""}</span>
+                      <span className="ml-2 text-[10px] text-red-500 dark:text-red-400">— {t("complianceDocument.violationsCount", { n: c.violations })}</span>
                     )}
                   </div>
                   <button
@@ -498,7 +497,7 @@ const ComplianceDocument: React.FC = () => {
                     onClick={() => navigateToControl(c)}
                     className="shrink-0 rounded-lg border border-red-200 bg-white px-2.5 py-1 text-[9.5px] font-semibold text-red-600 transition hover:bg-red-50 dark:border-red-500/20 dark:bg-red-500/8 dark:text-red-300"
                   >
-                    แก้ไข →
+                    {t("complianceDocument.fixAction")}
                   </button>
                 </div>
               ))}
@@ -509,9 +508,7 @@ const ComplianceDocument: React.FC = () => {
         {/* Footer note */}
         <div className="rounded-2xl border border-slate-200/50 bg-slate-50/60 p-4 text-center dark:border-white/6 dark:bg-white/2">
           <p className="text-[10px] text-slate-400 dark:text-white/25">
-            เอกสารนี้สร้างโดยอัตโนมัติจากระบบ OpenVAS Security Scanning &nbsp;·&nbsp;
-            {new Date(generatedAt).toLocaleString("th-TH")} &nbsp;·&nbsp;
-            ข้อมูลอาจเปลี่ยนแปลงตามผลการสแกนล่าสุด
+            {t("complianceDocument.footerNote", { date: new Date(generatedAt).toLocaleString("th-TH") })}
           </p>
         </div>
       </div>

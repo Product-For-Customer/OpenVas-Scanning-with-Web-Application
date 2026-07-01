@@ -18,6 +18,7 @@ import {
   type SLABreachItem,
   GetSLABreaches,
 } from "../../services/host";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 // ========================
 // Utility helpers
@@ -84,12 +85,13 @@ const StatCard: React.FC<{
 );
 
 const SeverityBar: React.FC<{ data: HostSummaryResponse }> = ({ data }) => {
+  const { t } = useLanguage();
   const bars = [
-    { label: "Critical", count: data.critical, color: "bg-red-500" },
-    { label: "High",     count: data.high,     color: "bg-orange-400" },
-    { label: "Medium",   count: data.medium,   color: "bg-yellow-400" },
-    { label: "Low",      count: data.low,      color: "bg-blue-400" },
-    { label: "Info",     count: data.info,     color: "bg-gray-300 dark:bg-white/20" },
+    { label: t("severity.critical"), count: data.critical, color: "bg-red-500" },
+    { label: t("severity.high"),     count: data.high,     color: "bg-orange-400" },
+    { label: t("severity.medium"),   count: data.medium,   color: "bg-yellow-400" },
+    { label: t("severity.low"),      count: data.low,      color: "bg-blue-400" },
+    { label: t("severity.info"),     count: data.info,     color: "bg-gray-300 dark:bg-white/20" },
   ];
   const total = data.total || 1;
   return (
@@ -111,8 +113,20 @@ const SeverityBar: React.FC<{ data: HostSummaryResponse }> = ({ data }) => {
 };
 
 const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<string>("All");
   const levels = ["All", "Critical", "High", "Medium", "Low", "Info"];
+  const levelLabel = (l: string) => {
+    switch (l) {
+      case "All": return t("hostDetail.allLevels");
+      case "Critical": return t("severity.critical");
+      case "High": return t("severity.high");
+      case "Medium": return t("severity.medium");
+      case "Low": return t("severity.low");
+      case "Info": return t("severity.info");
+      default: return l;
+    }
+  };
   const filtered = filter === "All" ? items : items.filter((i) => i.level === filter);
 
   return (
@@ -135,7 +149,7 @@ const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
                   : "border-gray-200 bg-transparent text-gray-500 hover:border-gray-400 dark:border-white/10 dark:text-white/40",
               ].join(" ")}
             >
-              {l}{l !== "All" && ` (${items.filter((i) => i.level === l).length})`}
+              {levelLabel(l)}{l !== "All" && ` (${items.filter((i) => i.level === l).length})`}
             </button>
           );
         })}
@@ -146,21 +160,21 @@ const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500 dark:border-white/8 dark:bg-white/3 dark:text-white/40">
-              <th className="px-4 py-2.5 font-medium">Vulnerability</th>
-              <th className="px-4 py-2.5 font-medium">Family</th>
-              <th className="px-4 py-2.5 font-medium">Severity</th>
-              <th className="px-4 py-2.5 font-medium">CVEs</th>
-              <th className="px-4 py-2.5 font-medium">Port</th>
-              <th className="px-4 py-2.5 font-medium">Days Open</th>
-              <th className="px-4 py-2.5 font-medium">SLA</th>
-              <th className="px-4 py-2.5 font-medium">Risk</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.vulnerability")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.family")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("delta.severity")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.cves")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.port")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.daysOpen")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.sla")}</th>
+              <th className="px-4 py-2.5 font-medium">{t("hostDetail.risk")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-white/5">
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-white/30">
-                  No vulnerabilities
+                  {t("hostDetail.noVulnerabilities")}
                 </td>
               </tr>
             )}
@@ -168,12 +182,12 @@ const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
               const sc = severityColor(v.level);
               const sl = slaColor(v.sla_status);
               const slaLabel = v.sla_status === "breach"
-                ? `${v.days_open - v.sla_days}d overdue`
+                ? t("hostDetail.daysOverdue", { n: v.days_open - v.sla_days })
                 : v.sla_status === "warning"
-                ? `${v.sla_days - v.days_open}d left`
+                ? t("hostDetail.daysLeft", { n: v.sla_days - v.days_open })
                 : v.sla_status === "n/a"
                 ? "—"
-                : "OK";
+                : t("hostDetail.ok");
 
               return (
                 <tr
@@ -242,6 +256,7 @@ const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
 // ========================
 
 export default function HostDetail() {
+  const { t } = useLanguage();
   const { ip } = useParams<{ ip: string }>();
   const navigate = useNavigate();
 
@@ -257,7 +272,7 @@ export default function HostDetail() {
 
     Promise.all([GetHostSummary(ip), GetSLABreaches()]).then(([summary, sla]) => {
       if (!summary) {
-        setError("ไม่พบข้อมูล host นี้ในระบบ");
+        setError(t("hostDetail.notFound"));
       } else {
         setData(summary);
       }
@@ -273,7 +288,7 @@ export default function HostDetail() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-blue-500" />
-          <p className="text-sm text-gray-500 dark:text-white/40">กำลังโหลดข้อมูล host...</p>
+          <p className="text-sm text-gray-500 dark:text-white/40">{t("hostDetail.loadingHost")}</p>
         </div>
       </div>
     );
@@ -283,12 +298,12 @@ export default function HostDetail() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <FiServer className="text-4xl text-gray-300 dark:text-white/20" />
-        <p className="text-sm text-gray-500 dark:text-white/40">{error ?? "ไม่พบข้อมูล"}</p>
+        <p className="text-sm text-gray-500 dark:text-white/40">{error ?? t("hostDetail.noData")}</p>
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5"
         >
-          <FiArrowLeft /> กลับ
+          <FiArrowLeft /> {t("common.back")}
         </button>
       </div>
     );
@@ -317,12 +332,12 @@ export default function HostDetail() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-gray-800 dark:text-white">{data.host_ip}</h1>
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize ${criticalityColor(data.asset.criticality)}`}>
-                {data.asset.criticality || "unclassified"}
+                {data.asset.criticality || t("hostDetail.unclassified")}
               </span>
             </div>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-white/40">
               {data.task_name && <span className="mr-2">{data.task_name}</span>}
-              {data.scanned_at && <span>Last scan: {data.scanned_at}</span>}
+              {data.scanned_at && <span>{t("hostDetail.lastScan", { date: data.scanned_at })}</span>}
             </p>
           </div>
         </div>
@@ -330,7 +345,7 @@ export default function HostDetail() {
         {/* Risk score pill */}
         <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-5 py-3 dark:border-white/8 dark:bg-white/4">
           <div>
-            <p className="text-xs text-gray-500 dark:text-white/40">Composite Risk Score</p>
+            <p className="text-xs text-gray-500 dark:text-white/40">{t("hostDetail.compositeRiskScore")}</p>
             <p className={`text-2xl font-black ${riskColor(data.risk_level)}`}>
               {data.risk_score.toFixed(1)}
               <span className="ml-1 text-sm font-semibold">{data.risk_level}</span>
@@ -344,12 +359,12 @@ export default function HostDetail() {
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Total" value={data.total} icon={<FiShield className="text-white text-base" />} color="bg-gray-500" />
-        <StatCard label="Critical" value={data.critical} icon={<FiAlertTriangle className="text-white text-base" />} color="bg-red-500" />
-        <StatCard label="High" value={data.high} icon={<FiAlertTriangle className="text-white text-base" />} color="bg-orange-400" />
-        <StatCard label="KEV Hits" value={data.kev_count} icon={<FiZap className="text-white text-base" />} color="bg-purple-500" sub="Known exploited" />
-        <StatCard label="SLA Breach" value={data.sla_breach_count} icon={<FiClock className="text-white text-base" />} color="bg-rose-500" sub={`${data.sla_warning_count} warning`} />
-        <StatCard label="Top EPSS" value={data.top_epss[0] ? `${(data.top_epss[0].epss_score * 100).toFixed(1)}%` : "—"} icon={<FiActivity className="text-white text-base" />} color="bg-blue-500" sub="exploit probability" />
+        <StatCard label={t("hostDetail.statTotal")} value={data.total} icon={<FiShield className="text-white text-base" />} color="bg-gray-500" />
+        <StatCard label={t("severity.critical")} value={data.critical} icon={<FiAlertTriangle className="text-white text-base" />} color="bg-red-500" />
+        <StatCard label={t("severity.high")} value={data.high} icon={<FiAlertTriangle className="text-white text-base" />} color="bg-orange-400" />
+        <StatCard label={t("hostDetail.statKevHits")} value={data.kev_count} icon={<FiZap className="text-white text-base" />} color="bg-purple-500" sub={t("hostDetail.knownExploited")} />
+        <StatCard label={t("hostDetail.statSlaBreach")} value={data.sla_breach_count} icon={<FiClock className="text-white text-base" />} color="bg-rose-500" sub={t("hostDetail.warningSub", { n: data.sla_warning_count })} />
+        <StatCard label={t("hostDetail.statTopEpss")} value={data.top_epss[0] ? `${(data.top_epss[0].epss_score * 100).toFixed(1)}%` : "—"} icon={<FiActivity className="text-white text-base" />} color="bg-blue-500" sub={t("hostDetail.exploitProbability")} />
       </div>
 
       {/* ── Severity + Asset info ── */}
@@ -358,7 +373,7 @@ export default function HostDetail() {
         {/* Severity breakdown */}
         <div className="rounded-xl border border-gray-100 bg-white p-5 dark:border-white/8 dark:bg-white/4">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
-            <FiBarChart2 className="text-blue-500" /> Severity Breakdown
+            <FiBarChart2 className="text-blue-500" /> {t("hostDetail.severityBreakdown")}
           </h3>
           <SeverityBar data={data} />
         </div>
@@ -366,14 +381,14 @@ export default function HostDetail() {
         {/* Asset info */}
         <div className="rounded-xl border border-gray-100 bg-white p-5 dark:border-white/8 dark:bg-white/4">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
-            <FiServer className="text-blue-500" /> Asset Information
+            <FiServer className="text-blue-500" /> {t("hostDetail.assetInformation")}
           </h3>
           <dl className="space-y-2 text-sm">
             {[
-              { label: "Criticality",    value: data.asset.criticality || "—" },
-              { label: "Asset Type",     value: data.asset.asset_type || "—" },
-              { label: "Owner",          value: data.asset.owner || "—" },
-              { label: "Business Impact",value: data.asset.business_impact || "—" },
+              { label: t("hostDetail.criticality"),    value: data.asset.criticality || "—" },
+              { label: t("hostDetail.assetType"),     value: data.asset.asset_type || "—" },
+              { label: t("hostDetail.owner"),          value: data.asset.owner || "—" },
+              { label: t("hostDetail.businessImpact"),value: data.asset.business_impact || "—" },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-start justify-between gap-2">
                 <dt className="shrink-0 text-gray-500 dark:text-white/40">{label}</dt>
@@ -386,10 +401,10 @@ export default function HostDetail() {
         {/* Top EPSS */}
         <div className="rounded-xl border border-gray-100 bg-white p-5 dark:border-white/8 dark:bg-white/4">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
-            <FiActivity className="text-blue-500" /> Top EPSS Scores
+            <FiActivity className="text-blue-500" /> {t("hostDetail.topEpssScores")}
           </h3>
           {data.top_epss.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-white/30">ไม่มีข้อมูล EPSS</p>
+            <p className="text-sm text-gray-400 dark:text-white/30">{t("hostDetail.noEpssData")}</p>
           ) : (
             <div className="space-y-3">
               {data.top_epss.map((e, i) => (
@@ -418,7 +433,7 @@ export default function HostDetail() {
       {data.kev_items.length > 0 && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 p-5 dark:border-orange-500/20 dark:bg-orange-500/8">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-300">
-            <FiZap /> CISA Known Exploited Vulnerabilities ({data.kev_count} found)
+            <FiZap /> {t("hostDetail.kevSectionTitle", { n: data.kev_count })}
           </h3>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {data.kev_items.map((k, i) => (
@@ -434,7 +449,7 @@ export default function HostDetail() {
                   <span className="font-mono text-xs font-bold text-gray-700 dark:text-white/80">{k.cve_id}</span>
                   {k.is_ransomware && (
                     <span className="shrink-0 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:bg-red-500/15 dark:text-red-300">
-                      RANSOMWARE
+                      {t("hostDetail.ransomware")}
                     </span>
                   )}
                 </div>
@@ -442,7 +457,7 @@ export default function HostDetail() {
                 <p className="mt-0.5 text-[11px] text-gray-400 dark:text-white/35">{k.product}</p>
                 {k.due_date && (
                   <p className="mt-1.5 flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
-                    <FiClock className="text-[10px]" /> Due: {k.due_date}
+                    <FiClock className="text-[10px]" /> {t("hostDetail.due", { date: k.due_date })}
                   </p>
                 )}
               </div>
@@ -455,18 +470,18 @@ export default function HostDetail() {
       {slaBreaches.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-5 dark:border-red-500/20 dark:bg-red-500/8">
           <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-300">
-            <FiClock /> SLA Status ({data.sla_breach_count} breach, {data.sla_warning_count} warning)
+            <FiClock /> {t("hostDetail.slaStatusTitle", { breach: data.sla_breach_count, warning: data.sla_warning_count })}
           </h3>
           <div className="overflow-x-auto rounded-lg border border-red-100 dark:border-red-500/15">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-red-100 bg-red-50/80 text-left text-gray-500 dark:border-red-500/15 dark:bg-red-500/10 dark:text-white/40">
-                  <th className="px-3 py-2 font-medium">Vulnerability</th>
-                  <th className="px-3 py-2 font-medium">Level</th>
-                  <th className="px-3 py-2 font-medium">Days Open</th>
-                  <th className="px-3 py-2 font-medium">SLA</th>
-                  <th className="px-3 py-2 font-medium">Overdue</th>
-                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">{t("hostDetail.vulnerability")}</th>
+                  <th className="px-3 py-2 font-medium">{t("hostDetail.level")}</th>
+                  <th className="px-3 py-2 font-medium">{t("hostDetail.daysOpen")}</th>
+                  <th className="px-3 py-2 font-medium">{t("hostDetail.sla")}</th>
+                  <th className="px-3 py-2 font-medium">{t("hostDetail.overdue")}</th>
+                  <th className="px-3 py-2 font-medium">{t("common.status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-red-50 dark:divide-red-500/10">
@@ -508,9 +523,9 @@ export default function HostDetail() {
       <div className="rounded-xl border border-gray-100 bg-white p-5 dark:border-white/8 dark:bg-white/4">
         <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
           <FiShield className="text-blue-500" />
-          Vulnerabilities ({data.total})
+          {t("hostDetail.vulnerabilitiesCount", { n: data.total })}
           <span className="ml-auto flex items-center gap-1 text-xs font-normal text-gray-400 dark:text-white/30">
-            <FiUser className="text-[11px]" /> Risk = CVSS + EPSS + KEV + Asset Criticality
+            <FiUser className="text-[11px]" /> {t("hostDetail.riskFormula")}
           </span>
         </h3>
         <VulnTable items={data.vulnerabilities} />

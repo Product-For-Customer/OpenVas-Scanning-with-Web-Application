@@ -128,7 +128,7 @@ const FrameworkCard: React.FC<{
               <div className="flex shrink-0 items-center gap-2">
                 {ctrl.violations > 0 && (
                   <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
-                    {ctrl.violations} violation{ctrl.violations > 1 ? "s" : ""}
+                    {t("compliance.violationsCount", { n: ctrl.violations })}
                   </span>
                 )}
                 <FiChevronRight className="text-[13px]" style={{ color: currentColor }} />
@@ -192,7 +192,7 @@ const Compliance: React.FC = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-              ANALYTICS · COMPLIANCE
+              {t("compliance.analyticsLabel")}
             </p>
             <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
               {t("compliance.title")}
@@ -212,11 +212,11 @@ const Compliance: React.FC = () => {
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400 dark:text-white/35">
           <FiRefreshCw className="animate-spin text-[20px]" />
-          <span className="text-[12px]">Loading compliance data…</span>
+          <span className="text-[12px]">{t("compliance.loading")}</span>
         </div>
       ) : !report ? (
         <div className="rounded-xl border border-slate-200/70 bg-white py-16 text-center dark:border-white/8 dark:bg-white/4">
-          <div className="text-[12px] text-slate-400 dark:text-white/35">Failed to load compliance data</div>
+          <div className="text-[12px] text-slate-400 dark:text-white/35">{t("compliance.failedLoad")}</div>
         </div>
       ) : (
         <>
@@ -224,12 +224,12 @@ const Compliance: React.FC = () => {
           <div className="mb-5 overflow-hidden rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-[11px] font-semibold uppercase text-gray-500 dark:text-white/40">Overall Compliance Score</div>
+                <div className="text-[11px] font-semibold uppercase text-gray-500 dark:text-white/40">{t("compliance.overallScore")}</div>
                 <div className={`mt-1 text-[40px] font-extrabold ${scoreColor(report.overall_score)}`}>
                   {report.overall_score}<span className="text-[20px]">%</span>
                 </div>
                 <div className="mt-1 text-[10.5px] text-gray-500 dark:text-white/40">
-                  {report.scan_count} scans · Last scan: {report.last_scan_date || "—"}
+                  {t("compliance.scanCount", { n: report.scan_count })} · {t("compliance.lastScan", { date: report.last_scan_date || "—" })}
                 </div>
               </div>
               <div className="flex flex-wrap gap-4">

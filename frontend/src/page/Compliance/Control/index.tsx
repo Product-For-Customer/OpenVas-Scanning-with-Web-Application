@@ -22,18 +22,20 @@ import {
   type ViolationVuln,
 } from "../../../services/compliance";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
-const statusMeta = (s: string) => {
+const statusMeta = (s: string, t: (key: TranslationKey, vars?: Record<string, string | number>) => string) => {
   if (s === "compliant")
     return {
       icon: <FiCheckCircle className="text-[28px] text-emerald-500" />,
       badge: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-300",
       glow: "#10b98120",
       border: "#10b98130",
-      label: "COMPLIANT",
-      desc: "This control meets all requirements.",
+      label: t("complianceControl.statusCompliantLabel"),
+      desc: t("complianceControl.descCompliant"),
     };
   if (s === "warning")
     return {
@@ -41,16 +43,16 @@ const statusMeta = (s: string) => {
       badge: "border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-500/25 dark:bg-yellow-500/10 dark:text-yellow-300",
       glow: "#eab30820",
       border: "#eab30830",
-      label: "WARNING",
-      desc: "This control requires attention.",
+      label: t("complianceControl.statusWarningLabel"),
+      desc: t("complianceControl.descWarning"),
     };
   return {
     icon: <FiXCircle className="text-[28px] text-red-500" />,
     badge: "border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300",
     glow: "#ef444420",
     border: "#ef444430",
-    label: "NON COMPLIANT",
-    desc: "This control is not compliant and needs immediate action.",
+    label: t("complianceControl.statusNonCompliantLabel"),
+    desc: t("complianceControl.descNonCompliant"),
   };
 };
 
@@ -90,6 +92,7 @@ const severityColors: Record<string, { bg: string; text: string; border: string;
 // ── VulnCard ──────────────────────────────────────────────────────────────────
 
 const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx }) => {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const sc = severityColors[vuln.severity_label] ?? severityColors["Info"];
   const cves = vuln.cve_list
@@ -176,7 +179,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
             {/* All CVEs */}
             {cves.length > 0 && (
               <section>
-                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">CVE References</p>
+                <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceControl.cveReferences")}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {cves.map((cve) => (
                     <span
@@ -193,7 +196,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
             {/* Summary */}
             {vuln.summary && (
               <section>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Summary</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceControl.summary")}</p>
                 <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{vuln.summary}</p>
               </section>
             )}
@@ -201,7 +204,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
             {/* Impact */}
             {vuln.impact && (
               <section>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Impact</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceControl.impact")}</p>
                 <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{vuln.impact}</p>
               </section>
             )}
@@ -209,7 +212,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
             {/* Insight */}
             {vuln.insight && (
               <section>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Technical Insight</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceControl.technicalInsight")}</p>
                 <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{vuln.insight}</p>
               </section>
             )}
@@ -217,7 +220,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
             {/* Affected */}
             {vuln.affected && (
               <section>
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">Affected Systems</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{t("complianceControl.affectedSystems")}</p>
                 <p className="text-[11.5px] leading-6 text-slate-600 dark:text-white/60">{vuln.affected}</p>
               </section>
             )}
@@ -228,7 +231,7 @@ const VulnCard: React.FC<{ vuln: ViolationVuln; idx: number }> = ({ vuln, idx })
                 <div className="mb-2 flex items-center gap-2">
                   <FiTool className="text-[12px] text-emerald-600 dark:text-emerald-400" />
                   <p className="text-[10.5px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-                    How to Fix
+                    {t("complianceControl.howToFix")}
                     {vuln.solution_type && (
                       <span className="ml-2 font-normal normal-case tracking-normal opacity-70">({vuln.solution_type})</span>
                     )}
@@ -252,6 +255,7 @@ type LocationState = {
 };
 
 const ComplianceControlDetail: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   useParams<{ framework: string; controlId: string }>();
   const location = useLocation();
@@ -286,20 +290,20 @@ const ComplianceControlDetail: React.FC = () => {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <FiShield className="text-[40px] text-slate-300 dark:text-white/20" />
-        <p className="text-[13px] text-slate-400 dark:text-white/35">No control data found.</p>
+        <p className="text-[13px] text-slate-400 dark:text-white/35">{t("complianceControl.noControlData")}</p>
         <button
           type="button"
           onClick={() => navigate("/admin/compliance")}
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5"
         >
           <FiArrowLeft className="text-[12px]" />
-          Back to Compliance
+          {t("complianceControl.backToCompliance")}
         </button>
       </div>
     );
   }
 
-  const meta = statusMeta(ctrl.status);
+  const meta = statusMeta(ctrl.status, t);
 
   // Group vulns by severity for summary stats
   const critCount = vulns.filter((v) => v.severity_label === "Critical").length;
@@ -326,7 +330,7 @@ const ComplianceControlDetail: React.FC = () => {
             className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8"
           >
             <FiArrowLeft className="text-[11px]" />
-            Compliance
+            {t("complianceControl.breadcrumbCompliance")}
           </button>
           <span className="text-[11px] text-slate-300 dark:text-white/20">/</span>
           <span className="rounded-xl px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:text-white/40">
@@ -348,7 +352,7 @@ const ComplianceControlDetail: React.FC = () => {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: currentColor }}>
-              {fw.full_name} · CONTROL DETAIL
+              {fw.full_name} · {t("complianceControl.controlDetail")}
             </p>
             <h1 className="text-[22px] font-extrabold text-slate-900 dark:text-white/90">
               {ctrl.control_id}
@@ -378,7 +382,7 @@ const ComplianceControlDetail: React.FC = () => {
               <FiAlertOctagon className="text-[16px] text-red-600 dark:text-red-300" />
               <div>
                 <p className="text-[22px] font-extrabold leading-none text-red-700 dark:text-red-300">{ctrl.violations}</p>
-                <p className="text-[9.5px] font-semibold text-red-600/70 dark:text-red-300/60">violation{ctrl.violations > 1 ? "s" : ""}</p>
+                <p className="text-[9.5px] font-semibold text-red-600/70 dark:text-red-300/60">{t("complianceControl.violationsCount", { n: ctrl.violations })}</p>
               </div>
             </div>
           </div>
@@ -390,7 +394,7 @@ const ComplianceControlDetail: React.FC = () => {
         <div className="rounded-2xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-white/3">
           <div className="mb-3 flex items-center gap-2">
             <FiFileText className="text-[14px]" style={{ color: currentColor }} />
-            <span className="text-[12px] font-bold text-slate-700 dark:text-white/80">Detail</span>
+            <span className="text-[12px] font-bold text-slate-700 dark:text-white/80">{t("complianceControl.detail")}</span>
           </div>
           <p className="text-[12.5px] leading-6 text-slate-600 dark:text-white/60">{ctrl.detail}</p>
         </div>
@@ -402,7 +406,7 @@ const ComplianceControlDetail: React.FC = () => {
         <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <FiAlertOctagon className="text-[13px]" style={{ color: currentColor }} />
           <span className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">
-            Vulnerability Findings
+            {t("complianceControl.vulnerabilityFindings")}
           </span>
           {vulns.length > 0 && (
             <span className="ml-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:bg-red-500/10 dark:text-red-300">
@@ -415,17 +419,17 @@ const ComplianceControlDetail: React.FC = () => {
             <div className="ml-auto flex items-center gap-2">
               {critCount > 0 && (
                 <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[9.5px] font-bold text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300">
-                  {critCount} Critical
+                  {t("complianceControl.severityCritical", { n: critCount })}
                 </span>
               )}
               {highCount > 0 && (
                 <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[9.5px] font-bold text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300">
-                  {highCount} High
+                  {t("complianceControl.severityHigh", { n: highCount })}
                 </span>
               )}
               {medCount > 0 && (
                 <span className="rounded-full border border-yellow-200 bg-yellow-50 px-2 py-0.5 text-[9.5px] font-bold text-yellow-700 dark:border-yellow-500/25 dark:bg-yellow-500/10 dark:text-yellow-300">
-                  {medCount} Medium
+                  {t("complianceControl.severityMedium", { n: medCount })}
                 </span>
               )}
             </div>
@@ -436,15 +440,15 @@ const ComplianceControlDetail: React.FC = () => {
           {vulnLoading ? (
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-400 dark:text-white/30">
               <FiRefreshCw className="animate-spin text-[18px]" />
-              <span className="text-[11.5px]">Loading vulnerabilities…</span>
+              <span className="text-[11.5px]">{t("complianceControl.loadingVulnerabilities")}</span>
             </div>
           ) : vulns.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-10">
               <FiCheckCircle className="text-[32px] text-emerald-500" />
               <p className="text-[12px] font-semibold text-slate-500 dark:text-white/40">
                 {ctrl.status === "compliant"
-                  ? "No violations — this control is compliant."
-                  : "No vulnerability data found for this control."}
+                  ? t("complianceControl.noViolationsCompliant")
+                  : t("complianceControl.noVulnerabilityData")}
               </p>
             </div>
           ) : (
