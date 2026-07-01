@@ -23,6 +23,7 @@ import { type AllTargetDTO } from "../../../../services";
 import type { LocationFormState } from "../index";
 import { formatDateTime } from "../index";
 import { useStateContext } from "../../../../contexts/ProviderContext";
+import { useLanguage } from "../../../../contexts/LanguageContext";
 
 const MAP_STYLE = "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json";
 
@@ -130,6 +131,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
   onSubmit,
 }) => {
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [openTargetSelector, setOpenTargetSelector] = useState(false);
@@ -278,9 +280,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
         duration: 800,
       });
     } else if (url.trim().length > 15) {
-      setUrlError(
-        "ไม่พบพิกัดในลิงก์นี้ — กรุณาคัดลอก URL จาก address bar ของ Google Maps",
-      );
+      setUrlError(t("targetModal.noCoordsInLink"));
     }
   };
 
@@ -302,8 +302,8 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
 
   const submitText =
     mode === "create"
-      ? loading ? "Creating..." : "Create"
-      : loading ? "Saving..." : "Save Changes";
+      ? loading ? t("targetModal.creating") : t("targetModal.create")
+      : loading ? t("common.saving") : t("userModal.saveChanges");
 
   const isSubmitDisabled = loading || (mode === "edit" && !isFormChanged);
 
@@ -344,11 +344,11 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                 style={{ color: currentColor }}
               >
                 {mode === "create"
-                  ? "APPS · TARGET · NEW LOCATION"
-                  : "APPS · TARGET · EDIT LOCATION"}
+                  ? t("targetModal.newLocationKicker")
+                  : t("targetModal.editLocationKicker")}
               </p>
               <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
-                {mode === "create" ? "Create Location" : "Edit Location"}
+                {mode === "create" ? t("targetModal.createLocation") : t("targetModal.editLocation")}
               </h3>
             </div>
           </div>
@@ -369,13 +369,13 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
           <div>
             <label className={labelCls}>
               <FiMapPin className="text-[10px]" />
-              Location
+              {t("targetModal.location")}
             </label>
             <input
               type="text"
               value={form.location}
               onChange={(e) => handleChange("location", e.target.value)}
-              placeholder="Enter location"
+              placeholder={t("targetModal.enterLocation")}
               className={inputCls}
             />
           </div>
@@ -384,7 +384,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
           <div>
             <label className={labelCls}>
               <FiTarget className="text-[10px]" />
-              Target
+              {t("nav.target")}
             </label>
             <div>
               <button
@@ -405,10 +405,10 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                   {selectedTarget
                     ? selectedTarget.name?.trim() ||
                       selectedTarget.ip?.trim() ||
-                      "Selected target"
+                      t("targetModal.selectedTarget")
                     : loadingTargets
-                    ? "Loading targets…"
-                    : "Select target"}
+                    ? t("targetModal.loadingTargets")
+                    : t("targetModal.selectTarget")}
                 </span>
                 <FiChevronDown
                   className={`shrink-0 text-[12px] text-slate-400 transition-transform duration-200 dark:text-white/35 ${
@@ -444,7 +444,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                           <input
                             value={targetSearch}
                             onChange={(e) => setTargetSearch(e.target.value)}
-                            placeholder="Search target…"
+                            placeholder={t("targetModal.searchTarget")}
                             autoFocus
                             className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
                           />
@@ -455,12 +455,12 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                       <div className="max-h-44 overflow-y-auto p-1.5">
                         {loadingTargets ? (
                           <div className="py-5 text-center text-[11px] text-slate-400 dark:text-white/35">
-                            Loading targets…
+                            {t("targetModal.loadingTargets")}
                           </div>
                         ) : filteredTargets.length === 0 ? (
                           <div className="flex flex-col items-center gap-1.5 py-5 text-[11px] text-slate-400 dark:text-white/35">
                             <FiSlash className="text-[16px]" />
-                            No available target
+                            {t("targetModal.noAvailableTarget")}
                           </div>
                         ) : (
                           <div className="space-y-0.5">
@@ -490,7 +490,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                                   </span>
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate text-[11.5px] font-medium text-slate-700 dark:text-white/80">
-                                      {target.name || "Unnamed Target"}
+                                      {target.name || t("targetModal.unnamedTarget")}
                                     </p>
                                     <div className="mt-0.5 flex flex-wrap gap-x-3">
                                       <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/35">
@@ -528,7 +528,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
             <div className="mb-1.5 flex items-center justify-between">
               <span className={labelCls.replace("mb-1.5 ", "")}>
                 <FiLink className="text-[10px]" />
-                Google Maps Link
+                {t("targetModal.googleMapsLink")}
               </span>
               <a
                 href="https://www.google.com/maps"
@@ -537,7 +537,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                 className="flex items-center gap-1 text-[10px] font-medium text-blue-500 transition hover:text-blue-600 dark:text-blue-400"
               >
                 <FiExternalLink className="text-[9px]" />
-                Open Google Maps
+                {t("targetModal.openGoogleMaps")}
               </a>
             </div>
 
@@ -576,7 +576,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                   onClick={handleClearCoords}
                   className="text-[10px] text-slate-400 transition hover:text-rose-500 dark:text-white/30 dark:hover:text-rose-400"
                 >
-                  Clear
+                  {t("common.clear")}
                 </button>
               </div>
             )}
@@ -616,7 +616,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
                 </Map>
                 <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2">
                   <span className="rounded-lg bg-black/40 px-2 py-1 text-[9px] text-white backdrop-blur-sm">
-                    คลิกเพื่อปรับพิกัด
+                    {t("targetModal.clickToAdjustCoords")}
                   </span>
                 </div>
               </div>
@@ -639,7 +639,7 @@ const ModalCreateAndUpdate: React.FC<Props> = ({
             disabled={loading}
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"

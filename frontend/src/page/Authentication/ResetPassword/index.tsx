@@ -13,8 +13,9 @@ import {
   type PasswordPolicy,
 } from "../../../services/passwordpolicy";
 import { useStateContext } from "../../../contexts/ProviderContext";
-import ModalOTP from "../../../Model/ModalOTP";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
+import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
@@ -30,6 +31,7 @@ const ResetPasswordPage: React.FC = () => {
   const navigate         = useNavigate();
   const location         = useLocation();
   const { currentColor } = useStateContext();
+  const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
   const email: string = (location.state as any)?.email ?? "";
@@ -42,9 +44,9 @@ const ResetPasswordPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew,         setShowNew]         = useState(false);
   const [showConfirm,     setShowConfirm]     = useState(false);
+  const [newPwFocused,    setNewPwFocused]    = useState(false);
   const [error,           setError]           = useState("");
   const [submitting,      setSubmitting]      = useState(false);
-  const [otpOpen,         setOtpOpen]         = useState(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -66,22 +68,22 @@ const ResetPasswordPage: React.FC = () => {
     return Math.min(s, 100);
   }, [newPassword]);
 
-  const strengthLabel = strength >= 80 ? "Strong" : strength >= 50 ? "Medium" : strength > 0 ? "Weak" : "";
+  const strengthLabel = strength >= 80 ? t("auth.strengthStrong") : strength >= 50 ? t("auth.strengthMedium") : strength > 0 ? t("auth.strengthWeak") : "";
   const strengthColor = strength >= 80 ? "#22c55e" : strength >= 50 ? "#f59e0b" : "#ef4444";
 
   const validate = (): string => {
-    if (!newPassword.trim()) return "กรุณากรอกรหัสผ่านใหม่";
+    if (!newPassword.trim()) return t("auth.enterNewPasswordRequired");
     const minLen = policy?.min_length ?? 8;
     if (newPassword.length < minLen)
-      return `รหัสผ่านต้องมีอย่างน้อย ${minLen} ตัวอักษร`;
+      return t("auth.passwordMinLength", { min: minLen });
     if ((policy?.require_uppercase ?? false) && !/[A-Z]/.test(newPassword))
-      return "รหัสผ่านต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว";
+      return t("auth.passwordNeedsUppercase");
     if ((policy?.require_number    ?? false) && !/[0-9]/.test(newPassword))
-      return "รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว";
+      return t("auth.passwordNeedsNumber");
     if ((policy?.require_special   ?? false) && !/[^A-Za-z0-9]/.test(newPassword))
-      return "รหัสผ่านต้องมีอักขระพิเศษอย่างน้อย 1 ตัว";
-    if (!confirmPassword.trim()) return "กรุณากรอกยืนยันรหัสผ่าน";
-    if (newPassword !== confirmPassword) return "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน";
+      return t("auth.passwordNeedsSpecial");
+    if (!confirmPassword.trim()) return t("auth.enterConfirmPassword");
+    if (newPassword !== confirmPassword) return t("auth.passwordMismatch");
     return "";
   };
 
@@ -96,37 +98,31 @@ const ResetPasswordPage: React.FC = () => {
 
       if (!svcSettings.reset_otp) {
         await DirectResetPassword(email, newPassword);
-        message.success("เปลี่ยนรหัสผ่านสำเร็จ");
+        message.success(t("auth.resetSuccess"));
         navigate("/login", { replace: true });
         return;
       }
 
       const sendRes = await SendOTP({ email });
-      if (!sendRes)       { setError("ส่ง OTP ไม่สำเร็จ"); return; }
+      if (!sendRes)       { setError(t("auth.otpSendFailed")); return; }
       if (sendRes.error)  { setError(sendRes.error);        return; }
-      message.success(sendRes.message || "ส่ง OTP ไปยังอีเมลแล้ว");
-      setOtpOpen(true);
+      message.success(sendRes.message || t("auth.otpSentToEmail"));
+      navigate("/reset-otp", { state: { email, newPassword } });
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || "เกิดข้อผิดพลาดระหว่างส่ง OTP");
+      setError(err?.response?.data?.error || err?.message || t("auth.otpSendError"));
     } finally {
       if (isMounted.current) setSubmitting(false);
     }
   };
 
-  const handleOtpVerified = () => {
-    setOtpOpen(false);
-    message.success("เปลี่ยนรหัสผ่านสำเร็จ");
-    navigate("/login", { replace: true });
-  };
-
   return (
     <AuthLayout variant="login">
       <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
-        Reset Password
+        {t("auth.resetPasswordTitle")}
       </h2>
       <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-        Set a new password for{" "}
-        <span className="font-semibold text-gray-700 dark:text-white/70">{email || "your account"}</span>
+        {t("auth.setNewPasswordFor")}{" "}
+        <span className="font-semibold text-gray-700 dark:text-white/70">{email || t("auth.yourAccount")}</span>
       </p>
 
       {error && (
@@ -138,42 +134,48 @@ const ResetPasswordPage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            New Password
+            {t("auth.newPassword")}
           </label>
           <div className="relative">
             <input
               type={showNew ? "text" : "password"}
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
+              onFocus={() => setNewPwFocused(true)}
+              onBlur={() => setNewPwFocused(false)}
+              placeholder={t("auth.enterNewPassword")}
+              autoComplete="new-password"
               className={inputCls}
             />
             <button
               type="button"
               onClick={() => setShowNew(p => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              aria-label={showNew ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             </button>
+            <PasswordPolicyDropdown policy={policy} password={newPassword} open={newPwFocused} />
           </div>
         </div>
 
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Confirm Password
+            {t("auth.confirmPassword")}
           </label>
           <div className="relative">
             <input
               type={showConfirm ? "text" : "password"}
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
+              placeholder={t("auth.confirmPasswordPlaceholder")}
               className={inputCls}
             />
             <button
               type="button"
               onClick={() => setShowConfirm(p => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              aria-label={showConfirm ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             </button>
@@ -184,7 +186,7 @@ const ResetPasswordPage: React.FC = () => {
         {newPassword && (
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 dark:text-white/40">Password strength</span>
+              <span className="text-gray-500 dark:text-white/40">{t("auth.passwordStrength")}</span>
               <span className="font-semibold" style={{ color: strengthColor }}>{strengthLabel}</span>
             </div>
             <div className="h-1.5 bg-gray-200 dark:bg-white/10 overflow-hidden">
@@ -203,25 +205,17 @@ const ResetPasswordPage: React.FC = () => {
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {submitting
-            ? svcSettings.reset_otp ? "Sending OTP..." : "Resetting..."
-            : "Confirm Reset"}
+            ? svcSettings.reset_otp ? t("auth.sendingOtp") : t("auth.resetting")
+            : t("auth.confirmReset")}
         </button>
       </form>
 
       <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-5">
-        Back to{" "}
+        {t("auth.backTo")}{" "}
         <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-          Sign In
+          {t("auth.signIn")}
         </Link>
       </p>
-
-      <ModalOTP
-        open={otpOpen}
-        onClose={() => setOtpOpen(false)}
-        email={email}
-        newPassword={newPassword}
-        onVerified={handleOtpVerified}
-      />
     </AuthLayout>
   );
 };

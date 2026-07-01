@@ -428,25 +428,6 @@ export const DeleteGMPTarget = async (targetId: string): Promise<void> => {
 // Status helpers
 // ===========================
 
-export const getTaskStatusColor = (status: string): string => {
-  switch (status?.toLowerCase()) {
-    case "running":
-      return "text-emerald-600 dark:text-emerald-400";
-    case "done":
-      return "text-blue-600 dark:text-blue-400";
-    case "stopped":
-    case "interrupted":
-      return "text-red-500 dark:text-red-400";
-    case "new":
-      return "text-amber-600 dark:text-amber-400";
-    case "requested":
-    case "stop requested":
-      return "text-slate-500 dark:text-white/50";
-    default:
-      return "text-gray-500 dark:text-white/45";
-  }
-};
-
 export const getTaskStatusBg = (status: string): string => {
   switch (status?.toLowerCase()) {
     case "running":

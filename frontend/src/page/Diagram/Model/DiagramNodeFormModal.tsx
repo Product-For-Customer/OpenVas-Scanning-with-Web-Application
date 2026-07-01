@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import type { AppDiagramNodeResponse } from "../../../services/diagram";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 export type DiagramNodeModalMode = "create" | "edit";
 
@@ -83,6 +84,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   onDelete,
 }) => {
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [form, setForm] = useState<DiagramNodeFormValues>(defaultForm);
@@ -128,9 +130,9 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   const subtitle = useMemo(
     () =>
       mode === "create"
-        ? `Create new node in ${diagramName || "diagram"}`
-        : `Update selected node in ${diagramName || "diagram"}`,
-    [mode, diagramName]
+        ? t("diagramModal.createNodeSubtitle", { name: diagramName || t("diagramModal.diagram") })
+        : t("diagramModal.updateNodeSubtitle", { name: diagramName || t("diagramModal.diagram") }),
+    [mode, diagramName, t]
   );
 
   const isFormChanged = useMemo(() => {
@@ -162,7 +164,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
 
   const validate = () => {
     const nextErrors: Record<string, string> = {};
-    if (!form.label.trim()) nextErrors.label = "Please enter a label";
+    if (!form.label.trim()) nextErrors.label = t("diagramModal.pleaseEnterLabel");
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
@@ -243,10 +245,10 @@ const DiagramNodeFormModal: React.FC<Props> = ({
                 className="text-[9.5px] font-bold uppercase tracking-widest"
                 style={{ color: currentColor }}
               >
-                {mode === "create" ? "CREATE NODE" : "EDIT NODE"}
+                {mode === "create" ? t("diagramModal.createNodeKicker") : t("diagramModal.editNodeKicker")}
               </p>
               <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
-                Diagram Node
+                {t("diagramModal.diagramNode")}
               </h3>
               <p className="text-[10px] text-slate-400 dark:text-white/35">{subtitle}</p>
             </div>
@@ -265,7 +267,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
         {loading ? (
           <div className="flex h-44 items-center justify-center text-[11px] text-slate-400 dark:text-white/40">
             <FiRefreshCw className="mr-2 animate-spin text-[14px]" />
-            Loading…
+            {t("common.loading")}
           </div>
         ) : (
           <div className="space-y-3.5 px-5 py-4">
@@ -273,12 +275,12 @@ const DiagramNodeFormModal: React.FC<Props> = ({
             <div>
               <label className={labelCls}>
                 <FiType className="text-[10px]" />
-                Label <span className="text-red-400">*</span>
+                {t("diagramModal.label")} <span className="text-red-400">*</span>
               </label>
               <input
                 value={form.label}
                 onChange={(e) => setField("label", e.target.value)}
-                placeholder="Enter label"
+                placeholder={t("diagramModal.enterLabel")}
                 className={inputCls}
               />
               {errors.label && (
@@ -290,12 +292,12 @@ const DiagramNodeFormModal: React.FC<Props> = ({
             <div>
               <label className={labelCls}>
                 <FiAlignLeft className="text-[10px]" />
-                Description
+                {t("common.description")}
               </label>
               <textarea
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
-                placeholder="Enter description (optional)"
+                placeholder={t("diagramModal.enterDescriptionOptional")}
                 rows={2}
                 className={textareaCls}
               />
@@ -304,7 +306,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
             {/* Error banner */}
             {errors.label && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
-                Please fill in all required fields before saving.
+                {t("diagramModal.fillRequiredFields")}
               </div>
             )}
           </div>
@@ -318,7 +320,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
                 type="button"
                 onClick={onDelete}
                 disabled={submitting || loading}
-                title="Delete node"
+                title={t("diagramModal.deleteNode")}
                 className="flex h-9 w-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
               >
                 <FiTrash2 className="text-[13px]" />
@@ -335,7 +337,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
               disabled={submitting || loading}
               className="rounded-xl border border-slate-200 px-5 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -347,7 +349,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
               {submitting || loading ? (
                 <>
                   <FiRefreshCw className="animate-spin text-[11px]" />
-                  Saving…
+                  {t("common.saving")}
                 </>
               ) : (
                 <>
@@ -356,7 +358,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
                   ) : (
                     <FiSave className="text-[11px]" />
                   )}
-                  {mode === "create" ? "Create Node" : "Update Node"}
+                  {mode === "create" ? t("diagramModal.createNode") : t("diagramModal.updateNode")}
                 </>
               )}
             </button>

@@ -258,10 +258,7 @@ const MapDevice: React.FC = () => {
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const mapRef = useRef<MapRef | null>(null);
-  const { user } = useAuth();
-
-  const roleName = String(user?.role || "").trim().toLowerCase();
-  const isUserRole = roleName === "user";
+  const { isUser } = useAuth();
 
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Device[]>([]);
@@ -490,7 +487,7 @@ const MapDevice: React.FC = () => {
   }, [filteredDevices, selectedDevice]);
 
   const openDeleteModal = (device: Device) => {
-    if (isUserRole) return;
+    if (isUser) return;
     setDeleteError("");
     setDeleteTarget(device);
   };
@@ -502,7 +499,7 @@ const MapDevice: React.FC = () => {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget || isUserRole) return;
+    if (!deleteTarget || isUser) return;
 
     try {
       setDeleting(true);
@@ -534,7 +531,7 @@ const MapDevice: React.FC = () => {
   };
 
   const handleOpenCreateModal = async () => {
-    if (isUserRole) return;
+    if (isUser) return;
 
     setCreateError("");
     setCreateForm(emptyForm);
@@ -550,7 +547,7 @@ const MapDevice: React.FC = () => {
   };
 
   const confirmCreate = async (form: LocationFormState) => {
-    if (isUserRole) return;
+    if (isUser) return;
 
     try {
       setCreating(true);
@@ -614,7 +611,7 @@ const MapDevice: React.FC = () => {
   };
 
   const handleOpenEditModal = async (device: Device) => {
-    if (isUserRole) return;
+    if (isUser) return;
 
     setEditError("");
     setEditTarget(device);
@@ -637,7 +634,7 @@ const MapDevice: React.FC = () => {
   };
 
   const confirmEdit = async (form: LocationFormState) => {
-    if (!editTarget || isUserRole) return;
+    if (!editTarget || isUser) return;
 
     try {
       setEditing(true);
@@ -736,7 +733,7 @@ const MapDevice: React.FC = () => {
                     <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
                       {rows.length} targets
                     </span>
-                    {!isUserRole && (
+                    {!isUser && (
                       <button
                         type="button"
                         onClick={handleOpenCreateModal}
@@ -858,7 +855,7 @@ const MapDevice: React.FC = () => {
                           </div>
                         </button>
 
-                        {!isUserRole && (
+                        {!isUser && (
                           <div className="mt-2.5 flex items-center justify-end gap-2">
                             <button
                               type="button"
@@ -932,7 +929,7 @@ const MapDevice: React.FC = () => {
         </div>
       </section>
 
-      {!isUserRole && (
+      {!isUser && (
         <>
           <ModalCreateAndUpdate
             open={openCreateModal}

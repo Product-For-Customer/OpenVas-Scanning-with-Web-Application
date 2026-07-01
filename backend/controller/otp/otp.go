@@ -3,6 +3,7 @@ package otp
 import (
 	"crypto/rand"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"net/smtp"
@@ -85,6 +86,7 @@ func SendOTP(c *gin.Context) {
 		msg,
 	)
 	if err != nil {
+		log.Printf("⚠️ SendOTP: smtp.SendMail failed (from=%q): %v\n", from, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "ส่ง OTP ไม่สำเร็จ"})
 		return
 	}

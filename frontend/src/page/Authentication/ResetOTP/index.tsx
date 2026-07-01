@@ -1,43 +1,61 @@
 import React, { useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { FiShield } from "react-icons/fi";
-import { VerifyLoginEmailOTP } from "../../../services/auth";
-import { VerifyTOTPLogin } from "../../../services/totp";
+import { FiMail } from "react-icons/fi";
+import { SendOTP, VerifyOTPAddUpdatePassword } from "../../../services/auth";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import { preloadLoginSuccessAnimationAssets } from "../animation";
 
-type OtpType = "totp" | "email_otp";
+type ResetOTPState = { email: string; newPassword: string };
 
-const OTPPage: React.FC = () => {
+const OTP_LENGTH = 6;
+const RESEND_COOLDOWN = 30;
+
+const maskEmail = (email: string) => {
+  if (!email || !email.includes("@")) return email;
+  const [name, domain] = email.split("@");
+  if (name.length <= 3) return `${name[0] ?? ""}***@${domain}`;
+  return `${name.slice(0, 3)}***@${domain}`;
+};
+
+const ResetOTPPage: React.FC = () => {
   const navigate         = useNavigate();
   const location         = useLocation();
   const { currentColor } = useStateContext();
   const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
-  const state            = (location.state as any) ?? {};
-  const otpType: OtpType  = state.type ?? "email_otp";
-  const maskedEmail: string = state.maskedEmail ?? "";
+  const state = (location.state as ResetOTPState | null) ?? null;
 
-  const [digits,     setDigits]     = useState<string[]>(Array(6).fill(""));
+  const [digits,     setDigits]     = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [error,      setError]      = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(6).fill(null));
+  const [resending,  setResending]  = useState(false);
+  const [cooldown,   setCooldown]   = useState(RESEND_COOLDOWN);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>(Array(OTP_LENGTH).fill(null));
 
   useEffect(() => {
     isMounted.current = true;
-    if (!state.type) navigate("/login", { replace: true });
+    if (!state?.email || !state?.newPassword) navigate("/forgot-password", { replace: true });
     return () => { isMounted.current = false; };
-  }, [state.type, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Warm the success-animation image cache ahead of time — same reasoning
-  // as the Login page.
+  // Warm the success-animation image cache ahead of time so /logo-animation
+  // starts rendering instantly once we navigate there.
   useEffect(() => {
     void preloadLoginSuccessAnimationAssets();
   }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  if (!state?.email || !state?.newPassword) return null;
 
   const code = digits.join("");
 
@@ -47,7 +65,7 @@ const OTPPage: React.FC = () => {
     next[index] = digit;
     setDigits(next);
     setError("");
-    if (digit && index < 5) inputRefs.current[index + 1]?.focus();
+    if (digit && index < OTP_LENGTH - 1) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
@@ -58,42 +76,63 @@ const OTPPage: React.FC = () => {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
-    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    const next = Array(6).fill("");
+    const text = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    const next = Array(OTP_LENGTH).fill("");
     for (let i = 0; i < text.length; i++) next[i] = text[i];
     setDigits(next);
     setError("");
-    inputRefs.current[Math.min(text.length, 5)]?.focus();
+    inputRefs.current[Math.min(text.length, OTP_LENGTH - 1)]?.focus();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (code.length !== 6) { setError(t("auth.enterFullCode6")); return; }
+    if (code.length !== OTP_LENGTH) { setError(t("auth.enterFullCodeN", { n: OTP_LENGTH })); return; }
 
     try {
       setSubmitting(true);
-      if (otpType === "totp") {
-        await VerifyTOTPLogin(code);
-      } else {
-        await VerifyLoginEmailOTP(code);
-      }
-      message.success(t("auth.loginSuccess"));
+      const res = await VerifyOTPAddUpdatePassword({
+        email:        state.email,
+        otp:          code,
+        new_password: state.newPassword,
+      });
+
+      if (!res)       { setError(t("auth.otpVerifyFailed")); return; }
+      if (res.error)  { setError(res.error);              return; }
+
+      message.success(res.message || t("auth.resetSuccess"));
       // Navigate to the dedicated /logo-animation route — it plays the
-      // success animation, refreshes auth state, then switches to /admin
-      // once the progress bar finishes.
+      // success animation, then switches to /login once it finishes.
       navigate("/logo-animation", {
         replace: true,
-        state: { redirectTo: "/admin", refreshAuth: true },
+        state: { redirectTo: "/login" },
       });
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || t("auth.codeInvalidOrExpired"));
+      setError(err?.response?.data?.error || err?.message || t("auth.otpVerifyError"));
     } finally {
       if (isMounted.current) setSubmitting(false);
     }
   };
 
-  const isTotp = otpType === "totp";
+  const handleResend = async () => {
+    if (cooldown > 0 || resending) return;
+    setError("");
+    try {
+      setResending(true);
+      const res = await SendOTP({ email: state.email });
+      if (!res)       { setError(t("auth.otpResendFailed")); return; }
+      if (res.error)  { setError(res.error);                 return; }
+
+      message.success(res.message || t("auth.otpResendSuccess"));
+      setDigits(Array(OTP_LENGTH).fill(""));
+      setCooldown(RESEND_COOLDOWN);
+      inputRefs.current[0]?.focus();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || t("auth.otpResendError"));
+    } finally {
+      if (isMounted.current) setResending(false);
+    }
+  };
 
   return (
     <AuthLayout variant="login">
@@ -103,28 +142,19 @@ const OTPPage: React.FC = () => {
           className="w-16 h-16 flex items-center justify-center border-2"
           style={{ borderColor: `${currentColor}50` }}
         >
-          {isTotp ? (
-            <FiShield size={32} style={{ color: currentColor }} />
-          ) : (
-            <svg width="38" height="48" viewBox="0 0 38 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="1" y="1" width="36" height="46" rx="4" stroke={currentColor} strokeOpacity="0.6" strokeWidth="2" fill="none"/>
-              <rect x="13" y="4" width="12" height="2" rx="1" fill={currentColor} fillOpacity="0.6"/>
-              <rect x="7" y="16" width="24" height="16" rx="2" stroke={currentColor} strokeOpacity="0.6" strokeWidth="1.5" fill="none"/>
-              <text x="19" y="27" textAnchor="middle" fontSize="8" fill={currentColor} fillOpacity="0.6" fontFamily="monospace" fontWeight="bold">***</text>
-              <rect x="14" y="41" width="10" height="2" rx="1" fill={currentColor} fillOpacity="0.6"/>
-            </svg>
-          )}
+          <FiMail size={30} style={{ color: currentColor }} />
         </div>
       </div>
 
       <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-3">
-        {isTotp ? t("auth.validateTotp") : t("auth.validateOtp")}
+        {t("auth.verifyYourEmail")}
       </h2>
 
       <p className="text-center text-sm text-gray-500 dark:text-white/45 leading-relaxed mb-1 max-w-xs mx-auto">
-        {isTotp
-          ? t("auth.totpInstructions")
-          : `${t("auth.otpInstructions")}${maskedEmail ? ` ${t("auth.codeSentTo", { email: maskedEmail })}` : ""}`}
+        {t("auth.otpSentToPrefix")}
+      </p>
+      <p className="text-center text-sm font-semibold text-gray-800 dark:text-white/80">
+        {maskEmail(state.email)}
       </p>
 
       {error && (
@@ -135,12 +165,12 @@ const OTPPage: React.FC = () => {
 
       <form onSubmit={handleSubmit}>
         <p className="text-center text-sm font-semibold text-gray-800 dark:text-white/80 mt-5 mb-3">
-          {t("auth.enter6DigitCode")}
+          {t("auth.enterNDigitCode", { n: OTP_LENGTH })}
         </p>
 
         {/* OTP boxes */}
         <div className="flex gap-3 justify-center mb-6">
-          {Array(6).fill(null).map((_, i) => (
+          {Array(OTP_LENGTH).fill(null).map((_, i) => (
             <input
               key={i}
               ref={el => { inputRefs.current[i] = el; }}
@@ -163,8 +193,8 @@ const OTPPage: React.FC = () => {
 
         <button
           type="submit"
-          disabled={submitting || code.length !== 6}
-          style={{ backgroundColor: submitting || code.length !== 6 ? undefined : currentColor }}
+          disabled={submitting || code.length !== OTP_LENGTH}
+          style={{ backgroundColor: submitting || code.length !== OTP_LENGTH ? undefined : currentColor }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {submitting ? t("auth.verifying") : t("auth.verify")}
@@ -172,6 +202,19 @@ const OTPPage: React.FC = () => {
       </form>
 
       <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-4">
+        {t("auth.notReceivedCode")}{" "}
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={cooldown > 0 || resending}
+          style={{ color: cooldown > 0 || resending ? undefined : currentColor }}
+          className="font-medium underline underline-offset-2 disabled:no-underline disabled:text-gray-400 dark:disabled:text-white/25 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
+        >
+          {resending ? t("common.sending") : cooldown > 0 ? t("auth.resendCodeCountdown", { s: cooldown }) : t("auth.resendCode")}
+        </button>
+      </p>
+
+      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-2">
         <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 transition-opacity">
           ← {t("auth.backToSignIn")}
         </Link>
@@ -180,4 +223,4 @@ const OTPPage: React.FC = () => {
   );
 };
 
-export default OTPPage;
+export default ResetOTPPage;

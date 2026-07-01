@@ -30,6 +30,7 @@ import {
   type PasswordPolicy,
 } from "../services/passwordpolicy";
 import { useStateContext } from "../contexts/ProviderContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -90,6 +91,7 @@ type RoleDropdownPortalProps = {
 const RoleDropdownPortal: React.FC<RoleDropdownPortalProps> = ({
   anchorRef, listRef, roles, selectedId, search, onSearch, onSelect, onClose,
 }) => {
+  const { t } = useLanguage();
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   // Measure button position once on mount
@@ -144,7 +146,7 @@ const RoleDropdownPortal: React.FC<RoleDropdownPortalProps> = ({
             autoFocus
             value={search}
             onChange={(e) => onSearch(e.target.value)}
-            placeholder="Search role…"
+            placeholder={t("userModal.searchRole")}
             className="h-7 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/80 dark:placeholder:text-white/35"
           />
         </div>
@@ -153,7 +155,7 @@ const RoleDropdownPortal: React.FC<RoleDropdownPortalProps> = ({
       {/* Options */}
       <div className="max-h-44 overflow-y-auto p-1.5">
         {filtered.length === 0 ? (
-          <p className="py-3 text-center text-[11px] text-slate-400 dark:text-white/40">No roles found</p>
+          <p className="py-3 text-center text-[11px] text-slate-400 dark:text-white/40">{t("userModal.noRolesFound")}</p>
         ) : (
           filtered.map((r) => {
             const isSelected = Number(selectedId) === r.id;
@@ -201,6 +203,7 @@ type UserModalProps = {
 const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) => {
   const isEdit = user !== null;
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   // Form
@@ -290,35 +293,35 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
   );
 
   const policyHint = useMemo(() => {
-    const parts = [`Min ${policy?.min_length ?? 8} chars`];
-    if (policy?.require_uppercase) parts.push("uppercase");
-    if (policy?.require_number)    parts.push("number");
-    if (policy?.require_special)   parts.push("special char");
+    const parts = [t("userModal.policyHintMin", { min: policy?.min_length ?? 8 })];
+    if (policy?.require_uppercase) parts.push(t("userModal.policyHintUppercase"));
+    if (policy?.require_number)    parts.push(t("userModal.policyHintNumber"));
+    if (policy?.require_special)   parts.push(t("userModal.policyHintSpecial"));
     return parts.join(" · ");
-  }, [policy]);
+  }, [policy, t]);
 
   // ── Validation ────────────────────────────────────────────────
   const validate = (): boolean => {
     const next: typeof errors = {};
 
-    if (!form.first_name.trim()) next.first_name = "Please enter first name";
-    if (!form.last_name.trim())  next.last_name  = "Please enter last name";
+    if (!form.first_name.trim()) next.first_name = t("auth.enterFirstName");
+    if (!form.last_name.trim())  next.last_name  = t("auth.enterLastName");
 
     if (!form.email.trim()) {
-      next.email = "Please enter email";
+      next.email = t("auth.enterEmailRequired");
     } else if (!/\S+@\S+\.\S+/.test(form.email)) {
-      next.email = "Invalid email format";
+      next.email = t("auth.invalidEmailFormat");
     } else {
       const ne = normalizeEmail(form.email);
       const dup = existingContacts.some(
         (c) => normalizeEmail(c.email) === ne && c.id !== (user?.id ?? -1)
       );
-      if (dup) next.email = "This email is already in use";
+      if (dup) next.email = t("auth.emailInUse");
     }
 
     if (!isEdit) {
       if (!form.password.trim()) {
-        next.password = "Please enter password";
+        next.password = t("auth.enterPasswordRequired");
       } else {
         const pe = validatePasswordAgainstPolicy(form.password, policy);
         if (pe) next.password = pe;
@@ -328,7 +331,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
       if (pe) next.password = pe;
     }
 
-    if (!form.app_role_id) next.app_role_id = "Please select a role";
+    if (!form.app_role_id) next.app_role_id = t("userModal.selectRoleRequired");
 
     setErrors(next);
     return Object.keys(next).length === 0;
@@ -354,8 +357,8 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
           app_role_id: Number(form.app_role_id),
           profile: "", phone_number: "", location: "", position: "",
         });
-        if (!res || (res as any).error) throw new Error((res as any)?.error || "Create user failed");
-        message.success("User created successfully");
+        if (!res || (res as any).error) throw new Error((res as any)?.error || t("userModal.createUserFailed"));
+        message.success(t("user.userCreated"));
       } else {
         const payload: Record<string, any> = {
           first_name:  form.first_name.trim(),
@@ -365,14 +368,14 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
         };
         if (form.password.trim()) payload.password = form.password.trim();
         const res = await UpdateUserIDByAdmin(user!.id, payload);
-        if (!res || (res as any).error) throw new Error((res as any)?.error || "Update user failed");
-        message.success((res as any).message || "Updated successfully");
+        if (!res || (res as any).error) throw new Error((res as any)?.error || t("userModal.updateUserFailed"));
+        message.success((res as any).message || t("user.userUpdated"));
       }
       onDone();
     } catch (err: any) {
       setErrors((p) => ({
         ...p,
-        form: err?.response?.data?.error || err?.message || "Something went wrong",
+        form: err?.response?.data?.error || err?.message || t("userModal.somethingWentWrong"),
       }));
     } finally {
       setSubmitting(false);
@@ -426,10 +429,10 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
             </span>
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                MANAGEMENT · USER
+                {t("userModal.kicker")}
               </p>
               <h3 className="text-[15px] font-bold text-slate-800 dark:text-white/90">
-                {isEdit ? "Edit User" : "Add User"}
+                {isEdit ? t("userModal.editUser") : t("user.addUser")}
               </h3>
             </div>
           </div>
@@ -447,20 +450,20 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
             <div>
               <label className={labelCls}>
                 <FiType className="text-[10px]" />
-                First Name <span className="text-red-400">*</span>
+                {t("user.firstName")} <span className="text-red-400">*</span>
               </label>
               <input type="text" name="first_name" value={form.first_name}
-                onChange={handleChange} placeholder="First name" disabled={submitting}
+                onChange={handleChange} placeholder={t("userModal.firstNamePlaceholder")} disabled={submitting}
                 className={errors.first_name ? inputErr : inputBase} />
               {errMsg("first_name")}
             </div>
             <div>
               <label className={labelCls}>
                 <FiType className="text-[10px]" />
-                Last Name <span className="text-red-400">*</span>
+                {t("user.lastName")} <span className="text-red-400">*</span>
               </label>
               <input type="text" name="last_name" value={form.last_name}
-                onChange={handleChange} placeholder="Last name" disabled={submitting}
+                onChange={handleChange} placeholder={t("userModal.lastNamePlaceholder")} disabled={submitting}
                 className={errors.last_name ? inputErr : inputBase} />
               {errMsg("last_name")}
             </div>
@@ -470,7 +473,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
           <div>
             <label className={labelCls}>
               <FiMail className="text-[10px]" />
-              Email <span className="text-red-400">*</span>
+              {t("user.email")} <span className="text-red-400">*</span>
             </label>
             <input type="email" name="email" value={form.email}
               onChange={handleChange} placeholder="user@example.com" disabled={submitting}
@@ -482,10 +485,10 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
           <div>
             <label className={labelCls}>
               <FiLock className="text-[10px]" />
-              Password{!isEdit && <span className="text-red-400">*</span>}
+              {t("auth.password")}{!isEdit && <span className="text-red-400">*</span>}
               {isEdit && (
                 <span className="ml-1 text-[9px] normal-case font-normal text-slate-400 dark:text-white/30">
-                  (leave blank to keep current)
+                  {t("userModal.leaveBlankToKeep")}
                 </span>
               )}
             </label>
@@ -494,7 +497,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
                 type={showPass ? "text" : "password"}
                 name="password" value={form.password}
                 onChange={handleChange}
-                placeholder={isEdit ? "••••••••" : "Enter password"}
+                placeholder={isEdit ? "••••••••" : t("auth.enterPassword")}
                 disabled={submitting}
                 className={`${errors.password ? inputErr : inputBase} pr-10`}
               />
@@ -513,7 +516,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
           <div>
             <label className={labelCls}>
               <FiShield className="text-[10px]" />
-              Role <span className="text-red-400">*</span>
+              {t("userModal.role")} <span className="text-red-400">*</span>
             </label>
 
             {/* Trigger button */}
@@ -537,7 +540,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
             >
               <FiShield className="shrink-0 text-[12px] text-slate-400 dark:text-white/35" />
               <span className="flex-1 truncate text-left">
-                {loadingRoles ? "Loading roles…" : selectedRole ? selectedRole.role : "Select role"}
+                {loadingRoles ? t("userModal.loadingRoles") : selectedRole ? selectedRole.role : t("userModal.selectRole")}
               </span>
               {selectedRole && (
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(selectedRole.role)}`}>
@@ -573,7 +576,7 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
             <div className="rounded-xl px-3.5 py-2.5 text-[10.5px] leading-5 text-slate-500 dark:text-white/40"
               style={{ backgroundColor: `${currentColor}08`, border: `1px solid ${currentColor}18` }}>
               <FiUser className="mr-1.5 inline text-[10px]" />
-              Other details (phone, location, position) can be updated by the user in their profile.
+              {t("userModal.otherDetailsNote")}
             </div>
           )}
 
@@ -589,15 +592,15 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
         <div className="flex gap-2.5 rounded-b-2xl border-t border-slate-100 px-5 py-4 dark:border-white/8">
           <button type="button" onClick={onClose} disabled={submitting}
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="button" onClick={() => void handleSubmit()} disabled={submitting}
             style={!submitting ? { background: accentGrad } : undefined}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:bg-slate-300 dark:disabled:bg-white/10">
             {submitting && <FiRefreshCw className="animate-spin text-[12px]" />}
             {isEdit
-              ? <><FiSave className="text-[12px]" />Save Changes</>
-              : <><FiUsers className="text-[12px]" />Create User</>
+              ? <><FiSave className="text-[12px]" />{t("userModal.saveChanges")}</>
+              : <><FiUsers className="text-[12px]" />{t("userModal.createUser")}</>
             }
           </button>
         </div>

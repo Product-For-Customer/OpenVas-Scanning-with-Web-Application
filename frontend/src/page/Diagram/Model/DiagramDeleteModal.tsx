@@ -2,6 +2,7 @@ import React from "react";
 import { FiRefreshCw, FiTrash2, FiX, FiAlertTriangle } from "react-icons/fi";
 import { type DiagramResponse } from "../../../services/diagram";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 interface DiagramDeleteModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
   onConfirm,
 }) => {
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
 
   if (!open || !data) return null;
 
@@ -39,9 +41,9 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
             </span>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">
-                CONFIRM DELETE
+                {t("common.confirmDeleteTitle")}
               </p>
-              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Delete Diagram</h3>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("diagramModal.deleteDiagram")}</h3>
             </div>
           </div>
           <button
@@ -60,7 +62,7 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
           <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/8">
             <FiAlertTriangle className="mt-0.5 shrink-0 text-[14px] text-red-500" />
             <p className="text-[12px] text-red-700 dark:text-red-300">
-              คุณต้องการลบ Diagram นี้ใช่หรือไม่ การดำเนินการนี้ไม่สามารถยกเลิกได้
+              {t("diagramModal.deleteWarning")}
             </p>
           </div>
 
@@ -70,7 +72,7 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
               {data.name || "—"}
             </p>
             <p className="mt-1 text-[11px] leading-5 text-slate-500 dark:text-white/45 line-clamp-3">
-              {data.description?.trim() ? data.description : "No description"}
+              {data.description?.trim() ? data.description : t("diagramModal.noDescription")}
             </p>
           </div>
 
@@ -82,7 +84,7 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
               disabled={deleting}
               className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -93,12 +95,12 @@ const DiagramDeleteModal: React.FC<DiagramDeleteModalProps> = ({
               {deleting ? (
                 <>
                   <FiRefreshCw className="animate-spin text-[12px]" />
-                  Deleting…
+                  {t("common.deleting")}
                 </>
               ) : (
                 <>
                   <FiTrash2 className="text-[12px]" />
-                  Delete
+                  {t("common.delete")}
                 </>
               )}
             </button>

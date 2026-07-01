@@ -72,6 +72,7 @@ func main() {
 	r.POST("/auth/direct-signup",            auth.DirectSignUpHandler)         // PUBLIC: register without OTP
 	r.POST("/auth/direct-reset-password",    auth.DirectResetPasswordHandler)  // PUBLIC: reset password without OTP
 	r.GET("/settings",                       setting.GetSettings)              // PUBLIC: app settings (timezone, etc.)
+	r.GET("/password-policy",                passwordpolicy.GetPolicy)         // PUBLIC: rules shown live on Register/Reset Password forms
 	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
 
 	// เปิดให้รูปที่แคปไว้เข้าถึงผ่าน URL
@@ -95,6 +96,7 @@ func main() {
 	// ===== Protected Routes =====
 	authorized := r.Group("")
 	authorized.Use(middlewares.Authorizes())
+	authorized.Use(middlewares.RestrictReadOnlyUsers())
 	{
 		authorized.GET("/auth/me", auth.Me)
 
@@ -251,7 +253,8 @@ func main() {
 		authorized.DELETE("/auth/totp",      totpctrl.DisableTOTP)
 
 		// ===== Password Policy =====
-		authorized.GET("/password-policy", passwordpolicy.GetPolicy)
+		// GET is registered publicly above (r.GET) so the Register/Reset
+		// Password pages can read it while unauthenticated.
 		authorized.PATCH("/password-policy", passwordpolicy.UpdatePolicy)
 
 		// ===== Vulnerability Delta Enhanced =====

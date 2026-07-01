@@ -1,12 +1,12 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
-import { FiEye, FiEyeOff } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiServer, FiWifi, FiCpu } from "react-icons/fi";
 import { Login } from "../../../services/auth";
-import { useAuth } from "../../../contexts/AuthContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
-import AnimationSuccess from "../animation";
+import { preloadLoginSuccessAnimationAssets } from "../animation";
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
@@ -20,8 +20,8 @@ const inputCls = [
 
 const LoginPage: React.FC = () => {
   const navigate           = useNavigate();
-  const { refreshMe }      = useAuth();
   const { currentColor }   = useStateContext();
+  const { t }               = useLanguage();
   const isMounted          = useRef(true);
 
   const [email,      setEmail]      = useState("");
@@ -29,14 +29,19 @@ const LoginPage: React.FC = () => {
   const [showPw,     setShowPw]     = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
-  const [showAnim,   setShowAnim]   = useState(false);
+
+  // Warm the success-animation image cache ahead of time so /logo-animation
+  // starts rendering instantly once we navigate there.
+  useEffect(() => {
+    void preloadLoginSuccessAnimationAssets();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!email.trim() || !password.trim()) {
-      setError("กรุณากรอก Email และ Password");
+      setError(t("auth.fillEmailAndPassword"));
       return;
     }
 
@@ -57,17 +62,21 @@ const LoginPage: React.FC = () => {
 
       const role = (res.user?.role ?? "").toLowerCase();
       if (role === "admin" || role === "user") {
-        message.success("Login success");
-        // Show animation FIRST — before refreshMe so LoginPage stays mounted.
-        // onFinished will call refreshMe then navigate once animation ends.
-        setShowAnim(true);
+        message.success(t("auth.loginSuccess"));
+        // Navigate to the dedicated /logo-animation route — it plays the
+        // success animation, refreshes auth state, then switches to /admin
+        // once the progress bar finishes.
+        navigate("/logo-animation", {
+          replace: true,
+          state: { redirectTo: "/admin", refreshAuth: true },
+        });
         return;
       }
 
-      setError("บัญชีนี้ไม่มีสิทธิ์เข้าใช้งาน");
+      setError(t("auth.noPermission"));
     } catch (err: any) {
       setError(
-        err?.response?.data?.error || err?.message || "Login ไม่สำเร็จ กรุณาลองใหม่"
+        err?.response?.data?.error || err?.message || t("auth.loginFailed")
       );
     } finally {
       if (isMounted.current) setSubmitting(false);
@@ -75,110 +84,120 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <>
-      <AuthLayout variant="login">
-        {/* ── Heading ── */}
-        <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
-          Argus
-        </h2>
-        <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-          Login into your pages account
-        </p>
+    <AuthLayout variant="login">
+      {/* ── Heading ── */}
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-1">
+        Argus
+      </h2>
+      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+        {t("auth.loginSubtitle")}
+      </p>
 
-        {error && (
-          <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
-            {error}
-          </div>
-        )}
+      {error && (
+        <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+          {error}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-              Username or Email Address
-            </label>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+            {t("auth.usernameOrEmail")}
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder={t("auth.enterEmail")}
+            autoComplete="email"
+            className={inputCls}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+            {t("auth.password")}
+          </label>
+          <div className="relative">
             <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="Enter Your Email"
-              autoComplete="email"
+              type={showPw ? "text" : "password"}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder={t("auth.enterPassword")}
+              autoComplete="current-password"
               className={inputCls}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Enter Password"
-                autoComplete="current-password"
-                className={inputCls}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(p => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
-                aria-label={showPw ? "Hide" : "Show"}
-              >
-                {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Keep signed in  ←→  Forgot Password */}
-          <div className="flex items-center justify-between gap-2">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-4 h-4 border-gray-300 cursor-pointer"
-                style={{ accentColor: currentColor }}
-              />
-              <span className="text-sm text-gray-600 dark:text-white/55">Keep me signed in</span>
-            </label>
-            <Link
-              to="/forgot-password"
-              style={{ color: currentColor }}
-              className="text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
+            <button
+              type="button"
+              onClick={() => setShowPw(p => !p)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              aria-label={showPw ? t("auth.hidePassword") : t("auth.showPassword")}
             >
-              Forgot Password
-            </Link>
+              {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+            </button>
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{ backgroundColor: submitting ? undefined : currentColor }}
-            className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
+        {/* Keep signed in  ←→  Forgot Password */}
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="w-4 h-4 border-gray-300 cursor-pointer"
+              style={{ accentColor: currentColor }}
+            />
+            <span className="text-sm text-gray-600 dark:text-white/55">{t("auth.rememberMe")}</span>
+          </label>
+          <Link
+            to="/forgot-password"
+            style={{ color: currentColor }}
+            className="text-sm hover:opacity-80 transition-opacity whitespace-nowrap"
           >
-            {submitting ? "Signing In..." : "Sign In"}
-          </button>
-        </form>
-
-        <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
-          New to Argus?{" "}
-          <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-            Create an Account
+            {t("auth.forgotPassword")}
           </Link>
-        </p>
-      </AuthLayout>
+        </div>
 
-      {/* ── Success animation overlay — rendered while still on /login (unauthenticated),
-               so LoginPage stays mounted the full 3.8 s. refreshMe is called inside
-               onFinished so auth updates only AFTER the animation completes. ── */}
-      {showAnim && (
-        <AnimationSuccess
-          onFinished={async () => {
-            try { await refreshMe(); } catch { /* non-critical */ }
-            navigate("/admin", { replace: true });
-          }}
-        />
-      )}
-    </>
+        <button
+          type="submit"
+          disabled={submitting}
+          style={{ backgroundColor: submitting ? undefined : currentColor }}
+          className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
+        >
+          {submitting ? t("auth.signingIn") : t("auth.signIn")}
+        </button>
+      </form>
+
+      {/* ── Type of Scan ── */}
+      <div className="mt-6 flex items-center gap-3">
+        <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+        <span className="shrink-0 text-sm text-gray-400 dark:text-white/35">{t("auth.typeOfScan")}</span>
+        <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+      </div>
+
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#4f46e5] py-2 text-white shadow-sm">
+          <FiServer size={13} />
+          <span className="text-[10px] font-semibold">{t("auth.scanTypeNetwork")}</span>
+        </div>
+
+        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#0891b2] py-2 text-white shadow-sm">
+          <FiWifi size={13} />
+          <span className="text-[10px] font-semibold">{t("auth.scanTypeWireless")}</span>
+        </div>
+
+        <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#9333ea] py-2 text-white shadow-sm">
+          <FiCpu size={13} />
+          <span className="text-[10px] font-semibold">{t("auth.scanTypeVirtualDevice")}</span>
+        </div>
+      </div>
+
+      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
+        {t("auth.newToArgus")}{" "}
+        <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+          {t("auth.createAccount")}
+        </Link>
+      </p>
+    </AuthLayout>
   );
 };
 

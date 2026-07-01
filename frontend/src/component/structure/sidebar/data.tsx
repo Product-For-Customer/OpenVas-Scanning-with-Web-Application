@@ -43,7 +43,17 @@ type GetLinksParams = {
 };
 
 export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
-  const baseLinks: SidebarSection[] = [
+  // Apps — Calendar & Diagrams for everyone; Recycle Bin is an admin-only
+  // destructive-data tool (permanent delete/restore), so it's admin-only.
+  const appsLinks: SidebarLink[] = [
+    { name: "calendar", icon: <BsCalendar3 />,      labelKey: "nav.calendar" },
+    { name: "diagrams", icon: <FaProjectDiagram />, labelKey: "nav.diagrams" },
+  ];
+  if (isAdmin) {
+    appsLinks.push({ name: "recycle-bin", icon: <FiTrash2 />, labelKey: "nav.recycleBin" });
+  }
+
+  const sections: SidebarSection[] = [
     {
       title: "Dashboard",
       titleKey: "section.dashboard",
@@ -58,16 +68,12 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
       title: "Apps",
       titleKey: "section.apps",
       icon: <BsCalendar3 />,
-      links: [
-        { name: "calendar",     icon: <BsCalendar3 />,      labelKey: "nav.calendar" },
-        { name: "diagrams",     icon: <FaProjectDiagram />, labelKey: "nav.diagrams" },
-        { name: "recycle-bin",  icon: <FiTrash2 />,         labelKey: "nav.recycleBin" },
-      ],
+      links: appsLinks,
     },
   ];
 
   if (isAdmin) {
-    baseLinks.push(
+    sections.push(
       {
         title: "Threat Intelligence",
         titleKey: "section.threatIntelligence",
@@ -90,20 +96,23 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
           { name: "service",           icon: <FiServer />,  labelKey: "nav.service" },
         ],
       },
-      {
-        title: "Analytics",
-        titleKey: "section.analytics",
-        icon: <FiBarChart2 />,
-        links: [
-          { name: "report",               icon: <FiFileText />, labelKey: "nav.report" },
-          { name: "compliance",           icon: <FiShield />,   labelKey: "nav.compliance" },
-          { name: "vulnerability-delta",  icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta" },
-        ],
-      },
     );
   }
 
-  return baseLinks;
+  // Analytics — shown to everyone (admin AND user); report download / email /
+  // line "send" actions stay allowed for the read-only user role.
+  sections.push({
+    title: "Analytics",
+    titleKey: "section.analytics",
+    icon: <FiBarChart2 />,
+    links: [
+      { name: "report",               icon: <FiFileText />, labelKey: "nav.report" },
+      { name: "compliance",           icon: <FiShield />,   labelKey: "nav.compliance" },
+      { name: "vulnerability-delta",  icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta" },
+    ],
+  });
+
+  return sections;
 };
 
 export const themeColors = [

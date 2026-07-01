@@ -91,15 +91,9 @@ const CONTAINER_PADDING = 12;
 const DiagramNodePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const auth = useAuth() as any;
+  const { isUser: isUserRole } = useAuth();
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
-
-  const roleName = String(
-    auth?.user?.role ?? auth?.me?.role ?? auth?.profile?.role ??
-    auth?.currentUser?.role ?? auth?.authUser?.role ?? ""
-  ).trim().toLowerCase();
-  const isUserRole = roleName === "user";
 
   const diagramIdParam = searchParams.get("diagramId");
   const diagramId = Number(diagramIdParam);

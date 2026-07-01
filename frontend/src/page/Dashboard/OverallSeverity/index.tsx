@@ -91,13 +91,29 @@ const getSeverityDeco = (title: SeverityKey): React.ReactNode => {
         </svg>
       );
 
-    // High — flame silhouette
+    // High — remote-controlled botnet: an attacker's console broadcasting
+    // a signal down to a row of hijacked devices (deliberately a top-to-
+    // bottom broadcast layout, not a radial burst, so it reads distinctly
+    // from the Critical virus icon)
     case "High":
       return (
         <svg viewBox="0 0 100 100" fill="white" aria-hidden>
-          <path d="M50 92 C33 92 19 77 19 59 C19 45 28 37 34 26 C37 20 35 12 31 5 C44 14 52 29 47 43 C52 36 58 27 56 16 C69 29 73 46 67 59 C73 51 77 43 74 32 C85 45 89 60 89 70 C89 83 71 92 50 92Z" />
-          {/* Inner lighter flame */}
-          <path d="M50 80 C39 80 31 71 31 61 C31 53 37 47 41 38 C43 48 50 52 50 62 C54 52 58 44 56 34 C65 46 67 58 63 66 C69 57 71 50 69 40 C78 53 80 66 73 73 C71 79 61 84 50 80Z" fillOpacity="0.55" />
+          {/* Attacker's remote console */}
+          <rect x="32" y="8" width="36" height="24" rx="4" />
+          <rect x="44" y="32" width="12" height="6" />
+          <rect x="37" y="38" width="26" height="4" rx="2" />
+
+          {/* Broadcast signal arcs beaming down to the botnet */}
+          <path d="M40 50 Q50 57 60 50" stroke="white" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M31 58 Q50 71 69 58" stroke="white" strokeWidth="4" strokeLinecap="round" fill="none" />
+
+          {/* Hijacked devices in a row, each still tethered to the signal */}
+          <line x1="21" y1="74" x2="21" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="50" y1="74" x2="50" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="79" y1="74" x2="79" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
+          <rect x="10" y="80" width="22" height="14" rx="2.5" />
+          <rect x="39" y="80" width="22" height="14" rx="2.5" />
+          <rect x="68" y="80" width="22" height="14" rx="2.5" />
         </svg>
       );
 

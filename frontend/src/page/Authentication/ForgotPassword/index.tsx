@@ -5,6 +5,7 @@ import {
   type CheckUserEmailResponse,
 } from "../../../services/auth";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 
 const inputCls = [
@@ -20,6 +21,7 @@ const inputCls = [
 const ForgotPasswordPage: React.FC = () => {
   const navigate         = useNavigate();
   const { currentColor } = useStateContext();
+  const { t }             = useLanguage();
 
   const [email,   setEmail]   = useState("");
   const [error,   setError]   = useState("");
@@ -31,23 +33,23 @@ const ForgotPasswordPage: React.FC = () => {
 
     const trimmed = email.trim();
     if (!trimmed) {
-      setError("กรุณากรอกอีเมล");
+      setError(t("auth.enterEmailPlain"));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setError("รูปแบบอีเมลไม่ถูกต้อง");
+      setError(t("auth.invalidEmailFormatPlain"));
       return;
     }
 
     try {
       setLoading(true);
       const res: CheckUserEmailResponse | null = await CheckUserEmail({ email: trimmed });
-      if (!res)        { setError("ไม่สามารถตรวจสอบอีเมลได้"); return; }
-      if (!res.exists) { setError(res.error || "ไม่พบอีเมลนี้ในระบบ"); return; }
+      if (!res)        { setError(t("auth.cannotVerifyEmail")); return; }
+      if (!res.exists) { setError(res.error || t("auth.emailNotFound")); return; }
       navigate("/reset-password", { state: { email: trimmed } });
     } catch (err: any) {
       setError(
-        err?.response?.data?.error || err?.message || "เกิดข้อผิดพลาดระหว่างตรวจสอบอีเมล"
+        err?.response?.data?.error || err?.message || t("auth.verifyEmailError")
       );
     } finally {
       setLoading(false);
@@ -61,7 +63,7 @@ const ForgotPasswordPage: React.FC = () => {
         Argus
       </h2>
       <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-        Recover your password
+        {t("auth.forgotPasswordSubtitle")}
       </p>
 
       {error && (
@@ -73,13 +75,13 @@ const ForgotPasswordPage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Email Address
+            {t("auth.emailAddress")}
           </label>
           <input
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="Enter Your Email"
+            placeholder={t("auth.enterEmail")}
             autoComplete="email"
             className={inputCls}
           />
@@ -91,14 +93,14 @@ const ForgotPasswordPage: React.FC = () => {
           style={{ backgroundColor: loading ? undefined : currentColor }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
-          {loading ? "Checking..." : "Send Me Email"}
+          {loading ? t("auth.checking") : t("auth.sendMeEmail")}
         </button>
       </form>
 
       <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
-        Return to{" "}
+        {t("auth.returnTo")}{" "}
         <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-          Sign In
+          {t("auth.signIn")}
         </Link>
       </p>
     </AuthLayout>

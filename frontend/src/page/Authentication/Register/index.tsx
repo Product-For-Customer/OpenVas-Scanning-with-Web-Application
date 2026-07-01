@@ -15,8 +15,9 @@ import {
   type PasswordPolicy,
 } from "../../../services/passwordpolicy";
 import { useStateContext } from "../../../contexts/ProviderContext";
-import ModalOTPSignUp from "../../../Model/ModalOTPSignUp";
+import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
+import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
 
 type FormData = {
   first_name: string;
@@ -38,6 +39,7 @@ const inputCls = [
 const RegisterPage: React.FC = () => {
   const navigate         = useNavigate();
   const { currentColor } = useStateContext();
+  const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
   const [svcSettings, setSvcSettings] = useState<ServiceSettings>({
@@ -46,16 +48,11 @@ const RegisterPage: React.FC = () => {
   const [policy,     setPolicy]     = useState<PasswordPolicy | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPw,     setShowPw]     = useState(false);
-  const [otpOpen,    setOtpOpen]    = useState(false);
+  const [pwFocused,  setPwFocused]  = useState(false);
   const [emailError, setEmailError] = useState("");
 
   const [form, setForm] = useState<FormData>({
     first_name: "", last_name: "", email: "", password: "",
-  });
-
-  const [pending, setPending] = useState({
-    first_name: "", last_name: "", email: "", password: "",
-    phone_number: "", location: "", position: "",
   });
 
   const [existingEmails, setExistingEmails] = useState<string[]>([]);
@@ -98,8 +95,8 @@ const RegisterPage: React.FC = () => {
   const computedEmailError = useMemo(() => {
     const ne = form.email.trim().toLowerCase();
     if (!ne) return "";
-    return existingEmails.includes(ne) ? "อีเมลนี้ถูกใช้งานแล้ว" : "";
-  }, [form.email, existingEmails]);
+    return existingEmails.includes(ne) ? t("auth.emailInUse") : "";
+  }, [form.email, existingEmails, t]);
 
   useEffect(() => { setEmailError(computedEmailError); }, [computedEmailError]);
 
@@ -109,12 +106,12 @@ const RegisterPage: React.FC = () => {
   };
 
   const validate = (): string => {
-    if (!form.first_name.trim()) return "กรุณากรอก First Name";
-    if (!form.last_name.trim())  return "กรุณากรอก Last Name";
-    if (!form.email.trim())      return "กรุณากรอก Email";
-    if (!/\S+@\S+\.\S+/.test(form.email)) return "รูปแบบ Email ไม่ถูกต้อง";
+    if (!form.first_name.trim()) return t("auth.enterFirstName");
+    if (!form.last_name.trim())  return t("auth.enterLastName");
+    if (!form.email.trim())      return t("auth.enterEmailRequired");
+    if (!/\S+@\S+\.\S+/.test(form.email)) return t("auth.invalidEmailFormat");
     if (computedEmailError)      return computedEmailError;
-    if (!form.password.trim())   return "กรุณากรอก Password";
+    if (!form.password.trim())   return t("auth.enterPasswordRequired");
     const pwErr = validatePasswordAgainstPolicy(form.password, policy);
     if (pwErr) return pwErr;
     return "";
@@ -126,8 +123,8 @@ const RegisterPage: React.FC = () => {
     const latestEmails = await loadEmails(true);
     const ne           = form.email.trim().toLowerCase();
     if (latestEmails.includes(ne)) {
-      setEmailError("อีเมลนี้ถูกใช้งานแล้ว");
-      message.error("อีเมลนี้ถูกใช้งานแล้ว");
+      setEmailError(t("auth.emailInUse"));
+      message.error(t("auth.emailInUse"));
       return;
     }
 
@@ -149,30 +146,24 @@ const RegisterPage: React.FC = () => {
 
       if (!svcSettings.register_otp) {
         await DirectSignUp(payload);
-        message.success("สมัครสมาชิกสำเร็จ");
+        message.success(t("auth.registerSuccess"));
         navigate("/login", { replace: true });
         return;
       }
 
       const result = await SendOTPForSignUp({ email: payload.email });
-      if (!result)       { message.error("ไม่สามารถส่ง OTP ได้"); return; }
+      if (!result)       { message.error(t("auth.otpSendFailed")); return; }
       if (result.error)  { message.error(result.error);             return; }
 
-      setPending(payload);
-      setOtpOpen(true);
-      message.success(result.message || "ส่ง OTP สำเร็จ กรุณายืนยันอีเมล");
+      message.success(result.message || t("auth.otpSentVerifyEmail"));
+      navigate("/register-otp", { state: payload });
     } catch (err: any) {
       message.error(
-        err?.response?.data?.error || err?.message || "เกิดข้อผิดพลาดในการสมัครสมาชิก"
+        err?.response?.data?.error || err?.message || t("auth.registerFailed")
       );
     } finally {
       if (isMounted.current) setSubmitting(false);
     }
-  };
-
-  const handleVerified = () => {
-    setOtpOpen(false);
-    navigate("/login", { replace: true });
   };
 
   return (
@@ -182,7 +173,7 @@ const RegisterPage: React.FC = () => {
         Argus
       </h2>
       <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
-        Register for create an account
+        {t("auth.registerSubtitle")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -190,27 +181,27 @@ const RegisterPage: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-              First Name
+              {t("auth.firstName")}
             </label>
             <input
               type="text"
               name="first_name"
               value={form.first_name}
               onChange={handleChange}
-              placeholder="First Name"
+              placeholder={t("auth.firstName")}
               className={inputCls}
             />
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-              Last Name
+              {t("auth.lastName")}
             </label>
             <input
               type="text"
               name="last_name"
               value={form.last_name}
               onChange={handleChange}
-              placeholder="Last Name"
+              placeholder={t("auth.lastName")}
               className={inputCls}
             />
           </div>
@@ -219,14 +210,14 @@ const RegisterPage: React.FC = () => {
         {/* Email */}
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Email Address
+            {t("auth.emailAddress")}
           </label>
           <input
             type="email"
             name="email"
             value={form.email}
             onChange={handleChange}
-            placeholder="Enter Your Email"
+            placeholder={t("auth.enterEmail")}
             autoComplete="email"
             className={inputCls}
           />
@@ -238,7 +229,7 @@ const RegisterPage: React.FC = () => {
         {/* Password */}
         <div>
           <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
-            Password
+            {t("auth.password")}
           </label>
           <div className="relative">
             <input
@@ -246,26 +237,22 @@ const RegisterPage: React.FC = () => {
               name="password"
               value={form.password}
               onChange={handleChange}
-              placeholder="Enter Password"
+              onFocus={() => setPwFocused(true)}
+              onBlur={() => setPwFocused(false)}
+              placeholder={t("auth.enterPassword")}
+              autoComplete="new-password"
               className={inputCls}
             />
             <button
               type="button"
               onClick={() => setShowPw(p => !p)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
-              aria-label={showPw ? "Hide" : "Show"}
+              aria-label={showPw ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
             </button>
+            <PasswordPolicyDropdown policy={policy} password={form.password} open={pwFocused} />
           </div>
-          {policy && (
-            <p className="mt-1 text-xs text-gray-400 dark:text-white/30">
-              At least {policy.min_length ?? 8} characters
-              {policy.require_uppercase ? ", uppercase" : ""}
-              {policy.require_number    ? ", number"    : ""}
-              {policy.require_special   ? ", special character" : ""}
-            </p>
-          )}
         </div>
 
         <button
@@ -275,24 +262,17 @@ const RegisterPage: React.FC = () => {
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
         >
           {submitting
-            ? svcSettings.register_otp ? "Sending OTP..." : "Creating Account..."
-            : "Register"}
+            ? svcSettings.register_otp ? t("auth.sendingOtp") : t("auth.creatingAccount")
+            : t("auth.register")}
         </button>
       </form>
 
       <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
-        Already have an account?{" "}
+        {t("auth.alreadyHaveAccount")}{" "}
         <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
-          Sign In
+          {t("auth.signIn")}
         </Link>
       </p>
-
-      <ModalOTPSignUp
-        open={otpOpen}
-        onClose={() => setOtpOpen(false)}
-        signupData={pending}
-        onVerified={handleVerified}
-      />
     </AuthLayout>
   );
 };

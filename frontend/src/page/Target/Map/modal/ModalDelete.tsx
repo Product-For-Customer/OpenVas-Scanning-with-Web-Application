@@ -2,6 +2,7 @@ import React from "react";
 import { FiAlertTriangle, FiTrash2, FiX } from "react-icons/fi";
 import type { Device } from "../index";
 import { useStateContext } from "../../../../contexts/ProviderContext";
+import { useLanguage } from "../../../../contexts/LanguageContext";
 
 type Props = {
   open: boolean;
@@ -21,6 +22,7 @@ const ModalDelete: React.FC<Props> = ({
   onConfirm,
 }) => {
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
 
   if (!open || !target) return null;
 
@@ -38,8 +40,8 @@ const ModalDelete: React.FC<Props> = ({
               <FiTrash2 className="text-[14px]" />
             </span>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">CONFIRM DELETE</p>
-              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">Delete Location</h3>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">{t("common.confirmDeleteTitle")}</p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("targetModal.deleteLocation")}</h3>
             </div>
           </div>
           <button
@@ -58,7 +60,7 @@ const ModalDelete: React.FC<Props> = ({
           <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/8">
             <FiAlertTriangle className="mt-0.5 shrink-0 text-[14px] text-red-500" />
             <p className="text-[12px] text-red-700 dark:text-red-300">
-              คุณกำลังจะลบ location นี้ออกจากระบบ การดำเนินการนี้ไม่สามารถยกเลิกได้
+              {t("targetModal.deleteWarning")}
             </p>
           </div>
 
@@ -66,13 +68,13 @@ const ModalDelete: React.FC<Props> = ({
           <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/8 dark:bg-white/3">
             <div className="space-y-1.5 text-[11.5px]">
               <p className="text-slate-500 dark:text-white/45">
-                <span className="font-semibold text-slate-700 dark:text-white/75">Device:</span>{" "}{target.device_name}
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("targetModal.device")}:</span>{" "}{target.device_name}
               </p>
               <p className="text-slate-500 dark:text-white/45">
-                <span className="font-semibold text-slate-700 dark:text-white/75">IP:</span>{" "}{target.ip}
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("targetModal.ipLabel")}:</span>{" "}{target.ip}
               </p>
               <p className="text-slate-500 dark:text-white/45">
-                <span className="font-semibold text-slate-700 dark:text-white/75">Detected Time:</span>{" "}{target.detected_time}
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("targetModal.detectedTimeLabel")}:</span>{" "}{target.detected_time}
               </p>
             </div>
           </div>
@@ -91,7 +93,7 @@ const ModalDelete: React.FC<Props> = ({
               disabled={loading}
               className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               type="button"
@@ -99,7 +101,7 @@ const ModalDelete: React.FC<Props> = ({
               disabled={loading}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60"
             >
-              {loading ? "Deleting…" : "Yes, Delete!"}
+              {loading ? t("common.deleting") : t("common.yesDelete")}
             </button>
           </div>
         </div>

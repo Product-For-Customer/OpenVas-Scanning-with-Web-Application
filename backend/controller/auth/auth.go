@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"net/http"
@@ -452,9 +453,11 @@ type DirectSignUpInput struct {
 	Password    string `json:"password"     binding:"required,min=8"`
 	FirstName   string `json:"first_name"   binding:"required"`
 	LastName    string `json:"last_name"    binding:"required"`
-	PhoneNumber string `json:"phone_number" binding:"required"`
-	Location    string `json:"location"     binding:"required"`
-	Position    string `json:"position"     binding:"required"`
+	// PhoneNumber/Location/Position ไม่บังคับ — ฟอร์ม Register ไม่ได้เก็บข้อมูลนี้
+	// (ผู้ใช้สามารถกรอกเพิ่มทีหลังในหน้า Profile)
+	PhoneNumber string `json:"phone_number"`
+	Location    string `json:"location"`
+	Position    string `json:"position"`
 }
 
 func DirectSignUpHandler(c *gin.Context) {
@@ -741,9 +744,11 @@ type VerifyOTPSignUpInput struct {
 	Password    string `json:"password" binding:"required,min=8"`
 	FirstName   string `json:"first_name" binding:"required"`
 	LastName    string `json:"last_name" binding:"required"`
-	PhoneNumber string `json:"phone_number" binding:"required"`
-	Location    string `json:"location" binding:"required"`
-	Position    string `json:"position" binding:"required"`
+	// PhoneNumber/Location/Position ไม่บังคับ — ฟอร์ม Register ไม่ได้เก็บข้อมูลนี้
+	// (ผู้ใช้สามารถกรอกเพิ่มทีหลังในหน้า Profile)
+	PhoneNumber string `json:"phone_number"`
+	Location    string `json:"location"`
+	Position    string `json:"position"`
 }
 
 func mapUserResponse(u entity.AppUser) UserResponse {
@@ -983,6 +988,7 @@ func SendOTPForSignUp(c *gin.Context) {
 		msg,
 	)
 	if err != nil {
+		log.Printf("⚠️ SendOTPForSignUp: smtp.SendMail failed (from=%q): %v\n", from, err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "ส่ง OTP ไม่สำเร็จ",
 		})

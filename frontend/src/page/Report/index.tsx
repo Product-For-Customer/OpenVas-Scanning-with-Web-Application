@@ -29,6 +29,7 @@ import {
 } from "../../services/report";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   ListAppNotification,
   ListAssetRisk,
@@ -820,6 +821,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
 
 const ReportPreviewIndex: React.FC = () => {
   const { t } = useLanguage();
+  const { isUser } = useAuth();
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const [openEditModal, setOpenEditModal] = useState(false);
@@ -1037,14 +1039,16 @@ const ReportPreviewIndex: React.FC = () => {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => setOpenEditModal(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8"
-            >
-              <FiImage className="text-[15px]" />
-              <span>{t("report.editReport")}</span>
-            </button>
+            {!isUser && (
+              <button
+                type="button"
+                onClick={() => setOpenEditModal(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:w-auto dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/8"
+              >
+                <FiImage className="text-[15px]" />
+                <span>{t("report.editReport")}</span>
+              </button>
+            )}
 
             <div className="relative w-full sm:w-auto" ref={deviceMenuRef}>
               <button

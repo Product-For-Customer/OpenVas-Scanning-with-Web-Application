@@ -38,11 +38,13 @@ const RegisterPage       = Loadable(lazy(() => import("../page/Authentication/Re
 const ForgotPasswordPage = Loadable(lazy(() => import("../page/Authentication/ForgotPassword")));
 const ResetPasswordPage  = Loadable(lazy(() => import("../page/Authentication/ResetPassword")));
 const OTPPage            = Loadable(lazy(() => import("../page/Authentication/OTP")));
+const RegisterOTPPage    = Loadable(lazy(() => import("../page/Authentication/RegisterOTP")));
+const ResetOTPPage       = Loadable(lazy(() => import("../page/Authentication/ResetOTP")));
 
 // ===== Utility =====
 const Loader         = Loadable(lazy(() => import("../component/load/Loader")));
 const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
-const LogoAnimation  = Loadable(lazy(() => import("../page/Authentication/animation/index")));
+const LogoAnimation  = Loadable(lazy(() => import("../page/Authentication/animation/route")));
 
 // ======================= ROUTES =======================
 
@@ -105,8 +107,13 @@ const UserRoutes = (): RouteObject[] => [
       { path: "diagram-node",                  element: <DiagramNode /> },
       { path: "host/:ip",                      element: <HostDetail /> },
       { path: "calendar",                      element: <CalendarPage /> },
+      { path: "report",                        element: <Report /> },
+      { path: "compliance",                    element: <Compliance /> },
+      { path: "compliance/:framework/:controlId", element: <ComplianceControl /> },
+      { path: "vulnerability-delta",           element: <VulnerabilityDelta /> },
     ],
   },
+  { path: "logo-animation",  element: <LogoAnimation /> },
   { path: "*", element: <Navigate to="/admin" replace /> },
 ];
 
@@ -121,6 +128,8 @@ const MainRoutes = (): RouteObject[] => [
       { path: "forgot-password",        element: <ForgotPasswordPage /> },
       { path: "reset-password",         element: <ResetPasswordPage /> },
       { path: "otp",                    element: <OTPPage /> },
+      { path: "register-otp",           element: <RegisterOTPPage /> },
+      { path: "reset-otp",              element: <ResetOTPPage /> },
       { path: "capture",                element: <CaptureTest /> },
       { path: "logo-animation",         element: <LogoAnimation /> },
       { path: "*",                      element: <LoginPage /> },

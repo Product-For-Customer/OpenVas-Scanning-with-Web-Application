@@ -20,6 +20,8 @@ import {
   type UpdateDiagramInput,
 } from "../../../services/diagram";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 type ModalMode = "create" | "edit";
 
@@ -75,14 +77,14 @@ const getFileExtension = (fileName: string): string => {
 
 const normalizeValue = (value?: string) => (value ?? "").trim();
 
-const validateImageFile = (file: File): string => {
+const validateImageFile = (file: File, t: (key: TranslationKey, vars?: Record<string, string | number>) => string): string => {
   const ext = getFileExtension(file.name);
   if (
     !ALLOWED_IMAGE_MIME_TYPES.includes(file.type.toLowerCase()) ||
     !ALLOWED_IMAGE_EXTENSIONS.includes(ext)
-  ) return "Only image files can be uploaded";
+  ) return t("diagramModal.onlyImageFiles");
   if (file.size > MAX_IMAGE_SIZE_BYTES)
-    return `Image size must be less than ${MAX_IMAGE_SIZE_MB} MB`;
+    return t("diagramModal.imageSizeLimit", { mb: MAX_IMAGE_SIZE_MB });
   return "";
 };
 
@@ -90,6 +92,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
   open, mode, loading = false, initialData, onClose, onSuccess,
 }) => {
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -129,8 +132,8 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
   }, [form, initialData, mode]);
 
   const validateForm = () => {
-    if (!form.name.trim()) return "Please enter diagram name";
-    if (!form.image_base64.trim()) return "Please upload a diagram image";
+    if (!form.name.trim()) return t("diagramModal.enterDiagramName");
+    if (!form.image_base64.trim()) return t("diagramModal.uploadImageRequired");
     return "";
   };
 
@@ -152,7 +155,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validationMessage = validateImageFile(file);
+    const validationMessage = validateImageFile(file, t);
     if (validationMessage) {
       setFormError(validationMessage);
       message.error(validationMessage);
@@ -164,7 +167,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
     try {
       const base64 = await fileToBase64(file);
       if (!base64.startsWith("data:image/")) {
-        const err = "The selected file is not a valid image";
+        const err = t("diagramModal.invalidImageFile");
         setFormError(err);
         message.error(err);
         resetImageInput();
@@ -174,7 +177,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
       setForm((prev) => ({ ...prev, image_base64: base64 }));
       setFormError("");
     } catch {
-      const err = "Failed to convert image to base64";
+      const err = t("diagramModal.imageConvertFailed");
       setFormError(err);
       message.error(err);
       resetImageInput();
@@ -184,7 +187,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
   const handleSubmit = async () => {
     const validationMessage = validateForm();
     if (validationMessage) { setFormError(validationMessage); return; }
-    if (mode === "edit" && !isFormChanged) { setFormError("No changes detected"); return; }
+    if (mode === "edit" && !isFormChanged) { setFormError(t("diagramModal.noChangesDetected")); return; }
 
     setSubmitting(true);
     setFormError("");
@@ -197,26 +200,26 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
           image_base64: form.image_base64.trim(),
         };
         const created = await CreateDiagram(payload);
-        if (!created) { setFormError("Failed to create diagram"); return; }
-        message.success("Create success");
+        if (!created) { setFormError(t("diagramModal.createFailed")); return; }
+        message.success(t("diagramModal.createSuccess"));
       } else {
-        if (!initialData?.id) { setFormError("Diagram not found"); return; }
+        if (!initialData?.id) { setFormError(t("diagramModal.diagramNotFound")); return; }
         const payload: UpdateDiagramInput = {
           name: form.name.trim(),
           description: form.description.trim(),
           image_base64: form.image_base64.trim(),
         };
         const updated = await UpdateDiagramByID(initialData.id, payload);
-        if (!updated) { setFormError("Failed to update diagram"); return; }
-        message.success("Update success");
+        if (!updated) { setFormError(t("diagramModal.updateFailed")); return; }
+        message.success(t("diagramModal.updateSuccess"));
       }
       await onSuccess();
     } catch (error) {
       console.error("handleSubmit diagram error:", error);
       setFormError(
         mode === "create"
-          ? "An error occurred while creating diagram"
-          : "An error occurred while updating diagram"
+          ? t("diagramModal.createError")
+          : t("diagramModal.updateError")
       );
     } finally {
       setSubmitting(false);
@@ -265,10 +268,10 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             </span>
             <div>
               <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                {mode === "create" ? "NEW DIAGRAM" : "EDIT DIAGRAM"}
+                {mode === "create" ? t("diagramModal.newDiagramKicker") : t("diagramModal.editDiagramKicker")}
               </p>
               <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">
-                {mode === "create" ? "Create Diagram" : "Edit Diagram"}
+                {mode === "create" ? t("diagramModal.createDiagram") : t("diagramModal.editDiagram")}
               </h3>
             </div>
           </div>
@@ -286,7 +289,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
         {loading ? (
           <div className="flex h-40 items-center justify-center text-[11px] text-slate-400 dark:text-white/40">
             <FiRefreshCw className="mr-2 animate-spin text-[14px]" />
-            Loading…
+            {t("common.loading")}
           </div>
         ) : (
           <div className="px-5 py-4 space-y-3.5">
@@ -295,7 +298,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                 <FiImage className="text-[10px]" />
-                Image <span className="text-red-400">*</span>
+                {t("diagramModal.image")} <span className="text-red-400">*</span>
               </label>
 
               {/* Hidden file input */}
@@ -340,7 +343,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
                       ].join(" ")}
                     >
                       <FiUpload className="text-[20px] text-white" />
-                      <p className="text-[11px] font-semibold text-white">Click to change image</p>
+                      <p className="text-[11px] font-semibold text-white">{t("diagramModal.clickToChangeImage")}</p>
                     </div>
 
                     {/* Remove button */}
@@ -348,7 +351,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
                       type="button"
                       onClick={handleRemoveImage}
                       className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white transition hover:bg-red-500"
-                      title="Remove image"
+                      title={t("diagramModal.removeImage")}
                     >
                       <FiX className="text-[13px]" />
                     </button>
@@ -369,10 +372,10 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
                       />
                     </div>
                     <p className="text-[12px] font-semibold text-slate-500 dark:text-white/50">
-                      Click to upload image
+                      {t("diagramModal.clickToUploadImage")}
                     </p>
                     <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                      jpg, jpeg, png, webp, gif, svg, bmp
+                      {t("diagramModal.allowedImageTypes")}
                     </p>
                   </div>
                 )}
@@ -383,12 +386,12 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                 <FiType className="text-[10px]" />
-                Name <span className="text-red-400">*</span>
+                {t("common.name")} <span className="text-red-400">*</span>
               </label>
               <input
                 value={form.name}
                 onChange={(e) => handleChangeForm("name", e.target.value)}
-                placeholder="Enter diagram name"
+                placeholder={t("diagramModal.enterDiagramName")}
                 className={inputCls}
               />
             </div>
@@ -397,12 +400,12 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
                 <FiFileText className="text-[10px]" />
-                Description
+                {t("common.description")}
               </label>
               <textarea
                 value={form.description}
                 onChange={(e) => handleChangeForm("description", e.target.value)}
-                placeholder="Enter diagram description (optional)"
+                placeholder={t("diagramModal.enterDiagramDescription")}
                 rows={2}
                 className={textareaCls}
               />
@@ -425,7 +428,7 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             disabled={submitting}
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
           >
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             type="button"
@@ -437,12 +440,12 @@ const DiagramFormModal: React.FC<DiagramFormModalProps> = ({
             {submitting ? (
               <>
                 <FiRefreshCw className="animate-spin text-[12px]" />
-                Saving…
+                {t("common.saving")}
               </>
             ) : (
               <>
                 {mode === "create" ? <FiPlus className="text-[12px]" /> : <FiCheck className="text-[12px]" />}
-                {mode === "create" ? "Create Diagram" : "Update Diagram"}
+                {mode === "create" ? t("diagramModal.createDiagram") : t("diagramModal.updateDiagram")}
               </>
             )}
           </button>
