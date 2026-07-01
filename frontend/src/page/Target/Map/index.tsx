@@ -14,7 +14,6 @@ import {
   FiNavigation,
   FiTrash2,
   FiX,
-  FiHome,
   FiPlus,
   FiEdit2,
   FiCalendar,
@@ -44,8 +43,6 @@ export type Device = {
   lng: number;
   ip: string;
   location: string;
-  building: string;
-  floor: number;
   status: DeviceStatus;
   lastSeen: string;
   task_id: string;
@@ -54,8 +51,6 @@ export type Device = {
 
 export type LocationFormState = {
   location: string;
-  building: string;
-  floor: string;
   latitude: string;
   longtitude: string;
   task_id: string;
@@ -66,8 +61,6 @@ const MAP_STYLE =
 
 const emptyForm: LocationFormState = {
   location: "",
-  building: "",
-  floor: "",
   latitude: "",
   longtitude: "",
   task_id: "",
@@ -232,16 +225,6 @@ const MapPopupCard: React.FC<{
             </div>
             <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.location}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
-            <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
-              <FiHome />
-              Building / Floor
-            </div>
-            <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
-              {device.building} / Floor {device.floor}
             </p>
           </div>
 
@@ -425,8 +408,6 @@ const MapDevice: React.FC = () => {
             lng,
             ip: targetIP,
             location: item.location || "-",
-            building: item.building || "-",
-            floor: Number(item.floor ?? 0),
             status: deriveStatus(targetName, targetIP),
             lastSeen: formatDateTime(item.updated_at),
             task_id: String(item.task_id ?? ""),
@@ -477,8 +458,6 @@ const MapDevice: React.FC = () => {
         device.device_name,
         device.ip,
         device.location,
-        device.building,
-        String(device.floor),
         device.task_id,
         device.detected_time,
       ]
@@ -577,14 +556,11 @@ const MapDevice: React.FC = () => {
       setCreating(true);
       setCreateError("");
 
-      const floor = Number(form.floor);
       const latitude = Number(form.latitude);
       const longtitude = Number(form.longtitude);
 
       const payload: CreateLocationInput = {
         location: form.location.trim(),
-        building: form.building.trim(),
-        floor,
         latitude,
         longtitude,
         task_id: form.task_id.trim(),
@@ -594,28 +570,16 @@ const MapDevice: React.FC = () => {
         setCreateError("กรุณากรอก Location");
         return;
       }
-      if (!payload.building) {
-        setCreateError("กรุณากรอก Building");
-        return;
-      }
-      if (!payload.floor || Number.isNaN(payload.floor)) {
-        setCreateError("กรุณากรอก Floor ให้ถูกต้อง");
-        return;
-      }
-      if (!Number.isFinite(latitude)) {
-        setCreateError("กรุณากรอก Latitude ให้ถูกต้อง");
+      if (!form.latitude.trim() || !form.longtitude.trim()) {
+        setCreateError("กรุณาวาง Google Maps Link เพื่อดึงพิกัด");
         return;
       }
       if (!isValidLatitude(latitude)) {
-        setCreateError("Latitude ต้องอยู่ระหว่าง -90 ถึง 90");
-        return;
-      }
-      if (!Number.isFinite(longtitude)) {
-        setCreateError("กรุณากรอก Longtitude ให้ถูกต้อง");
+        setCreateError("พิกัด Latitude ไม่ถูกต้อง");
         return;
       }
       if (!isValidLongitude(longtitude)) {
-        setCreateError("Longtitude ต้องอยู่ระหว่าง -180 ถึง 180");
+        setCreateError("พิกัด Longitude ไม่ถูกต้อง");
         return;
       }
       if (!payload.task_id) {
@@ -656,8 +620,6 @@ const MapDevice: React.FC = () => {
     setEditTarget(device);
     setEditForm({
       location: device.location || "",
-      building: device.building || "",
-      floor: String(device.floor || ""),
       latitude: String(device.lat || ""),
       longtitude: String(device.lng || ""),
       task_id: String(device.task_id || ""),
@@ -681,14 +643,11 @@ const MapDevice: React.FC = () => {
       setEditing(true);
       setEditError("");
 
-      const floor = Number(form.floor);
       const latitude = Number(form.latitude);
       const longtitude = Number(form.longtitude);
 
       const payload: UpdateLocationInput = {
         location: form.location.trim(),
-        building: form.building.trim(),
-        floor,
         latitude,
         longtitude,
         task_id: form.task_id.trim(),
@@ -698,28 +657,16 @@ const MapDevice: React.FC = () => {
         setEditError("กรุณากรอก Location");
         return;
       }
-      if (!payload.building) {
-        setEditError("กรุณากรอก Building");
-        return;
-      }
-      if (!payload.floor || Number.isNaN(payload.floor)) {
-        setEditError("กรุณากรอก Floor ให้ถูกต้อง");
-        return;
-      }
-      if (!Number.isFinite(latitude)) {
-        setEditError("กรุณากรอก Latitude ให้ถูกต้อง");
+      if (!form.latitude.trim() || !form.longtitude.trim()) {
+        setEditError("กรุณาวาง Google Maps Link เพื่อดึงพิกัด");
         return;
       }
       if (!isValidLatitude(latitude)) {
-        setEditError("Latitude ต้องอยู่ระหว่าง -90 ถึง 90");
-        return;
-      }
-      if (!Number.isFinite(longtitude)) {
-        setEditError("กรุณากรอก Longtitude ให้ถูกต้อง");
+        setEditError("พิกัด Latitude ไม่ถูกต้อง");
         return;
       }
       if (!isValidLongitude(longtitude)) {
-        setEditError("Longtitude ต้องอยู่ระหว่าง -180 ถึง 180");
+        setEditError("พิกัด Longitude ไม่ถูกต้อง");
         return;
       }
       if (!payload.task_id) {
@@ -894,7 +841,7 @@ const MapDevice: React.FC = () => {
                                 {device.device_name}
                               </p>
                               <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
-                                {device.location} • {device.building}
+                                {device.location}
                               </p>
                               <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
                                 IP: {device.ip}

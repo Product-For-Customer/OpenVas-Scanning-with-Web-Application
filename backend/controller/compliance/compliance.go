@@ -398,3 +398,267 @@ func GetComplianceViolations(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": violations})
 }
+
+// ===========================
+// Control Vulnerability Detail
+// ===========================
+
+type ViolationVulnDTO struct {
+	TaskID            string  `json:"task_id"`
+	TaskName          string  `json:"task_name"`
+	IP                string  `json:"ip"`
+	VulnerabilityID   string  `json:"vulnerability_id"`
+	VulnerabilityName string  `json:"vulnerability_name"`
+	Severity          float64 `json:"severity"`
+	SeverityLabel     string  `json:"severity_label"`
+	CVEList           string  `json:"cve_list"`
+	Summary           string  `json:"summary"`
+	Impact            string  `json:"impact"`
+	Insight           string  `json:"insight"`
+	Affected          string  `json:"affected"`
+	Solution          string  `json:"solution"`
+	SolutionType      string  `json:"solution_type"`
+}
+
+func sevLabel(s float64) string {
+	if s >= 9 {
+		return "Critical"
+	}
+	if s >= 7 {
+		return "High"
+	}
+	if s >= 4 {
+		return "Medium"
+	}
+	if s > 0 {
+		return "Low"
+	}
+	return "Info"
+}
+
+// controlSeverityFilter returns the WHERE clause fragment for severity
+// based on which violations each control tracks.
+//
+//	"crit_high" → severity >= 7
+//	"crit"      → severity >= 9
+//	"kev"       → joined against app_kev_caches (handled separately)
+//	""          → no violations (compliant/scan-based)
+func controlViolationKind(controlID string) string {
+	critHigh := map[string]bool{
+		"6.3.3": true, "A.8.8": true, "CIS-7.4": true,
+	}
+	critOnly := map[string]bool{
+		"6.2.4": true, "A.8.20": true, "PR.IP-1": true, "CIS-7.5": true,
+	}
+	kevOnly := map[string]bool{
+		"BOD-22-01": true, "RS.RP-1": true,
+	}
+
+	if critHigh[controlID] {
+		return "crit_high"
+	}
+	if critOnly[controlID] {
+		return "crit"
+	}
+	if kevOnly[controlID] {
+		return "kev"
+	}
+	return ""
+}
+
+func queryVulnsBySeverity(minSeverity float64) []ViolationVulnDTO {
+	gdb := config.DB()
+
+	type row struct {
+		TaskID   string  `gorm:"column:task_id"`
+		TaskName string  `gorm:"column:task_name"`
+		IP       string  `gorm:"column:ip"`
+		NvtOID   string  `gorm:"column:nvt_oid"`
+		VulnName string  `gorm:"column:vuln_name"`
+		Severity float64 `gorm:"column:severity"`
+		CVEList  string  `gorm:"column:cve_list"`
+		Summary  string  `gorm:"column:summary"`
+		Impact   string  `gorm:"column:impact"`
+		Insight  string  `gorm:"column:insight"`
+		Affected string  `gorm:"column:affected"`
+		Solution string  `gorm:"column:solution"`
+		SolType  string  `gorm:"column:sol_type"`
+	}
+
+	sql := `
+SELECT
+    t.id::text                                                   AS task_id,
+    COALESCE(NULLIF(BTRIM(t.name),''),'Unknown Task')           AS task_name,
+    COALESCE(NULLIF(BTRIM(r.host),''),'N/A')                   AS ip,
+    r.nvt                                                        AS nvt_oid,
+    COALESCE(NULLIF(BTRIM(n.name),''),r.nvt::text,'Unknown')   AS vuln_name,
+    ROUND(COALESCE(r.severity,0)::numeric,2)::float8            AS severity,
+    COALESCE(STRING_AGG(DISTINCT UPPER(BTRIM(vr.ref_id)),', ')
+        FILTER (WHERE LOWER(BTRIM(vr.type))='cve' AND vr.ref_id IS NOT NULL),
+    '')                                                          AS cve_list,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.summary,'')),''),'')       AS summary,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.impact,'')),''),'')        AS impact,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.insight,'')),''),'')       AS insight,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.affected,'')),''),'')      AS affected,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.solution,'')),''),'')      AS solution,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.solution_type,'')),''),'') AS sol_type
+FROM public.results r
+JOIN public.reports rp ON rp.id = r.report
+JOIN public.tasks t    ON t.id  = rp.task
+LEFT JOIN public.nvts n ON n.oid = r.nvt
+LEFT JOIN public.vt_refs vr ON vr.vt_oid = r.nvt
+WHERE r.host    IS NOT NULL
+  AND BTRIM(r.host) <> ''
+  AND r.nvt     IS NOT NULL
+  AND COALESCE(r.severity,0) >= ?
+  AND rp.id IN (
+      SELECT DISTINCT ON (task) id
+      FROM public.reports
+      WHERE task IS NOT NULL
+      ORDER BY task, creation_time DESC
+  )
+GROUP BY t.id, t.name, r.host, r.nvt, n.name, r.severity,
+         n.summary, n.impact, n.insight, n.affected, n.solution, n.solution_type
+ORDER BY severity DESC, task_id ASC
+LIMIT 200
+`
+
+	var rows []row
+	gdb.Raw(sql, minSeverity).Scan(&rows)
+
+	out := make([]ViolationVulnDTO, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, ViolationVulnDTO{
+			TaskID:            r.TaskID,
+			TaskName:          r.TaskName,
+			IP:                r.IP,
+			VulnerabilityID:   r.NvtOID,
+			VulnerabilityName: r.VulnName,
+			Severity:          r.Severity,
+			SeverityLabel:     sevLabel(r.Severity),
+			CVEList:           r.CVEList,
+			Summary:           r.Summary,
+			Impact:            r.Impact,
+			Insight:           r.Insight,
+			Affected:          r.Affected,
+			Solution:          r.Solution,
+			SolutionType:      r.SolType,
+		})
+	}
+	return out
+}
+
+func queryVulnsKEV() []ViolationVulnDTO {
+	gdb := config.DB()
+
+	type row struct {
+		TaskID   string  `gorm:"column:task_id"`
+		TaskName string  `gorm:"column:task_name"`
+		IP       string  `gorm:"column:ip"`
+		NvtOID   string  `gorm:"column:nvt_oid"`
+		VulnName string  `gorm:"column:vuln_name"`
+		Severity float64 `gorm:"column:severity"`
+		CVEList  string  `gorm:"column:cve_list"`
+		Summary  string  `gorm:"column:summary"`
+		Impact   string  `gorm:"column:impact"`
+		Insight  string  `gorm:"column:insight"`
+		Affected string  `gorm:"column:affected"`
+		Solution string  `gorm:"column:solution"`
+		SolType  string  `gorm:"column:sol_type"`
+	}
+
+	sql := `
+SELECT
+    t.id::text                                                   AS task_id,
+    COALESCE(NULLIF(BTRIM(t.name),''),'Unknown Task')           AS task_name,
+    COALESCE(NULLIF(BTRIM(r.host),''),'N/A')                   AS ip,
+    r.nvt                                                        AS nvt_oid,
+    COALESCE(NULLIF(BTRIM(n.name),''),r.nvt::text,'Unknown')   AS vuln_name,
+    ROUND(COALESCE(r.severity,0)::numeric,2)::float8            AS severity,
+    COALESCE(STRING_AGG(DISTINCT UPPER(BTRIM(vr.ref_id)),', ')
+        FILTER (WHERE LOWER(BTRIM(vr.type))='cve' AND vr.ref_id IS NOT NULL),
+    '')                                                          AS cve_list,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.summary,'')),''),'')       AS summary,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.impact,'')),''),'')        AS impact,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.insight,'')),''),'')       AS insight,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.affected,'')),''),'')      AS affected,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.solution,'')),''),'')      AS solution,
+    COALESCE(NULLIF(BTRIM(COALESCE(n.solution_type,'')),''),'') AS sol_type
+FROM public.results r
+JOIN public.reports rp ON rp.id = r.report
+JOIN public.tasks t    ON t.id  = rp.task
+LEFT JOIN public.nvts n ON n.oid = r.nvt
+LEFT JOIN public.vt_refs vr ON vr.vt_oid = r.nvt
+WHERE r.host IS NOT NULL
+  AND BTRIM(r.host) <> ''
+  AND r.nvt IS NOT NULL
+  AND rp.id IN (
+      SELECT DISTINCT ON (task) id
+      FROM public.reports
+      WHERE task IS NOT NULL
+      ORDER BY task, creation_time DESC
+  )
+  AND r.nvt IN (
+      SELECT DISTINCT vtr.vt_oid
+      FROM app_kev_caches k
+      JOIN public.vt_refs vtr
+        ON UPPER(BTRIM(vtr.ref_id)) = k.cve_id
+       AND LOWER(BTRIM(vtr.type)) = 'cve'
+  )
+GROUP BY t.id, t.name, r.host, r.nvt, n.name, r.severity,
+         n.summary, n.impact, n.insight, n.affected, n.solution, n.solution_type
+ORDER BY severity DESC, task_id ASC
+LIMIT 200
+`
+
+	var rows []row
+	gdb.Raw(sql).Scan(&rows)
+
+	out := make([]ViolationVulnDTO, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, ViolationVulnDTO{
+			TaskID:            r.TaskID,
+			TaskName:          r.TaskName,
+			IP:                r.IP,
+			VulnerabilityID:   r.NvtOID,
+			VulnerabilityName: r.VulnName,
+			Severity:          r.Severity,
+			SeverityLabel:     sevLabel(r.Severity),
+			CVEList:           r.CVEList,
+			Summary:           r.Summary,
+			Impact:            r.Impact,
+			Insight:           r.Insight,
+			Affected:          r.Affected,
+			Solution:          r.Solution,
+			SolutionType:      r.SolType,
+		})
+	}
+	return out
+}
+
+func GetControlVulnerabilities(c *gin.Context) {
+	controlID := c.Query("control_id")
+	if controlID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "control_id is required"})
+		return
+	}
+
+	kind := controlViolationKind(controlID)
+
+	var vulns []ViolationVulnDTO
+	switch kind {
+	case "crit_high":
+		vulns = queryVulnsBySeverity(7.0)
+	case "crit":
+		vulns = queryVulnsBySeverity(9.0)
+	case "kev":
+		vulns = queryVulnsKEV()
+	default:
+		vulns = []ViolationVulnDTO{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":  vulns,
+		"count": len(vulns),
+	})
+}

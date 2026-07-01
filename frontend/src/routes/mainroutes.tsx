@@ -23,6 +23,7 @@ const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligenc
 const ThreatIntelligenceDetail = Loadable(lazy(() => import("../page/ThreatIntelligence/Detail/index")));
 const ScanManagement     = Loadable(lazy(() => import("../page/ScanManagement/index")));
 const Compliance         = Loadable(lazy(() => import("../page/Compliance/index")));
+const ComplianceControl  = Loadable(lazy(() => import("../page/Compliance/Control/index")));
 const PasswordPolicy     = Loadable(lazy(() => import("../page/PasswordPolicy/index")));
 const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Delta/index")));
 const HostDetail         = Loadable(lazy(() => import("../page/HostDetail/index")));
@@ -70,6 +71,7 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
       { path: "scan-management",                              element: <ScanManagement /> },
       { path: "compliance",                                   element: <Compliance /> },
+      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
       { path: "password-policy",                              element: <PasswordPolicy /> },
       { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
       { path: "host/:ip",                                     element: <HostDetail /> },

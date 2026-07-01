@@ -93,7 +93,7 @@ export type AppDiagramNodeResponse = {
 
 export type CreateAppDiagramNodeInput = {
   diagram_id: number;
-  task_id: string;
+  task_id?: string;
   label: string;
   description?: string;
   icon?: string;

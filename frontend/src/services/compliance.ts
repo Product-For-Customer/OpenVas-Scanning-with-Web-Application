@@ -57,3 +57,34 @@ export const GetComplianceViolations = async (framework?: string): Promise<Contr
     return [];
   }
 };
+
+export type ViolationVuln = {
+  task_id: string;
+  task_name: string;
+  ip: string;
+  vulnerability_id: string;
+  vulnerability_name: string;
+  severity: number;
+  severity_label: string;
+  cve_list: string;
+  summary: string;
+  impact: string;
+  insight: string;
+  affected: string;
+  solution: string;
+  solution_type: string;
+};
+
+export const GetControlVulnerabilities = async (
+  controlId: string
+): Promise<ViolationVuln[]> => {
+  try {
+    const r = await complianceApi.get("/compliance/control-vulns", {
+      params: { control_id: controlId },
+    });
+    const d = r.data?.data ?? r.data;
+    return Array.isArray(d) ? d : [];
+  } catch (e) {
+    return [];
+  }
+};

@@ -11,7 +11,7 @@ type AppDiagramNode struct {
 	AppUserID uint     `json:"app_user_id" gorm:"not null;index" valid:"required~AppUserID is required"`
 	AppUser   *AppUser `json:"app_user" gorm:"foreignKey:AppUserID" valid:"-"`
 
-	TaskID string `json:"task_id" gorm:"type:varchar(255);not null;index" valid:"required~TaskID is required"`
+	TaskID string `json:"task_id" gorm:"type:varchar(255);not null;index" valid:"-"`
 
 	Label       string `json:"label" gorm:"type:varchar(255);not null" valid:"required~Label is required"`
 	Description string `json:"description" gorm:"type:text"`

@@ -69,12 +69,6 @@ const ModalDelete: React.FC<Props> = ({
                 <span className="font-semibold text-slate-700 dark:text-white/75">Device:</span>{" "}{target.device_name}
               </p>
               <p className="text-slate-500 dark:text-white/45">
-                <span className="font-semibold text-slate-700 dark:text-white/75">Building:</span>{" "}{target.building}
-              </p>
-              <p className="text-slate-500 dark:text-white/45">
-                <span className="font-semibold text-slate-700 dark:text-white/75">Floor:</span>{" "}{target.floor}
-              </p>
-              <p className="text-slate-500 dark:text-white/45">
                 <span className="font-semibold text-slate-700 dark:text-white/75">IP:</span>{" "}{target.ip}
               </p>
               <p className="text-slate-500 dark:text-white/45">

@@ -341,8 +341,6 @@ export type DeleteAppTargetResponse = {
 export type LocationResponse = {
   id: number;
   location: string;
-  building: string;
-  floor: number;
   latitude: number;
   longtitude: number;
   task_id: string;
@@ -355,8 +353,6 @@ export type LocationResponse = {
 
 export type CreateLocationInput = {
   location: string;
-  building: string;
-  floor: number;
   latitude: number;
   longtitude: number;
   task_id: string;
@@ -364,8 +360,6 @@ export type CreateLocationInput = {
 
 export type UpdateLocationInput = {
   location?: string;
-  building?: string;
-  floor?: number;
   latitude?: number;
   longtitude?: number;
   task_id?: string;
@@ -382,8 +376,6 @@ const normalizeLocation = (raw: any): LocationResponse => {
   return {
     id: Number(raw?.id ?? raw?.ID ?? 0),
     location: String(raw?.location ?? raw?.Location ?? ""),
-    building: String(raw?.building ?? raw?.Building ?? ""),
-    floor: Number(raw?.floor ?? raw?.Floor ?? 0),
     latitude: Number(raw?.latitude ?? raw?.Latitude ?? 0),
     longtitude: Number(raw?.longtitude ?? raw?.Longtitude ?? 0),
     task_id: String(raw?.task_id ?? raw?.TaskID ?? ""),

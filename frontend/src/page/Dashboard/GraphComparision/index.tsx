@@ -1759,7 +1759,7 @@ const index: React.FC = () => {
                       <span className="text-[34px] font-black tracking-tight" style={{ color: labelColor }}>
                         {formatRisk(avgScore)}
                       </span>
-                      <span className="text-[11px] text-slate-400 dark:text-white/25">/ 10</span>
+                      <span className="text-[34px] font-black tracking-tight text-slate-400 dark:text-white/25">/ 10</span>
                     </div>
                     <span
                       className="mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"

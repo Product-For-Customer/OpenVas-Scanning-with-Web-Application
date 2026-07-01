@@ -8,12 +8,6 @@ import {
   FiEdit2,
   FiLayers,
   FiAlignLeft,
-  FiCpu,
-  FiCalendar,
-  FiAlertTriangle,
-  FiBarChart2,
-  FiHash,
-  FiActivity,
   FiPlus,
   FiRefreshCw,
   FiTarget,
@@ -65,24 +59,7 @@ const normalizeSizePercent = (value: number, fallback: number) => {
   return clamp(value, 1, 100);
 };
 
-const formatDetectedDateTime = (value?: string) => {
-  if (!value) return "-";
-  try {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    return d.toLocaleString("th-TH", {
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-    });
-  } catch { return value; }
-};
-
 const formatRiskScore = (value?: number) => {
-  const num = Number(value ?? 0);
-  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
-};
-
-const formatSeverity = (value?: number) => {
   const num = Number(value ?? 0);
   return Number.isFinite(num) ? num.toFixed(2) : "0.00";
 };
@@ -95,15 +72,6 @@ const getRiskScoreTone = (value?: number) => {
   if (score >= 4) return { box: "border-amber-200 bg-amber-50", label: "text-amber-700", value: "text-amber-700", dot: "bg-amber-500" };
   if (score > 0)  return { box: "border-lime-200 bg-lime-50", label: "text-lime-700", value: "text-lime-700", dot: "bg-lime-500" };
   return { box: "border-emerald-200 bg-emerald-50", label: "text-emerald-700", value: "text-emerald-700", dot: "bg-emerald-500" };
-};
-
-const getLevelTone = (level?: string) => {
-  const normalized = String(level ?? "").trim().toLowerCase();
-  if (normalized === "critical") return { box: "border-red-200 bg-red-50", label: "text-red-700", value: "text-red-700", dot: "bg-red-500" };
-  if (normalized === "high")     return { box: "border-orange-200 bg-orange-50", label: "text-orange-700", value: "text-orange-700", dot: "bg-orange-500" };
-  if (normalized === "medium")   return { box: "border-amber-200 bg-amber-50", label: "text-amber-700", value: "text-amber-700", dot: "bg-amber-500" };
-  if (normalized === "low")      return { box: "border-lime-200 bg-lime-50", label: "text-lime-700", value: "text-lime-700", dot: "bg-lime-500" };
-  return { box: "border-slate-200 bg-slate-50", label: "text-slate-600", value: "text-slate-700", dot: "bg-slate-400" };
 };
 
 type HoverCardState = {
@@ -144,7 +112,7 @@ const DiagramNodePage: React.FC = () => {
   const editRequestIdRef = useRef(0);
 
   const [diagram, setDiagram] = useState<DiagramResponse | null>(null);
-  const [nodes, setNodes] = useState<AppDiagramNodeResponse[]>([]);
+  const [nodes, setNodes] = useState<AppDiagramNodeResponse[]>([]);//@ts-ignore
   const [allNodes, setAllNodes] = useState<AppDiagramNodeResponse[]>([]);
   const [targets, setTargets] = useState<AllTargetDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,7 +123,7 @@ const DiagramNodePage: React.FC = () => {
   const [modalMode, setModalMode] = useState<DiagramNodeModalMode>("create");
   const [modalLoading, setModalLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<AppDiagramNodeResponse | null>(null);
-  const [draftPosition, setDraftPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [draftPosition, setDraftPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);//@ts-ignore
   const [modalAnchorPoint, setModalAnchorPoint] = useState<ModalAnchorPoint | null>(null);
   const [hoverCard, setHoverCard] = useState<HoverCardState | null>(null);
 
@@ -298,7 +266,7 @@ const DiagramNodePage: React.FC = () => {
       } else {
         if (!selectedNode?.id) { message.error("ไม่พบ node ที่ต้องการแก้ไข"); return; }
         const payload: UpdateAppDiagramNodeInput = {
-          diagram_id: diagramId, task_id: values.task_id.trim(), label: values.label.trim(),
+          diagram_id: diagramId, label: values.label.trim(),
           description: values.description.trim(), icon: values.icon.trim(),
           x: normalizePercentValue(values.x), y: normalizePercentValue(values.y),
           width: normalizeSizePercent(values.width, 12), height: normalizeSizePercent(values.height, 9),
@@ -558,10 +526,10 @@ const DiagramNodePage: React.FC = () => {
                       style={{ left: `${x}%`, top: `${y}%`, zIndex }}
                     >
                       <span className="relative inline-flex items-center justify-center">
-                        <span className="absolute h-8 w-8 rounded-full blur-md" style={{ backgroundColor: `${currentColor}30` }} />
+                        <span className="absolute h-8 w-8 rounded-full blur-md" style={{ backgroundColor: "#ef444430" }} />
                         <FiMapPin
                           className="relative text-[28px] drop-shadow-sm transition-transform duration-200 hover:scale-110"
-                          style={{ color: currentColor, filter: `drop-shadow(0 4px 8px ${currentColor}55)` }}
+                          style={{ color: "#ef4444", filter: "drop-shadow(0 4px 8px #ef444455)" }}
                         />
                       </span>
                     </button>
@@ -569,132 +537,77 @@ const DiagramNodePage: React.FC = () => {
                 })}
 
                 {/* Hover card */}
-                {hoverCard && (() => {
-                  const matchedTarget = targetMap.get(String(hoverCard.node.task_id || "").trim());
-                  const targetName = String(matchedTarget?.name || "").trim();
-                  const targetIP = String(matchedTarget?.ip || "").trim();
-                  const detectedDate = formatDetectedDateTime(matchedTarget?.detected_date);
-                  const riskScore = formatRiskScore(matchedTarget?.risk_score);
-                  const level = String(matchedTarget?.level || "").trim() || "-";
-                  const total = Number(matchedTarget?.total ?? 0);
-                  const severity = formatSeverity(matchedTarget?.severity);
-                  const targetDisplay = (targetName || targetIP)
-                    ? [targetName || "-", targetIP || "-"].join(" · ")
-                    : hoverCard.node.task_id || "-";
-                  const riskTone = getRiskScoreTone(matchedTarget?.risk_score);
-                  const levelTone = getLevelTone(matchedTarget?.level);
-
-                  return (
-                    <div
-                      data-hover-card="true"
-                      className="pointer-events-auto absolute z-999 w-68"
-                      style={{ left: hoverCard.left, top: hoverCard.top }}
-                      onMouseEnter={clearHoverLeaveTimer}
-                      onMouseLeave={scheduleHideHoverCard}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="relative overflow-visible">
-                        <div
-                          className="overflow-hidden rounded-2xl bg-white dark:bg-[#0d0b1a]"
-                          style={{ border: `1px solid ${currentColor}20`, boxShadow: `0 20px 48px -8px ${currentColor}18, 0 8px 24px rgba(0,0,0,.10)` }}
-                        >
-                          {/* Header */}
-                          <div className="flex items-center gap-2.5 border-b px-3.5 py-3" style={{ borderColor: `${currentColor}15` }}>
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: accentGrad }}>
-                              <FiMapPin className="text-[12px]" />
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>NODE DETAIL</p>
-                              <p className="truncate text-[12.5px] font-bold text-slate-800 dark:text-white/90">
-                                {hoverCard.node.label || "Unnamed Node"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Body */}
-                          <div className="space-y-2.5 px-3.5 py-3">
-                            {hoverCard.node.description?.trim() && (
-                              <div className="flex items-start gap-2">
-                                <FiAlignLeft className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
-                                <p className="text-[10.5px] leading-5 text-slate-500 dark:text-white/45">{hoverCard.node.description}</p>
-                              </div>
-                            )}
-                            <div className="border-t" style={{ borderColor: `${currentColor}12` }} />
-                            <div className="flex items-start gap-2">
-                              <FiCpu className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
-                              <div className="min-w-0">
-                                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: currentColor }}>Target</p>
-                                <p className="break-all text-[11px] font-medium text-slate-700 dark:text-white/70">{targetDisplay}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <FiCalendar className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
-                              <div className="min-w-0">
-                                <p className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: currentColor }}>Detected</p>
-                                <p className="text-[11px] font-medium text-slate-700 dark:text-white/70">{detectedDate}</p>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-1.5">
-                              <div className={`rounded-xl border px-2.5 py-2 ${riskTone.box}`}>
-                                <p className={`mb-1 flex items-center gap-1 text-[9px] font-semibold ${riskTone.label}`}>
-                                  <span className={`h-1.5 w-1.5 rounded-full ${riskTone.dot}`} />
-                                  <FiBarChart2 className="text-[9px]" /> Risk
-                                </p>
-                                <p className={`text-[13px] font-bold ${riskTone.value}`}>{riskScore}</p>
-                              </div>
-                              <div className={`rounded-xl border px-2.5 py-2 ${levelTone.box}`}>
-                                <p className={`mb-1 flex items-center gap-1 text-[9px] font-semibold ${levelTone.label}`}>
-                                  <span className={`h-1.5 w-1.5 rounded-full ${levelTone.dot}`} />
-                                  <FiAlertTriangle className="text-[9px]" /> Level
-                                </p>
-                                <p className={`text-[13px] font-bold ${levelTone.value}`}>{level}</p>
-                              </div>
-                              <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-2 dark:border-white/8 dark:bg-white/4">
-                                <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-slate-500 dark:text-white/40">
-                                  <FiHash className="text-[9px]" /> Total
-                                </p>
-                                <p className="text-[13px] font-bold text-slate-700 dark:text-white/75">{total}</p>
-                              </div>
-                              <div className="rounded-xl border border-slate-200/80 bg-slate-50 px-2.5 py-2 dark:border-white/8 dark:bg-white/4">
-                                <p className="mb-1 flex items-center gap-1 text-[9px] font-semibold text-slate-500 dark:text-white/40">
-                                  <FiActivity className="text-[9px]" /> Severity
-                                </p>
-                                <p className="text-[13px] font-bold text-slate-700 dark:text-white/75">{severity}</p>
-                              </div>
-                            </div>
-                            {!isUserRole && (
-                              <button
-                                type="button"
-                                onClick={(e) => void handleOpenEdit(hoverCard.node.id, { clientX: e.clientX, clientY: e.clientY })}
-                                className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[11.5px] font-semibold text-white transition hover:opacity-90"
-                                style={{ background: accentGrad }}
-                              >
-                                <FiEdit2 className="text-[11px]" />
-                                Edit Node
-                              </button>
-                            )}
+                {hoverCard && (
+                  <div
+                    data-hover-card="true"
+                    className="pointer-events-auto absolute z-999 w-60"
+                    style={{ left: hoverCard.left, top: hoverCard.top }}
+                    onMouseEnter={clearHoverLeaveTimer}
+                    onMouseLeave={scheduleHideHoverCard}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative overflow-visible">
+                      <div
+                        className="overflow-hidden rounded-2xl bg-white dark:bg-[#0d0b1a]"
+                        style={{ border: `1px solid ${currentColor}20`, boxShadow: `0 20px 48px -8px ${currentColor}18, 0 8px 24px rgba(0,0,0,.10)` }}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center gap-2.5 border-b px-3.5 py-3" style={{ borderColor: `${currentColor}15` }}>
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: "#ef4444" }}>
+                            <FiMapPin className="text-[12px]" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>NODE DETAIL</p>
+                            <p className="truncate text-[12.5px] font-bold text-slate-800 dark:text-white/90">
+                              {hoverCard.node.label || "Unnamed Node"}
+                            </p>
                           </div>
                         </div>
 
-                        {/* Arrow */}
-                        <div
-                          className="absolute h-3 w-3 bg-white dark:bg-[#0d0b1a]"
-                          style={{
-                            left: hoverCard.arrowLeft,
-                            top: hoverCard.placeBelow ? -6 : undefined,
-                            bottom: hoverCard.placeBelow ? undefined : -6,
-                            border: `1px solid ${currentColor}20`,
-                            borderTop: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
-                            borderLeft: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
-                            borderRight: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
-                            borderBottom: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
-                            transform: `translateX(-50%) rotate(${hoverCard.placeBelow ? "225" : "45"}deg)`,
-                          }}
-                        />
+                        {/* Body */}
+                        <div className="space-y-2 px-3.5 py-3">
+                          {hoverCard.node.description?.trim() ? (
+                            <div className="flex items-start gap-2">
+                              <FiAlignLeft className="mt-0.5 shrink-0 text-[11px]" style={{ color: currentColor }} />
+                              <p className="text-[10.5px] leading-5 text-slate-500 dark:text-white/45">
+                                {hoverCard.node.description}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-[10.5px] text-slate-300 dark:text-white/20 italic">No description</p>
+                          )}
+                          {!isUserRole && (
+                            <button
+                              type="button"
+                              onClick={(e) => void handleOpenEdit(hoverCard.node.id, { clientX: e.clientX, clientY: e.clientY })}
+                              className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-[11.5px] font-semibold text-white transition hover:opacity-90"
+                              style={{ background: accentGrad }}
+                            >
+                              <FiEdit2 className="text-[11px]" />
+                              Edit Node
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Arrow */}
+                      <div
+                        className="absolute h-3 w-3 bg-white dark:bg-[#0d0b1a]"
+                        style={{
+                          left: hoverCard.arrowLeft,
+                          top: hoverCard.placeBelow ? -6 : undefined,
+                          bottom: hoverCard.placeBelow ? undefined : -6,
+                          border: `1px solid ${currentColor}20`,
+                          borderTop: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
+                          borderLeft: hoverCard.placeBelow ? `1px solid ${currentColor}20` : "none",
+                          borderRight: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
+                          borderBottom: hoverCard.placeBelow ? "none" : `1px solid ${currentColor}20`,
+                          transform: `translateX(-50%) rotate(${hoverCard.placeBelow ? "225" : "45"}deg)`,
+                        }}
+                      />
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -710,9 +623,6 @@ const DiagramNodePage: React.FC = () => {
           diagramName={diagram?.name ?? ""}
           initialData={selectedNode}
           draftPosition={draftPosition}
-          allDiagramNodes={allNodes}
-          currentNodeId={selectedNode?.id ?? null}
-          anchorPoint={modalAnchorPoint}
           onClose={() => {
             if (modalLoading) return;
             setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);

@@ -17,8 +17,6 @@ import (
 
 type CreateLocationInput struct {
 	Location   string  `json:"location" binding:"required"`
-	Building   string  `json:"building" binding:"required"`
-	Floor      uint    `json:"floor" binding:"required"`
 	Latitude   float64 `json:"latitude" binding:"required"`
 	Longtitude float64 `json:"longtitude" binding:"required"`
 	TaskID     string  `json:"task_id" binding:"required"`
@@ -26,8 +24,6 @@ type CreateLocationInput struct {
 
 type UpdateLocationInput struct {
 	Location   *string  `json:"location"`
-	Building   *string  `json:"building"`
-	Floor      *uint    `json:"floor"`
 	Latitude   *float64 `json:"latitude"`
 	Longtitude *float64 `json:"longtitude"`
 	TaskID     *string  `json:"task_id"`
@@ -36,8 +32,6 @@ type UpdateLocationInput struct {
 type LocationResponse struct {
 	ID         uint        `json:"id"`
 	Location   string      `json:"location"`
-	Building   string      `json:"building"`
-	Floor      uint        `json:"floor"`
 	Latitude   float64     `json:"latitude"`
 	Longtitude float64     `json:"longtitude"`
 	TaskID     string      `json:"task_id"`
@@ -263,8 +257,6 @@ func mapLocationResponse(loc entity.AppLocation) LocationResponse {
 	return LocationResponse{
 		ID:         loc.ID,
 		Location:   loc.Location,
-		Building:   loc.Building,
-		Floor:      loc.Floor,
 		Latitude:   loc.Latitude,
 		Longtitude: loc.Longtitude,
 		TaskID:     loc.TaskID,
@@ -334,8 +326,6 @@ func CreateLocation(c *gin.Context) {
 
 	location := entity.AppLocation{
 		Location:   cleanString(input.Location),
-		Building:   cleanString(input.Building),
-		Floor:      input.Floor,
 		Latitude:   input.Latitude,
 		Longtitude: input.Longtitude,
 		TaskID:     taskID,
@@ -542,8 +532,6 @@ func UpdateLocationByID(c *gin.Context) {
 	}
 
 	if input.Location == nil &&
-		input.Building == nil &&
-		input.Floor == nil &&
 		input.Latitude == nil &&
 		input.Longtitude == nil &&
 		input.TaskID == nil {
@@ -558,14 +546,6 @@ func UpdateLocationByID(c *gin.Context) {
 
 	if input.Location != nil {
 		updatedLocation.Location = cleanOptionalString(input.Location)
-	}
-
-	if input.Building != nil {
-		updatedLocation.Building = cleanOptionalString(input.Building)
-	}
-
-	if input.Floor != nil {
-		updatedLocation.Floor = *input.Floor
 	}
 
 	if input.Latitude != nil {
@@ -618,14 +598,6 @@ func UpdateLocationByID(c *gin.Context) {
 
 	if input.Location != nil {
 		updates["location"] = updatedLocation.Location
-	}
-
-	if input.Building != nil {
-		updates["building"] = updatedLocation.Building
-	}
-
-	if input.Floor != nil {
-		updates["floor"] = updatedLocation.Floor
 	}
 
 	if input.Latitude != nil {

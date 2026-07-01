@@ -17,7 +17,7 @@ import (
 
 type CreateAppDiagramNodeInput struct {
 	DiagramID   uint    `json:"diagram_id" binding:"required"`
-	TaskID      string  `json:"task_id" binding:"required"`
+	TaskID      string  `json:"task_id"`
 	Label       string  `json:"label" binding:"required"`
 	Description string  `json:"description"`
 	Icon        string  `json:"icon"`
@@ -274,7 +274,7 @@ func filterAppDiagramNodesByManageLimit(nodes []entity.AppDiagramNode, allowedTa
 	for _, node := range nodes {
 		taskID := normalizeDiagramTaskIDForManageLimit(node.TaskID)
 
-		if allowedTaskIDs[taskID] {
+		if taskID == "" || allowedTaskIDs[taskID] {
 			filteredNodes = append(filteredNodes, node)
 		}
 	}
@@ -353,27 +353,22 @@ func CreateAppDiagramNode(c *gin.Context) {
 	}
 
 	taskID := normalizeDiagramTaskIDForManageLimit(input.TaskID)
-	if taskID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "task_id is required",
-		})
-		return
-	}
+	if taskID != "" {
+		isAllowed, err := IsDiagramTaskIDInManageLimit(db, taskID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   err.Error(),
+				"message": "failed to check manage target limit task ids",
+			})
+			return
+		}
 
-	isAllowed, err := IsDiagramTaskIDInManageLimit(db, taskID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   err.Error(),
-			"message": "failed to check manage target limit task ids",
-		})
-		return
-	}
-
-	if !isAllowed {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "task_id is outside manage target limit",
-		})
-		return
+		if !isAllowed {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "task_id is outside manage target limit",
+			})
+			return
+		}
 	}
 
 	var diagram entity.AppDiagram
@@ -409,7 +404,7 @@ func CreateAppDiagramNode(c *gin.Context) {
 		node.ZIndex = 1
 	}
 
-	ok, err = govalidator.ValidateStruct(node)
+	ok, err := govalidator.ValidateStruct(node)
 	if !ok || err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
@@ -515,20 +510,22 @@ func ListAppDiagramNodeByID(c *gin.Context) {
 		return
 	}
 
-	isAllowed, err := IsDiagramTaskIDInManageLimit(db, node.TaskID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   err.Error(),
-			"message": "failed to check manage target limit task ids",
-		})
-		return
-	}
+	if node.TaskID != "" {
+		isAllowed, err := IsDiagramTaskIDInManageLimit(db, node.TaskID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   err.Error(),
+				"message": "failed to check manage target limit task ids",
+			})
+			return
+		}
 
-	if !isAllowed {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": "app diagram node not found",
-		})
-		return
+		if !isAllowed {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "app diagram node not found",
+			})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -595,20 +592,22 @@ func UpdateAppDiagramNodeByID(c *gin.Context) {
 		return
 	}
 
-	isCurrentTaskAllowed, err := IsDiagramTaskIDInManageLimit(db, node.TaskID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   err.Error(),
-			"message": "failed to check manage target limit task ids",
-		})
-		return
-	}
+	if node.TaskID != "" {
+		isCurrentTaskAllowed, err := IsDiagramTaskIDInManageLimit(db, node.TaskID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   err.Error(),
+				"message": "failed to check manage target limit task ids",
+			})
+			return
+		}
 
-	if !isCurrentTaskAllowed {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "current node task_id is outside manage target limit",
-		})
-		return
+		if !isCurrentTaskAllowed {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "current node task_id is outside manage target limit",
+			})
+			return
+		}
 	}
 
 	if input.DiagramID == nil &&
@@ -651,29 +650,23 @@ func UpdateAppDiagramNodeByID(c *gin.Context) {
 
 	if input.TaskID != nil {
 		taskID := normalizeDiagramTaskIDForManageLimit(*input.TaskID)
-		if taskID == "" {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "task_id is required",
-			})
-			return
-		}
+		if taskID != "" {
+			isAllowed, err := IsDiagramTaskIDInManageLimit(db, taskID)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error":   err.Error(),
+					"message": "failed to check manage target limit task ids",
+				})
+				return
+			}
 
-		isAllowed, err := IsDiagramTaskIDInManageLimit(db, taskID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   err.Error(),
-				"message": "failed to check manage target limit task ids",
-			})
-			return
+			if !isAllowed {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "task_id is outside manage target limit",
+				})
+				return
+			}
 		}
-
-		if !isAllowed {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "task_id is outside manage target limit",
-			})
-			return
-		}
-
 		updatedNode.TaskID = taskID
 	}
 

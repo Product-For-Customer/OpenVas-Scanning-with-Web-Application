@@ -234,6 +234,7 @@ func main() {
 		// ===== Compliance Framework =====
 		authorized.GET("/compliance/report", compliance.GetComplianceReport)
 		authorized.GET("/compliance/violations", compliance.GetComplianceViolations)
+		authorized.GET("/compliance/control-vulns", compliance.GetControlVulnerabilities)
 
 		// ===== Send PDF to Email =====
 		authorized.GET("/send-pdf-to-email", report.SendPDFToEmail)
