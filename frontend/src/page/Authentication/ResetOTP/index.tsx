@@ -6,7 +6,6 @@ import { SendOTP, VerifyOTPAddUpdatePassword } from "../../../services/auth";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
-import { preloadLoginSuccessAnimationAssets } from "../animation";
 
 type ResetOTPState = { email: string; newPassword: string };
 
@@ -41,12 +40,6 @@ const ResetOTPPage: React.FC = () => {
     if (!state?.email || !state?.newPassword) navigate("/forgot-password", { replace: true });
     return () => { isMounted.current = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Warm the success-animation image cache ahead of time so /logo-animation
-  // starts rendering instantly once we navigate there.
-  useEffect(() => {
-    void preloadLoginSuccessAnimationAssets();
   }, []);
 
   useEffect(() => {
@@ -101,12 +94,9 @@ const ResetOTPPage: React.FC = () => {
       if (res.error)  { setError(res.error);              return; }
 
       message.success(res.message || t("auth.resetSuccess"));
-      // Navigate to the dedicated /logo-animation route — it plays the
-      // success animation, then switches to /login once it finishes.
-      navigate("/logo-animation", {
-        replace: true,
-        state: { redirectTo: "/login" },
-      });
+      // Go straight back to /login — the success animation is reserved for
+      // an actual authenticated session, not this intermediate step.
+      navigate("/login", { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || t("auth.otpVerifyError"));
     } finally {
