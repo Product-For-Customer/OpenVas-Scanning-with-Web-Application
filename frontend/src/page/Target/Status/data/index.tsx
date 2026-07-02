@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { ListTaskStatus, type TaskStatusDTO } from "../../../../services";
 import { useLanguage } from "../../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../../locales";
 import { useStateContext } from "../../../../contexts/ProviderContext";
 
 type StatusKey = "Done" | "Running" | "New" | "Stopped";
@@ -30,25 +31,6 @@ type LocationState = {
 };
 
 const ROWS_PER_PAGE = 5;
-
-const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  {
-    value: "risk_desc",
-    label: "Highest Risk",
-  },
-  {
-    value: "risk_asc",
-    label: "Lowest Risk",
-  },
-  {
-    value: "latest_report",
-    label: "Latest Report",
-  },
-  {
-    value: "reports_desc",
-    label: "Most Reports",
-  },
-];
 
 const clamp = (value: number, min: number, max: number) => {
   return Math.max(min, Math.min(max, value));
@@ -246,7 +228,10 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
   return "-";
 };
 
-const getTrend = (item: TaskStatusDTO) => {
+const getTrend = (
+  item: TaskStatusDTO,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string
+) => {
   const direction = (item.trend_direction || "none").toLowerCase();
   const delta = Number(item.trend_delta || 0);
 
@@ -254,8 +239,8 @@ const getTrend = (item: TaskStatusDTO) => {
     return {
       icon: <FiArrowUpRight />,
       value: `+${Math.abs(delta).toFixed(2)}`,
-      label: "Increased",
-      title: "Severity ล่าสุดสูงกว่า Report ก่อนหน้า",
+      label: t("targetPage.trendIncreased"),
+      title: t("targetPage.trendIncreasedTitle"),
       className:
         "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/20 dark:bg-rose-500/10 dark:text-rose-300",
     };
@@ -265,8 +250,8 @@ const getTrend = (item: TaskStatusDTO) => {
     return {
       icon: <FiArrowDownRight />,
       value: `-${Math.abs(delta).toFixed(2)}`,
-      label: "Decreased",
-      title: "Severity ล่าสุดต่ำกว่า Report ก่อนหน้า",
+      label: t("targetPage.trendDecreased"),
+      title: t("targetPage.trendDecreasedTitle"),
       className:
         "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300",
     };
@@ -276,8 +261,8 @@ const getTrend = (item: TaskStatusDTO) => {
     return {
       icon: <FiArrowRight />,
       value: "0.00",
-      label: "Same",
-      title: "Severity ล่าสุดเท่ากับ Report ก่อนหน้า",
+      label: t("targetPage.trendSame"),
+      title: t("targetPage.trendSameTitle"),
       className:
         "border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/8 dark:text-white/60",
     };
@@ -286,8 +271,8 @@ const getTrend = (item: TaskStatusDTO) => {
   return {
     icon: <FiClock />,
     value: "-",
-    label: "First Report",
-    title: "ยังไม่มี Report ก่อนหน้าให้เปรียบเทียบ",
+    label: t("targetPage.trendFirstReport"),
+    title: t("targetPage.trendFirstReportTitle"),
     className:
       "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-400/20 dark:bg-blue-500/10 dark:text-blue-300",
   };
@@ -369,6 +354,26 @@ const TargetStatusData: React.FC = () => {
   const sortRef = useRef<HTMLDivElement | null>(null);
 
   const statusStyle = getStatusStyle(selectedStatus);
+
+  const statusLabel: Record<StatusKey, string> = useMemo(
+    () => ({
+      Done: t("target.done"),
+      Running: t("target.running"),
+      New: t("target.new"),
+      Stopped: t("target.stopped"),
+    }),
+    [t]
+  );
+
+  const sortOptions: { value: SortMode; label: string }[] = useMemo(
+    () => [
+      { value: "risk_desc", label: t("targetPage.highestRisk") },
+      { value: "risk_asc", label: t("targetPage.lowestRisk") },
+      { value: "latest_report", label: t("targetPage.sortLatestReport") },
+      { value: "reports_desc", label: t("targetPage.sortMostReports") },
+    ],
+    [t]
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -509,10 +514,10 @@ const TargetStatusData: React.FC = () => {
 
   const currentSort = useMemo(() => {
     return (
-      SORT_OPTIONS.find((option) => option.value === sortMode) ??
-      SORT_OPTIONS[0]
+      sortOptions.find((option) => option.value === sortMode) ??
+      sortOptions[0]
     );
-  }, [sortMode]);
+  }, [sortMode, sortOptions]);
 
   return (
     <main className="w-full space-y-5 py-3 sm:py-4">
@@ -529,15 +534,20 @@ const TargetStatusData: React.FC = () => {
               <FiArrowLeft />
             </button>
             <h1 className="text-[18px] font-bold text-slate-800 dark:text-white sm:text-[20px]">
-              Target Status Data
+              {t("targetPage.targetStatusDataTitle")}
             </h1>
             <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold ${statusStyle.chip}`}>
               {getStatusIcon(selectedStatus)}
-              {selectedStatus}
+              {statusLabel[selectedStatus]}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-slate-400 dark:text-white/30">
-            {loading ? t("common.loading") : `${rows.length} target${rows.length !== 1 ? "s" : ""} with status ${selectedStatus}`}
+            {loading
+              ? t("common.loading")
+              : t("targetPage.targetsWithStatus", {
+                  n: rows.length,
+                  status: statusLabel[selectedStatus],
+                })}
           </p>
         </div>
       </div>
@@ -546,9 +556,9 @@ const TargetStatusData: React.FC = () => {
       {!loading && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Targets",      value: summary.total.toLocaleString() },
-            { label: "Reports",      value: summary.reports.toLocaleString() },
-            { label: "Avg Severity", value: formatSeverity(summary.avgSeverity) },
+            { label: t("targetPage.statusTargetsSuffix"), value: summary.total.toLocaleString() },
+            { label: t("targetPage.reports"),              value: summary.reports.toLocaleString() },
+            { label: t("targetPage.avgSeverity"),          value: formatSeverity(summary.avgSeverity) },
           ].map(s => (
             <div key={s.label} className="rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 dark:border-white/8 dark:bg-white/4">
               <p className="text-[11px] font-medium text-slate-400 dark:text-white/35">{s.label}</p>
@@ -562,10 +572,17 @@ const TargetStatusData: React.FC = () => {
         <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 dark:border-white/8 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
-              {selectedStatus} Targets
+              {statusLabel[selectedStatus]} {t("targetPage.statusTargetsSuffix")}
             </h2>
             <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">
-              {loading ? "Loading…" : `${sortedRows.length.toLocaleString()} of ${rows.length.toLocaleString()} · Page ${currentPage}/${totalPages}`}
+              {loading
+                ? t("common.loading")
+                : t("targetPage.showingOfPageX", {
+                    shown: sortedRows.length.toLocaleString(),
+                    total: rows.length.toLocaleString(),
+                    page: currentPage,
+                    totalPages,
+                  })}
             </p>
           </div>
 
@@ -575,7 +592,7 @@ const TargetStatusData: React.FC = () => {
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search target or host…"
+                placeholder={t("targetPage.searchTargetOrHost")}
                 className="h-8 w-full rounded-lg border border-slate-200/70 bg-white pl-8.5 pr-3 text-[11px] text-slate-700 outline-none transition focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:placeholder:text-white/30"
               />
             </div>
@@ -592,7 +609,7 @@ const TargetStatusData: React.FC = () => {
 
               {openSort && (
                 <div className="absolute right-0 z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
-                  {SORT_OPTIONS.map(option => {
+                  {sortOptions.map(option => {
                     const active = option.value === sortMode;
                     return (
                       <button
@@ -621,27 +638,27 @@ const TargetStatusData: React.FC = () => {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/70 text-left dark:border-white/8 dark:bg-white/3">
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Name
+                  {t("common.name")}
                 </th>
 
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Status
+                  {t("common.status")}
                 </th>
 
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Reports
+                  {t("targetPage.reports")}
                 </th>
 
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Last Report
+                  {t("targetPage.lastReport")}
                 </th>
 
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Severity
+                  {t("targetPage.severity")}
                 </th>
 
                 <th className="px-4 py-2.5 text-[10.5px] font-semibold tracking-wide text-slate-500 dark:text-white/45">
-                  Trend
+                  {t("targetPage.trend")}
                 </th>
               </tr>
             </thead>
@@ -687,11 +704,11 @@ const TargetStatusData: React.FC = () => {
                     </div>
 
                     <p className="mt-3 text-[13px] font-semibold text-slate-800 dark:text-white">
-                      No target data found
+                      {t("targetPage.noTargetDataFound")}
                     </p>
 
                     <p className="mt-1 text-[11px] text-slate-500 dark:text-white/45">
-                      Try changing your search keyword.
+                      {t("targetPage.tryChangingSearchKeyword")}
                     </p>
                   </td>
                 </tr>
@@ -705,7 +722,7 @@ const TargetStatusData: React.FC = () => {
                     10
                   );
                   const severity = getSeverityStyle(severityScore);
-                  const trend = getTrend(item);
+                  const trend = getTrend(item, t);
                   const severityWidth = Math.min(
                     Math.max(
                       (severityScore / 10) * 100,
@@ -741,7 +758,7 @@ const TargetStatusData: React.FC = () => {
                                       type="button"
                                       onClick={() => navigate(`/admin/host/${encodeURIComponent(part)}`)}
                                       className="font-mono underline decoration-dotted underline-offset-2 hover:text-blue-500 dark:hover:text-blue-400"
-                                      title={`ดูข้อมูล host ${part}`}
+                                      title={t("targetPage.viewHostData", { host: part })}
                                     >
                                       {part}
                                     </button>
@@ -763,7 +780,7 @@ const TargetStatusData: React.FC = () => {
                           ].join(" ")}
                         >
                           {getStatusIcon(normalized)}
-                          {normalized}
+                          {statusLabel[normalized]}
                         </span>
                       </td>
 
@@ -844,14 +861,14 @@ const TargetStatusData: React.FC = () => {
           <div className="border-t border-slate-100 px-4 py-3 dark:border-white/10">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-[11px] text-slate-500 dark:text-white/45">
-                Showing{" "}
-                {Math.min(
-                  (currentPage - 1) * ROWS_PER_PAGE + 1,
-                  sortedRows.length
-                )}
-                -
-                {Math.min(currentPage * ROWS_PER_PAGE, sortedRows.length)} of{" "}
-                {sortedRows.length.toLocaleString()}
+                {t("targetPage.showingRange", {
+                  from: Math.min(
+                    (currentPage - 1) * ROWS_PER_PAGE + 1,
+                    sortedRows.length
+                  ),
+                  to: Math.min(currentPage * ROWS_PER_PAGE, sortedRows.length),
+                  total: sortedRows.length.toLocaleString(),
+                })}
               </p>
 
               <div className="flex flex-wrap items-center justify-start gap-1.5 sm:justify-end">
@@ -868,7 +885,7 @@ const TargetStatusData: React.FC = () => {
                       : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8",
                   ].join(" ")}
                 >
-                  Prev
+                  {t("common.prev")}
                 </button>
 
                 {pageNumbers.map((page) => {
@@ -905,7 +922,7 @@ const TargetStatusData: React.FC = () => {
                       : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/6 dark:text-white/80 dark:hover:bg-white/10",
                   ].join(" ")}
                 >
-                  Next
+                  {t("common.next")}
                 </button>
               </div>
             </div>

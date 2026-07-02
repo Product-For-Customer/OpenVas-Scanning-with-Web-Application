@@ -16,6 +16,7 @@ import {
 } from "../../services/feedschedule";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import type { TranslationKey } from "../../locales";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmtDateTime = (iso: string | undefined | null): string => {
@@ -27,11 +28,11 @@ const fmtDateTime = (iso: string | undefined | null): string => {
   });
 };
 
-const FEED_CONTENT: Record<string, string> = {
-  NVT:       "NVTs (Network Vulnerability Tests)",
-  SCAP:      "CVEs · CPEs",
-  CERT:      "CERT-Bund · DFN-CERT Advisories",
-  GVMD_DATA: "Compliance Policies · Port Lists · Scan Configs",
+const FEED_CONTENT_KEYS: Record<string, TranslationKey> = {
+  NVT:       "feedschedule.contentNvt",
+  SCAP:      "feedschedule.contentScap",
+  CERT:      "feedschedule.contentCert",
+  GVMD_DATA: "feedschedule.contentGvmdData",
 };
 const FEED_ICON: Record<string, React.ReactNode> = {
   NVT: <FiZap />, SCAP: <FiDatabase />, CERT: <FiAlertTriangle />, GVMD_DATA: <FiCheckCircle />,
@@ -40,19 +41,23 @@ const FEED_COLOR: Record<string, string> = {
   NVT: "#ef4444", SCAP: "#3b82f6", CERT: "#f59e0b", GVMD_DATA: "#10b981",
 };
 
-const MONTHS = ["January","February","March","April","May","June",
-  "July","August","September","October","November","December"];
+const MONTH_KEYS: TranslationKey[] = [
+  "line.monthJanuary", "line.monthFebruary", "line.monthMarch", "line.monthApril",
+  "line.monthMay", "line.monthJune", "line.monthJuly", "line.monthAugust",
+  "line.monthSeptember", "line.monthOctober", "line.monthNovember", "line.monthDecember",
+];
 
 // ── Status badge ──────────────────────────────────────────────────────────
 const StatusBadge: React.FC<{ status: string; syncing: boolean }> = ({ status, syncing }) => {
+  const { t } = useLanguage();
   if (syncing) return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-      <FiRefreshCw className="animate-spin text-[10px]" /> Syncing
+      <FiRefreshCw className="animate-spin text-[10px]" /> {t("feed.statusSyncing")}
     </span>
   );
   if (status === "Current") return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-      <FiCheckCircle className="text-[10px]" /> Current
+      <FiCheckCircle className="text-[10px]" /> {t("feed.statusCurrent")}
     </span>
   );
   return (
@@ -63,10 +68,10 @@ const StatusBadge: React.FC<{ status: string; syncing: boolean }> = ({ status, s
 };
 
 // ── Schedule Edit Row (inline editor) ─────────────────────────────────────
-const FEED_META: Record<FeedType, { label: string; desc: string; color: string; icon: React.ReactNode }> = {
-  openvas: { label: "OpenVAS Feeds",     desc: "NVT · SCAP · CERT · GVMD_DATA",    color: "#6366f1", icon: <FiDatabase /> },
-  kev:     { label: "CISA KEV Catalog",  desc: "Known Exploited Vulnerabilities",   color: "#ef4444", icon: <FiZap /> },
-  epss:    { label: "EPSS Scores",       desc: "Exploit Prediction Scoring System", color: "#f97316", icon: <FiActivity /> },
+const FEED_META: Record<FeedType, { labelKey: TranslationKey; descKey: TranslationKey; color: string; icon: React.ReactNode }> = {
+  openvas: { labelKey: "feedschedule.openvas", descKey: "feedschedule.openvasDesc", color: "#6366f1", icon: <FiDatabase /> },
+  kev:     { labelKey: "feedschedule.kev",     descKey: "feedschedule.kevDesc",     color: "#ef4444", icon: <FiZap /> },
+  epss:    { labelKey: "feedschedule.epss",    descKey: "feedschedule.epssDesc",    color: "#f97316", icon: <FiActivity /> },
 };
 
 const inputCls = "h-9 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80";
@@ -106,7 +111,7 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
       message.success(t("feedschedule.saved"));
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to save schedule");
+      message.error(msg || t("feedschedule.saveFailed"));
     } finally { setSaving(false); }
   };
 
@@ -114,10 +119,10 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
     setTriggering(true);
     try {
       await TriggerFeedNow(schedule.feed_type);
-      message.success(`${meta.label} — ${t("feedschedule.triggered")}`);
+      message.success(`${t(meta.labelKey)} — ${t("feedschedule.triggered")}`);
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Trigger failed");
+      message.error(msg || t("feedschedule.triggerFailed"));
     } finally { setTriggering(false); }
   };
 
@@ -137,8 +142,8 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
             {meta.icon}
           </div>
           <div>
-            <p className="text-[13.5px] font-semibold text-slate-800 dark:text-white/88">{meta.label}</p>
-            <p className="text-[11px] text-slate-400 dark:text-white/35">{meta.desc}</p>
+            <p className="text-[13.5px] font-semibold text-slate-800 dark:text-white/88">{t(meta.labelKey)}</p>
+            <p className="text-[11px] text-slate-400 dark:text-white/35">{t(meta.descKey)}</p>
           </div>
         </div>
 
@@ -181,13 +186,13 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
       {!editing && (
         <div className="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 dark:divide-white/6 dark:border-white/8">
           <div className="px-4 py-3">
-            <p className={`mb-0.5 ${labelCls}`}>Frequency</p>
+            <p className={`mb-0.5 ${labelCls}`}>{t("feedschedule.frequencyLabel")}</p>
             <p className="text-[12.5px] font-medium text-slate-700 dark:text-white/70 capitalize">
               {schedule.frequency === "daily"
-                ? `${t("feedschedule.daily")} at ${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}`
+                ? t("feedschedule.previewDaily", { time: `${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}` })
                 : schedule.frequency === "monthly"
-                ? `${t("feedschedule.monthly")} · Day ${schedule.day_of_month} at ${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}`
-                : `${t("feedschedule.yearly")} · ${MONTHS[schedule.month-1]} ${schedule.day} at ${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}`
+                ? t("feedschedule.previewMonthly", { day: schedule.day_of_month, time: `${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}` })
+                : t("feedschedule.previewYearly", { month: t(MONTH_KEYS[schedule.month-1]), day: schedule.day, time: `${String(schedule.hour).padStart(2,"0")}:${String(schedule.minute).padStart(2,"0")}` })
               }
             </p>
           </div>
@@ -210,8 +215,8 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
             {/* Enable / Disable */}
             <div className="flex items-center justify-between rounded-lg border border-slate-200/70 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/3">
               <div>
-                <p className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75">Auto-update</p>
-                <p className="text-[11px] text-slate-400 dark:text-white/35">Enable automatic scheduled updates</p>
+                <p className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75">{t("feedschedule.autoUpdate")}</p>
+                <p className="text-[11px] text-slate-400 dark:text-white/35">{t("feedschedule.autoUpdateDesc")}</p>
               </div>
               <button type="button" onClick={() => setEnabled(p => !p)}
                 className="relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
@@ -223,7 +228,7 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
 
             {/* Frequency */}
             <div>
-              <label className={`mb-1.5 block ${labelCls}`}>Frequency</label>
+              <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.frequencyLabel")}</label>
               <div className="flex gap-2">
                 {(["daily","monthly","yearly"] as FeedFrequency[]).map(f => (
                   <button key={f} type="button"
@@ -245,13 +250,13 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
             {/* Time */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={`mb-1.5 block ${labelCls}`}>Hour (0–23)</label>
+                <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.hourLabel")}</label>
                 <input type="number" min={0} max={23} value={hour}
                   onChange={e => setHour(Math.min(23, Math.max(0, parseInt(e.target.value)||0)))}
                   className={`${inputCls} w-full`} />
               </div>
               <div>
-                <label className={`mb-1.5 block ${labelCls}`}>Minute (0–59)</label>
+                <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.minuteLabel")}</label>
                 <input type="number" min={0} max={59} value={minute}
                   onChange={e => setMinute(Math.min(59, Math.max(0, parseInt(e.target.value)||0)))}
                   className={`${inputCls} w-full`} />
@@ -274,7 +279,7 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
                 <div>
                   <label className={`mb-1.5 block ${labelCls}`}>{t("feedschedule.month")}</label>
                   <CustomSelect
-                    options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))}
+                    options={MONTH_KEYS.map((key, i) => ({ value: String(i + 1), label: t(key) }))}
                     value={String(month)}
                     onChange={v => setMonth(parseInt(v))}
                     searchable={false}
@@ -292,13 +297,13 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
             {/* Preview */}
             <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
               <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                Next run preview:&nbsp;
+                {t("feedschedule.nextRunPreviewLabel")}&nbsp;
                 <strong className="text-slate-700 dark:text-white/65">
                   {freq === "daily"
-                    ? `Daily at ${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`
+                    ? t("feedschedule.previewDaily", { time: `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}` })
                     : freq === "monthly"
-                    ? `Monthly · Day ${dayOfMonth} at ${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`
-                    : `Yearly · ${MONTHS[month-1]} ${day} at ${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}`
+                    ? t("feedschedule.previewMonthly", { day: dayOfMonth, time: `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}` })
+                    : t("feedschedule.previewYearly", { month: t(MONTH_KEYS[month-1]), day, time: `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")}` })
                   }
                 </strong>
               </p>
@@ -310,11 +315,11 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving ? <FiRefreshCw className="animate-spin text-[12px]" /> : <FiSave className="text-[12px]" />}
-                {saving ? "Saving…" : t("feedschedule.save")}
+                {saving ? t("feedschedule.savingLabel") : t("feedschedule.save")}
               </button>
               <button type="button" onClick={cancelEdit}
                 className="rounded-xl border border-slate-200 px-4 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -337,11 +342,11 @@ const EpssFeedCard: React.FC = () => {
           </div>
           <div>
             <p className="text-[13.5px] font-semibold text-slate-800 dark:text-white/88">{t("feed.epssFeed")}</p>
-            <p className="text-[11px] text-slate-400 dark:text-white/35">Exploit Prediction Scoring System</p>
+            <p className="text-[11px] text-slate-400 dark:text-white/35">{t("feedschedule.epssDesc")}</p>
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-          <FiCheckCircle className="text-[10px]" /> Idle
+          <FiCheckCircle className="text-[10px]" /> {t("feed.idle")}
         </span>
       </div>
       <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-white/6">
@@ -431,7 +436,7 @@ const FeedStatusPage: React.FC = () => {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-                THREAT INTELLIGENCE · FEEDS
+                {t("feed.kicker")}
               </p>
               <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
                 {t("feed.title")}
@@ -452,7 +457,7 @@ const FeedStatusPage: React.FC = () => {
       {/* ── OpenVAS Feeds table ── */}
       <section>
         <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white/90">
-          OpenVAS / Greenbone Feeds
+          {t("feedschedule.sectionOpenvas")}
         </p>
         <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
           {loadingFeeds ? (
@@ -462,14 +467,20 @@ const FeedStatusPage: React.FC = () => {
           ) : feeds.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">
               <FiAlertTriangle className="text-[22px] text-slate-300 dark:text-white/20" />
-              <p className="text-[12.5px] font-medium text-slate-500 dark:text-white/40">Cannot reach gvmd — check GMP connection</p>
+              <p className="text-[12.5px] font-medium text-slate-500 dark:text-white/40">{t("feedschedule.gvmdUnreachable")}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-160">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-white/8">
-                    {["Type","Content","Origin","Version","Status"].map(h => (
+                    {([
+                      t("feedschedule.colType"),
+                      t("feedschedule.colContent"),
+                      t("feedschedule.colOrigin"),
+                      t("feedschedule.colVersion"),
+                      t("feedschedule.colStatus"),
+                    ]).map(h => (
                       <th key={h} className="px-5 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>
                     ))}
                   </tr>
@@ -478,7 +489,7 @@ const FeedStatusPage: React.FC = () => {
                   {feeds.map(feed => {
                     const color   = FEED_COLOR[feed.type]   ?? currentColor;
                     const icon    = FEED_ICON[feed.type]    ?? <FiDatabase />;
-                    const content = FEED_CONTENT[feed.type] ?? feed.type;
+                    const content = FEED_CONTENT_KEYS[feed.type] ? t(FEED_CONTENT_KEYS[feed.type]) : feed.type;
                     return (
                       <tr key={feed.type} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
                         <td className="px-5 py-4">
@@ -513,7 +524,7 @@ const FeedStatusPage: React.FC = () => {
       {/* ── KEV Status card ── */}
       <section>
         <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white/90">
-          Threat Intelligence Feeds
+          {t("feedschedule.threatIntelFeeds")}
         </p>
         <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
@@ -524,21 +535,21 @@ const FeedStatusPage: React.FC = () => {
               </span>
               <div>
                 <p className="text-[13px] font-semibold text-slate-800 dark:text-white/88">{t("feed.kevFeed")}</p>
-                <p className="text-[11px] text-slate-400 dark:text-white/35">CISA Known Exploited Vulnerabilities Catalog</p>
+                <p className="text-[11px] text-slate-400 dark:text-white/35">{t("feedschedule.kevCatalogFull")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5">
               {!loadingKev && (
                 kevStatus?.is_syncing
                   ? <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                      <FiRefreshCw className="animate-spin text-[10px]" /> Syncing
+                      <FiRefreshCw className="animate-spin text-[10px]" /> {t("feed.statusSyncing")}
                     </span>
                   : kevStatus?.last_error
                     ? <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                        <FiAlertTriangle className="text-[10px]" /> Error
+                        <FiAlertTriangle className="text-[10px]" /> {t("feed.error")}
                       </span>
                     : <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                        <FiCheckCircle className="text-[10px]" /> Idle
+                        <FiCheckCircle className="text-[10px]" /> {t("feed.idle")}
                       </span>
               )}
               <button type="button" onClick={() => void handleKEVSync()}
@@ -600,7 +611,7 @@ const FeedStatusPage: React.FC = () => {
           </div>
         ) : schedules.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200/70 bg-white py-12 text-center dark:border-white/8 dark:bg-white/3">
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No schedules — backend may be starting up</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("feedschedule.noSchedules")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -621,8 +632,7 @@ const FeedStatusPage: React.FC = () => {
       <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3.5 dark:border-white/8 dark:bg-white/3">
         <FiClock className="mt-0.5 shrink-0 text-[13px] text-slate-400 dark:text-white/30" />
         <p className="text-[11.5px] text-slate-500 dark:text-white/45">
-          Schedule changes take effect immediately. The backend scheduler checks every minute for due updates.
-          Use <em>Sync Now</em> to trigger an immediate manual update for any feed.
+          {t("feedschedule.footerNoteBefore")} <em>{t("feedschedule.triggerNow")}</em> {t("feedschedule.footerNoteAfter")}
         </p>
       </div>
 

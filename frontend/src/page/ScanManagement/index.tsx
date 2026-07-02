@@ -24,14 +24,18 @@ import {
 } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
+import type { TranslationKey } from "../../locales";
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const getMonths = (t: TFn): string[] => [
+  t("scan.monthJan"), t("scan.monthFeb"), t("scan.monthMar"), t("scan.monthApr"),
+  t("scan.monthMay"), t("scan.monthJun"), t("scan.monthJul"), t("scan.monthAug"),
+  t("scan.monthSep"), t("scan.monthOct"), t("scan.monthNov"), t("scan.monthDec"),
 ];
 
 // Comprehensive IANA timezone list (same set as OpenVAS)
@@ -143,11 +147,11 @@ function fmtNextRun(iso: string | undefined, tz: string): string {
   }
 }
 
-function freqBadge(s: AutoScanScheduleDTO): string {
-  if (s.frequency === "once" && s.schedule_at)     return `Once · ${s.schedule_at}`;
-  if (s.frequency === "monthly" && s.day_of_month) return `Monthly · Day ${s.day_of_month}`;
+function getFreqBadge(t: TFn, months: string[], s: AutoScanScheduleDTO): string {
+  if (s.frequency === "once" && s.schedule_at)     return t("scan.freqOnce", { date: s.schedule_at });
+  if (s.frequency === "monthly" && s.day_of_month) return t("scan.freqMonthly", { day: s.day_of_month });
   if (s.frequency === "yearly" && s.month && s.day)
-    return `Yearly · ${MONTHS[s.month - 1]} ${s.day}`;
+    return t("scan.freqYearly", { month: months[s.month - 1], day: s.day });
   return s.frequency;
 }
 
@@ -157,12 +161,12 @@ const FREQ_COLOR: Record<ScheduleFrequency, { bg: string; text: string }> = {
   yearly:  { bg: "#D1FAE5", text: "#065F46" },
 };
 
-function getSeverityInfo(score: number): { label: string; bg: string } {
-  if (score === 0) return { label: "Log",      bg: "#374151" };
-  if (score < 4)  return { label: "Low",      bg: "#22c55e" };
-  if (score < 7)  return { label: "Medium",   bg: "#eab308" };
-  if (score < 9)  return { label: "High",     bg: "#f97316" };
-  return           { label: "Critical",  bg: "#ef4444" };
+function getSeverityInfo(t: TFn, score: number): { label: string; bg: string } {
+  if (score === 0) return { label: t("severity.log"),      bg: "#374151" };
+  if (score < 4)  return { label: t("severity.low"),      bg: "#22c55e" };
+  if (score < 7)  return { label: t("severity.medium"),   bg: "#eab308" };
+  if (score < 9)  return { label: t("severity.high"),     bg: "#f97316" };
+  return           { label: t("severity.critical"),  bg: "#ef4444" };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -170,7 +174,8 @@ function getSeverityInfo(score: number): { label: string; bg: string } {
 // ─────────────────────────────────────────────────────────────
 
 const SeverityBadge: React.FC<{ score: number }> = ({ score }) => {
-  const { label, bg } = getSeverityInfo(score);
+  const { t } = useLanguage();
+  const { label, bg } = getSeverityInfo(t, score);
   return (
     <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[10.5px] font-bold text-white" style={{ background: bg }}>
       {score.toFixed(1)} ({label})
@@ -203,7 +208,9 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
   dropRef, open, setOpen, search, setSearch,
   selectedLabel, placeholder, items, selectedId, onSelect, disabled,
   dropH = "max-h-44",
-}) => (
+}) => {
+  const { t } = useLanguage();
+  return (
   <div className="relative" ref={dropRef}>
     <button type="button" onClick={() => setOpen(!open)} disabled={disabled}
       className={[
@@ -213,7 +220,7 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
         "disabled:cursor-not-allowed disabled:opacity-50",
       ].join(" ")}>
       <span className="flex-1 truncate text-[12px] text-slate-700 dark:text-white/75">
-        {disabled ? "Loading…" : (selectedLabel || placeholder)}
+        {disabled ? t("common.loading") : (selectedLabel || placeholder)}
       </span>
       <FiChevronDown className={`shrink-0 text-[12px] text-slate-400 transition-transform duration-200 dark:text-white/35 ${open ? "rotate-180" : ""}`} />
     </button>
@@ -222,13 +229,13 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
         <div className="border-b border-slate-100 p-2 dark:border-white/8">
           <div className="flex items-center gap-2 rounded-xl border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
             <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" autoFocus
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder={t("common.searchEllipsis")} autoFocus
               className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
           </div>
         </div>
         <div className={`${dropH} overflow-y-auto p-1.5`}>
           {items.length === 0
-            ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No items found</p>
+            ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">{t("scan.noItemsFound")}</p>
             : <div className="space-y-0.5">
                 {items.map(item => {
                   const checked = item.id === selectedId;
@@ -251,7 +258,8 @@ const SearchDropdown: React.FC<SearchDropdownProps> = ({
       </div>
     )}
   </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Shared: Yes/No Radio Group
@@ -261,7 +269,9 @@ const YesNoRadio: React.FC<{
   value: boolean;
   onChange: (v: boolean) => void;
   currentColor: string;
-}> = ({ value, onChange, currentColor }) => (
+}> = ({ value, onChange, currentColor }) => {
+  const { t } = useLanguage();
+  return (
   <div className="flex gap-4">
     {[true, false].map(opt => (
       <label key={String(opt)} className="flex cursor-pointer items-center gap-2">
@@ -276,12 +286,13 @@ const YesNoRadio: React.FC<{
           {value === opt && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
         </span>
         <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
-          {opt ? "Yes" : "No"}
+          {opt ? t("common.yes") : t("common.no")}
         </span>
       </label>
     ))}
   </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // ScanConfirmModal
@@ -301,6 +312,7 @@ type ScanConfirmModalProps = {
 const ScanConfirmModal: React.FC<ScanConfirmModalProps> = ({
   open, title, description, confirmLabel, onConfirm, onCancel,
 }) => {
+  const { t } = useLanguage();
   if (!open) return null;
   return createPortal(
     <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
@@ -313,7 +325,7 @@ const ScanConfirmModal: React.FC<ScanConfirmModalProps> = ({
               <FiTrash2 className="text-[13px]" />
             </span>
             <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-widest text-red-500">SCAN MANAGEMENT · DELETE</p>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest text-red-500">{t("scan.deleteKicker")}</p>
               <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{title}</h3>
             </div>
           </div>
@@ -328,7 +340,7 @@ const ScanConfirmModal: React.FC<ScanConfirmModalProps> = ({
         <div className="flex gap-2.5 border-t border-slate-100 px-5 py-3.5 dark:border-white/8">
           <button type="button" onClick={onCancel}
             className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="button" onClick={() => void onConfirm()}
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90"
@@ -485,12 +497,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
   const handleClose = () => { reset(); onClose(); };
 
   const handleCreate = async () => {
-    if (!name.trim()) { setFormError("Task name is required"); return; }
-    if (!targetId)    { setFormError("Please select a Scan Target"); return; }
-    if (!isCVEScanner && !configId) { setFormError("Please select a Scan Config"); return; }
-    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be 0–100"); return; }
-    if (!isCVEScanner && maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
-    if (!isCVEScanner && maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
+    if (!name.trim()) { setFormError(t("scan.taskNameRequired")); return; }
+    if (!targetId)    { setFormError(t("scan.selectScanTarget")); return; }
+    if (!isCVEScanner && !configId) { setFormError(t("scan.selectScanConfigRequired")); return; }
+    if (minQod < 0 || minQod > 100) { setFormError(t("scan.minQodRange")); return; }
+    if (!isCVEScanner && maxChecks < 1) { setFormError(t("scan.maxNvtsMin")); return; }
+    if (!isCVEScanner && maxHosts < 1)  { setFormError(t("scan.maxHostsMin")); return; }
 
     setLoading(true); setFormError("");
     try {
@@ -509,10 +521,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
         max_checks:       maxChecks,
         max_hosts:        maxHosts,
       });
-      message.success("Task created successfully");
+      message.success(t("scan.taskCreated"));
       reset(); onCreated(); onClose();
     } catch (err: unknown) {
-      setFormError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create task");
+      setFormError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedCreateTask"));
     } finally { setLoading(false); }
   };
 
@@ -539,8 +551,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
               <FiSettings className="text-[14px]" />
             </span>
             <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SCAN MANAGEMENT · NEW TASK</p>
-              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">New Task</h3>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("scan.newTaskKicker")}</p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scan.newTaskTitle")}</h3>
             </div>
           </div>
           <button type="button" onClick={handleClose}
@@ -554,51 +566,51 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
           <div className="space-y-4">
 
             {/* ── Basic Info ── */}
-            <SectionDivider label="Basic Info" />
+            <SectionDivider label={t("scan.basicInfo")} />
 
             <div>
-              <label className={labelCls}><FiType className="text-[10px]" />Name <span className="text-red-400">*</span></label>
+              <label className={labelCls}><FiType className="text-[10px]" />{t("common.name")} <span className="text-red-400">*</span></label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
-                placeholder="e.g. Internal Network Scan" className={inputCls} />
+                placeholder={t("scan.namePlaceholder")} className={inputCls} />
             </div>
 
             <div>
-              <label className={labelCls}><FiAlignLeft className="text-[10px]" />Comment (optional)</label>
+              <label className={labelCls}><FiAlignLeft className="text-[10px]" />{t("scan.commentOptional")}</label>
               <input type="text" value={comment} onChange={e => setComment(e.target.value)}
-                placeholder="e.g. 192.168.1.1 or description" className={inputCls} />
+                placeholder={t("scan.commentPlaceholder")} className={inputCls} />
             </div>
 
             {/* ── Scan Target ── */}
-            <SectionDivider label="Scan Target" />
+            <SectionDivider label={t("scan.scanTargetSection")} />
 
             <div>
-              <label className={labelCls}><FiTarget className="text-[10px]" />Scan Targets <span className="text-red-400">*</span></label>
+              <label className={labelCls}><FiTarget className="text-[10px]" />{t("scan.scanTargetsLabel")} <span className="text-red-400">*</span></label>
               <SearchDropdown dropRef={targetRef} open={openTarget} setOpen={setOpenTarget}
                 search={searchTarget} setSearch={setSearchTarget}
                 selectedLabel={targets.find(x => x.id === targetId)?.name ?? ""}
-                placeholder="Select a target…" items={fTarget} selectedId={targetId}
+                placeholder={t("scan.selectATarget")} items={fTarget} selectedId={targetId}
                 onSelect={setTargetId} disabled={loadingData} />
             </div>
 
             {/* ── Scan Options ── */}
-            <SectionDivider label="Scan Options" />
+            <SectionDivider label={t("scan.scanOptionsSection")} />
 
             {/* Add results to Assets */}
             <div>
-              <label className={labelCls}>Add results to Assets</label>
+              <label className={labelCls}>{t("scan.addResultsToAssets")}</label>
               <YesNoRadio value={addAssets} onChange={setAddAssets} currentColor={currentColor} />
             </div>
 
             {/* Apply Overrides */}
             <div>
-              <label className={labelCls}>Apply Overrides</label>
+              <label className={labelCls}>{t("scan.applyOverrides")}</label>
               <YesNoRadio value={applyOverrides} onChange={setApplyOverrides} currentColor={currentColor} />
             </div>
 
             {/* Min QoD */}
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label className={labelCls + " mb-0"}>Min QoD</label>
+                <label className={labelCls + " mb-0"}>{t("scan.minQod")}</label>
                 <span className="text-[11px] font-bold tabular-nums" style={{ color: currentColor }}>{minQod}%</span>
               </div>
               <input type="range" min={0} max={100} step={1} value={minQod}
@@ -606,8 +618,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
                 className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-white/15"
                 style={{ accentColor: currentColor }} />
               <div className="mt-1 flex justify-between text-[9.5px] text-slate-400 dark:text-white/30">
-                <span>0% (all)</span>
-                <span>Only include results with QoD ≥ {minQod}%</span>
+                <span>{t("scan.minQodAllHint")}</span>
+                <span>{t("scan.minQodIncludeHint", { n: minQod })}</span>
                 <span>100%</span>
               </div>
               <div className="mt-2">
@@ -619,23 +631,23 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
 
             {/* Alterable Task */}
             <div>
-              <label className={labelCls}>Alterable Task</label>
+              <label className={labelCls}>{t("scan.alterableTask")}</label>
               <YesNoRadio value={alterable} onChange={setAlterable} currentColor={currentColor} />
               <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
-                Alterable tasks allow changing Scan Target and Config after scanning.
+                {t("scan.alterableTaskHint")}
               </p>
             </div>
 
             {/* Auto Delete Reports */}
             <div>
-              <label className={labelCls}>Auto Delete Reports</label>
+              <label className={labelCls}>{t("scan.autoDeleteReports")}</label>
               <div className="space-y-2.5">
                 <div className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
                   <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
                     style={{ borderColor: autoDelete === "no" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "no" ? currentColor : "transparent" }}>
                     {autoDelete === "no" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                   </span>
-                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">Do not automatically delete reports</span>
+                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">{t("scan.autoDeleteNo")}</span>
                 </div>
                 <div className="flex cursor-pointer items-start gap-2.5" onClick={() => setAutoDelete("keep")}>
                   <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
@@ -644,14 +656,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
                   </span>
                   <div className="flex-1">
                     <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
-                      Automatically delete oldest reports but always keep newest
+                      {t("scan.autoDeleteKeep")}
                     </span>
                     {autoDelete === "keep" && (
                       <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <input type="number" min={1} max={99} value={autoDeleteData}
                           onChange={e => setAutoDeleteData(Math.max(1, Number(e.target.value) || 1))}
                           className={[numCls, "w-24"].join(" ")} />
-                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">reports</span>
+                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">{t("scan.reportsUnit")}</span>
                       </div>
                     )}
                   </div>
@@ -660,14 +672,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
             </div>
 
             {/* ── Scanner & Config ── */}
-            <SectionDivider label={isCVEScanner ? "Scanner" : "Scanner & Config"} />
+            <SectionDivider label={isCVEScanner ? t("scan.scannerSection") : t("scan.scannerConfigSection")} />
 
             <div>
-              <label className={labelCls}><FiTarget className="text-[10px]" />Scanner</label>
+              <label className={labelCls}><FiTarget className="text-[10px]" />{t("scan.scannerLabel")}</label>
               <SearchDropdown dropRef={scannerRef} open={openScanner} setOpen={setOpenScanner}
                 search={searchScanner} setSearch={setSearchScanner}
                 selectedLabel={scanners.find(x => x.id === scannerId)?.name ?? ""}
-                placeholder="Select scanner…" items={fScanner} selectedId={scannerId}
+                placeholder={t("scan.selectScanner")} items={fScanner} selectedId={scannerId}
                 onSelect={setScannerId} disabled={loadingData} />
             </div>
 
@@ -676,7 +688,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
               <div className="flex items-start gap-2.5 rounded-xl border border-cyan-200/60 bg-cyan-50/50 px-3.5 py-2.5 dark:border-cyan-500/20 dark:bg-cyan-500/8">
                 <FiSettings className="mt-0.5 shrink-0 text-[12px] text-cyan-600 dark:text-cyan-400" />
                 <p className="text-[11px] text-cyan-700 dark:text-cyan-300">
-                  CVE Scanner uses the CVE database directly — Scan Config, Max NVTs per host and Max concurrent hosts are not applicable.
+                  {t("scan.cveScannerNote")}
                 </p>
               </div>
             )}
@@ -684,33 +696,33 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
             {/* Scan Config — hidden for CVE scanner */}
             {!isCVEScanner && (
               <div>
-                <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
+                <label className={labelCls}><FiSettings className="text-[10px]" />{t("scan.scanConfigLabel")} <span className="text-red-400">*</span></label>
                 <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
                   search={searchConfig} setSearch={setSearchConfig}
                   selectedLabel={configs.find(x => x.id === configId)?.name ?? ""}
-                  placeholder="Select scan config…" items={fConfig} selectedId={configId}
+                  placeholder={t("scan.selectScanConfig")} items={fConfig} selectedId={configId}
                   onSelect={setConfigId} disabled={loadingData}
                   dropH="max-h-36" />
               </div>
             )}
 
             {/* ── Performance — hidden for CVE scanner ── */}
-            {!isCVEScanner && <SectionDivider label="Performance" />}
+            {!isCVEScanner && <SectionDivider label={t("scan.performanceSection")} />}
 
             {!isCVEScanner && <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Max concurrent NVTs per host</label>
+                <label className={labelCls}>{t("scan.maxNvtsPerHost")}</label>
                 <input type="number" min={1} max={99} value={maxChecks}
                   onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
                   className={numCls} />
-                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 4</p>
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{t("scan.defaultValue", { n: 4 })}</p>
               </div>
               <div>
-                <label className={labelCls}>Max concurrent scanned hosts</label>
+                <label className={labelCls}>{t("scan.maxScannedHosts")}</label>
                 <input type="number" min={1} max={999} value={maxHosts}
                   onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
                   className={numCls} />
-                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
+                <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{t("scan.defaultValue", { n: 20 })}</p>
               </div>
             </div>}
 
@@ -734,7 +746,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({ open, onClose, onCrea
             style={{ background: accentGrad }}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
             {loading && <FiRefreshCw className="animate-spin text-[12px]" />}
-            <FiPlus className="text-[12px]" />Save
+            <FiPlus className="text-[12px]" />{t("common.save")}
           </button>
         </div>
       </div>
@@ -856,10 +868,10 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
 
   const handleSave = async () => {
     if (!task) return;
-    if (!name.trim()) { setFormError("Task name is required"); return; }
-    if (minQod < 0 || minQod > 100) { setFormError("Min QoD must be 0–100"); return; }
-    if (!isCVEScanner && maxChecks < 1) { setFormError("Max concurrent NVTs must be ≥ 1"); return; }
-    if (!isCVEScanner && maxHosts < 1)  { setFormError("Max concurrent hosts must be ≥ 1"); return; }
+    if (!name.trim()) { setFormError(t("scan.taskNameRequired")); return; }
+    if (minQod < 0 || minQod > 100) { setFormError(t("scan.minQodRange")); return; }
+    if (!isCVEScanner && maxChecks < 1) { setFormError(t("scan.maxNvtsMin")); return; }
+    if (!isCVEScanner && maxHosts < 1)  { setFormError(t("scan.maxHostsMin")); return; }
 
     setLoading(true); setFormError("");
     try {
@@ -880,12 +892,12 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
         auto_delete:      autoDelete,
         auto_delete_data: autoDelete === "keep" ? autoDeleteData : undefined,
       });
-      message.success("Task updated successfully");
+      message.success(t("scan.taskUpdated"));
       onSaved(); onClose();
     } catch (err: unknown) {
       setFormError(
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error
-        || "Failed to update task"
+        || t("scan.failedUpdateTask")
       );
     } finally { setLoading(false); }
   };
@@ -901,7 +913,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
     <div>
       <label className={labelCls}>
         {label}
-        <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase text-slate-400 dark:bg-white/8 dark:text-white/30">locked</span>
+        <span className="ml-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[8.5px] font-bold uppercase text-slate-400 dark:bg-white/8 dark:text-white/30">{t("scan.lockedBadge")}</span>
       </label>
       <div className="flex h-9 w-full items-center rounded-xl border border-slate-200/60 bg-slate-50 px-3 dark:border-white/8 dark:bg-white/3">
         <span className="truncate text-[12px] text-slate-500 dark:text-white/40">{value || "—"}</span>
@@ -926,15 +938,15 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
               <FiEdit2 className="text-[13px]" />
             </span>
             <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>SCAN MANAGEMENT · EDIT TASK</p>
+              <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("scan.editTaskKicker")}</p>
               <h3 className="flex items-center gap-2 max-w-xs truncate text-[14px] font-bold text-slate-800 dark:text-white/90">
                 {task.name}
                 {isEditable
                   ? <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-                      {task.alterable ? "Alterable" : "New"}
+                      {task.alterable ? t("scan.alterableBadge") : t("scan.new")}
                     </span>
                   : <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
-                      Read-only config
+                      {t("scan.readOnlyConfig")}
                     </span>
                 }
               </h3>
@@ -952,44 +964,44 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
 
             {/* Task ID */}
             <div className="flex items-center gap-2.5 rounded-xl border border-slate-100 bg-slate-50/60 px-3.5 py-2 dark:border-white/8 dark:bg-white/3">
-              <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">Task ID</span>
+              <span className="shrink-0 text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">{t("scan.taskIdLabel")}</span>
               <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] text-slate-500 dark:text-white/40">{task.id}</span>
             </div>
 
             {/* ── Basic Info ── */}
-            <SectionDivider label="Basic Info" />
+            <SectionDivider label={t("scan.basicInfo")} />
 
             <div>
-              <label className={labelCls}><FiType className="text-[10px]" />Name <span className="text-red-400">*</span></label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Task name" className={inputCls} />
+              <label className={labelCls}><FiType className="text-[10px]" />{t("common.name")} <span className="text-red-400">*</span></label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t("scan.taskNameRequired")} className={inputCls} />
             </div>
 
             <div>
-              <label className={labelCls}><FiAlignLeft className="text-[10px]" />Comment (optional)</label>
-              <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder="e.g. IP address or description" className={inputCls} />
+              <label className={labelCls}><FiAlignLeft className="text-[10px]" />{t("scan.commentOptional")}</label>
+              <input type="text" value={comment} onChange={e => setComment(e.target.value)} placeholder={t("scan.commentPlaceholder")} className={inputCls} />
             </div>
 
             {/* ── Scan Configuration ── */}
-            <SectionDivider label={isEditable ? "Scan Configuration" : "Scan Configuration"} />
+            <SectionDivider label={t("scan.scanConfigurationSection")} />
 
             {isEditable ? (
               /* Fully editable dropdowns — like OpenVAS when task is New or Alterable */
               <>
                 <div>
-                  <label className={labelCls}><FiTarget className="text-[10px]" />Scan Target <span className="text-red-400">*</span></label>
+                  <label className={labelCls}><FiTarget className="text-[10px]" />{t("scan.scanTargetLabel")} <span className="text-red-400">*</span></label>
                   <SearchDropdown dropRef={targetRef} open={openTarget} setOpen={setOpenTarget}
                     search={searchTarget} setSearch={setSearchTarget}
                     selectedLabel={targets.find(x => x.id === targetId)?.name ?? task.target_name}
-                    placeholder="Select a target…" items={fTarget} selectedId={targetId}
+                    placeholder={t("scan.selectATarget")} items={fTarget} selectedId={targetId}
                     onSelect={setTargetId} disabled={loadingData} />
                 </div>
 
                 <div>
-                  <label className={labelCls}><FiTarget className="text-[10px]" />Scanner</label>
+                  <label className={labelCls}><FiTarget className="text-[10px]" />{t("scan.scannerLabel")}</label>
                   <SearchDropdown dropRef={scannerRef} open={openScanner} setOpen={setOpenScanner}
                     search={searchScanner} setSearch={setSearchScanner}
                     selectedLabel={scanners.find(x => x.id === scannerId)?.name ?? task.scanner_name}
-                    placeholder="Select scanner…" items={fScanner} selectedId={scannerId}
+                    placeholder={t("scan.selectScanner")} items={fScanner} selectedId={scannerId}
                     onSelect={setScannerId} disabled={loadingData} />
                 </div>
 
@@ -997,18 +1009,18 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
                   <div className="flex items-start gap-2.5 rounded-xl border border-cyan-200/60 bg-cyan-50/50 px-3.5 py-2.5 dark:border-cyan-500/20 dark:bg-cyan-500/8">
                     <FiSettings className="mt-0.5 shrink-0 text-[12px] text-cyan-600 dark:text-cyan-400" />
                     <p className="text-[11px] text-cyan-700 dark:text-cyan-300">
-                      CVE Scanner — Scan Config, Max NVTs and Max hosts are not applicable.
+                      {t("scan.cveScannerNoteShort")}
                     </p>
                   </div>
                 )}
 
                 {!isCVEScanner && (
                   <div>
-                    <label className={labelCls}><FiSettings className="text-[10px]" />Scan Config <span className="text-red-400">*</span></label>
+                    <label className={labelCls}><FiSettings className="text-[10px]" />{t("scan.scanConfigLabel")} <span className="text-red-400">*</span></label>
                     <SearchDropdown dropRef={configRef} open={openConfig} setOpen={setOpenConfig}
                       search={searchConfig} setSearch={setSearchConfig}
                       selectedLabel={configs.find(x => x.id === configId)?.name ?? task.config_name}
-                      placeholder="Select scan config…" items={fConfig} selectedId={configId}
+                      placeholder={t("scan.selectScanConfig")} items={fConfig} selectedId={configId}
                       onSelect={setConfigId} disabled={loadingData} dropH="max-h-36" />
                   </div>
                 )}
@@ -1016,37 +1028,37 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
             ) : (
               /* Locked read-only fields — task has been run and is NOT alterable */
               <>
-                <LockedField label="Scan Targets" value={task.target_name} />
-                {task.scanner_name && <LockedField label="Scanner" value={task.scanner_name} />}
-                {task.config_name  && <LockedField label="Scan Config" value={task.config_name} />}
+                <LockedField label={t("scan.scanTargetsLabel")} value={task.target_name} />
+                {task.scanner_name && <LockedField label={t("scan.scannerLabel")} value={task.scanner_name} />}
+                {task.config_name  && <LockedField label={t("scan.scanConfigLabel")} value={task.config_name} />}
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                  Set <strong>Alterable Task = Yes</strong> below to unlock Scan Target, Scanner and Config for editing.
+                  {t("scan.setAlterableHint")}
                 </p>
               </>
             )}
 
             {/* ── Scan Options ── */}
-            <SectionDivider label="Scan Options" />
+            <SectionDivider label={t("scan.scanOptionsSection")} />
 
             {/* Add results to Assets */}
             <div>
-              <label className={labelCls}>Add results to Assets</label>
+              <label className={labelCls}>{t("scan.addResultsToAssets")}</label>
               <YesNoRadio value={addAssets} onChange={setAddAssets} currentColor={currentColor} />
             </div>
 
             {/* Apply Overrides */}
             <div>
-              <label className={labelCls}>Apply Overrides</label>
+              <label className={labelCls}>{t("scan.applyOverrides")}</label>
               <YesNoRadio value={applyOverrides} onChange={setApplyOverrides} currentColor={currentColor} />
               <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
-                Use overrides to change the severity of scan results.
+                {t("scan.applyOverridesHint")}
               </p>
             </div>
 
             {/* Min QoD */}
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <label className={labelCls + " mb-0"}>Min QoD</label>
+                <label className={labelCls + " mb-0"}>{t("scan.minQod")}</label>
                 <span className="text-[11px] font-bold tabular-nums" style={{ color: currentColor }}>{minQod}%</span>
               </div>
               <input type="range" min={0} max={100} step={1} value={minQod}
@@ -1054,8 +1066,8 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
                 className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 dark:bg-white/15"
                 style={{ accentColor: currentColor }} />
               <div className="mt-1 flex justify-between text-[9.5px] text-slate-400 dark:text-white/30">
-                <span>0% (all)</span>
-                <span>Only include results with QoD ≥ {minQod}%</span>
+                <span>{t("scan.minQodAllHint")}</span>
+                <span>{t("scan.minQodIncludeHint", { n: minQod })}</span>
                 <span>100%</span>
               </div>
               <div className="mt-2">
@@ -1067,23 +1079,23 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
 
             {/* Alterable Task */}
             <div>
-              <label className={labelCls}>Alterable Task</label>
+              <label className={labelCls}>{t("scan.alterableTask")}</label>
               <YesNoRadio value={alterable} onChange={setAlterable} currentColor={currentColor} />
               <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">
-                Alterable tasks allow changing Scan Target and Config after scanning.
+                {t("scan.alterableTaskHint")}
               </p>
             </div>
 
             {/* Auto Delete Reports */}
             <div>
-              <label className={labelCls}>Auto Delete Reports</label>
+              <label className={labelCls}>{t("scan.autoDeleteReports")}</label>
               <div className="space-y-2.5">
                 <div className="flex cursor-pointer items-center gap-2.5" onClick={() => setAutoDelete("no")}>
                   <span className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
                     style={{ borderColor: autoDelete === "no" ? currentColor : "#cbd5e1", backgroundColor: autoDelete === "no" ? currentColor : "transparent" }}>
                     {autoDelete === "no" && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
                   </span>
-                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">Do not automatically delete reports</span>
+                  <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">{t("scan.autoDeleteNo")}</span>
                 </div>
                 <div className="flex cursor-pointer items-start gap-2.5" onClick={() => setAutoDelete("keep")}>
                   <span className="relative mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition"
@@ -1092,14 +1104,14 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
                   </span>
                   <div className="flex-1">
                     <span className="text-[12px] font-medium text-slate-700 dark:text-white/70">
-                      Automatically delete oldest reports but always keep newest
+                      {t("scan.autoDeleteKeep")}
                     </span>
                     {autoDelete === "keep" && (
                       <div className="mt-2 flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <input type="number" min={1} max={99} value={autoDeleteData}
                           onChange={e => setAutoDeleteData(Math.max(1, Number(e.target.value) || 1))}
                           className={[numCls, "w-24"].join(" ")} />
-                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">reports</span>
+                        <span className="text-[11.5px] text-slate-500 dark:text-white/45">{t("scan.reportsUnit")}</span>
                       </div>
                     )}
                   </div>
@@ -1110,43 +1122,43 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
             {/* ── Scanner (when not editable) + Scan Config ── */}
             {!isEditable && (
               <>
-                <SectionDivider label="Scanner & Config (locked)" />
-                {task.scanner_name && <LockedField label="Scanner" value={task.scanner_name} />}
-                {task.config_name  && <LockedField label="Scan Config" value={task.config_name} />}
+                <SectionDivider label={t("scan.scannerConfigLocked")} />
+                {task.scanner_name && <LockedField label={t("scan.scannerLabel")} value={task.scanner_name} />}
+                {task.config_name  && <LockedField label={t("scan.scanConfigLabel")} value={task.config_name} />}
               </>
             )}
 
             {/* ── Performance — hidden for CVE scanner ── */}
             {!isCVEScanner && (
               <>
-                <SectionDivider label="Performance" />
+                <SectionDivider label={t("scan.performanceSection")} />
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>Max concurrent NVTs per host</label>
+                    <label className={labelCls}>{t("scan.maxNvtsPerHost")}</label>
                     <input type="number" min={1} max={99} value={maxChecks}
                       onChange={e => setMaxChecks(Math.max(1, Number(e.target.value) || 1))}
                       className={numCls} />
-                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 8</p>
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{t("scan.defaultValue", { n: 8 })}</p>
                   </div>
                   <div>
-                    <label className={labelCls}>Max concurrent scanned hosts</label>
+                    <label className={labelCls}>{t("scan.maxScannedHosts")}</label>
                     <input type="number" min={1} max={999} value={maxHosts}
                       onChange={e => setMaxHosts(Math.max(1, Number(e.target.value) || 1))}
                       className={numCls} />
-                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">Default: 20</p>
+                    <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{t("scan.defaultValue", { n: 20 })}</p>
                   </div>
                 </div>
               </>
             )}
 
             {/* ── Current State ── */}
-            <SectionDivider label="Current State" />
+            <SectionDivider label={t("scan.currentStateSection")} />
 
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "Status",     val: task.status || "—" },
-                { label: "Reports",    val: String(task.report_count) },
-                { label: "Severity",   val: task.severity > 0 ? task.severity.toFixed(1) : "0.0 (Log)" },
+                { label: t("common.status"),   val: task.status || "—" },
+                { label: t("scan.reports"),    val: String(task.report_count) },
+                { label: t("scan.severityLabel"), val: task.severity > 0 ? task.severity.toFixed(1) : `0.0 (${t("severity.log")})` },
               ].map(({ label, val }) => (
                 <div key={label} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5 dark:border-white/8 dark:bg-white/3">
                   <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{label}</p>
@@ -1175,7 +1187,7 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, onClose, onSaved })
             style={{ background: accentGrad }}
             className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60">
             {loading && <FiRefreshCw className="animate-spin text-[12px]" />}
-            <FiCheck className="text-[12px]" />Save Changes
+            <FiCheck className="text-[12px]" />{t("scan.saveChanges")}
           </button>
         </div>
       </div>
@@ -1214,6 +1226,7 @@ const StatusTooltip: React.FC<{
 };
 
 const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = ({ tasks, loading }) => {
+  const { t } = useLanguage();
   const data = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const t of tasks) {
@@ -1230,7 +1243,7 @@ const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = 
   return (
     <div className="flex h-full flex-col">
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">
-        Tasks by Status <span className="ml-1 font-bold text-slate-700 dark:text-white/70">(Total: {total})</span>
+        {t("scan.tasksByStatus")} <span className="ml-1 font-bold text-slate-700 dark:text-white/70">{t("scan.totalParen", { n: total })}</span>
       </p>
       <div className="flex flex-1 items-center gap-5">
         <div className="relative h-36 w-36 shrink-0">
@@ -1238,7 +1251,7 @@ const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = 
             <div className="h-full w-full animate-pulse rounded-full bg-slate-100 dark:bg-white/10" />
           ) : total === 0 ? (
             <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-dashed border-slate-200 dark:border-white/10">
-              <span className="text-[10px] text-slate-400 dark:text-white/30">No data</span>
+              <span className="text-[10px] text-slate-400 dark:text-white/30">{t("scan.noData")}</span>
             </div>
           ) : (
             <>
@@ -1252,7 +1265,7 @@ const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = 
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                 <span className="text-[24px] font-bold leading-none text-slate-900 dark:text-white">{total}</span>
-                <span className="mt-0.5 text-[9px] text-slate-400 dark:text-white/35">tasks</span>
+                <span className="mt-0.5 text-[9px] text-slate-400 dark:text-white/35">{t("scan.tasksUnit")}</span>
               </div>
             </>
           )}
@@ -1278,40 +1291,42 @@ const TasksByStatusChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = 
 // Chart: Tasks by Severity Class (Bar)
 // ─────────────────────────────────────────────────────────────
 
-const SEV_CLASSES = [
-  { name: "Log",      min: 0,   max: 0,   exact: true,  color: "#6b7280" },
-  { name: "Low",      min: 0.1, max: 3.9, exact: false, color: "#22c55e" },
-  { name: "Medium",   min: 4,   max: 6.9, exact: false, color: "#eab308" },
-  { name: "High",     min: 7,   max: 8.9, exact: false, color: "#f97316" },
-  { name: "Critical", min: 9,   max: 10,  exact: false, color: "#ef4444" },
+const getSevClasses = (t: TFn) => [
+  { name: t("severity.log"),      min: 0,   max: 0,   exact: true,  color: "#6b7280" },
+  { name: t("severity.low"),      min: 0.1, max: 3.9, exact: false, color: "#22c55e" },
+  { name: t("severity.medium"),   min: 4,   max: 6.9, exact: false, color: "#eab308" },
+  { name: t("severity.high"),     min: 7,   max: 8.9, exact: false, color: "#f97316" },
+  { name: t("severity.critical"), min: 9,   max: 10,  exact: false, color: "#ef4444" },
 ];
 
 const SevBarTooltip: React.FC<{
   active?: boolean;
   payload?: Array<{ payload?: { name: string; count: number; color: string } }>;
 }> = ({ active, payload }) => {
+  const { t } = useLanguage();
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
     <div className="rounded-xl px-3 py-2 text-[10.5px] font-semibold text-white shadow-xl" style={{ background: d.color }}>
-      {d.name} · <span className="tabular-nums">{d.count} task{d.count !== 1 ? "s" : ""}</span>
+      {d.name} · <span className="tabular-nums">{d.count} {t("scan.tasksUnit")}</span>
     </div>
   );
 };
 
 const TasksBySeverityChart: React.FC<{ tasks: GMPTaskDTO[]; loading: boolean }> = ({ tasks, loading }) => {
+  const { t } = useLanguage();
   const data = useMemo(() =>
-    SEV_CLASSES.map(cls => ({
+    getSevClasses(t).map(cls => ({
       name: cls.name,
-      count: tasks.filter(t => cls.exact ? t.severity === 0 : t.severity >= cls.min && t.severity <= cls.max).length,
+      count: tasks.filter(tk => cls.exact ? tk.severity === 0 : tk.severity >= cls.min && tk.severity <= cls.max).length,
       color: cls.color,
     })),
-  [tasks]);
+  [tasks, t]);
 
   return (
     <div className="flex h-full flex-col">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">Tasks by Severity Class</p>
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">{t("scan.tasksBySeverity")}</p>
       {loading ? (
         <div className="flex flex-1 items-end gap-2 pb-2">
           {[1,2,3,4,5].map(i => (
@@ -1355,13 +1370,14 @@ const SortIcon: React.FC<{ active: boolean; dir: "asc" | "desc" }> = ({ active, 
 // ─────────────────────────────────────────────────────────────
 
 const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, progress }) => {
+  const { t } = useLanguage();
   const sl = status?.toLowerCase() ?? "";
 
   if (sl === "requested") {
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
         <FiRefreshCw className="animate-spin text-[9px]" />
-        Starting…
+        {t("scan.starting")}
       </span>
     );
   }
@@ -1370,7 +1386,7 @@ const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, pr
     return (
       <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
         <FiRefreshCw className="animate-spin text-[9px]" />
-        Stopping…
+        {t("scan.stopping")}
       </span>
     );
   }
@@ -1383,7 +1399,7 @@ const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, pr
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
           </span>
-          Running {progress}%
+          {t("scan.runningPercent", { n: progress })}
         </span>
         <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
           <div
@@ -1404,7 +1420,7 @@ const StatusCell: React.FC<{ status: string; progress: number }> = ({ status, pr
     return (
       <div className="space-y-1.5">
         <span className="inline-flex whitespace-nowrap items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[10px] font-semibold text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-          Stopped at {progress}%
+          {t("scan.stoppedAtPercent", { n: progress })}
         </span>
         <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10">
           <div
@@ -1445,6 +1461,7 @@ function fmtLastReport(raw: string): string {
 }
 
 const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDelete }) => {
+  const { t } = useLanguage();
   const [startBusy, setStartBusy] = useState(false);
   const [stopBusy,  setStopBusy]  = useState(false);
 
@@ -1533,7 +1550,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
         <div className="flex items-center gap-1">
           {/* Stop — shown when running or requested (not stop-requested, that's already stopping) */}
           {isRunning && !isStopRequested ? (
-            <button type="button" title="Stop scan" onClick={() => void handleStop()}
+            <button type="button" title={t("scan.stopScanTip")} onClick={() => void handleStop()}
               disabled={stopBusy || isRequested}
               className={`${iconBtn} border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300`}>
               {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiStopCircle className="text-[12px]" />}
@@ -1547,7 +1564,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
           ) : (
             /* Idle — Start / Re-run */
             <button type="button"
-              title={isDone || isStopped ? "Re-run" : "Start"}
+              title={isDone || isStopped ? t("scan.rerunTip") : t("scan.start")}
               onClick={() => void handleStart()}
               disabled={startBusy}
               className={[iconBtn, isDone || isStopped
@@ -1558,14 +1575,14 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
           )}
 
           {/* Edit — disabled while task is in any active/transitioning state */}
-          <button type="button" title="Edit task" onClick={() => onEdit(task)}
+          <button type="button" title={t("scan.editTaskTip")} onClick={() => onEdit(task)}
             disabled={isActive || isTransitioning}
             className={`${iconBtn} border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10`}>
             <FiEdit2 className="text-[11px]" />
           </button>
 
           {/* Delete — disabled while task is in any active/transitioning state */}
-          <button type="button" title="Delete task" onClick={() => onDelete(task.id, task.name)}
+          <button type="button" title={t("scan.deleteTaskTip")} onClick={() => onDelete(task.id, task.name)}
             disabled={isActive || isTransitioning || stopBusy || startBusy}
             className={`${iconBtn} border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300`}>
             <FiTrash2 className="text-[11px]" />
@@ -1586,6 +1603,7 @@ const ICON_COLOR: Record<string, string> = {
 
 const ScanManagement: React.FC = () => {
   const { t } = useLanguage();
+  const MONTHS = useMemo(() => getMonths(t), [t]);
   const { currentColor, appTimezone, setAppTimezone } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
@@ -1714,24 +1732,24 @@ const ScanManagement: React.FC = () => {
   const handleStart = async (id: string) => {
     try {
       await StartGMPTask(id);
-      message.success("Scan started");
+      message.success(t("scan.scanStarted"));
       // Optimistic: show "Requested" immediately while OpenVAS initialises
       setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Requested", progress: 0 } : t));
       startAggressivePolling();
     } catch (err: unknown) {
-      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to start scan");
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedStartScan"));
     }
   };
 
   const handleStop = async (id: string) => {
     try {
       await StopGMPTask(id);
-      message.success("Scan stopped");
+      message.success(t("scan.scanStopped"));
       // Optimistic: show "Stop Requested" immediately
       setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "Stop Requested" } : t));
       startAggressivePolling();
     } catch (err: unknown) {
-      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to stop scan");
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedStopScan"));
     }
   };
 
@@ -1739,8 +1757,8 @@ const ScanManagement: React.FC = () => {
     if (!deleteConfirm) return;
     const { id } = deleteConfirm;
     setDeleteConfirm(null);
-    try { await DeleteGMPTask(id); message.success("Task deleted"); await fetchTasksSilent(); }
-    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete task"); }
+    try { await DeleteGMPTask(id); message.success(t("scan.taskDeleted")); await fetchTasksSilent(); }
+    catch (err: unknown) { message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedDeleteTask")); }
   };
 
   const handleAddSchedule = useCallback(async () => {
@@ -1842,18 +1860,18 @@ const ScanManagement: React.FC = () => {
   useEffect(() => { setCurrentPage(1); }, [tasks.length, sortBy, sortDir]);
 
   const statCards = [
-    { label: "Total Tasks", val: tasks.length,  icon: <FiSettings />,    color: "violet"  },
-    { label: "Running",     val: runningCount,   icon: <FiPlay />,        color: "cyan"    },
-    { label: "Done",        val: doneCount,      icon: <FiCheckCircle />, color: "emerald" },
-    { label: "Stopped",     val: stoppedCount,   icon: <FiStopCircle />,  color: "orange"  },
+    { key: "total",   label: t("scan.totalTasks"), val: tasks.length,  icon: <FiSettings />,    color: "violet"  },
+    { key: "running", label: t("scan.running"),    val: runningCount,   icon: <FiPlay />,        color: "cyan"    },
+    { key: "done",    label: t("scan.done"),       val: doneCount,      icon: <FiCheckCircle />, color: "emerald" },
+    { key: "stopped", label: t("scan.stopped"),    val: stoppedCount,   icon: <FiStopCircle />,  color: "orange"  },
   ];
 
   const lastUpdatedLabel = useMemo(() => {
     if (!lastUpdated) return null;
-    if (secondsAgo < 5)  return "just now";
-    if (secondsAgo < 60) return `${secondsAgo}s ago`;
-    return `${Math.floor(secondsAgo / 60)}m ago`;
-  }, [lastUpdated, secondsAgo]);
+    if (secondsAgo < 5)  return t("scan.justNow");
+    if (secondsAgo < 60) return t("scan.secondsAgo", { n: secondsAgo });
+    return t("scan.minutesAgo", { n: Math.floor(secondsAgo / 60) });
+  }, [lastUpdated, secondsAgo, t]);
 
   const inputCls = "w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:focus:ring-blue-500/10";
 
@@ -1885,14 +1903,14 @@ const ScanManagement: React.FC = () => {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-500 opacity-75" />
                       <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-500" />
                     </span>
-                    LIVE
+                    {t("scan.live")}
                   </span>
                 )}
               </h1>
               {lastUpdatedLabel && (
                 <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">
-                  Updated {lastUpdatedLabel}
-                  {hasRunning && <span className="ml-1 text-cyan-500">· auto-refreshing</span>}
+                  {t("scan.updatedLabel", { n: lastUpdatedLabel })}
+                  {hasRunning && <span className="ml-1 text-cyan-500">· {t("scan.autoRefreshing")}</span>}
                 </p>
               )}
             </div>
@@ -1915,7 +1933,7 @@ const ScanManagement: React.FC = () => {
                     <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
                       <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
                       <input type="text" value={tzSearch} onChange={e => setTzSearch(e.target.value)}
-                        placeholder="Search timezone…" autoFocus
+                        placeholder={t("scan.searchTimezone")} autoFocus
                         className="h-7 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
                     </div>
                   </div>
@@ -1924,7 +1942,7 @@ const ScanManagement: React.FC = () => {
                       const kw = tzSearch.trim().toLowerCase();
                       const filtered = kw ? IANA_TIMEZONES.filter(tz => tz.toLowerCase().includes(kw)) : IANA_TIMEZONES;
                       if (filtered.length === 0)
-                        return <p className="py-4 text-center text-[11px] text-slate-400">No results</p>;
+                        return <p className="py-4 text-center text-[11px] text-slate-400">{t("common.noResults")}</p>;
                       return (
                         <div className="space-y-0.5">
                           {filtered.map(tz => {
@@ -1969,9 +1987,9 @@ const ScanManagement: React.FC = () => {
         <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50 p-3.5 dark:border-white/8 dark:bg-white/3">
           <FiAlertTriangle className="mt-0.5 shrink-0 text-[13px] text-slate-500 dark:text-white/40" />
           <div>
-            <p className="text-[12px] font-semibold text-slate-700 dark:text-white/70">Cannot connect to OpenVAS GMP</p>
+            <p className="text-[12px] font-semibold text-slate-700 dark:text-white/70">{t("scan.cannotConnectGmp")}</p>
             <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/35">
-              {gmpStatus?.error || "Backend cannot reach gvmd socket."}
+              {gmpStatus?.error || t("scan.backendCannotReach")}
             </p>
           </div>
         </div>
@@ -1979,8 +1997,8 @@ const ScanManagement: React.FC = () => {
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {statCards.map(({ label, val, icon, color }) => (
-          <div key={label} className="rounded-xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+        {statCards.map(({ key, label, val, icon, color }) => (
+          <div key={key} className="rounded-xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
             <div className="flex items-center justify-between">
               <p className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-white/55">{label}</p>
               <span style={{ color: ICON_COLOR[color] }} className="text-[15px] opacity-75">{icon}</span>
@@ -1990,8 +2008,8 @@ const ScanManagement: React.FC = () => {
                 ? <span className="inline-block h-8 w-10 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
                 : val}
             </p>
-            {label === "Running" && runningCount > 0 && (
-              <p className="mt-1 text-[9.5px] font-semibold text-cyan-500">scanning now</p>
+            {key === "running" && runningCount > 0 && (
+              <p className="mt-1 text-[9.5px] font-semibold text-cyan-500">{t("scan.scanningNow")}</p>
             )}
           </div>
         ))}
@@ -2037,7 +2055,7 @@ const ScanManagement: React.FC = () => {
             <button type="button" onClick={() => setShowCreateTask(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" />Add Task
+              <FiPlus className="text-[13px]" />{t("scan.addTask")}
             </button>
           )}
           {activeTab === "schedule" && (
@@ -2058,7 +2076,7 @@ const ScanManagement: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-white/8">
-                    {["Name","Type","Status","Reports","Last Report","Severity","Trend","Actions"].map(h => (
+                    {[t("common.name"), t("scan.tableType"), t("common.status"), t("scan.reports"), t("scan.tableLastReport"), t("scan.severityLabel"), t("scan.tableTrend"), t("common.actions")].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{h}</th>
                     ))}
                   </tr>
@@ -2082,12 +2100,12 @@ const ScanManagement: React.FC = () => {
                 <FiSettings className="text-[22px]" />
               </div>
               <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">{t("scan.noTasks")}</p>
-              <p className="text-[11px] text-slate-400 dark:text-white/30">Create a task using Add Task, or create directly in OpenVAS</p>
+              <p className="text-[11px] text-slate-400 dark:text-white/30">{t("scan.createTaskHint")}</p>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => setShowCreateTask(true)}
                   style={{ background: accentGrad }}
                   className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white transition hover:opacity-90">
-                  <FiPlus className="text-[12px]" />Add Task
+                  <FiPlus className="text-[12px]" />{t("scan.addTask")}
                 </button>
                 <button type="button" onClick={() => void handleRefresh()}
                   className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
@@ -2103,19 +2121,19 @@ const ScanManagement: React.FC = () => {
                     <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
                       {/* Name — not sortable */}
                       <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
-                        Name
+                        {t("common.name")}
                       </th>
                       {/* Type — not sortable */}
                       <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
-                        Type
+                        {t("scan.tableType")}
                       </th>
                       {/* Sortable columns */}
                       {([
-                        { col: "status"      as SortCol, label: "Status"      },
-                        { col: "reports"     as SortCol, label: "Reports"     },
-                        { col: "last_report" as SortCol, label: "Last Report" },
-                        { col: "severity"    as SortCol, label: "Severity"    },
-                        { col: "trend"       as SortCol, label: "Trend"       },
+                        { col: "status"      as SortCol, label: t("common.status")        },
+                        { col: "reports"     as SortCol, label: t("scan.reports")          },
+                        { col: "last_report" as SortCol, label: t("scan.tableLastReport")  },
+                        { col: "severity"    as SortCol, label: t("scan.severityLabel")    },
+                        { col: "trend"       as SortCol, label: t("scan.tableTrend")       },
                       ]).map(({ col, label }) => (
                         <th key={col}
                           className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35 cursor-pointer select-none"
@@ -2129,7 +2147,7 @@ const ScanManagement: React.FC = () => {
                       ))}
                       {/* Actions — not sortable */}
                       <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">
-                        Actions
+                        {t("common.actions")}
                       </th>
                     </tr>
                   </thead>
@@ -2155,13 +2173,13 @@ const ScanManagement: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                     {sortedTasks.length > TASKS_PER_PAGE
-                      ? `${(currentPage - 1) * TASKS_PER_PAGE + 1}–${Math.min(currentPage * TASKS_PER_PAGE, sortedTasks.length)} of ${sortedTasks.length} tasks`
-                      : `${tasks.length} task${tasks.length !== 1 ? "s" : ""} total`}
+                      ? t("scan.tasksRange", { from: (currentPage - 1) * TASKS_PER_PAGE + 1, to: Math.min(currentPage * TASKS_PER_PAGE, sortedTasks.length), total: sortedTasks.length })
+                      : t("scan.tasksTotalCount", { n: tasks.length })}
                   </p>
                   {hasRunning && (
                     <div className="flex items-center gap-1.5 text-[10.5px] text-cyan-500">
                       <FiActivity className="animate-pulse text-[11px]" />
-                      <span>{runningCount} scan{runningCount !== 1 ? "s" : ""} in progress</span>
+                      <span>{t("scan.scansInProgress", { n: runningCount })}</span>
                     </div>
                   )}
                 </div>
@@ -2229,7 +2247,7 @@ const ScanManagement: React.FC = () => {
           <div className="flex items-start gap-2.5 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-2.5 dark:border-white/8 dark:bg-white/3">
             <FiClock className="mt-0.5 shrink-0 text-[12px] text-slate-400 dark:text-white/30" />
             <p className="text-[11px] text-slate-500 dark:text-white/40">
-              Auto scans fire at local time in <strong className="text-slate-700 dark:text-white/70">{appTimezone}</strong> — change timezone using the selector in the header above
+              {t("scan.autoScanTzNote", { tz: appTimezone })}
             </p>
           </div>
           {loadingSchedules ? (
@@ -2264,7 +2282,7 @@ const ScanManagement: React.FC = () => {
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-[13px] font-semibold text-slate-800 dark:text-white/88">{s.task_name}</p>
                         <span className="inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold"
-                          style={{ backgroundColor: fc.bg, color: fc.text }}>{freqBadge(s)}</span>
+                          style={{ backgroundColor: fc.bg, color: fc.text }}>{getFreqBadge(t, MONTHS, s)}</span>
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-slate-400 dark:text-white/35">
                         <span className="flex items-center gap-1">
@@ -2317,9 +2335,9 @@ const ScanManagement: React.FC = () => {
 
       <ScanConfirmModal
         open={!!deleteConfirm}
-        title="Delete Scan Task?"
-        description={`This action cannot be undone. The task "${deleteConfirm?.name ?? ""}" and all its reports will be removed from OpenVAS.`}
-        confirmLabel="Delete Task"
+        title={t("scan.deleteScanTaskTitle")}
+        description={t("scan.deleteScanTaskDesc", { name: deleteConfirm?.name ?? "" })}
+        confirmLabel={t("scan.deleteTask")}
         onConfirm={() => void handleDeleteConfirmed()}
         onCancel={() => setDeleteConfirm(null)}
       />
@@ -2336,7 +2354,7 @@ const ScanManagement: React.FC = () => {
                   <FiRepeat className="text-[14px]" />
                 </span>
                 <div>
-                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>AUTO SCAN</p>
+                  <p className="text-[9.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("scan.autoScanKicker")}</p>
                   <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scan.newSchedule")}</h3>
                 </div>
               </div>
@@ -2367,13 +2385,13 @@ const ScanManagement: React.FC = () => {
                       <div className="border-b border-slate-100 p-2 dark:border-white/8">
                         <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
                           <FiSearch className="shrink-0 text-[11px] text-slate-400 dark:text-white/35" />
-                          <input type="text" value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search task..." autoFocus
+                          <input type="text" value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder={t("scan.searchTask")} autoFocus
                             className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30" />
                         </div>
                       </div>
                       <div className="max-h-48 overflow-y-auto p-1.5">
                         {filteredTasksForModal.length === 0
-                          ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">No tasks found</p>
+                          ? <p className="py-4 text-center text-[11px] text-slate-400 dark:text-white/35">{t("scan.noTasks")}</p>
                           : <div className="space-y-0.5">
                               {filteredTasksForModal.map(tk => {
                                 const isSel = schedForm.taskId === tk.id;
@@ -2423,7 +2441,7 @@ const ScanManagement: React.FC = () => {
               )}
               {schedForm.frequency === "monthly" && (
                 <div>
-                  <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.dayOfMonth")} (1–31)</label>
+                  <label className="mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("scan.dayOfMonth")} {t("scan.rangeHint")}</label>
                   <input type="number" min={1} max={31} value={schedForm.dayOfMonth}
                     onChange={e => setSchedForm(p => ({ ...p, dayOfMonth: parseInt(e.target.value) || 1 }))} className={inputCls} />
                 </div>
@@ -2490,9 +2508,9 @@ const ScanManagement: React.FC = () => {
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                     {t("scan.nextRun")}:&nbsp;
                     <span className="font-semibold text-slate-700 dark:text-white/70">
-                      {schedForm.frequency === "once" && schedForm.date      ? `${schedForm.date} ${schedForm.time} (${appTimezone})`
-                        : schedForm.frequency === "monthly" && schedForm.dayOfMonth ? `Day ${schedForm.dayOfMonth} of each month at ${schedForm.time} (${appTimezone})`
-                        : schedForm.frequency === "yearly"  && schedForm.month && schedForm.day ? `${MONTHS[schedForm.month - 1]} ${schedForm.day} each year at ${schedForm.time} (${appTimezone})`
+                      {schedForm.frequency === "once" && schedForm.date      ? t("scan.dateTimeTz", { date: schedForm.date, time: schedForm.time, tz: appTimezone })
+                        : schedForm.frequency === "monthly" && schedForm.dayOfMonth ? t("scan.dayEachMonth", { day: schedForm.dayOfMonth, time: schedForm.time, tz: appTimezone })
+                        : schedForm.frequency === "yearly"  && schedForm.month && schedForm.day ? t("scan.eachYear", { month: MONTHS[schedForm.month - 1], day: schedForm.day, time: schedForm.time, tz: appTimezone })
                         : "—"}
                     </span>
                   </p>

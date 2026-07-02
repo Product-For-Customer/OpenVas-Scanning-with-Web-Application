@@ -147,7 +147,7 @@ const Index: React.FC = () => {
         setItems(res);
       } else {
         setItems([]);
-        setError("Unable to load notification history.");
+        setError(t("line.unableLoadNotificationHistory"));
       }
     } catch (err) {
       console.error("fetchHistoryNotify error:", err);
@@ -155,7 +155,7 @@ const Index: React.FC = () => {
       if (!isMountedRef.current) return;
 
       setItems([]);
-      setError("Unable to load notification history.");
+      setError(t("line.unableLoadNotificationHistory"));
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
@@ -163,7 +163,7 @@ const Index: React.FC = () => {
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (hasFetchedRef.current) return;

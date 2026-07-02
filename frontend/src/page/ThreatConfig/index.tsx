@@ -13,7 +13,6 @@ import {
   ListGMPCredentials, CreateGMPCredential, DeleteGMPCredential, UpdateGMPCredential,
   ListGMPTargets, CreateGMPTarget, DeleteGMPTarget, UpdateGMPTarget,
   ListGMPTasks,
-  CREDENTIAL_TYPE_LABELS,
   type GMPPortListDTO, type GMPPortRangeDTO, type GMPCredentialDTO, type GMPTargetDTO,
   type GMPTaskDTO,
   type CreatePortListRequest, type CreateCredentialRequest, type CreateTargetRequest,
@@ -21,6 +20,7 @@ import {
 } from "../../services/gmp";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import type { TranslationKey } from "../../locales";
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -28,14 +28,16 @@ import { useLanguage } from "../../contexts/LanguageContext";
 
 type ActiveTab = "credentials" | "portlists" | "targets";
 
-const CRED_TYPES: { value: GMPCredentialType; label: string }[] = [
-  { value: "up",    label: "Username + Password" },
-  { value: "usk",   label: "Username + SSH Key" },
-  { value: "snmp",  label: "SNMP" },
-  { value: "smime", label: "S/MIME Certificate" },
-  { value: "pgp",   label: "PGP Encryption Key" },
-  { value: "pw",    label: "Password only" },
-  { value: "cc",    label: "Client Certificate" },
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const getCredTypes = (t: TFn): { value: GMPCredentialType; label: string }[] => [
+  { value: "up",    label: t("threatConfig.credTypeUp") },
+  { value: "usk",   label: t("threatConfig.credTypeUsk") },
+  { value: "snmp",  label: t("threatConfig.credTypeSnmp") },
+  { value: "smime", label: t("threatConfig.credTypeSmime") },
+  { value: "pgp",   label: t("threatConfig.credTypePgp") },
+  { value: "pw",    label: t("threatConfig.credTypePw") },
+  { value: "cc",    label: t("threatConfig.credTypeCc") },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -91,14 +93,16 @@ const FileUploadArea: React.FC<{
   inputRef: React.RefObject<HTMLInputElement | null>;
   accept?: string;
   onChange: (f: File | null) => void;
-}> = ({ file, inputRef, accept, onChange }) => (
+}> = ({ file, inputRef, accept, onChange }) => {
+  const { t } = useLanguage();
+  return (
   <div
     onClick={() => inputRef.current?.click()}
     className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/45 dark:hover:bg-white/8"
   >
     <FiUpload className="shrink-0 text-[14px] text-slate-400 dark:text-white/30" />
     <span className="min-w-0 flex-1 truncate">
-      {file ? file.name : "Choose file..."}
+      {file ? file.name : t("threatConfig.chooseFile")}
     </span>
     <input
       ref={inputRef}
@@ -112,7 +116,8 @@ const FileUploadArea: React.FC<{
       }}
     />
   </div>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // File-as-text input (reads file content → calls onChange with text)
@@ -121,7 +126,8 @@ const FileTextInput: React.FC<{
   onChange: (text: string) => void;
   accept?: string;
   placeholder?: string;
-}> = ({ onChange, accept, placeholder = "Choose file..." }) => {
+}> = ({ onChange, accept, placeholder }) => {
+  const { t } = useLanguage();
   const ref = useRef<HTMLInputElement | null>(null);
   const [filename, setFilename] = useState<string>("");
 
@@ -131,7 +137,7 @@ const FileTextInput: React.FC<{
       className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/45 dark:hover:bg-white/8"
     >
       <FiUpload className="shrink-0 text-[14px] text-slate-400 dark:text-white/30" />
-      <span className="min-w-0 flex-1 truncate">{filename || placeholder}</span>
+      <span className="min-w-0 flex-1 truncate">{filename || placeholder || t("threatConfig.chooseFile")}</span>
       <input
         ref={ref}
         type="file"
@@ -286,20 +292,20 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     const start = parseInt(newRange.start);
     const end   = parseInt(newRange.end);
     if (!newRange.start || !newRange.end || isNaN(start) || isNaN(end)) {
-      message.warning("Start and End ports are required"); return;
+      message.warning(t("threatConfig.startEndPortsRequired")); return;
     }
-    if (start < 1 || start > 65535) { message.warning("Start must be 1–65535"); return; }
-    if (end < start || end > 65535) { message.warning("End must be ≥ Start and ≤ 65535"); return; }
+    if (start < 1 || start > 65535) { message.warning(t("threatConfig.startPortRange")); return; }
+    if (end < start || end > 65535) { message.warning(t("threatConfig.endPortRange")); return; }
     setAddingRange(true);
     try {
       await CreateGMPPortRange(editItem.id, { start, end, protocol: newRange.protocol });
       setNewRange({ start: "", end: "", protocol: "tcp" });
       await loadPortRanges(editItem.id);
       void fetchLists();
-      message.success(`Port range ${start}–${end} (${newRange.protocol.toUpperCase()}) added`);
+      message.success(t("threatConfig.portRangeAdded", { start, end, protocol: newRange.protocol.toUpperCase() }));
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to add port range");
+      message.error(msg || t("threatConfig.failedAddPortRange"));
     } finally { setAddingRange(false); }
   };
 
@@ -308,7 +314,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { message.warning("Name is required"); return; }
+    if (!form.name.trim()) { message.warning(t("threatConfig.nameRequired")); return; }
 
     if (editItem) {
       setSaving(true);
@@ -320,14 +326,14 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
         const deleted = pendingDeleteIds.size;
         message.success(
           deleted > 0
-            ? `Port list updated (${deleted} range${deleted > 1 ? "s" : ""} deleted)`
-            : "Port list updated",
+            ? t("threatConfig.portListUpdatedRanges", { n: deleted })
+            : t("threatConfig.portListUpdated"),
         );
         resetNewModal();
         void fetchLists();
       } catch (e: unknown) {
         const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-        message.error(msg || "Failed to update port list");
+        message.error(msg || t("threatConfig.failedUpdatePortList"));
       } finally { setSaving(false); }
       return;
     }
@@ -335,36 +341,36 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     // Create
     let portRange = form.port_range;
     if (portRangeMode === "file") {
-      if (!portRangeFile) { message.warning("Please select a file"); return; }
+      if (!portRangeFile) { message.warning(t("threatConfig.selectFile")); return; }
       portRange = (await readFileAsText(portRangeFile)).trim();
-      if (!portRange) { message.warning("File is empty"); return; }
+      if (!portRange) { message.warning(t("threatConfig.fileEmpty")); return; }
     } else {
-      if (!portRange.trim()) { message.warning("Port range is required"); return; }
+      if (!portRange.trim()) { message.warning(t("threatConfig.portRangeRequired")); return; }
     }
     setSaving(true);
     try {
       await CreateGMPPortList({ ...form, port_range: portRange });
-      message.success("Port list created");
+      message.success(t("threatConfig.portListCreated"));
       resetNewModal();
       void fetchLists();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to create port list");
+      message.error(msg || t("threatConfig.failedCreatePortList"));
     } finally { setSaving(false); }
   };
 
   const handleImport = async () => {
-    if (!importFile) { message.warning("Please select an XML file"); return; }
+    if (!importFile) { message.warning(t("threatConfig.selectXmlFile")); return; }
     setImporting(true);
     try {
       await ImportGMPPortList(importFile);
-      message.success("Port list imported");
+      message.success(t("threatConfig.portListImported"));
       setShowImportModal(false);
       setImportFile(null);
       void fetchLists();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to import port list");
+      message.error(msg || t("threatConfig.failedImportPortList"));
     } finally { setImporting(false); }
   };
 
@@ -372,12 +378,12 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     if (!deleteItem) return;
     try {
       await DeleteGMPPortList(deleteItem.id);
-      message.success("Port list deleted");
+      message.success(t("threatConfig.portListDeleted"));
       setDeleteItem(null);
       void fetchLists();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to delete");
+      message.error(msg || t("threatConfig.failedDelete"));
       setDeleteItem(null);
     }
   };
@@ -426,12 +432,12 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
         ) : lists.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
             <FiList className="text-[24px] text-slate-300 dark:text-white/20" />
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No port lists found</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("threatConfig.noPortLists")}</p>
           </div>
         ) : filteredLists.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
             <FiSearch className="text-[24px] text-slate-300 dark:text-white/20" />
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No results for "{search}"</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("threatConfig.noResultsFor", { n: search })}</p>
           </div>
         ) : (
           <>
@@ -455,11 +461,11 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   const canEdit   = !isIANA;
                   const canDelete = !inUse;
                   const editTip = isIANA
-                    ? "IANA standard port list — cannot be modified"
-                    : "Edit port list";
+                    ? t("threatConfig.ianaCannotModify")
+                    : t("threatConfig.editPortListTip");
                   const deleteTip = inUse
-                    ? `In use by: ${usedBy.join(", ")} — cannot delete`
-                    : "Delete port list";
+                    ? t("threatConfig.inUseCannotDelete", { n: usedBy.join(", ") })
+                    : t("threatConfig.deletePortListTip");
 
                   return (
                     <tr key={pl.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
@@ -473,7 +479,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                             </span>
                           )}
                           {inUse && (
-                            <span title={`Used by: ${usedBy.join(", ")}`}
+                            <span title={t("threatConfig.usedBy", { n: usedBy.join(", ") })}
                               className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
                               {t("threatConfig.inUse")} ({usedBy.length})
@@ -483,7 +489,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                         {pl.comment && <p className="mt-0.5 text-[10.5px] text-slate-400 dark:text-white/30">{pl.comment}</p>}
                         {inUse && (
                           <p className="mt-0.5 text-[10px] text-slate-400 dark:text-white/25">
-                            Used by: {usedBy.join(", ")}
+                            {t("threatConfig.usedBy", { n: usedBy.join(", ") })}
                           </p>
                         )}
                       </td>
@@ -597,14 +603,14 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 <div>
                   <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                   <input type="text" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                    placeholder="Unnamed" className={inputCls} />
+                    placeholder={t("threatConfig.unnamedPlaceholder")} className={inputCls} />
                 </div>
 
                 {/* Comment */}
                 <div>
                   <label className={labelCls}>{t("threatConfig.comment")}</label>
                   <input type="text" value={form.comment ?? ""} onChange={e => setForm(p => ({ ...p, comment: e.target.value }))}
-                    placeholder="Optional description" className={inputCls} />
+                    placeholder={t("threatConfig.optionalDescriptionPlaceholder")} className={inputCls} />
                 </div>
 
                 {/* ── Port Ranges section ── */}
@@ -676,10 +682,10 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                         <table className="w-full">
                           <thead>
                             <tr className="border-b border-slate-100 bg-slate-50/80 dark:border-white/8 dark:bg-white/3">
-                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Start</th>
-                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">End</th>
-                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Protocol</th>
-                              <th className="px-3 py-2 text-right text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Actions</th>
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{t("threatConfig.start")}</th>
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{t("threatConfig.end")}</th>
+                              <th className="px-3 py-2 text-left text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{t("threatConfig.protocol")}</th>
+                              <th className="px-3 py-2 text-right text-[9.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{t("common.actions")}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
@@ -698,7 +704,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                                   </span>
                                 </td>
                                 <td className="px-3 py-2 text-right">
-                                  <button type="button" title="Mark for deletion (saved on Update)"
+                                  <button type="button" title={t("threatConfig.markForDeletion")}
                                     onClick={() => handleDeleteRange(pr.id)}
                                     className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-500 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                                     <FiX className="text-[10px]" />
@@ -715,12 +721,12 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                     <div className="mt-3">
                       <label className={labelCls}>{t("threatConfig.addPortRange")}</label>
                       <div className="flex items-center gap-2">
-                        <input type="number" min={1} max={65535} placeholder="Start"
+                        <input type="number" min={1} max={65535} placeholder={t("threatConfig.start")}
                           value={newRange.start}
                           onChange={e => setNewRange(p => ({ ...p, start: e.target.value }))}
                           className={`${inputCls} w-24 text-center`} />
                         <span className="shrink-0 text-[12px] text-slate-400">—</span>
-                        <input type="number" min={1} max={65535} placeholder="End"
+                        <input type="number" min={1} max={65535} placeholder={t("threatConfig.end")}
                           value={newRange.end}
                           onChange={e => setNewRange(p => ({ ...p, end: e.target.value }))}
                           className={`${inputCls} w-24 text-center`} />
@@ -738,7 +744,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                           {addingRange
                             ? <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
                             : <FiPlus className="text-[12px]" />}
-                          Add
+                          {t("common.add")}
                         </button>
                       </div>
                     </div>
@@ -758,7 +764,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? t("common.save").replace("Save", "Update") : t("common.save")}
+                {editItem ? t("common.update") : t("common.save")}
               </button>
             </div>
           </div>
@@ -833,12 +839,14 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 // ─────────────────────────────────────────────────────────────
 // Credentials tab
 // ─────────────────────────────────────────────────────────────
-const PRIV_ALGO_LABEL: Record<string, string> = { aes: "AES", des: "DES", none: "None" };
+const getPrivAlgoLabel = (t: TFn, algo: string): string =>
+  algo === "none" ? t("threatConfig.algoNone") : algo.toUpperCase();
 
 const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
   const { t } = useLanguage();
+  const CRED_TYPES = useMemo(() => getCredTypes(t), [t]);
   const [creds,      setCreds]      = useState<GMPCredentialDTO[]>([]);
   const [tgList,     setTgList]     = useState<GMPTargetDTO[]>([]);
   const [loading,    setLoading]    = useState(false);
@@ -954,7 +962,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { message.warning("Name is required"); return; }
+    if (!form.name.trim()) { message.warning(t("threatConfig.nameRequired")); return; }
     setSaving(true);
     try {
       if (editItem) {
@@ -972,16 +980,16 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
           cc_passphrase:    replaceFlags.ccPassphrase  ? form.cc_passphrase    : "",
         };
         await UpdateGMPCredential(editItem.id, payload);
-        message.success("Credential updated");
+        message.success(t("threatConfig.credentialUpdated"));
       } else {
         await CreateGMPCredential(form);
-        message.success("Credential created");
+        message.success(t("threatConfig.credentialCreated"));
       }
       resetModal();
       void fetchCreds();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || (editItem ? "Failed to update credential" : "Failed to create credential"));
+      message.error(msg || (editItem ? t("threatConfig.failedUpdateCredential") : t("threatConfig.failedCreateCredential")));
     } finally { setSaving(false); }
   };
 
@@ -989,18 +997,18 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
     if (!deleteItem) return;
     try {
       await DeleteGMPCredential(deleteItem.id);
-      message.success("Credential deleted");
+      message.success(t("threatConfig.credentialDeleted"));
       setDeleteItem(null);
       void fetchCreds();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to delete");
+      message.error(msg || t("threatConfig.failedDelete"));
       setDeleteItem(null);
     }
   };
 
   const credTypeLabel = (type: string) =>
-    CREDENTIAL_TYPE_LABELS[type as GMPCredentialType] ?? type;
+    CRED_TYPES.find(ct => ct.value === type)?.label ?? type;
 
   const typeBadgeStyle = (type: string): { bg: string; text: string } => {
     const map: Record<string, { bg: string; text: string }> = {
@@ -1037,8 +1045,8 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
   const autoGen = form.auto_generate ?? false;
 
   const renderFormFields = () => {
-    const t      = form.type;
-    const isEdit = !!editItem;
+    const credType = form.type;
+    const isEdit   = !!editItem;
 
     // ── Shared: password input with eye toggle ──────────────────
     const pwInput = (
@@ -1082,7 +1090,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                 onChange={e => setFlag(flagKey, e.target.checked)}
                 className="h-4 w-4 rounded border-slate-300 accent-blue-500 dark:border-white/30" />
               <span className="whitespace-nowrap text-[12px] text-slate-600 dark:text-white/60">
-                Replace existing {sectionLabel.toLowerCase()} with
+                {t("threatConfig.replaceExistingWith", { field: sectionLabel.toLowerCase() })}
               </span>
             </label>
             <div className="flex-1 min-w-0">{inputFn(!enabled)}</div>
@@ -1095,15 +1103,15 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
       <div className="space-y-3.5">
 
         {/* ── Auto-generate (up / usk — CREATE only) ── */}
-        {!isEdit && (t === "up" || t === "usk") && (
+        {!isEdit && (credType === "up" || credType === "usk") && (
           <div>
-            <label className={labelCls}>Auto-generate</label>
+            <label className={labelCls}>{t("threatConfig.autoGenerate")}</label>
             <div className="flex gap-5 pt-0.5">
               {([true, false] as const).map(v => (
                 <label key={String(v)} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70">
                   <input type="radio" checked={autoGen === v}
                     onChange={() => setF("auto_generate", v)} className="accent-blue-500" />
-                  {v ? "Yes" : "No"}
+                  {v ? t("common.yes") : t("common.no")}
                 </label>
               ))}
             </div>
@@ -1111,77 +1119,77 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
         )}
 
         {/* ── Username (up / usk / snmp) ── */}
-        {(t === "up" || t === "usk" || t === "snmp") && (
+        {(credType === "up" || credType === "usk" || credType === "snmp") && (
           <div>
-            <label className={labelCls}>Username</label>
+            <label className={labelCls}>{t("threatConfig.usernameLabel")}</label>
             <input type="text" value={form.login ?? ""} onChange={e => setF("login", e.target.value)}
-              placeholder="username" className={inputCls} />
+              placeholder={t("threatConfig.usernameLabel")} className={inputCls} />
           </div>
         )}
 
         {/* ══ Username + Password (up) ══ */}
-        {t === "up" && (
+        {credType === "up" && (
           isEdit
-            ? replaceRow("Password", "password",
-                disabled => pwInput("password", showPass, () => setShowPass(p => !p), "New password", disabled))
+            ? replaceRow(t("threatConfig.password"), "password",
+                disabled => pwInput("password", showPass, () => setShowPass(p => !p), t("threatConfig.newPasswordPlaceholder"), disabled))
             : !autoGen && (
-              <PwField label="Password" value={form.password ?? ""} show={showPass}
+              <PwField label={t("threatConfig.password")} value={form.password ?? ""} show={showPass}
                 onChange={v => setF("password", v)} onToggle={() => setShowPass(p => !p)} />
             )
         )}
 
         {/* ══ Username + SSH Key (usk) ══ */}
-        {t === "usk" && !autoGen && (
+        {credType === "usk" && !autoGen && (
           isEdit ? (
             <>
-              {replaceRow("SSH Private Key", "privateKey",
+              {replaceRow(t("threatConfig.sshPrivateKey"), "privateKey",
                 disabled => (
                   <div className={disabled ? "pointer-events-none opacity-40" : ""}>
                     <FileTextInput key={`ssh-${fileResetKey}`}
                       onChange={text => setF("private_key", text)} accept=".pem,.key,.txt" />
                   </div>
                 ))}
-              {replaceRow("SSH Key Passphrase", "passphrase",
-                disabled => pwInput("passphrase", showPrivPass, () => setShowPrivPass(p => !p), "Passphrase (optional)", disabled))}
+              {replaceRow(t("threatConfig.sshKeyPassphrase"), "passphrase",
+                disabled => pwInput("passphrase", showPrivPass, () => setShowPrivPass(p => !p), t("threatConfig.passphraseOptionalPlaceholder"), disabled))}
             </>
           ) : (
             <>
               <div>
-                <label className={labelCls}>Private SSH Key</label>
+                <label className={labelCls}>{t("threatConfig.privateSshKey")}</label>
                 <FileTextInput key={`ssh-${fileResetKey}`}
                   onChange={text => setF("private_key", text)} accept=".pem,.key,.txt" />
               </div>
-              <PwField label="Passphrase for Private SSH Key"
-                value={form.passphrase ?? ""} show={showPrivPass} placeholder="optional"
+              <PwField label={t("threatConfig.passphraseForPrivateSshKey")}
+                value={form.passphrase ?? ""} show={showPrivPass} placeholder={t("threatConfig.optionalPlaceholder")}
                 onChange={v => setF("passphrase", v)} onToggle={() => setShowPrivPass(p => !p)} />
             </>
           )
         )}
 
         {/* ══ SNMP ══ */}
-        {t === "snmp" && (
+        {credType === "snmp" && (
           <>
             {isEdit
-              ? replaceRow("SNMP Community", "community",
-                  disabled => pwInput("community", showCommunity, () => setShowCommunity(p => !p), "Community string", disabled))
-              : <PwField label="SNMP Community" value={form.community ?? ""} show={showCommunity} placeholder="community"
+              ? replaceRow(t("threatConfig.snmpCommunity"), "community",
+                  disabled => pwInput("community", showCommunity, () => setShowCommunity(p => !p), t("threatConfig.communityStringPlaceholder"), disabled))
+              : <PwField label={t("threatConfig.snmpCommunity")} value={form.community ?? ""} show={showCommunity} placeholder={t("threatConfig.communityStringPlaceholder")}
                   onChange={v => setF("community", v)} onToggle={() => setShowCommunity(p => !p)} />}
 
             {isEdit
-              ? replaceRow("Password", "password",
-                  disabled => pwInput("password", showPass, () => setShowPass(p => !p), "Authentication password", disabled))
-              : <PwField label="Password" value={form.password ?? ""} show={showPass} placeholder="authentication password"
+              ? replaceRow(t("threatConfig.password"), "password",
+                  disabled => pwInput("password", showPass, () => setShowPass(p => !p), t("threatConfig.authPasswordPlaceholder"), disabled))
+              : <PwField label={t("threatConfig.password")} value={form.password ?? ""} show={showPass} placeholder={t("threatConfig.authPasswordPlaceholder")}
                   onChange={v => setF("password", v)} onToggle={() => setShowPass(p => !p)} />}
 
             {isEdit
-              ? replaceRow("Privacy Password", "privacyPass",
-                  disabled => pwInput("privacy_password", showPrivPass, () => setShowPrivPass(p => !p), "Privacy password", disabled))
-              : <PwField label="Privacy Password" value={form.privacy_password ?? ""} show={showPrivPass} placeholder="privacy password"
+              ? replaceRow(t("threatConfig.privacyPassword"), "privacyPass",
+                  disabled => pwInput("privacy_password", showPrivPass, () => setShowPrivPass(p => !p), t("threatConfig.privacyPasswordPlaceholder"), disabled))
+              : <PwField label={t("threatConfig.privacyPassword")} value={form.privacy_password ?? ""} show={showPrivPass} placeholder={t("threatConfig.privacyPasswordPlaceholder")}
                   onChange={v => setF("privacy_password", v)} onToggle={() => setShowPrivPass(p => !p)} />}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Auth Algorithm</label>
+                <label className={labelCls}>{t("threatConfig.authAlgorithm")}</label>
                 <div className="flex gap-4 pt-0.5">
                   {(["md5", "sha1"] as const).map(algo => (
                     <label key={algo} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70">
@@ -1194,14 +1202,14 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Privacy Algorithm</label>
+                <label className={labelCls}>{t("threatConfig.privacyAlgorithmLabel")}</label>
                 <div className="flex gap-3 pt-0.5">
                   {(["aes", "des", "none"] as const).map(algo => (
                     <label key={algo} className="flex cursor-pointer items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70">
                       <input type="radio" name="priv_algo" value={algo}
                         checked={form.privacy_algorithm === algo}
                         onChange={() => setF("privacy_algorithm", algo)} className="accent-blue-500" />
-                      {PRIV_ALGO_LABEL[algo]}
+                      {getPrivAlgoLabel(t, algo)}
                     </label>
                   ))}
                 </div>
@@ -1211,9 +1219,9 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
         )}
 
         {/* ══ S/MIME Certificate (smime) ══ */}
-        {t === "smime" && (
+        {credType === "smime" && (
           isEdit
-            ? replaceRow("S/MIME Certificate", "certificate",
+            ? replaceRow(t("threatConfig.credTypeSmime"), "certificate",
                 disabled => (
                   <div className={disabled ? "pointer-events-none opacity-40" : ""}>
                     <FileTextInput key={`smime-${fileResetKey}`}
@@ -1221,16 +1229,16 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                   </div>
                 ))
             : <div>
-                <label className={labelCls}>S/MIME Certificate</label>
+                <label className={labelCls}>{t("threatConfig.credTypeSmime")}</label>
                 <FileTextInput key={`smime-${fileResetKey}`}
                   onChange={text => setF("certificate", text)} accept=".pem,.crt,.cer,.der" />
               </div>
         )}
 
         {/* ══ PGP Encryption Key (pgp) ══ */}
-        {t === "pgp" && (
+        {credType === "pgp" && (
           isEdit
-            ? replaceRow("PGP Public Key", "pgpKey",
+            ? replaceRow(t("threatConfig.pgpPublicKey"), "pgpKey",
                 disabled => (
                   <div className={disabled ? "pointer-events-none opacity-40" : ""}>
                     <FileTextInput key={`pgp-${fileResetKey}`}
@@ -1238,56 +1246,56 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                   </div>
                 ))
             : <div>
-                <label className={labelCls}>Public PGP Key</label>
+                <label className={labelCls}>{t("threatConfig.pgpPublicKey")}</label>
                 <FileTextInput key={`pgp-${fileResetKey}`}
                   onChange={text => setF("public_pgp_key", text)} accept=".asc,.pgp,.txt" />
               </div>
         )}
 
         {/* ══ Password only (pw) ══ */}
-        {t === "pw" && (
+        {credType === "pw" && (
           isEdit
-            ? replaceRow("Password", "password",
-                disabled => pwInput("password", showPass, () => setShowPass(p => !p), "New password", disabled))
-            : <PwField label="Password" value={form.password ?? ""} show={showPass}
+            ? replaceRow(t("threatConfig.password"), "password",
+                disabled => pwInput("password", showPass, () => setShowPass(p => !p), t("threatConfig.newPasswordPlaceholder"), disabled))
+            : <PwField label={t("threatConfig.password")} value={form.password ?? ""} show={showPass}
                 onChange={v => setF("password", v)} onToggle={() => setShowPass(p => !p)} />
         )}
 
         {/* ══ Client Certificate (cc) ══ */}
-        {t === "cc" && (
+        {credType === "cc" && (
           isEdit ? (
             <>
-              {replaceRow("Client Certificate", "certificate",
+              {replaceRow(t("threatConfig.credTypeCc"), "certificate",
                 disabled => (
                   <div className={disabled ? "pointer-events-none opacity-40" : ""}>
                     <FileTextInput key={`cc-cert-${fileResetKey}`}
                       onChange={text => setF("certificate", text)} accept=".pem,.crt,.cer" />
                   </div>
                 ))}
-              {replaceRow("Client Private Key", "ccKey",
+              {replaceRow(t("threatConfig.clientPrivateKey"), "ccKey",
                 disabled => (
                   <div className={disabled ? "pointer-events-none opacity-40" : ""}>
                     <FileTextInput key={`cc-key-${fileResetKey}`}
                       onChange={text => setF("cc_private_key", text)} accept=".pem,.key" />
                   </div>
                 ))}
-              {replaceRow("Key Passphrase", "ccPassphrase",
-                disabled => pwInput("cc_passphrase", showCcPass, () => setShowCcPass(p => !p), "Passphrase (optional)", disabled))}
+              {replaceRow(t("threatConfig.keyPassphrase"), "ccPassphrase",
+                disabled => pwInput("cc_passphrase", showCcPass, () => setShowCcPass(p => !p), t("threatConfig.passphraseOptionalPlaceholder"), disabled))}
             </>
           ) : (
             <>
               <div>
-                <label className={labelCls}>Client Certificate</label>
+                <label className={labelCls}>{t("threatConfig.credTypeCc")}</label>
                 <FileTextInput key={`cc-cert-${fileResetKey}`}
                   onChange={text => setF("certificate", text)} accept=".pem,.crt,.cer" />
               </div>
               <div>
-                <label className={labelCls}>Client Private Key</label>
+                <label className={labelCls}>{t("threatConfig.clientPrivateKey")}</label>
                 <FileTextInput key={`cc-key-${fileResetKey}`}
                   onChange={text => setF("cc_private_key", text)} accept=".pem,.key" />
               </div>
-              <PwField label="Passphrase for Client Private Key"
-                value={form.cc_passphrase ?? ""} show={showCcPass} placeholder="optional"
+              <PwField label={t("threatConfig.passphraseForClientPrivateKey")}
+                value={form.cc_passphrase ?? ""} show={showCcPass} placeholder={t("threatConfig.optionalPlaceholder")}
                 onChange={v => setF("cc_passphrase", v)} onToggle={() => setShowCcPass(p => !p)} />
             </>
           )
@@ -1363,8 +1371,8 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
             <FiSearch className="text-[24px] text-slate-300 dark:text-white/20" />
             <p className="text-[12.5px] text-slate-400 dark:text-white/35">
               {crTypeFilter.length > 0
-                ? `No credentials match the selected type${crSearch ? ` and "${crSearch}"` : ""}`
-                : `No results for "${crSearch}"`}
+                ? `${t("threatConfig.noCredentialsMatchType")}${crSearch ? ` ${t("threatConfig.andSearchTerm", { n: crSearch })}` : ""}`
+                : t("threatConfig.noResultsFor", { n: crSearch })}
             </p>
           </div>
         ) : (
@@ -1385,18 +1393,18 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                   const inUse   = usedCredIds.has(cr.id);
                   const usedBy  = usageCredMap.get(cr.id) ?? [];
                   const deleteTip = inUse
-                    ? `In use by: ${usedBy.join(", ")} — cannot delete`
-                    : "Delete credential";
+                    ? t("threatConfig.inUseCannotDelete", { n: usedBy.join(", ") })
+                    : t("threatConfig.deleteCredentialTip");
                   return (
                     <tr key={cr.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
                       <td className="px-5 py-3.5">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{cr.name}</p>
                           {inUse && (
-                            <span title={`Used by: ${usedBy.join(", ")}`}
+                            <span title={t("threatConfig.usedBy", { n: usedBy.join(", ") })}
                               className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              In use
+                              {t("threatConfig.inUse")}
                             </span>
                           )}
                         </div>
@@ -1493,12 +1501,12 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
               <div>
                 <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                 <input type="text" value={form.name} onChange={e => setF("name", e.target.value)}
-                  placeholder="Unnamed" className={inputCls} />
+                  placeholder={t("threatConfig.unnamedPlaceholder")} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>{t("threatConfig.comment")}</label>
                 <input type="text" value={form.comment ?? ""} onChange={e => setF("comment", e.target.value)}
-                  placeholder="Optional description" className={inputCls} />
+                  placeholder={t("threatConfig.optionalDescriptionPlaceholder")} className={inputCls} />
               </div>
               <div>
                 <label className={labelCls}>{t("threatConfig.type")} <span className="text-red-400">*</span></label>
@@ -1523,13 +1531,13 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
             <div className="flex shrink-0 gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
               <button type="button" onClick={resetModal}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button type="button" onClick={() => void handleSave()} disabled={saving}
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? t("common.save").replace("Save","Update") : t("common.save")}
+                {editItem ? t("common.update") : t("common.save")}
               </button>
             </div>
           </div>
@@ -1552,13 +1560,13 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
 // ─────────────────────────────────────────────────────────────
 // Targets tab
 // ─────────────────────────────────────────────────────────────
-const ALIVE_TESTS = [
-  { value: "Scan Config Default",  label: "Use Scan Config Default" },
-  { value: "Consider Alive",       label: "Consider Hosts as Alive" },
-  { value: "ICMP Ping",            label: "ICMP Ping" },
-  { value: "TCP-ACK Service Ping", label: "TCP-ACK Service Ping" },
-  { value: "TCP-SYN Service Ping", label: "TCP-SYN Service Ping" },
-  { value: "ARP Ping",             label: "ARP Ping" },
+const getAliveTests = (t: TFn) => [
+  { value: "Scan Config Default",  label: t("threatConfig.aliveTestDefault") },
+  { value: "Consider Alive",       label: t("threatConfig.aliveTestConsiderAlive") },
+  { value: "ICMP Ping",            label: t("threatConfig.aliveTestIcmp") },
+  { value: "TCP-ACK Service Ping", label: t("threatConfig.aliveTestTcpAck") },
+  { value: "TCP-SYN Service Ping", label: t("threatConfig.aliveTestTcpSyn") },
+  { value: "ARP Ping",             label: t("threatConfig.aliveTestArp") },
 ];
 
 // Small "create new" icon button used next to credential / port list dropdowns
@@ -1577,6 +1585,7 @@ const HostsField: React.FC<{
   fileKey: string;
   disabled?: boolean;
 }> = ({ label, required, value, onChange, placeholder, fileKey, disabled }) => {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<"manual" | "file">("manual");
 
   const switchMode = (m: "manual" | "file") => {
@@ -1594,7 +1603,7 @@ const HostsField: React.FC<{
           <input type="radio" checked={mode === "manual"} onChange={() => switchMode("manual")}
             disabled={disabled} className="mt-0.5 accent-blue-500" />
           <div className="flex-1 min-w-0">
-            <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">Manual</span>
+            <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">{t("threatConfig.portRangeManual")}</span>
             <input
               type="text"
               value={mode === "manual" ? value : ""}
@@ -1610,7 +1619,7 @@ const HostsField: React.FC<{
           <input type="radio" checked={mode === "file"} onChange={() => switchMode("file")}
             disabled={disabled} className="mt-0.5 accent-blue-500" />
           <div className="flex-1 min-w-0">
-            <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">From file</span>
+            <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/70">{t("threatConfig.portRangeFromFile")}</span>
             <div className={`mt-1.5 ${(disabled || mode !== "file") ? "pointer-events-none opacity-40" : ""}`}>
               <FileTextInput
                 key={`${fileKey}-${mode}`}
@@ -1628,6 +1637,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
   const { t } = useLanguage();
+  const ALIVE_TESTS = useMemo(() => getAliveTests(t), [t]);
   const [targets,   setTargets]   = useState<GMPTargetDTO[]>([]);
   const [portLists, setPortLists] = useState<GMPPortListDTO[]>([]);
   const [creds,     setCreds]     = useState<GMPCredentialDTO[]>([]);
@@ -1739,22 +1749,22 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { message.warning("Name is required"); return; }
-    if (!form.hosts.trim()) { message.warning("Hosts are required"); return; }
+    if (!form.name.trim()) { message.warning(t("threatConfig.nameRequired")); return; }
+    if (!form.hosts.trim()) { message.warning(t("threatConfig.hostsRequired")); return; }
     setSaving(true);
     try {
       if (editItem) {
         await UpdateGMPTarget(editItem.id, form);
-        message.success("Target updated");
+        message.success(t("threatConfig.targetUpdated"));
       } else {
         await CreateGMPTarget(form);
-        message.success("Target created");
+        message.success(t("threatConfig.targetCreated"));
       }
       resetModal();
       void fetchAll();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || (editItem ? "Failed to update target" : "Failed to create target"));
+      message.error(msg || (editItem ? t("threatConfig.failedUpdateTarget") : t("threatConfig.failedCreateTarget")));
     } finally { setSaving(false); }
   };
 
@@ -1762,12 +1772,12 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
     if (!deleteItem) return;
     try {
       await DeleteGMPTarget(deleteItem.id);
-      message.success("Target deleted");
+      message.success(t("threatConfig.targetDeleted"));
       setDeleteItem(null);
       void fetchAll();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || "Failed to delete"); setDeleteItem(null);
+      message.error(msg || t("threatConfig.failedDelete")); setDeleteItem(null);
     }
   };
 
@@ -1869,7 +1879,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             {(tgPortListFilter.length > 0 || tgCredFilter.length > 0) && (
               <button type="button" onClick={() => { setTgPortListFilter([]); setTgCredFilter([]); }}
                 className="text-[10.5px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/30 dark:hover:text-white/55">
-                Reset
+                {t("threatConfig.reset")}
               </button>
             )}
             <button type="button" onClick={() => void fetchAll()} disabled={loading}
@@ -1895,12 +1905,12 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
         ) : targets.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
             <FiTarget className="text-[24px] text-slate-300 dark:text-white/20" />
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No targets found</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("threatConfig.noTargets")}</p>
           </div>
         ) : filteredTargets.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
             <FiSearch className="text-[24px] text-slate-300 dark:text-white/20" />
-            <p className="text-[12.5px] text-slate-400 dark:text-white/35">No results for this filter</p>
+            <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("threatConfig.noResultsFor", { n: tgSearch })}</p>
           </div>
         ) : (
           <>
@@ -1918,18 +1928,18 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                   const inUse    = usedTargetIds.has(tg.id);
                   const usedBy   = usageTargetMap.get(tg.id) ?? [];
                   const deleteTip = inUse
-                    ? `Used by task${usedBy.length > 1 ? "s" : ""}: ${usedBy.join(", ")} — cannot delete`
-                    : "Delete target";
+                    ? t("threatConfig.usedByTaskCannotDelete", { n: usedBy.join(", ") })
+                    : t("threatConfig.deleteTargetTip");
                   return (
                     <tr key={tg.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
                       <td className="px-4 py-3.5">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">{tg.name}</p>
                           {inUse && (
-                            <span title={`Used by: ${usedBy.join(", ")}`}
+                            <span title={t("threatConfig.usedBy", { n: usedBy.join(", ") })}
                               className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9.5px] font-bold text-amber-600 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-400">
                               <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                              In use
+                              {t("threatConfig.inUse")}
                             </span>
                           )}
                         </div>
@@ -2035,7 +2045,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                           {t("threatConfig.targetInUseBanner")}
                         </p>
                         <p className="mt-0.5 text-[11px] text-amber-600 dark:text-amber-400/80">
-                          Used by task{lockedBy.length > 1 ? "s" : ""}: <strong>{lockedBy.join(", ")}</strong>.{" "}
+                          {t("threatConfig.usedBy", { n: "" })} <strong>{lockedBy.join(", ")}</strong>.{" "}
                           {t("threatConfig.targetInUseDetail")}
                         </p>
                       </div>
@@ -2047,20 +2057,20 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 <div>
                   <label className={labelCls}>{t("threatConfig.name")} <span className="text-red-400">*</span></label>
                   <input type="text" value={form.name} onChange={e => setF("name", e.target.value)}
-                    placeholder="Unnamed" className={inputCls} />
+                    placeholder={t("threatConfig.unnamedPlaceholder")} className={inputCls} />
                 </div>
 
                 {/* Comment — always editable */}
                 <div>
                   <label className={labelCls}>{t("threatConfig.comment")}</label>
                   <input type="text" value={form.comment ?? ""} onChange={e => setF("comment", e.target.value)}
-                    placeholder="Optional description" className={inputCls} />
+                    placeholder={t("threatConfig.optionalDescriptionPlaceholder")} className={inputCls} />
                 </div>
 
                 {/* Hosts */}
                 <HostsField
                   key={`hosts-${fieldResetKey}`}
-                  label="Hosts" required
+                  label={t("threatConfig.hosts")} required
                   value={form.hosts}
                   onChange={v => setF("hosts", v)}
                   placeholder="192.168.1.0/24 or 10.0.0.1,10.0.0.2"
@@ -2071,7 +2081,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 {/* Exclude Hosts */}
                 <HostsField
                   key={`excl-${fieldResetKey}`}
-                  label="Exclude Hosts"
+                  label={t("threatConfig.excludeHosts")}
                   value={form.exclude_hosts ?? ""}
                   onChange={v => setF("exclude_hosts", v)}
                   placeholder="e.g. 192.168.1.1"
@@ -2081,14 +2091,14 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 
                 {/* Allow simultaneous IPs */}
                 <div className={isLocked ? "opacity-50 pointer-events-none" : ""}>
-                  <label className={labelCls}>Allow simultaneous scanning via multiple IPs</label>
+                  <label className={labelCls}>{t("threatConfig.allowMultipleIPs")}</label>
                   <div className="flex gap-5 pt-0.5">
                     {([true, false] as const).map(v => (
                       <label key={String(v)} className={`flex items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
                         <input type="radio" checked={form.multiple_ips === v}
                           onChange={() => setF("multiple_ips", v)}
                           disabled={isLocked} className="accent-blue-500" />
-                        {v ? "Yes" : "No"}
+                        {v ? t("common.yes") : t("common.no")}
                       </label>
                     ))}
                   </div>
@@ -2116,10 +2126,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 <div className={isLocked ? "opacity-50 pointer-events-none" : ""}>
                   <label className={labelCls}>{t("threatConfig.aliveTest")}</label>
                   <div className="flex flex-wrap gap-x-5 gap-y-2 pt-0.5">
-                    {[
-                      { val: "Scan Config Default", label: "Use Scan Config Default" },
-                      { val: "Consider Alive",      label: "Consider Hosts as Alive" },
-                    ].map(({ val, label }) => (
+                    {ALIVE_TESTS.slice(0, 2).map(({ value: val, label }) => (
                       <label key={val} className={`flex items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
                         <input type="radio" checked={form.alive_test === val}
                           onChange={() => setF("alive_test", val)}
@@ -2153,13 +2160,13 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                     {t("threatConfig.credentialsSection")}
                   </p>
 
-                  <CredSelect label="SSH"
+                  <CredSelect label={t("threatConfig.credSsh")}
                     value={form.ssh_cred_id ?? ""} onChange={v => setF("ssh_cred_id", v)}
                     options={creds.filter(c => c.type === "up" || c.type === "usk")}
                     disabled={isLocked}
                     extra={
                       <div className="flex shrink-0 items-center gap-1.5">
-                        <span className="text-[11.5px] text-slate-500 dark:text-white/40 whitespace-nowrap">on port</span>
+                        <span className="text-[11.5px] text-slate-500 dark:text-white/40 whitespace-nowrap">{t("threatConfig.onPort")}</span>
                         <input type="text" value={form.ssh_port ?? "22"} onChange={e => setF("ssh_port", e.target.value)}
                           disabled={isLocked}
                           className={`${inputCls} w-16 text-center ${isLocked ? "cursor-not-allowed opacity-50" : ""}`} />
@@ -2167,17 +2174,17 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                     }
                   />
 
-                  <CredSelect label="SMB (NTLM)"
+                  <CredSelect label={t("threatConfig.credSmb")}
                     value={form.smb_cred_id ?? ""} onChange={v => setF("smb_cred_id", v)}
                     options={creds.filter(c => c.type === "up")}
                     disabled={isLocked} />
 
-                  <CredSelect label="ESXi"
+                  <CredSelect label={t("threatConfig.credEsxi")}
                     value={form.esxi_cred_id ?? ""} onChange={v => setF("esxi_cred_id", v)}
                     options={creds.filter(c => c.type === "up")}
                     disabled={isLocked} />
 
-                  <CredSelect label="SNMP"
+                  <CredSelect label={t("threatConfig.credTypeSnmp")}
                     value={form.snmp_cred_id ?? ""} onChange={v => setF("snmp_cred_id", v)}
                     options={creds.filter(c => c.type === "snmp")}
                     disabled={isLocked} />
@@ -2186,27 +2193,27 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                 {/* Reverse Lookup */}
                 <div className={`grid grid-cols-2 gap-4 ${isLocked ? "opacity-50 pointer-events-none" : ""}`}>
                   <div>
-                    <label className={labelCls}>Reverse Lookup Only</label>
+                    <label className={labelCls}>{t("threatConfig.reverseLookupOnly")}</label>
                     <div className="flex gap-5 pt-0.5">
                       {([true, false] as const).map(v => (
                         <label key={String(v)} className={`flex items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
                           <input type="radio" checked={form.reverse_lookup === v}
                             onChange={() => setF("reverse_lookup", v)}
                             disabled={isLocked} className="accent-blue-500" />
-                          {v ? "Yes" : "No"}
+                          {v ? t("common.yes") : t("common.no")}
                         </label>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <label className={labelCls}>Reverse Lookup Unify</label>
+                    <label className={labelCls}>{t("threatConfig.reverseLookupUnify")}</label>
                     <div className="flex gap-5 pt-0.5">
                       {([true, false] as const).map(v => (
                         <label key={String(v)} className={`flex items-center gap-2 text-[12.5px] text-slate-700 dark:text-white/70 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}>
                           <input type="radio" checked={form.reverse_unify === v}
                             onChange={() => setF("reverse_unify", v)}
                             disabled={isLocked} className="accent-blue-500" />
-                          {v ? "Yes" : "No"}
+                          {v ? t("common.yes") : t("common.no")}
                         </label>
                       ))}
                     </div>
@@ -2221,13 +2228,13 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
             <div className="flex shrink-0 gap-2 border-t border-slate-100 px-5 py-4 dark:border-white/8">
               <button type="button" onClick={resetModal}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5 focus:outline-none">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button type="button" onClick={() => void handleSave()} disabled={saving}
                 style={{ background: accentGrad }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 focus:outline-none">
                 {saving && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
-                {editItem ? t("common.save").replace("Save","Update") : t("common.save")}
+                {editItem ? t("common.update") : t("common.save")}
               </button>
             </div>
           </div>

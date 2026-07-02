@@ -27,6 +27,7 @@ import {
   type HistoryNotifyResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 type FilterKey =
   | "All"
@@ -48,20 +49,68 @@ type CombinedFilterOption = {
   order: number;
 };
 
-const MONTH_OPTIONS: { key: string; label: string; value: number }[] = [
-  { key: "1", label: "January", value: 1 },
-  { key: "2", label: "February", value: 2 },
-  { key: "3", label: "March", value: 3 },
-  { key: "4", label: "April", value: 4 },
-  { key: "5", label: "May", value: 5 },
-  { key: "6", label: "June", value: 6 },
-  { key: "7", label: "July", value: 7 },
-  { key: "8", label: "August", value: 8 },
-  { key: "9", label: "September", value: 9 },
-  { key: "10", label: "October", value: 10 },
-  { key: "11", label: "November", value: 11 },
-  { key: "12", label: "December", value: 12 },
+const MONTH_OPTIONS: { key: string; value: number }[] = [
+  { key: "1", value: 1 },
+  { key: "2", value: 2 },
+  { key: "3", value: 3 },
+  { key: "4", value: 4 },
+  { key: "5", value: 5 },
+  { key: "6", value: 6 },
+  { key: "7", value: 7 },
+  { key: "8", value: 8 },
+  { key: "9", value: 9 },
+  { key: "10", value: 10 },
+  { key: "11", value: 11 },
+  { key: "12", value: 12 },
 ];
+
+const MONTH_LABEL_KEYS: Record<number, TranslationKey> = {
+  1: "line.monthJanuary",
+  2: "line.monthFebruary",
+  3: "line.monthMarch",
+  4: "line.monthApril",
+  5: "line.monthMay",
+  6: "line.monthJune",
+  7: "line.monthJuly",
+  8: "line.monthAugust",
+  9: "line.monthSeptember",
+  10: "line.monthOctober",
+  11: "line.monthNovember",
+  12: "line.monthDecember",
+};
+
+const STATUS_LABEL_KEYS: Record<StatusKey, TranslationKey> = {
+  "Update Completed": "line.statusUpdateCompleted",
+  "No Update": "line.statusNoUpdate",
+  "Already Running": "line.statusAlreadyRunning",
+  "Update Failed": "line.statusUpdateFailed",
+  "Status Notification": "line.statusStatusNotification",
+  Unauthorized: "line.statusUnauthorized",
+  "Server Error": "line.statusServerError",
+  Timeout: "line.statusTimeout",
+};
+
+const TITLE_KEYS: Record<StatusKey, TranslationKey> = {
+  "Update Completed": "line.titleFeedUpdateCompleted",
+  "No Update": "line.titleNoFeedUpdate",
+  "Already Running": "line.titleFeedUpdateAlreadyRunning",
+  "Update Failed": "line.titleFeedUpdateFailed",
+  "Status Notification": "line.statusStatusNotification",
+  Unauthorized: "line.titleUnauthorizedRequest",
+  "Server Error": "line.statusServerError",
+  Timeout: "line.titleFeedUpdateTimeout",
+};
+
+const DESCRIPTION_KEYS: Record<StatusKey, TranslationKey> = {
+  "Update Completed": "line.descUpdateCompleted",
+  "No Update": "line.descNoUpdate",
+  "Already Running": "line.descAlreadyRunning",
+  "Update Failed": "line.descUpdateFailed",
+  "Status Notification": "line.descStatusNotification",
+  Unauthorized: "line.descUnauthorized",
+  "Server Error": "line.descServerError",
+  Timeout: "line.descTimeout",
+};
 
 const statusStyles: Record<
   StatusKey,
@@ -255,35 +304,19 @@ const parseDescription = (description?: string | null) => {
   };
 };
 
-const getDisplayTitle = (item: HistoryNotifyResponse) => {
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const getDisplayTitle = (item: HistoryNotifyResponse, t: TFn) => {
   const subject = normalizeText(item.subject);
   const normalizedStatus = normalizeStatus(item.status);
 
   if (subject) return subject;
 
-  switch (normalizedStatus) {
-    case "Update Completed":
-      return "Feed Update Completed";
-    case "No Update":
-      return "No Feed Update";
-    case "Already Running":
-      return "Feed Update Already Running";
-    case "Update Failed":
-      return "Feed Update Failed";
-    case "Status Notification":
-      return "Status Notification";
-    case "Unauthorized":
-      return "Unauthorized Request";
-    case "Server Error":
-      return "Server Error";
-    case "Timeout":
-      return "Feed Update Timeout";
-    default:
-      return "Notification";
-  }
+  const key = TITLE_KEYS[normalizedStatus];
+  return key ? t(key) : t("line.statusNotification");
 };
 
-const getDisplayDescription = (item: HistoryNotifyResponse) => {
+const getDisplayDescription = (item: HistoryNotifyResponse, t: TFn) => {
   const normalizedStatus = normalizeStatus(item.status);
   const parsed = parseDescription(item.description);
 
@@ -291,26 +324,8 @@ const getDisplayDescription = (item: HistoryNotifyResponse) => {
     return parsed.summaryLine;
   }
 
-  switch (normalizedStatus) {
-    case "Update Completed":
-      return "Security feed update completed successfully.";
-    case "No Update":
-      return "There is no new security feed update available.";
-    case "Already Running":
-      return "The feed update process is already running in the system.";
-    case "Update Failed":
-      return "Security feed data update failed.";
-    case "Status Notification":
-      return "System status notification.";
-    case "Unauthorized":
-      return "The request was rejected because the automation token is invalid.";
-    case "Server Error":
-      return "Backend configuration error occurred during feed update.";
-    case "Timeout":
-      return "Feed update exceeded the allowed execution time.";
-    default:
-      return item.description || "-";
-  }
+  const key = DESCRIPTION_KEYS[normalizedStatus];
+  return key ? t(key) : item.description || "-";
 };
 
 type CombinedFilterProps = {
@@ -342,6 +357,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
   allVisibleSelected,
   containerRef,
 }) => {
+  const { t } = useLanguage();
   const selectedCount = selectedKeys.length;
   const monthOptions = options.filter((opt) => opt.type === "month");
   const yearOptions = options.filter((opt) => opt.type === "year");
@@ -392,7 +408,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
                 type="text"
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search month or year..."
+                placeholder={t("line.searchMonthOrYear")}
                 className="w-full bg-transparent outline-none text-[10.5px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
               />
               {searchValue.trim() !== "" && (
@@ -400,7 +416,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
                   type="button"
                   onClick={() => onSearchChange("")}
                   className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                  aria-label="Clear date filter search"
+                  aria-label={t("line.clearDateFilterSearch")}
                 >
                   <FiX className="text-[11px]" />
                 </button>
@@ -413,7 +429,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
                 onClick={onSelectAllVisible}
                 className="text-[10px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
               >
-                {allVisibleSelected ? "Unselect visible" : "Select visible"}
+                {allVisibleSelected ? t("line.unselectVisible") : t("line.selectVisible")}
               </button>
 
               <button
@@ -421,7 +437,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
                 onClick={onClearAll}
                 className="text-[10px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
               >
-                Clear all
+                {t("line.clearAll")}
               </button>
             </div>
           </div>
@@ -429,14 +445,14 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
           <div className="max-h-72 overflow-y-auto p-2">
             {options.length === 0 ? (
               <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
-                No matching date filter
+                {t("line.noMatchingDateFilter")}
               </div>
             ) : (
               <div className="space-y-2">
                 {monthOptions.length > 0 && (
                   <div>
                     <div className="px-2.5 pb-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
-                      Month
+                      {t("line.monthSectionLabel")}
                     </div>
 
                     <div className="space-y-1">
@@ -481,7 +497,7 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
                 {yearOptions.length > 0 && (
                   <div>
                     <div className="px-2.5 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
-                      Year
+                      {t("line.yearSectionLabel")}
                     </div>
 
                     <div className="space-y-1">
@@ -600,11 +616,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
   const monthOptions = useMemo<CombinedFilterOption[]>(() => {
     return MONTH_OPTIONS.map((m) => ({
       key: `month:${m.key}`,
-      label: m.label,
+      label: t(MONTH_LABEL_KEYS[m.value]),
       type: "month",
       order: m.value,
     }));
-  }, []);
+  }, [t]);
 
   const combinedFilterOptions = useMemo<CombinedFilterOption[]>(() => {
     const keyword = dateFilterSearch.trim().toLowerCase();
@@ -632,17 +648,17 @@ const Index: React.FC<HistoryNotifyProps> = ({
   );
 
   const dateFilterButtonLabel = useMemo(() => {
-    if (selectedDateKeys.length === 0) return "Date Filter";
+    if (selectedDateKeys.length === 0) return t("line.dateFilterLabel");
 
     if (selectedDateKeys.length === 1) {
       const found = [...monthOptions, ...yearOptions].find(
         (opt) => opt.key === selectedDateKeys[0]
       );
-      return found?.label || "1 selected";
+      return found?.label || t("line.nSelected", { n: 1 });
     }
 
-    return `${selectedDateKeys.length} selected`;
-  }, [selectedDateKeys, monthOptions, yearOptions]);
+    return t("line.nSelected", { n: selectedDateKeys.length });
+  }, [selectedDateKeys, monthOptions, yearOptions, t]);
 
   const allVisibleDateFiltersSelected =
     combinedFilterOptions.length > 0 &&
@@ -782,7 +798,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
   const confirmDelete = async () => {
     if (selected.length === 0) {
-      setDeleteError("Please select at least one notification.");
+      setDeleteError(t("line.selectAtLeastOne"));
       return;
     }
 
@@ -795,7 +811,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
       });
 
       if (!res) {
-        setDeleteError("Failed to delete selected notifications.");
+        setDeleteError(t("line.failedDeleteSelected"));
         return;
       }
 
@@ -804,10 +820,10 @@ const Index: React.FC<HistoryNotifyProps> = ({
       setItems((prev) => prev.filter((item) => !selectedSet.has(item.id)));
       setSelected([]);
       setDeleteOpen(false);
-      message.success("Delete success");
+      message.success(t("line.deleteSuccess"));
     } catch (err) {
       console.error("confirmDelete error:", err);
-      setDeleteError("Failed to delete selected notifications.");
+      setDeleteError(t("line.failedDeleteSelected"));
     } finally {
       setDeleting(false);
     }
@@ -833,7 +849,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/45">
                 <FiDatabase className="shrink-0 text-[10px]" />
-                <span>Auto Delete: records older than 6 months are removed daily</span>
+                <span>{t("line.autoDeleteNotice")}</span>
               </div>
             </div>
           </div>
@@ -844,7 +860,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search notifications."
+                placeholder={t("line.searchNotificationsPlaceholder")}
                 className={[
                   "w-full h-8 rounded-[14px] pl-8.5 pr-3 text-[11px] outline-none transition",
                   "border border-gray-200 bg-white text-slate-800 focus:ring-2 focus:ring-cyan-200",
@@ -877,14 +893,14 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   ? "bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-200 dark:border-cyan-400/20"
                   : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
               ].join(" ")}
-              title={allSelected ? "Deselect all" : "Select all"}
+              title={allSelected ? t("line.deselectAllTitle") : t("line.selectAllTitle")}
             >
               {allSelected ? (
                 <FiCheckSquare className="text-[12px]" />
               ) : (
                 <FiSquare className="text-[12px]" />
               )}
-              {allSelected ? "Deselect All" : "Select All"}
+              {allSelected ? t("line.deselectAllLabel") : t("line.selectAllLabel")}
             </button>
 
             <button
@@ -918,11 +934,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
               </div>
 
               <h3 className="mt-3 text-[13px] font-semibold text-slate-900 dark:text-white/85">
-                Loading notifications...
+                {t("line.loadingNotifications")}
               </h3>
 
               <p className="mt-1 text-[10px] text-slate-500 dark:text-white/55">
-                Please wait while we load your notification history.
+                {t("line.loadingNotificationHistoryDesc")}
               </p>
             </div>
           ) : notifications.length === 0 ? (
@@ -932,11 +948,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
               </div>
 
               <h3 className="mt-3 text-[13px] font-semibold text-slate-900 dark:text-white/85">
-                No notifications found
+                {t("line.noNotificationsFound")}
               </h3>
 
               <p className="mt-1 text-[10px] text-slate-500 dark:text-white/55">
-                Try adjusting your search, date filter, or status filter.
+                {t("line.tryAdjustingFilters")}
               </p>
             </div>
           ) : (
@@ -945,8 +961,9 @@ const Index: React.FC<HistoryNotifyProps> = ({
                 const tone = getStatusMeta(item.status);
                 const isSelected = selected.includes(item.id);
                 const parsed = parseDescription(item.description);
-                const displayTitle = getDisplayTitle(item);
-                const displayDescription = getDisplayDescription(item);
+                const displayTitle = getDisplayTitle(item, t);
+                const displayDescription = getDisplayDescription(item, t);
+                const statusLabel = t(STATUS_LABEL_KEYS[normalizeStatus(item.status)]);
 
                 return (
                   <div
@@ -971,7 +988,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                             ? "border-cyan-500 bg-cyan-500"
                             : "border-gray-300 bg-white dark:border-white/15 dark:bg-white/5",
                         ].join(" ")}
-                        aria-label="Select notification"
+                        aria-label={t("line.selectNotificationAria")}
                       >
                         {isSelected && (
                           <span className="m-auto h-1.5 w-1.5 rounded-xs bg-white" />
@@ -1004,7 +1021,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                                 <span
                                   className={`h-1.5 w-1.5 rounded-full ${tone.dot}`}
                                 />
-                                {tone.label}
+                                {statusLabel}
                               </span>
                             </div>
 
@@ -1058,12 +1075,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
                 <div>
                   <h3 className="text-[14px] font-semibold text-slate-900 dark:text-white/90">
-                    Delete selected notifications
+                    {t("line.deleteSelectedNotificationsTitle")}
                   </h3>
 
                   <p className="mt-1 text-[10.5px] text-slate-500 dark:text-white/55">
-                    This action will remove the selected notification history
-                    records.
+                    {t("line.deleteSelectedNotificationsDesc")}
                   </p>
                 </div>
               </div>
@@ -1080,7 +1096,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
             <div className="px-4 py-3">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/5">
                 <p className="text-[11px] font-medium text-slate-700 dark:text-white/75">
-                  Selected items: {selectedItems.length}
+                  {t("line.selectedItemsCount", { n: selectedItems.length })}
                 </p>
 
                 <div className="mt-2 max-h-40 overflow-y-auto space-y-1.5">
@@ -1090,7 +1106,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                       className="rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-[10px] text-slate-600 dark:border-white/10 dark:bg-[#0F172A] dark:text-white/60"
                     >
                       <p className="font-medium text-slate-800 dark:text-white/80">
-                        {getDisplayTitle(item)}
+                        {getDisplayTitle(item, t)}
                       </p>
 
                       <p className="mt-0.5 text-slate-500 dark:text-white/45">
@@ -1115,7 +1131,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   disabled={deleting}
                   className="inline-flex h-9 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-[11px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
 
                 <button
@@ -1124,7 +1140,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
                   disabled={deleting}
                   className="inline-flex h-9 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 text-[11px] font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
                 >
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? t("common.deleting") : t("common.delete")}
                 </button>
               </div>
             </div>

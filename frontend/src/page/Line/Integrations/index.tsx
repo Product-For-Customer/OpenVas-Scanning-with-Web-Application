@@ -32,8 +32,11 @@ import {
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import type { TranslationKey } from "../../../locales";
 
 type FormMode = "create" | "edit";
+
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
 
 type LineMasterFormData = {
   name: string;
@@ -52,55 +55,55 @@ type UiApp = {
 
 const normalizeText = (value?: string | null) => (value || "").trim();
 
-const getCategoryFromName = (name: string) => {
+const getCategoryFromName = (name: string, t: TFn) => {
   const lower = normalizeText(name).toLowerCase();
 
-  if (lower.includes("slack")) return "Social Authority";
-  if (lower.includes("google") || lower.includes("meet")) return "Management";
-  if (lower.includes("tiktok")) return "Entertainment";
-  if (lower.includes("excel") || lower.includes("microsoft")) return "Analytics";
-  if (lower.includes("mail")) return "Business";
-  if (lower.includes("youtube")) return "Entertainment";
-  if (lower.includes("line")) return "Messaging";
-  if (lower.includes("notify")) return "Notification";
-  return "Integration";
+  if (lower.includes("slack")) return t("line.categorySocialAuthority");
+  if (lower.includes("google") || lower.includes("meet")) return t("line.categoryManagement");
+  if (lower.includes("tiktok")) return t("line.categoryEntertainment");
+  if (lower.includes("excel") || lower.includes("microsoft")) return t("line.categoryAnalytics");
+  if (lower.includes("mail")) return t("line.categoryBusiness");
+  if (lower.includes("youtube")) return t("line.categoryEntertainment");
+  if (lower.includes("line")) return t("line.categoryMessaging");
+  if (lower.includes("notify")) return t("line.categoryNotification");
+  return t("line.categoryIntegration");
 };
 
-const getDescriptionFromName = (name: string) => {
+const getDescriptionFromName = (name: string, t: TFn) => {
   const lower = normalizeText(name).toLowerCase();
 
   if (lower.includes("slack")) {
-    return "Connect Slack for team alerts, updates, and workflow communication.";
+    return t("line.descSlackIntegration");
   }
   if (lower.includes("google") || lower.includes("meet")) {
-    return "Connect Google services to support meeting and management workflows.";
+    return t("line.descGoogleIntegration");
   }
   if (lower.includes("tiktok")) {
-    return "Connect TikTok for content and social engagement workflows.";
+    return t("line.descTiktokIntegration");
   }
   if (lower.includes("excel") || lower.includes("microsoft")) {
-    return "Connect Microsoft tools for reporting, analytics, and productivity.";
+    return t("line.descMicrosoftIntegration");
   }
   if (lower.includes("mail")) {
-    return "Connect email services for notifications and communication.";
+    return t("line.descMailIntegration");
   }
   if (lower.includes("youtube")) {
-    return "Connect YouTube for media and content-related workflows.";
+    return t("line.descYoutubeIntegration");
   }
   if (lower.includes("line")) {
-    return "Connect your LINE channel for notifications and automated message delivery.";
+    return t("line.descLineIntegration");
   }
 
-  return "Manage and connect this integration to expand your workflow.";
+  return t("line.descGenericIntegration");
 };
 
-const mapToUiApp = (item: AppLineMasterResponse): UiApp => ({
+const mapToUiApp = (item: AppLineMasterResponse, t: TFn): UiApp => ({
   id: item.id,
   name: item.name,
   token: item.token,
   app_user_id: Number(item.app_user_id ?? 0),
-  category: getCategoryFromName(item.name),
-  description: normalizeText(item.description) || getDescriptionFromName(item.name),
+  category: getCategoryFromName(item.name, t),
+  description: normalizeText(item.description) || getDescriptionFromName(item.name, t),
 });
 
 const modalBackdropClass =
@@ -212,7 +215,10 @@ const Index: React.FC = () => {
       ? true
       : Boolean(editingMaster) && masterFormSnapshot !== editingMasterSnapshot;
 
-  const uiLineMasters = useMemo(() => lineMasters.map(mapToUiApp), [lineMasters]);
+  const uiLineMasters = useMemo(
+    () => lineMasters.map((item) => mapToUiApp(item, t)),
+    [lineMasters, t],
+  );
 
   const filteredLineMasters = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -258,7 +264,7 @@ const Index: React.FC = () => {
 
       if (!data) {
         setLineMasters([]);
-        setError("Unable to load integrations.");
+        setError(t("line.unableLoadIntegrations"));
         return;
       }
 
@@ -266,12 +272,12 @@ const Index: React.FC = () => {
     } catch (err) {
       console.error("fetchLineMasters error:", err);
       setLineMasters([]);
-      setError("Something went wrong while loading integrations.");
+      setError(t("line.errorLoadingIntegrations"));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void fetchLineMasters();
@@ -315,12 +321,12 @@ const Index: React.FC = () => {
     const description = normalizeText(masterFormData.description);
     const token = normalizeText(masterFormData.token);
 
-    if (!name) return "Please enter integration name.";
-    if (name.length < 2) return "Integration name must be at least 2 characters.";
-    if (!description) return "Please enter description.";
-    if (description.length < 2) return "Description must be at least 2 characters.";
-    if (!token) return "Please enter token.";
-    if (token.length < 6) return "Token must be at least 6 characters.";
+    if (!name) return t("line.pleaseEnterIntegrationName");
+    if (name.length < 2) return t("line.integrationNameMinLength");
+    if (!description) return t("line.pleaseEnterDescription");
+    if (description.length < 2) return t("line.descriptionMinLength");
+    if (!token) return t("line.pleaseEnterToken");
+    if (token.length < 6) return t("line.tokenMinLength");
 
     return "";
   };
@@ -359,25 +365,25 @@ const Index: React.FC = () => {
         const res = await CreateAppLineMaster(payload);
 
         if (!res?.data) {
-          setMasterFormError("Failed to create integration.");
+          setMasterFormError(t("line.failedCreateIntegration"));
           return;
         }
 
         setLineMasters((prev) => [res.data, ...prev]);
         setMasterFormOpen(false);
-        message.success("create success");
+        message.success(t("line.createSuccessMsg"));
         return;
       }
 
       if (!editingMaster?.id) {
-        setMasterFormError("Missing integration ID.");
+        setMasterFormError(t("line.missingIntegrationId"));
         return;
       }
 
       const res = await UpdateAppLineMasterByID(editingMaster.id, payload);
 
       if (!res?.data) {
-        setMasterFormError("Failed to update integration.");
+        setMasterFormError(t("line.failedUpdateIntegration"));
         return;
       }
 
@@ -385,14 +391,14 @@ const Index: React.FC = () => {
         prev.map((item) => (item.id === editingMaster.id ? res.data : item)),
       );
       setMasterFormOpen(false);
-      message.success("update success");
+      message.success(t("line.updateSuccessMsg"));
     } catch (err: any) {
       setMasterFormError(
         err?.response?.data?.error ||
           err?.message ||
           (masterFormMode === "create"
-            ? "Failed to create integration."
-            : "Failed to update integration."),
+            ? t("line.failedCreateIntegration")
+            : t("line.failedUpdateIntegration")),
       );
     } finally {
       setMasterSubmitting(false);
@@ -414,7 +420,7 @@ const Index: React.FC = () => {
 
   const handleDeleteMaster = async () => {
     if (!masterDeleteTarget?.id) {
-      setMasterDeleteError("Missing integration ID.");
+      setMasterDeleteError(t("line.missingIntegrationId"));
       return;
     }
 
@@ -425,7 +431,7 @@ const Index: React.FC = () => {
       const res = await DeleteAppLineMasterByID(masterDeleteTarget.id);
 
       if (!res) {
-        setMasterDeleteError("Failed to delete integration.");
+        setMasterDeleteError(t("line.failedDeleteIntegration"));
         return;
       }
 
@@ -434,10 +440,10 @@ const Index: React.FC = () => {
       );
       setMasterDeleteOpen(false);
       setMasterDeleteTarget(null);
-      message.success("delete success");
+      message.success(t("line.deleteSuccessMsg"));
     } catch (err) {
       console.error("handleDeleteMaster error:", err);
-      setMasterDeleteError("Failed to delete integration.");
+      setMasterDeleteError(t("line.failedDeleteIntegration"));
     } finally {
       setMasterDeleting(false);
     }
@@ -511,7 +517,7 @@ const Index: React.FC = () => {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
+              placeholder={t("line.searchEllipsisPlaceholder")}
               className="w-full rounded-lg border border-slate-200/80 bg-white py-1.5 pl-8 pr-3 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25"
             />
           </div>
@@ -532,7 +538,7 @@ const Index: React.FC = () => {
               style={{ background: accentGrad }}
               className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90"
             >
-              <FiPlus className="text-[13px]" /> Bot
+              <FiPlus className="text-[13px]" /> {t("line.botLabel")}
             </button>
           </div>
         </div>
@@ -553,12 +559,12 @@ const Index: React.FC = () => {
           ) : lineMasters.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-14 text-center">
               <SiLine className="text-[24px] text-slate-300 dark:text-white/20" />
-              <p className="text-[12.5px] text-slate-400 dark:text-white/35">No Bot Line found</p>
+              <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("line.noBotLineFound")}</p>
             </div>
           ) : filteredLineMasters.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-14 text-center">
               <FiSearch className="text-[24px] text-slate-300 dark:text-white/20" />
-              <p className="text-[12.5px] text-slate-400 dark:text-white/35">No results for this filter</p>
+              <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("line.noResultsForFilter")}</p>
             </div>
           ) : (
             <>
@@ -566,7 +572,7 @@ const Index: React.FC = () => {
                 <table className="w-full min-w-160">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-white/8">
-                      {["Name", "Category", "Token", ""].map((h) => (
+                      {[t("line.name"), t("line.tableCategory"), t("line.token"), ""].map((h) => (
                         <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>
                       ))}
                     </tr>
@@ -598,7 +604,7 @@ const Index: React.FC = () => {
                               onClick={() =>
                                 openEditMasterModal(lineMasters.find((m) => m.id === item.id)!)
                               }
-                              title="Edit Bot LINE"
+                              title={t("line.editBotLine")}
                               className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
                             >
                               <FiEdit2 className="text-[11px]" />
@@ -608,7 +614,7 @@ const Index: React.FC = () => {
                               onClick={() =>
                                 openDeleteMasterModal(lineMasters.find((m) => m.id === item.id)!)
                               }
-                              title="Delete Bot LINE"
+                              title={t("line.deleteBotLine")}
                               className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
                             >
                               <FiTrash2 className="text-[11px]" />
@@ -622,7 +628,7 @@ const Index: React.FC = () => {
               </div>
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 dark:border-white/8">
-                  <span className="text-[11px] text-slate-400 dark:text-white/30">Page {page} of {totalPages}</span>
+                  <span className="text-[11px] text-slate-400 dark:text-white/30">{t("line.pageOfTotal", { page, totalPages })}</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -668,7 +674,7 @@ const Index: React.FC = () => {
       <div className="flex items-start gap-2 rounded-xl border border-slate-200/70 bg-slate-50/60 px-4 py-3.5 dark:border-white/8 dark:bg-white/3">
         <FiCheckCircle className="mt-0.5 shrink-0 text-[13px]" style={{ color: currentColor }} />
         <p className="text-[11.5px] text-slate-500 dark:text-white/45">
-          LINE integration tokens are stored securely. Changes take effect immediately.
+          {t("line.tokenSecurityNote")}
         </p>
       </div>
 
@@ -693,10 +699,10 @@ const Index: React.FC = () => {
                 </span>
                 <div>
                   <p className="text-[8.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                    Bot Line
+                    {t("line.integrationsTitle")}
                   </p>
                   <h3 className="text-[13.5px] font-bold text-slate-800 dark:text-white/90">
-                    {masterFormMode === "create" ? "Create Bot Line" : "Edit Bot Line"}
+                    {masterFormMode === "create" ? t("line.createBotLine") : t("line.editBotLineModalTitle")}
                   </h3>
                 </div>
               </div>
@@ -720,7 +726,7 @@ const Index: React.FC = () => {
               <div>
                 <label className={formLabelClass}>
                   <FiType className="text-[10px]" />
-                  Bot Line Name <span className="text-red-400">*</span>
+                  {t("line.botLineNameLabel")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   className={formInputClass}
@@ -729,14 +735,14 @@ const Index: React.FC = () => {
                     setMasterFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   disabled={masterSubmitting}
-                  placeholder="LINE Notify / Slack / Google..."
+                  placeholder={t("line.integrationNamePlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiLayers className="text-[10px]" />
-                  Description <span className="text-red-400">*</span>
+                  {t("line.descriptionLabel")} <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   className={formTextareaClass}
@@ -745,14 +751,14 @@ const Index: React.FC = () => {
                     setMasterFormData((prev) => ({ ...prev, description: e.target.value }))
                   }
                   disabled={masterSubmitting}
-                  placeholder="Describe this integration"
+                  placeholder={t("line.describeIntegrationPlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiLock className="text-[10px]" />
-                  Token <span className="text-red-400">*</span>
+                  {t("line.token")} <span className="text-red-400">*</span>
                 </label>
                 <div className="relative">
                   <input
@@ -763,7 +769,7 @@ const Index: React.FC = () => {
                       setMasterFormData((prev) => ({ ...prev, token: e.target.value }))
                     }
                     disabled={masterSubmitting}
-                    placeholder="Enter token"
+                    placeholder={t("line.enterTokenPlaceholder")}
                   />
                   <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-1">
                     <button
@@ -784,7 +790,7 @@ const Index: React.FC = () => {
                 </div>
                 {copiedToken ? (
                   <p className="mt-1 text-[10px] text-emerald-600 dark:text-emerald-300">
-                    Copied
+                    {t("line.copiedLabel")}
                   </p>
                 ) : null}
               </div>
@@ -797,7 +803,7 @@ const Index: React.FC = () => {
                 disabled={masterSubmitting}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -814,11 +820,11 @@ const Index: React.FC = () => {
                 {!masterSubmitting && (masterFormMode === "create" ? <FiPlus className="text-[12px]" /> : <FiSave className="text-[12px]" />)}
                 {masterSubmitting
                   ? masterFormMode === "create"
-                    ? "Creating..."
-                    : "Saving..."
+                    ? t("line.creatingEllipsis")
+                    : t("common.saving")
                   : masterFormMode === "create"
-                    ? "Create"
-                    : "Save"}
+                    ? t("line.createLabel")
+                    : t("common.save")}
               </button>
             </div>
           </div>
@@ -835,14 +841,10 @@ const Index: React.FC = () => {
               </div>
 
               <h3 className="text-center text-[16px] font-semibold text-slate-900 dark:text-white">
-                Delete Bot Line
+                {t("line.deleteBotLineTitle")}
               </h3>
               <p className="mt-2 text-center text-[12px] leading-6 text-slate-500 dark:text-white/50">
-                Are you sure you want to delete{" "}
-                <span className="font-semibold text-slate-700 dark:text-white/80">
-                  {masterDeleteTarget.name}
-                </span>
-                ?
+                {t("line.confirmDeleteQuestion", { name: masterDeleteTarget.name })}
               </p>
 
               {masterDeleteError ? (
@@ -856,14 +858,14 @@ const Index: React.FC = () => {
                   onClick={closeDeleteMasterModal}
                   className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </ActionButton>
                 <ActionButton
                   onClick={handleDeleteMaster}
                   disabled={masterDeleting}
                   className="bg-rose-600 text-white hover:bg-rose-700"
                 >
-                  {masterDeleting ? "Deleting..." : "Delete"}
+                  {masterDeleting ? t("common.deleting") : t("common.delete")}
                 </ActionButton>
               </div>
             </div>

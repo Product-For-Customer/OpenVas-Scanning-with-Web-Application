@@ -172,6 +172,8 @@ const MapPopupCard: React.FC<{
   device: Device;
   onClose: () => void;
 }> = ({ device, onClose }) => {
+  const { t } = useLanguage();
+
   return (
     <div className="absolute bottom-3 left-3 right-3 z-120 md:right-auto md:w-85">
       <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/8 dark:bg-[#0d0b1a]">
@@ -182,7 +184,7 @@ const MapPopupCard: React.FC<{
                 {device.device_name}
               </p>
               <p className="mt-1 text-[9px] text-slate-500 dark:text-white/45">
-                Last seen: {device.lastSeen}
+                {t("targetPage.lastSeen")} {device.lastSeen}
               </p>
             </div>
 
@@ -199,7 +201,8 @@ const MapPopupCard: React.FC<{
                 type="button"
                 onClick={onClose}
                 className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/10"
-                title="Close"
+                title={t("common.close")}
+                aria-label={t("common.close")}
               >
                 <FiX className="text-[12px]" />
               </button>
@@ -211,7 +214,7 @@ const MapPopupCard: React.FC<{
           <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiNavigation />
-              IP Address
+              {t("targetPage.ipAddress")}
             </div>
             <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.ip}
@@ -221,7 +224,7 @@ const MapPopupCard: React.FC<{
           <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiMapPin />
-              Location
+              {t("targetPage.location")}
             </div>
             <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.location}
@@ -231,7 +234,7 @@ const MapPopupCard: React.FC<{
           <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/4">
             <div className="flex items-center gap-2 text-[10px] font-medium text-slate-700 dark:text-white/75">
               <FiCalendar />
-              Detected Time
+              {t("targetPage.detectedTime")}
             </div>
             <p className="mt-1 text-[11px] text-slate-600 dark:text-white/65">
               {device.detected_time}
@@ -245,7 +248,7 @@ const MapPopupCard: React.FC<{
             className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-2xl bg-linear-to-r from-cyan-500 via-sky-500 to-blue-600 px-4 text-[11px] font-medium text-white transition hover:from-cyan-600 hover:via-sky-600 hover:to-blue-700"
           >
             <FiExternalLink className="text-[12px]" />
-            Open in Google Maps
+            {t("targetPage.openInGoogleMaps")}
           </a>
         </div>
       </div>
@@ -374,7 +377,7 @@ const MapDevice: React.FC = () => {
 
       if (!locationData) {
         setRows([]);
-        setError("โหลดข้อมูล location ไม่สำเร็จ");
+        setError(t("targetPage.failedLoadLocation"));
         return;
       }
 
@@ -422,9 +425,7 @@ const MapDevice: React.FC = () => {
       });
 
       if (locationData.length > 0 && mapped.length === 0) {
-        setError(
-          "มีข้อมูล location บางรายการที่พิกัดไม่ถูกต้อง จึงไม่สามารถแสดงบนแผนที่ได้"
-        );
+        setError(t("targetPage.someLocationsInvalidCoords"));
       }
     } catch (e) {
       console.error("fetchLocations error:", e);
@@ -432,14 +433,14 @@ const MapDevice: React.FC = () => {
       if (!isMountedRef.current) return;
 
       setRows([]);
-      setError("เกิดข้อผิดพลาดตอนโหลดข้อมูลแผนที่");
+      setError(t("targetPage.errorLoadingMapData"));
     } finally {
       if (isMountedRef.current) {
         setLoading(false);
       }
       isFetchingLocationsRef.current = false;
     }
-  }, [fetchTargets]);
+  }, [fetchTargets, t]);
 
   useEffect(() => {
     if (hasFetchedInitialRef.current) return;
@@ -508,7 +509,7 @@ const MapDevice: React.FC = () => {
       const res = await DeleteLocationByID(deleteTarget.id);
 
       if (!res) {
-        setDeleteError("ลบ location ไม่สำเร็จ");
+        setDeleteError(t("targetPage.failedDeleteLocation"));
         return;
       }
 
@@ -518,12 +519,12 @@ const MapDevice: React.FC = () => {
 
       setDeleteTarget(null);
       await fetchLocations();
-      message.success("delete success");
+      message.success(t("targetPage.deleteSuccess"));
     } catch (err: any) {
       setDeleteError(
         err?.response?.data?.error ||
           err?.message ||
-          "เกิดข้อผิดพลาดระหว่างลบ location"
+          t("targetPage.errorDeletingLocation")
       );
     } finally {
       setDeleting(false);
@@ -564,46 +565,46 @@ const MapDevice: React.FC = () => {
       };
 
       if (!payload.location) {
-        setCreateError("กรุณากรอก Location");
+        setCreateError(t("targetPage.pleaseEnterLocation"));
         return;
       }
       if (!form.latitude.trim() || !form.longtitude.trim()) {
-        setCreateError("กรุณาวาง Google Maps Link เพื่อดึงพิกัด");
+        setCreateError(t("targetPage.pleasePasteGoogleMapsLink"));
         return;
       }
       if (!isValidLatitude(latitude)) {
-        setCreateError("พิกัด Latitude ไม่ถูกต้อง");
+        setCreateError(t("targetPage.invalidLatitude"));
         return;
       }
       if (!isValidLongitude(longtitude)) {
-        setCreateError("พิกัด Longitude ไม่ถูกต้อง");
+        setCreateError(t("targetPage.invalidLongitude"));
         return;
       }
       if (!payload.task_id) {
-        setCreateError("กรุณาเลือก Task");
+        setCreateError(t("targetPage.pleaseSelectTask"));
         return;
       }
       if (usedTaskIds.includes(payload.task_id)) {
-        setCreateError("Target นี้ถูกใช้งานแล้ว");
+        setCreateError(t("targetPage.targetAlreadyUsed"));
         return;
       }
 
       const res = await CreateLocationService(payload);
 
       if (!res) {
-        setCreateError("สร้าง location ไม่สำเร็จ");
+        setCreateError(t("targetPage.failedCreateLocation"));
         return;
       }
 
       setOpenCreateModal(false);
       setCreateForm(emptyForm);
       await fetchLocations();
-      message.success("create success");
+      message.success(t("targetPage.createSuccess"));
     } catch (err: any) {
       setCreateError(
         err?.response?.data?.error ||
           err?.message ||
-          "เกิดข้อผิดพลาดระหว่างสร้าง location"
+          t("targetPage.errorCreatingLocation")
       );
     } finally {
       setCreating(false);
@@ -651,49 +652,49 @@ const MapDevice: React.FC = () => {
       };
 
       if (!payload.location) {
-        setEditError("กรุณากรอก Location");
+        setEditError(t("targetPage.pleaseEnterLocation"));
         return;
       }
       if (!form.latitude.trim() || !form.longtitude.trim()) {
-        setEditError("กรุณาวาง Google Maps Link เพื่อดึงพิกัด");
+        setEditError(t("targetPage.pleasePasteGoogleMapsLink"));
         return;
       }
       if (!isValidLatitude(latitude)) {
-        setEditError("พิกัด Latitude ไม่ถูกต้อง");
+        setEditError(t("targetPage.invalidLatitude"));
         return;
       }
       if (!isValidLongitude(longtitude)) {
-        setEditError("พิกัด Longitude ไม่ถูกต้อง");
+        setEditError(t("targetPage.invalidLongitude"));
         return;
       }
       if (!payload.task_id) {
-        setEditError("กรุณาเลือก Task");
+        setEditError(t("targetPage.pleaseSelectTask"));
         return;
       }
       if (
         payload.task_id !== String(editTarget.task_id || "").trim() &&
         usedTaskIds.includes(payload.task_id)
       ) {
-        setEditError("Target นี้ถูกใช้งานแล้ว");
+        setEditError(t("targetPage.targetAlreadyUsed"));
         return;
       }
 
       const res = await UpdateLocationByIDService(editTarget.id, payload);
 
       if (!res) {
-        setEditError("อัปเดต location ไม่สำเร็จ");
+        setEditError(t("targetPage.failedUpdateLocation"));
         return;
       }
 
       setOpenEditModal(false);
       setEditTarget(null);
       await fetchLocations();
-      message.success("update success");
+      message.success(t("targetPage.updateSuccess"));
     } catch (err: any) {
       setEditError(
         err?.response?.data?.error ||
           err?.message ||
-          "เกิดข้อผิดพลาดระหว่างอัปเดต location"
+          t("targetPage.errorUpdatingLocation")
       );
     } finally {
       setEditing(false);
@@ -731,7 +732,7 @@ const MapDevice: React.FC = () => {
                       {t("target.map")}
                     </h2>
                     <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                      {rows.length} targets
+                      {t("targetPage.nTargets", { n: rows.length })}
                     </span>
                     {!isUser && (
                       <button
@@ -741,7 +742,7 @@ const MapDevice: React.FC = () => {
                         style={{ background: accentGrad }}
                       >
                         <FiPlus className="text-[12px]" />
-                        Create Location
+                        {t("targetPage.createLocation")}
                       </button>
                     )}
                   </div>
@@ -767,7 +768,7 @@ const MapDevice: React.FC = () => {
                     {loading ? (
                       <span className="inline-flex items-center gap-2">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-500" />
-                        Loading map data...
+                        {t("targetPage.loadingMapData")}
                       </span>
                     ) : error ? (
                       <span className="text-red-600 dark:text-red-300">
@@ -792,23 +793,23 @@ const MapDevice: React.FC = () => {
             >
               <div className="mb-2.5 flex items-center justify-between">
                 <h3 className="text-[12px] font-semibold text-slate-800 dark:text-white/85">
-                  Location List
+                  {t("targetPage.locationList")}
                 </h3>
                 <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-                  {filteredDevices.length} items
+                  {t("targetPage.nItems", { n: filteredDevices.length })}
                 </span>
               </div>
 
               <div className="max-h-72 space-y-2 overflow-y-auto pr-1 xl:max-h-130">
                 {loading && (
                   <div className="rounded-[18px] border border-dashed border-slate-300 bg-white px-3.5 py-5 text-center text-[12px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50">
-                    Loading...
+                    {t("common.loading")}
                   </div>
                 )}
 
                 {!loading && filteredDevices.length === 0 && (
                   <div className="rounded-[18px] border border-dashed border-slate-300 bg-white px-3.5 py-5 text-center text-[12px] text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50">
-                    ไม่พบข้อมูลที่ตรงกับเงื่อนไข
+                    {t("targetPage.noMatchingData")}
                   </div>
                 )}
 
@@ -841,10 +842,10 @@ const MapDevice: React.FC = () => {
                                 {device.location}
                               </p>
                               <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
-                                IP: {device.ip}
+                                {t("targetPage.ipColon")} {device.ip}
                               </p>
                               <p className="mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">
-                                Detected Time: {device.detected_time}
+                                {t("targetPage.detectedTimeColon")} {device.detected_time}
                               </p>
                             </div>
 
@@ -861,8 +862,8 @@ const MapDevice: React.FC = () => {
                               type="button"
                               onClick={() => handleOpenEditModal(device)}
                               className={editGradientIconBtn}
-                              title="Edit"
-                              aria-label="Edit"
+                              title={t("common.edit")}
+                              aria-label={t("common.edit")}
                             >
                               <FiEdit2 className="text-[13px]" />
                             </button>
@@ -871,8 +872,8 @@ const MapDevice: React.FC = () => {
                               type="button"
                               onClick={() => openDeleteModal(device)}
                               className={deleteGradientIconBtn}
-                              title="Delete"
-                              aria-label="Delete"
+                              title={t("common.delete")}
+                              aria-label={t("common.delete")}
                             >
                               <FiTrash2 className="text-[13px]" />
                             </button>
@@ -913,8 +914,7 @@ const MapDevice: React.FC = () => {
                     "dark:border-white/10 dark:bg-[#0B1220]/90 dark:text-white/75 dark:shadow-none dark:ring-1 dark:ring-white/10",
                   ].join(" ")}
                 >
-                  {filteredDevices.length} device
-                  {filteredDevices.length !== 1 ? "s" : ""} shown
+                  {t("targetPage.nDevicesShown", { n: filteredDevices.length })}
                 </div>
               </div>
 

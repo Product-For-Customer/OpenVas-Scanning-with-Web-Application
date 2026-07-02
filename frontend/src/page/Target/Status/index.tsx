@@ -9,6 +9,7 @@ import {
   FiRadio,
 } from "react-icons/fi";
 import { ListTaskStatus, type TaskStatusDTO } from "../../../services";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type StatusKey = "Done" | "Running" | "New" | "Stopped";
 
@@ -40,6 +41,7 @@ const normalizeStatus = (s: string): StatusKey => {
 };
 
 const StatusTarget: React.FC = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [rows, setRows] = useState<TaskStatusDTO[]>([]);
@@ -216,38 +218,48 @@ const StatusTarget: React.FC = () => {
     []
   );
 
+  const statusLabel: Record<StatusKey, string> = useMemo(
+    () => ({
+      Done: t("target.done"),
+      Running: t("target.running"),
+      New: t("target.new"),
+      Stopped: t("target.stopped"),
+    }),
+    [t]
+  );
+
   const stats: StatItem[] = useMemo(
     () => [
       {
         id: 1,
         title: "Done",
         value: loading ? "..." : statusCounts.Done.toLocaleString(),
-        subtitle: "Completed",
+        subtitle: t("targetPage.completed"),
         icon: <FiCheckCircle />,
       },
       {
         id: 2,
         title: "Running",
         value: loading ? "..." : statusCounts.Running.toLocaleString(),
-        subtitle: "In progress",
+        subtitle: t("targetPage.inProgress"),
         icon: <FiPlayCircle />,
       },
       {
         id: 3,
         title: "New",
         value: loading ? "..." : statusCounts.New.toLocaleString(),
-        subtitle: "Queued",
+        subtitle: t("targetPage.queued"),
         icon: <FiClock />,
       },
       {
         id: 4,
         title: "Stopped",
         value: loading ? "..." : statusCounts.Stopped.toLocaleString(),
-        subtitle: "Stopped",
+        subtitle: t("target.stopped"),
         icon: <FiPauseCircle />,
       },
     ],
-    [loading, statusCounts]
+    [loading, statusCounts, t]
   );
 
   const percents = useMemo(() => {
@@ -308,21 +320,21 @@ const StatusTarget: React.FC = () => {
         <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-[20px] font-semibold tracking-tight text-white sm:text-[22px]">
-              Scanning Network Status
+              {t("targetPage.scanningNetworkStatus")}
             </h2>
             <p className="mt-1.5 text-[11px] text-white/50">
-              Click a status card to view matching target details · {nowText}
+              {t("targetPage.clickStatusCardDesc")} · {nowText}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[10.5px] text-white/70">
               <FiShield className="text-[11px] text-cyan-400" />
-              Security Monitor
+              {t("targetPage.securityMonitor")}
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-[10.5px] text-white/70">
               <FiRadio className="text-[11px] text-violet-400" />
-              {loading ? "Syncing…" : dominantStatus}
+              {loading ? t("targetPage.syncing") : statusLabel[dominantStatus]}
             </span>
           </div>
         </div>
@@ -340,8 +352,8 @@ const StatusTarget: React.FC = () => {
               key={s.id}
               role="button"
               tabIndex={0}
-              title={loading ? "Loading..." : `View ${s.title} targets`}
-              aria-label={`View ${s.title} targets`}
+              title={loading ? t("common.loading") : t("targetPage.viewStatusTargets", { status: statusLabel[s.title] })}
+              aria-label={t("targetPage.viewStatusTargets", { status: statusLabel[s.title] })}
               onClick={() => handleStatusClick(s.title)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -365,7 +377,7 @@ const StatusTarget: React.FC = () => {
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-[12px] font-semibold text-slate-800 dark:text-white/90">
-                    {s.title}
+                    {statusLabel[s.title]}
                   </p>
                   <p className="mt-0.5 text-[10px] text-slate-500 dark:text-white/45">
                     {s.subtitle}
@@ -386,7 +398,7 @@ const StatusTarget: React.FC = () => {
               </p>
 
               <p className="mt-1.5 text-[10.5px] text-slate-500 dark:text-white/45">
-                {loading ? "—" : `${count} tasks`}
+                {loading ? "—" : t("targetPage.countTasks", { n: count })}
               </p>
 
               <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/8">

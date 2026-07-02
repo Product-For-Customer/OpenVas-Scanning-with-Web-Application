@@ -191,7 +191,7 @@ const DiagramNodePage: React.FC = () => {
     } catch (err) {
       console.error("loadData error:", err);
       if (!isMountedRef.current) return;
-      setError("เกิดข้อผิดพลาดในการโหลดข้อมูล");
+      setError(t("diagramNode.errorLoadData"));
       setDiagram(null); setNodes([]); setAllNodes([]); setTargets([]);
     } finally {
       if (isMountedRef.current) { setLoading(false); setReloading(false); }
@@ -231,13 +231,13 @@ const DiagramNodePage: React.FC = () => {
     try {
       const node = await ListAppDiagramNodeByID(nodeId);
       if (!isMountedRef.current || requestId !== editRequestIdRef.current) return;
-      if (!node) { message.error("ไม่สามารถโหลดข้อมูล node ได้"); setModalOpen(false); return; }
+      if (!node) { message.error(t("diagramNode.errorLoadNode")); setModalOpen(false); return; }
       setSelectedNode(node);
       setHoverCard(null);
     } catch (err) {
       console.error("handleOpenEdit error:", err);
       if (!isMountedRef.current || requestId !== editRequestIdRef.current) return;
-      message.error("ไม่สามารถโหลดข้อมูล node ได้");
+      message.error(t("diagramNode.errorLoadNode"));
       setModalOpen(false);
     } finally {
       if (isMountedRef.current && requestId === editRequestIdRef.current) setModalLoading(false);
@@ -245,7 +245,7 @@ const DiagramNodePage: React.FC = () => {
   }, [isUserRole]);
 
   const handleSubmit = useCallback(async (values: DiagramNodeFormValues) => {
-    if (!diagramId || Number.isNaN(diagramId)) { message.error("ไม่พบ DiagramID"); return; }
+    if (!diagramId || Number.isNaN(diagramId)) { message.error(t("diagramNode.errorNoDiagramId")); return; }
     setModalLoading(true);
     try {
       if (modalMode === "create") {
@@ -257,10 +257,10 @@ const DiagramNodePage: React.FC = () => {
           z_index: toNumber(values.z_index, 0),
         };
         const res = await CreateAppDiagramNode(payload);
-        if (!res) { message.error("สร้าง node ไม่สำเร็จ"); return; }
-        message.success("create success");
+        if (!res) { message.error(t("diagramNode.errorCreateNode")); return; }
+        message.success(t("diagramNode.createSuccess"));
       } else {
-        if (!selectedNode?.id) { message.error("ไม่พบ node ที่ต้องการแก้ไข"); return; }
+        if (!selectedNode?.id) { message.error(t("diagramNode.errorNodeNotFoundEdit")); return; }
         const payload: UpdateAppDiagramNodeInput = {
           diagram_id: diagramId, label: values.label.trim(),
           description: values.description.trim(), icon: values.icon.trim(),
@@ -269,8 +269,8 @@ const DiagramNodePage: React.FC = () => {
           z_index: toNumber(values.z_index, 0),
         };
         const res = await UpdateAppDiagramNodeByID(selectedNode.id, payload);
-        if (!res) { message.error("แก้ไข node ไม่สำเร็จ"); return; }
-        message.success("update success");
+        if (!res) { message.error(t("diagramNode.errorUpdateNode")); return; }
+        message.success(t("diagramNode.updateSuccess"));
       }
       if (!isMountedRef.current) return;
       setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);
@@ -283,12 +283,12 @@ const DiagramNodePage: React.FC = () => {
   }, [diagramId, modalMode, selectedNode, loadData]);
 
   const handleDeleteImmediate = useCallback(async (node: AppDiagramNodeResponse | null) => {
-    if (isUserRole || !node?.id) { message.error("ไม่พบ node ที่ต้องการลบ"); return; }
+    if (isUserRole || !node?.id) { message.error(t("diagramNode.errorNodeNotFoundDelete")); return; }
     setModalLoading(true);
     try {
       const res = await DeleteAppDiagramNodeByID(node.id);
-      if (!res) { message.error("ลบ node ไม่สำเร็จ"); return; }
-      message.success("delete success");
+      if (!res) { message.error(t("diagramNode.errorDeleteNode")); return; }
+      message.success(t("diagramNode.deleteSuccess"));
       if (!isMountedRef.current) return;
       setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);
       await loadData(false);
@@ -326,10 +326,10 @@ const DiagramNodePage: React.FC = () => {
           <div className="h-7 w-0.5 shrink-0 rounded-full" style={{ background: accentGrad }} />
           <div className="min-w-0">
             <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-white/30">
-              APPS · DIAGRAMS · NODES
+              {t("diagramNode.kicker")}
             </p>
             <h1 className="truncate text-[16px] font-bold text-slate-800 dark:text-white/90">
-              {loading ? "Loading…" : (diagram?.name || "Diagram Node")}
+              {loading ? t("common.loading") : (diagram?.name || t("diagramNode.diagramFallback"))}
             </h1>
           </div>
           {!loading && (
@@ -337,7 +337,7 @@ const DiagramNodePage: React.FC = () => {
               className="shrink-0 rounded-full px-2.5 py-0.5 text-[10.5px] font-semibold text-white"
               style={{ background: accentGrad }}
             >
-              {nodes.length} node{nodes.length !== 1 ? "s" : ""}
+              {t("diagramNode.nodeCount", { n: nodes.length })}
             </span>
           )}
           {reloading && <FiRefreshCw className="shrink-0 animate-spin text-[13px] text-slate-400 dark:text-white/30" />}
@@ -347,7 +347,7 @@ const DiagramNodePage: React.FC = () => {
           {!isUserRole && !loading && (
             <span className="hidden items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/30 sm:flex">
               <FiPlus className="text-[11px]" />
-              Click diagram to add node
+              {t("diagramNode.clickToAddNode")}
             </span>
           )}
           <button
@@ -356,7 +356,7 @@ const DiagramNodePage: React.FC = () => {
             className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/65 dark:hover:bg-white/8"
           >
             <FiArrowLeft className="text-[12px]" />
-            Back
+            {t("common.back")}
           </button>
         </div>
       </div>
@@ -369,7 +369,7 @@ const DiagramNodePage: React.FC = () => {
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-white/8">
             <div className="flex items-center gap-2">
               <FiLayers className="text-[13px] text-slate-400 dark:text-white/30" />
-              <span className="text-[12.5px] font-semibold text-slate-700 dark:text-white/80">Nodes</span>
+              <span className="text-[12.5px] font-semibold text-slate-700 dark:text-white/80">{t("diagramNode.nodesLabel")}</span>
               <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
                 {nodes.length}
               </span>
@@ -396,8 +396,8 @@ const DiagramNodePage: React.FC = () => {
                 <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: `${currentColor}12` }}>
                   <FiMapPin className="text-[16px]" style={{ color: currentColor }} />
                 </div>
-                <p className="text-[11.5px] font-medium text-slate-500 dark:text-white/45">No nodes yet</p>
-                {!isUserRole && <p className="text-[10.5px] text-slate-400 dark:text-white/30">Click the diagram to add</p>}
+                <p className="text-[11.5px] font-medium text-slate-500 dark:text-white/45">{t("diagramNode.noNodesYet")}</p>
+                {!isUserRole && <p className="text-[10.5px] text-slate-400 dark:text-white/30">{t("diagramNode.clickDiagramToAdd")}</p>}
               </div>
             ) : (
               <div className="space-y-0 px-2 py-2">
@@ -415,7 +415,7 @@ const DiagramNodePage: React.FC = () => {
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: currentColor }} />
                         <p className="truncate text-[12px] font-semibold text-slate-700 dark:text-white/80">
-                          {node.label || "Unnamed"}
+                          {node.label || t("diagramNode.unnamed")}
                         </p>
                         <span className={`ml-auto shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-bold ${riskTone.box} ${riskTone.value}`}>
                           {riskScore}
@@ -451,10 +451,10 @@ const DiagramNodePage: React.FC = () => {
           {/* Toolbar */}
           <div className="flex shrink-0 items-center justify-between border-b border-slate-100 bg-white px-5 py-2.5 dark:border-white/8 dark:bg-[#0d0b1a]">
             <div className="flex items-center gap-2">
-              <span className="text-[12px] font-semibold text-slate-700 dark:text-white/75">Interactive Diagram</span>
+              <span className="text-[12px] font-semibold text-slate-700 dark:text-white/75">{t("diagramNode.interactiveDiagram")}</span>
               <span className="text-[10.5px] text-slate-300 dark:text-white/20">·</span>
               <span className="text-[10.5px] text-slate-400 dark:text-white/30">
-                {isUserRole ? "Hover marker to view detail" : "Click to place node · click marker to edit"}
+                {isUserRole ? t("diagramNode.hoverMarkerDetail") : t("diagramNode.clickPlaceEdit")}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -463,7 +463,7 @@ const DiagramNodePage: React.FC = () => {
                 style={{ borderColor: `${currentColor}30`, color: currentColor, backgroundColor: `${currentColor}08` }}
               >
                 <FiTarget className="text-[9px]" />
-                {nodes.length} placed
+                {t("diagramNode.placed", { n: nodes.length })}
               </span>
             </div>
           </div>
@@ -473,7 +473,7 @@ const DiagramNodePage: React.FC = () => {
             {loading ? (
               <div className="flex h-full items-center justify-center gap-2 text-[12px] text-slate-400 dark:text-white/30">
                 <FiRefreshCw className="animate-spin text-[16px]" />
-                Loading diagram…
+                {t("diagramNode.loadingDiagram")}
               </div>
             ) : error ? (
               <div className="flex h-full items-center justify-center text-[12px] text-red-500 dark:text-red-300">{error}</div>
@@ -496,7 +496,7 @@ const DiagramNodePage: React.FC = () => {
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-300 dark:text-white/20">
                     <FiImage className="text-[36px]" />
-                    <p className="text-[12px]">No diagram image</p>
+                    <p className="text-[12px]">{t("diagramNode.noDiagramImage")}</p>
                   </div>
                 )}
 
@@ -553,9 +553,9 @@ const DiagramNodePage: React.FC = () => {
                             <FiMapPin className="text-[12px]" />
                           </span>
                           <div className="min-w-0">
-                            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>NODE DETAIL</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>{t("diagramNode.nodeDetailLabel")}</p>
                             <p className="truncate text-[12.5px] font-bold text-slate-800 dark:text-white/90">
-                              {hoverCard.node.label || "Unnamed Node"}
+                              {hoverCard.node.label || t("diagramNode.unnamedNode")}
                             </p>
                           </div>
                         </div>
@@ -570,7 +570,7 @@ const DiagramNodePage: React.FC = () => {
                               </p>
                             </div>
                           ) : (
-                            <p className="text-[10.5px] text-slate-300 dark:text-white/20 italic">No description</p>
+                            <p className="text-[10.5px] text-slate-300 dark:text-white/20 italic">{t("diagramNode.noDescription")}</p>
                           )}
                           {!isUserRole && (
                             <button
@@ -580,7 +580,7 @@ const DiagramNodePage: React.FC = () => {
                               style={{ background: accentGrad }}
                             >
                               <FiEdit2 className="text-[11px]" />
-                              Edit Node
+                              {t("diagramNode.editNode")}
                             </button>
                           )}
                         </div>

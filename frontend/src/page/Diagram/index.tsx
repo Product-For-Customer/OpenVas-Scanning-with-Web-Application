@@ -135,7 +135,7 @@ const index: React.FC = () => {
       if (!isMountedRef.current) return;
 
       if (!data) {
-        setError("ไม่สามารถโหลดข้อมูล Diagram ได้");
+        setError(t("diagram.errorLoad"));
         setDiagrams([]);
         return;
       }
@@ -146,7 +146,7 @@ const index: React.FC = () => {
 
       if (!isMountedRef.current) return;
 
-      setError("เกิดข้อผิดพลาดในการโหลดข้อมูล Diagram");
+      setError(t("diagram.errorLoadGeneric"));
       setDiagrams([]);
     } finally {
       if (isMountedRef.current) {
@@ -225,16 +225,16 @@ const index: React.FC = () => {
   const sortLabel = useMemo(() => {
     switch (sortMode) {
       case "oldest":
-        return "Oldest";
+        return t("diagram.sortOldest");
       case "name_asc":
-        return "Name A-Z";
+        return t("diagram.sortNameAZ");
       case "name_desc":
-        return "Name Z-A";
+        return t("diagram.sortNameZA");
       case "latest":
       default:
-        return "Latest";
+        return t("diagram.sortLatest");
     }
-  }, [sortMode]);
+  }, [sortMode, t]);
 
   const handleOpenCreate = useCallback(() => {
     if (isUserRole) return;
@@ -263,7 +263,7 @@ const index: React.FC = () => {
         if (requestId !== editRequestIdRef.current) return;
 
         if (!data) {
-          message.error("ไม่สามารถโหลดข้อมูล Diagram ได้");
+          message.error(t("diagram.errorLoad"));
           setOpenFormModal(false);
           return;
         }
@@ -275,7 +275,7 @@ const index: React.FC = () => {
         if (!isMountedRef.current) return;
         if (requestId !== editRequestIdRef.current) return;
 
-        message.error("เกิดข้อผิดพลาดในการโหลดข้อมูล Diagram");
+        message.error(t("diagram.errorLoadGeneric"));
         setOpenFormModal(false);
       } finally {
         if (isMountedRef.current && requestId === editRequestIdRef.current) {
@@ -283,7 +283,7 @@ const index: React.FC = () => {
         }
       }
     },
-    [isUserRole]
+    [isUserRole, t]
   );
 
   const handleOpenDetail = useCallback(
@@ -301,22 +301,22 @@ const index: React.FC = () => {
     try {
       const res = await DeleteDiagramByID(deleteTarget.id);
       if (!res) {
-        message.error("delete failed");
+        message.error(t("diagram.deleteFailed"));
         return;
       }
 
-      message.success("delete success");
+      message.success(t("diagram.deleteSuccessMsg"));
       setDeleteTarget(null);
       await loadDiagrams();
     } catch (error) {
       console.error("handleDeleteDiagram error:", error);
-      message.error("delete failed");
+      message.error(t("diagram.deleteFailed"));
     } finally {
       if (isMountedRef.current) {
         setDeleting(false);
       }
     }
-  }, [deleteTarget, deleting, loadDiagrams, isUserRole]);
+  }, [deleteTarget, deleting, loadDiagrams, isUserRole, t]);
 
   const shell = [
     "rounded-xl border border-slate-200/70 bg-white",
@@ -380,7 +380,7 @@ const index: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-              APPS · DIAGRAMS
+              {t("diagram.kicker")}
             </p>
             <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
               {t("diagram.title")}
@@ -402,10 +402,10 @@ const index: React.FC = () => {
                     {t("diagram.title")}
                   </h2>
                   <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                    {summary.total} total
+                    {t("diagram.total", { n: summary.total })}
                   </span>
                   <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                    {summary.withImage} with image
+                    {t("diagram.withImageCount", { n: summary.withImage })}
                   </span>
                 </div>
               </div>
@@ -441,10 +441,10 @@ const index: React.FC = () => {
                     {openSort && (
                       <div className="absolute right-0 z-20 mt-1.5 w-[min(12rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-slate-200/80 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
                         {[
-                          { key: "latest", label: "Latest" },
-                          { key: "oldest", label: "Oldest" },
-                          { key: "name_asc", label: "Name A-Z" },
-                          { key: "name_desc", label: "Name Z-A" },
+                          { key: "latest", label: t("diagram.sortLatest") },
+                          { key: "oldest", label: t("diagram.sortOldest") },
+                          { key: "name_asc", label: t("diagram.sortNameAZ") },
+                          { key: "name_desc", label: t("diagram.sortNameZA") },
                         ].map((opt) => (
                           <button
                             key={opt.key}
@@ -514,7 +514,7 @@ const index: React.FC = () => {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search diagrams."
+                placeholder={t("diagram.searchDiagram")}
                 className={["w-full pl-8 pr-3", inputCls].join(" ")}
               />
             </div>
@@ -523,7 +523,7 @@ const index: React.FC = () => {
           <div className={view === "grid" ? "min-h-105" : "min-h-80"}>
             {loading && (
               <div className="px-3 py-4 text-[11px] text-gray-500 dark:text-white/55 sm:px-4">
-                Loading.
+                {t("common.loading")}
               </div>
             )}
 
@@ -570,7 +570,7 @@ const index: React.FC = () => {
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-slate-50 px-2 py-0.5 text-[9px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                                    Diagram
+                                    {t("diagram.badge")}
                                   </span>
                                 </div>
 
@@ -581,17 +581,17 @@ const index: React.FC = () => {
                                 <p className="mt-1 line-clamp-2 text-[10.5px] leading-5 text-gray-500 dark:text-white/55">
                                   {item.description?.trim()
                                     ? item.description
-                                    : "No description"}
+                                    : t("diagram.noDescription")}
                                 </p>
 
                                 <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-gray-500 dark:text-white/50">
                                   <span className="inline-flex items-center gap-1">
                                     <FiCalendar className="shrink-0" />
-                                    Created: {formatDateTime(item.created_at)}
+                                    {t("diagram.createdPrefix")} {formatDateTime(item.created_at)}
                                   </span>
                                   <span className="inline-flex items-center gap-1">
                                     <FiRefreshCw className="shrink-0" />
-                                    Updated: {formatDateTime(item.updated_at)}
+                                    {t("diagram.updatedPrefix")} {formatDateTime(item.updated_at)}
                                   </span>
                                 </div>
                               </div>
@@ -604,7 +604,7 @@ const index: React.FC = () => {
                                 onClick={() => handleOpenDetail(item.id)}
                               >
                                 <FiEye className="text-[12px]" />
-                                Detail
+                                {t("diagram.detailAction")}
                               </button>
 
                               {!isUserRole && (
@@ -616,7 +616,7 @@ const index: React.FC = () => {
                                   >
                                     <FiEdit2 className="text-[12px]" />
                                     <span className="text-[11px] font-medium">
-                                      Edit
+                                      {t("common.edit")}
                                     </span>
                                   </button>
 
@@ -627,7 +627,7 @@ const index: React.FC = () => {
                                   >
                                     <FiTrash2 className="text-[12px]" />
                                     <span className="text-[11px] font-medium">
-                                      Delete
+                                      {t("common.delete")}
                                     </span>
                                   </button>
                                 </>
@@ -666,10 +666,10 @@ const index: React.FC = () => {
 
                               <div className="mt-3 flex items-center justify-between gap-2">
                                 <span className="inline-flex h-6 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-2 text-[10px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                                  Diagram
+                                  {t("diagram.badge")}
                                 </span>
                                 <span className="inline-flex h-6 items-center rounded-lg border border-slate-200/70 bg-slate-50 px-2 text-[10px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                                  ID: {item.id}
+                                  {t("diagram.idLabel", { id: item.id })}
                                 </span>
                               </div>
 
@@ -680,17 +680,17 @@ const index: React.FC = () => {
                               <p className="mt-1 line-clamp-3 text-[10.5px] leading-5 text-gray-500 dark:text-white/55">
                                 {item.description?.trim()
                                   ? item.description
-                                  : "No description"}
+                                  : t("diagram.noDescription")}
                               </p>
 
                               <div className="mt-2 space-y-1 text-[10.5px] text-gray-500 dark:text-white/55">
                                 <p className="inline-flex items-center gap-1">
                                   <FiCalendar className="shrink-0" />
-                                  Created: {formatDateTime(item.created_at)}
+                                  {t("diagram.createdPrefix")} {formatDateTime(item.created_at)}
                                 </p>
                                 <p className="inline-flex items-center gap-1">
                                   <FiRefreshCw className="shrink-0" />
-                                  Updated: {formatDateTime(item.updated_at)}
+                                  {t("diagram.updatedPrefix")} {formatDateTime(item.updated_at)}
                                 </p>
                               </div>
 
@@ -706,7 +706,7 @@ const index: React.FC = () => {
                                   onClick={() => handleOpenDetail(item.id)}
                                 >
                                   <FiEye className="text-[12px]" />
-                                  Detail
+                                  {t("diagram.detailAction")}
                                 </button>
 
                                 {!isUserRole && (
@@ -719,7 +719,7 @@ const index: React.FC = () => {
                                       onClick={() => handleOpenEdit(item.id)}
                                     >
                                       <FiEdit2 className="text-[12px]" />
-                                      Edit
+                                      {t("common.edit")}
                                     </button>
 
                                     <button
@@ -730,7 +730,7 @@ const index: React.FC = () => {
                                       onClick={() => setDeleteTarget(item)}
                                     >
                                       <FiTrash2 className="text-[12px]" />
-                                      Delete
+                                      {t("common.delete")}
                                     </button>
                                   </>
                                 )}

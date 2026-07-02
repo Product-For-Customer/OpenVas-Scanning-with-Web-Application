@@ -32,6 +32,7 @@ import {
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { CustomSelect } from "../../../component/ui/CustomSelect";
+import type { TranslationKey } from "../../../locales";
 
 type UiNotification = {
   id: number;
@@ -152,26 +153,28 @@ const ActionButton: React.FC<{
   );
 };
 
-const ALERT_OPTIONS = [
-  { value: "on", label: "Alert On" },
-  { value: "off", label: "Alert Off" },
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const getAlertOptions = (t: TFn) => [
+  { value: "on", label: t("line.alertOn") },
+  { value: "off", label: t("line.alertOff") },
 ];
 
-const ALERT_FILTER_OPTIONS = [
-  { value: "all", label: "All Alert" },
-  { value: "on", label: "Alert On" },
-  { value: "off", label: "Alert Off" },
+const getAlertFilterOptions = (t: TFn) => [
+  { value: "all", label: t("line.allAlertFilter") },
+  { value: "on", label: t("line.alertOn") },
+  { value: "off", label: t("line.alertOff") },
 ];
 
-const RECEIVER_TYPE_FILTER_OPTIONS = [
-  { value: "all", label: "All Type" },
-  { value: "group", label: "Group" },
-  { value: "personal", label: "Personal" },
+const getReceiverTypeFilterOptions = (t: TFn) => [
+  { value: "all", label: t("line.allTypeFilter") },
+  { value: "group", label: t("line.group") },
+  { value: "personal", label: t("line.personal") },
 ];
 
-const RECEIVER_TYPE_OPTIONS = [
-  { value: "group", label: "Group" },
-  { value: "personal", label: "Personal" },
+const getReceiverTypeOptions = (t: TFn) => [
+  { value: "group", label: t("line.group") },
+  { value: "personal", label: t("line.personal") },
 ];
 
 const index: React.FC = () => {
@@ -229,6 +232,11 @@ const index: React.FC = () => {
 
   const [notifyPage, setNotifyPage] = useState(1);
 
+  const ALERT_OPTIONS = useMemo(() => getAlertOptions(t), [t]);
+  const ALERT_FILTER_OPTIONS = useMemo(() => getAlertFilterOptions(t), [t]);
+  const RECEIVER_TYPE_FILTER_OPTIONS = useMemo(() => getReceiverTypeFilterOptions(t), [t]);
+  const RECEIVER_TYPE_OPTIONS = useMemo(() => getReceiverTypeOptions(t), [t]);
+
 
   const editFormSnapshot = useMemo(
     () =>
@@ -260,9 +268,9 @@ const index: React.FC = () => {
 
   const lineMasterMap = useMemo(() => {
     return new Map<number, string>(
-      lineMasters.map((item) => [item.id, item.name ?? `Line Master #${item.id}`]),
+      lineMasters.map((item) => [item.id, item.name ?? t("line.lineMasterHashLabel", { id: item.id })]),
     );
-  }, [lineMasters]);
+  }, [lineMasters, t]);
 
   const lineMasterSelectOptions = useMemo(
     () => lineMasters.map((item) => ({ value: String(item.id), label: item.name })),
@@ -284,7 +292,7 @@ const index: React.FC = () => {
       if (!data) {
         notificationListCache = [];
         setRows([]);
-        setError("Unable to load app notifications.");
+        setError(t("line.unableLoadAppNotifications"));
         return [];
       }
 
@@ -305,12 +313,12 @@ const index: React.FC = () => {
       console.error("fetchNotifications error:", err);
       notificationListCache = null;
       setRows([]);
-      setError("Something went wrong while loading app notifications.");
+      setError(t("line.errorLoadingAppNotifications"));
       return [];
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const fetchLineMasters = useCallback(async (force = false) => {
     try {
@@ -515,21 +523,21 @@ const index: React.FC = () => {
   };
 
   const validateForm = (form: NotificationFormData) => {
-    if (!form.name.trim()) return "Please enter Name.";
-    if (!form.send_id.trim()) return "Please enter Send ID.";
-    if (!form.app_line_master_id.trim()) return "Please select App Line Master.";
+    if (!form.name.trim()) return t("line.pleaseEnterName");
+    if (!form.send_id.trim()) return t("line.pleaseEnterSendId");
+    if (!form.app_line_master_id.trim()) return t("line.pleaseSelectAppLineMaster");
 
     const lineMasterID = Number(form.app_line_master_id);
     if (Number.isNaN(lineMasterID) || lineMasterID <= 0) {
-      return "App Line Master is invalid.";
+      return t("line.appLineMasterInvalid");
     }
 
     return "";
   };
 
   const validateTestLineForm = (form: TestLineFormData) => {
-    if (!form.message.trim()) return "Please enter a test message.";
-    if (form.message.trim().length < 2) return "Message must be at least 2 characters.";
+    if (!form.message.trim()) return t("line.pleaseEnterTestMessage");
+    if (form.message.trim().length < 2) return t("line.messageMinLength");
     return "";
   };
 
@@ -555,19 +563,19 @@ const index: React.FC = () => {
       const res = await CreateAppNotification(payload);
 
       if (!res) {
-        setCreateError("Failed to create app notification.");
+        setCreateError(t("line.failedCreateAppNotification"));
         return;
       }
 
       setOpenCreateModal(false);
       resetCreateForm();
       await fetchNotifications(true);
-      message.success("create success");
+      message.success(t("line.createSuccessMsg"));
     } catch (err: any) {
       setCreateError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while creating app notification.",
+          t("line.errorCreatingAppNotification"),
       );
     } finally {
       setCreating(false);
@@ -598,7 +606,7 @@ const index: React.FC = () => {
       const res = await UpdateAppNotificationByID(selectedRow.id, payload);
 
       if (!res) {
-        setEditError("Failed to update app notification.");
+        setEditError(t("line.failedUpdateAppNotification"));
         return;
       }
 
@@ -606,12 +614,12 @@ const index: React.FC = () => {
       setSelectedRow(null);
       resetEditForm();
       await fetchNotifications(true);
-      message.success("update success");
+      message.success(t("line.updateSuccessMsg"));
     } catch (err: any) {
       setEditError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while updating app notification.",
+          t("line.errorUpdatingAppNotification"),
       );
     } finally {
       setEditing(false);
@@ -638,16 +646,16 @@ const index: React.FC = () => {
       });
 
       if (!res) {
-        setTestLineError("Failed to send test LINE notification.");
+        setTestLineError(t("line.failedSendTestLine"));
         return;
       }
 
       if (!res.success) {
-        setTestLineError(res.message || "Failed to send test LINE notification.");
+        setTestLineError(res.message || t("line.failedSendTestLine"));
         return;
       }
 
-      setTestLineSuccess(res.message || "Test message sent successfully.");
+      setTestLineSuccess(res.message || t("line.testMessageSentSuccess"));
       setTestLineForm((prev) => ({
         ...prev,
         message: "",
@@ -657,7 +665,7 @@ const index: React.FC = () => {
         err?.response?.data?.error ||
           err?.response?.data?.message ||
           err?.message ||
-          "Something went wrong while sending test LINE notification.",
+          t("line.errorSendingTestLine"),
       );
     } finally {
       setTestingLine(false);
@@ -674,23 +682,32 @@ const index: React.FC = () => {
       const res = await DeleteAppNotificationByID(deleteTarget.id);
 
       if (!res) {
-        setDeleteError("Failed to delete app notification.");
+        setDeleteError(t("line.failedDeleteAppNotification"));
         return;
       }
 
       setDeleteTarget(null);
       await fetchNotifications(true);
-      message.success("delete success");
+      message.success(t("line.deleteSuccessMsg"));
     } catch (err: any) {
       setDeleteError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while deleting app notification.",
+          t("line.errorDeletingAppNotification"),
       );
     } finally {
       setDeleting(false);
     }
   };
+
+  const tableHeaders = [
+    t("line.name"),
+    t("line.sendID"),
+    t("line.tableApp"),
+    t("line.tableAlert"),
+    t("line.tableType"),
+    t("line.tableActions"),
+  ];
 
   const renderNotificationTable = () => {
     if (loading) {
@@ -699,7 +716,7 @@ const index: React.FC = () => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-white/8">
-                {["Name", "Send ID", "App", "Alert", "Type", "Actions"].map((h) => (
+                {tableHeaders.map((h) => (
                   <th key={h} className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{h}</th>
                 ))}
               </tr>
@@ -734,8 +751,8 @@ const index: React.FC = () => {
           <div className="grid h-13 w-13 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25">
             <FiBell className="text-[20px]" />
           </div>
-          <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">No notification destinations</p>
-          <p className="text-[11px] text-slate-400 dark:text-white/30">Add a new receiver using the button above</p>
+          <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">{t("line.noNotificationDestinations")}</p>
+          <p className="text-[11px] text-slate-400 dark:text-white/30">{t("line.addReceiverHint")}</p>
           <button
             type="button"
             onClick={openCreate}
@@ -743,7 +760,7 @@ const index: React.FC = () => {
             style={{ background: accentGrad }}
           >
             <FiPlus className="text-[12px]" />
-            Add Notify
+            {t("line.addNotify")}
           </button>
         </div>
       );
@@ -755,19 +772,19 @@ const index: React.FC = () => {
           <table className="w-full min-w-200">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Name</th>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Send ID</th>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">App</th>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Alert</th>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Type</th>
-                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Actions</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.name")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.sendID")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.tableApp")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.tableAlert")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.tableType")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("line.tableActions")}</th>
               </tr>
             </thead>
             <tbody>
               {pagedNotifications.map((item) => {
                 const lineMasterName =
                   lineMasterMap.get(item.app_line_master_id) ||
-                  `Line Master #${item.app_line_master_id}`;
+                  t("line.lineMasterHashLabel", { id: item.app_line_master_id });
 
                 return (
                   <tr key={item.id} className="border-b border-slate-100/70 transition hover:bg-slate-50/60 last:border-0 dark:border-white/6 dark:hover:bg-white/3">
@@ -782,12 +799,12 @@ const index: React.FC = () => {
                     </td>
                     <td className="px-4 py-3.5 align-middle">
                       <span className={["inline-flex items-center rounded-full px-2.5 py-1 text-[10.5px] font-semibold", alertBadgeClass(item.alert)].join(" ")}>
-                        {item.alert ? "On" : "Off"}
+                        {item.alert ? t("line.onLabel") : t("line.offLabel")}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 align-middle">
                       <span className={["inline-flex items-center rounded-full px-2.5 py-1 text-[10.5px] font-semibold", typeBadgeClass(item.is_group)].join(" ")}>
-                        {item.is_group ? "Group" : "Personal"}
+                        {item.is_group ? t("line.group") : t("line.personal")}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 align-middle">
@@ -796,7 +813,7 @@ const index: React.FC = () => {
                           type="button"
                           onClick={() => openTestLineModal(item)}
                           className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200 text-cyan-600 transition hover:bg-cyan-50 dark:border-cyan-400/20 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
-                          title="Test"
+                          title={t("line.testAction")}
                         >
                           <FiSend className="text-[13px]" />
                         </button>
@@ -804,7 +821,7 @@ const index: React.FC = () => {
                           type="button"
                           onClick={() => openEdit(item)}
                           className={editGradientIconBtn}
-                          title="Edit"
+                          title={t("common.edit")}
                         >
                           <FiEdit2 className="text-[13px]" />
                         </button>
@@ -812,7 +829,7 @@ const index: React.FC = () => {
                           type="button"
                           onClick={() => openDeleteModal(item)}
                           className={deleteGradientIconBtn}
-                          title="Delete"
+                          title={t("common.delete")}
                         >
                           <FiTrash2 className="text-[13px]" />
                         </button>
@@ -828,8 +845,12 @@ const index: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
           <p className="text-[10.5px] text-slate-400 dark:text-white/30">
             {notifications.length === 0
-              ? "0 destinations"
-              : `${(notifyPage - 1) * PAGE_SIZE + 1}–${Math.min(notifyPage * PAGE_SIZE, notifications.length)} of ${notifications.length}`}
+              ? t("line.zeroDestinations")
+              : t("line.paginationRange", {
+                  start: (notifyPage - 1) * PAGE_SIZE + 1,
+                  end: Math.min(notifyPage * PAGE_SIZE, notifications.length),
+                  total: notifications.length,
+                })}
           </p>
           {totalNotifyPages > 1 && (
             <div className="flex items-center gap-1">
@@ -897,7 +918,7 @@ const index: React.FC = () => {
                 className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
               >
                 <FiRefreshCw className="text-[13px]" />
-                Refresh
+                {t("common.refresh")}
               </ActionButton>
 
               <button
@@ -907,7 +928,7 @@ const index: React.FC = () => {
                 style={{ background: accentGrad }}
               >
                 <FiPlus className="text-[12px]" />
-                Add Notify
+                {t("line.addNotify")}
               </button>
             </div>
           </div>
@@ -974,10 +995,10 @@ const index: React.FC = () => {
                 </span>
                 <div>
                   <p className="text-[8.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                    Notification Destinations
+                    {t("line.notificationDestinations")}
                   </p>
                   <h3 className="text-[13.5px] font-bold text-slate-800 dark:text-white/90">
-                    Create Notification
+                    {t("line.createNotification")}
                   </h3>
                 </div>
               </div>
@@ -1001,7 +1022,7 @@ const index: React.FC = () => {
               <div>
                 <label className={formLabelClass}>
                   <FiType className="text-[10px]" />
-                  Name <span className="text-red-400">*</span>
+                  {t("line.name")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   className={formInputClass}
@@ -1010,14 +1031,14 @@ const index: React.FC = () => {
                     setCreateForm((prev) => ({ ...prev, name: e.target.value }))
                   }
                   disabled={creating}
-                  placeholder="Receiver name"
+                  placeholder={t("line.receiverNamePlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiHash className="text-[10px]" />
-                  Send ID <span className="text-red-400">*</span>
+                  {t("line.sendID")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   className={formInputClass}
@@ -1026,14 +1047,14 @@ const index: React.FC = () => {
                     setCreateForm((prev) => ({ ...prev, send_id: e.target.value }))
                   }
                   disabled={creating}
-                  placeholder="LINE user ID / group ID"
+                  placeholder={t("line.lineUserOrGroupIdPlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiLink2 className="text-[10px]" />
-                  App Line Master <span className="text-red-400">*</span>
+                  {t("line.appLineMasterLabel")} <span className="text-red-400">*</span>
                 </label>
                 <CustomSelect
                   options={lineMasterSelectOptions}
@@ -1044,7 +1065,7 @@ const index: React.FC = () => {
                       app_line_master_id: next,
                     }))
                   }
-                  placeholder="Select integration"
+                  placeholder={t("line.selectIntegrationPlaceholder")}
                   disabled={loadingLineMasters || creating}
                   maxListHeightClass="max-h-30"
                 />
@@ -1054,7 +1075,7 @@ const index: React.FC = () => {
                 <div>
                   <label className={formLabelClass}>
                     <FiBell className="text-[10px]" />
-                    Alert <span className="text-red-400">*</span>
+                    {t("line.alertLabel")} <span className="text-red-400">*</span>
                   </label>
                   <CustomSelect
                     options={ALERT_OPTIONS}
@@ -1070,7 +1091,7 @@ const index: React.FC = () => {
                 <div>
                   <label className={formLabelClass}>
                     <FiUsers className="text-[10px]" />
-                    Receiver Type <span className="text-red-400">*</span>
+                    {t("line.receiverTypeLabel")} <span className="text-red-400">*</span>
                   </label>
                   <CustomSelect
                     options={RECEIVER_TYPE_OPTIONS}
@@ -1092,7 +1113,7 @@ const index: React.FC = () => {
                 disabled={creating}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -1103,7 +1124,7 @@ const index: React.FC = () => {
               >
                 {creating && <FiRefreshCw className="animate-spin text-[12px]" />}
                 {!creating && <FiPlus className="text-[12px]" />}
-                {creating ? "Creating..." : "Create"}
+                {creating ? t("line.creatingEllipsis") : t("line.createLabel")}
               </button>
             </div>
           </div>
@@ -1132,10 +1153,10 @@ const index: React.FC = () => {
                 </span>
                 <div>
                   <p className="text-[8.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                    Notification Destinations
+                    {t("line.notificationDestinations")}
                   </p>
                   <h3 className="text-[13.5px] font-bold text-slate-800 dark:text-white/90">
-                    Edit Notification
+                    {t("line.editNotification")}
                   </h3>
                 </div>
               </div>
@@ -1159,7 +1180,7 @@ const index: React.FC = () => {
               <div>
                 <label className={formLabelClass}>
                   <FiType className="text-[10px]" />
-                  Name <span className="text-red-400">*</span>
+                  {t("line.name")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   className={formInputClass}
@@ -1168,14 +1189,14 @@ const index: React.FC = () => {
                     setEditForm((prev) => ({ ...prev, name: e.target.value }))
                   }
                   disabled={editing}
-                  placeholder="Receiver name"
+                  placeholder={t("line.receiverNamePlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiHash className="text-[10px]" />
-                  Send ID <span className="text-red-400">*</span>
+                  {t("line.sendID")} <span className="text-red-400">*</span>
                 </label>
                 <input
                   className={formInputClass}
@@ -1184,14 +1205,14 @@ const index: React.FC = () => {
                     setEditForm((prev) => ({ ...prev, send_id: e.target.value }))
                   }
                   disabled={editing}
-                  placeholder="LINE user ID / group ID"
+                  placeholder={t("line.lineUserOrGroupIdPlaceholder")}
                 />
               </div>
 
               <div>
                 <label className={formLabelClass}>
                   <FiLink2 className="text-[10px]" />
-                  App Line Master <span className="text-red-400">*</span>
+                  {t("line.appLineMasterLabel")} <span className="text-red-400">*</span>
                 </label>
                 <CustomSelect
                   options={lineMasterSelectOptions}
@@ -1202,7 +1223,7 @@ const index: React.FC = () => {
                       app_line_master_id: next,
                     }))
                   }
-                  placeholder="Select integration"
+                  placeholder={t("line.selectIntegrationPlaceholder")}
                   disabled={loadingLineMasters || editing}
                   maxListHeightClass="max-h-30"
                 />
@@ -1212,7 +1233,7 @@ const index: React.FC = () => {
                 <div>
                   <label className={formLabelClass}>
                     <FiBell className="text-[10px]" />
-                    Alert <span className="text-red-400">*</span>
+                    {t("line.alertLabel")} <span className="text-red-400">*</span>
                   </label>
                   <CustomSelect
                     options={ALERT_OPTIONS}
@@ -1228,7 +1249,7 @@ const index: React.FC = () => {
                 <div>
                   <label className={formLabelClass}>
                     <FiUsers className="text-[10px]" />
-                    Receiver Type <span className="text-red-400">*</span>
+                    {t("line.receiverTypeLabel")} <span className="text-red-400">*</span>
                   </label>
                   <CustomSelect
                     options={RECEIVER_TYPE_OPTIONS}
@@ -1250,7 +1271,7 @@ const index: React.FC = () => {
                 disabled={editing}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -1261,7 +1282,7 @@ const index: React.FC = () => {
               >
                 {editing && <FiRefreshCw className="animate-spin text-[12px]" />}
                 {!editing && <FiSave className="text-[12px]" />}
-                {editing ? "Saving..." : "Save"}
+                {editing ? t("common.saving") : t("common.save")}
               </button>
             </div>
           </div>
@@ -1278,14 +1299,10 @@ const index: React.FC = () => {
               </div>
 
               <h3 className="text-center text-[16px] font-semibold text-slate-900 dark:text-white">
-                Delete Notification
+                {t("line.deleteNotificationTitle")}
               </h3>
               <p className="mt-2 text-center text-[12px] leading-6 text-slate-500 dark:text-white/50">
-                Are you sure you want to delete{" "}
-                <span className="font-semibold text-slate-700 dark:text-white/80">
-                  {deleteTarget.name}
-                </span>
-                ?
+                {t("line.confirmDeleteQuestion", { name: deleteTarget.name })}
               </p>
 
               {deleteError ? (
@@ -1299,14 +1316,14 @@ const index: React.FC = () => {
                   onClick={closeDeleteModal}
                   className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </ActionButton>
                 <ActionButton
                   onClick={confirmDelete}
                   disabled={deleting}
                   className="bg-rose-600 text-white hover:bg-rose-700"
                 >
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? t("common.deleting") : t("common.delete")}
                 </ActionButton>
               </div>
             </div>
@@ -1336,10 +1353,10 @@ const index: React.FC = () => {
                 </span>
                 <div>
                   <p className="text-[8.5px] font-bold uppercase tracking-widest" style={{ color: currentColor }}>
-                    Notification Destinations
+                    {t("line.notificationDestinations")}
                   </p>
                   <h3 className="text-[13.5px] font-bold text-slate-800 dark:text-white/90">
-                    Test LINE Message
+                    {t("line.testLineMessageTitle")}
                   </h3>
                 </div>
               </div>
@@ -1369,7 +1386,7 @@ const index: React.FC = () => {
               <div>
                 <label className={formLabelClass}>
                   <FiMessageSquare className="text-[10px]" />
-                  Message <span className="text-red-400">*</span>
+                  {t("line.message")} <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   className={formTextareaClass}
@@ -1381,7 +1398,7 @@ const index: React.FC = () => {
                     }))
                   }
                   disabled={testingLine}
-                  placeholder="Enter test message"
+                  placeholder={t("line.enterTestMessagePlaceholder")}
                 />
               </div>
             </div>
@@ -1393,7 +1410,7 @@ const index: React.FC = () => {
                 disabled={testingLine}
                 className="flex-1 rounded-xl border border-slate-200 py-2 text-[12px] font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 type="button"
@@ -1404,7 +1421,7 @@ const index: React.FC = () => {
               >
                 {testingLine && <FiRefreshCw className="animate-spin text-[12px]" />}
                 {!testingLine && <FiSend className="text-[12px]" />}
-                {testingLine ? "Sending..." : "Send"}
+                {testingLine ? t("common.sending") : t("common.send")}
               </button>
             </div>
           </div>
