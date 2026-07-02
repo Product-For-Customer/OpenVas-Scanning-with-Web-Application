@@ -105,6 +105,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     void initAuth();
   }, [refreshMe]);
 
+  // Maintenance mode blocked a request (backend returned 503) — clear the
+  // user immediately so route guards redirect to the login page.
+  // /auth/logout is public in this app, so no retry loop is needed here;
+  // MaintenanceCountdown handles calling it and navigating away.
+  useEffect(() => {
+    const onMaintenance = () => {
+      if (isMountedRef.current) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("session:maintenance", onMaintenance);
+    return () => window.removeEventListener("session:maintenance", onMaintenance);
+  }, []);
+
   const value = useMemo<AuthContextValue>(() => {
     const isAuthed = !!user;
     const role = String(user?.role ?? "").trim().toLowerCase();

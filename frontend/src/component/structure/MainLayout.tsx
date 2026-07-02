@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { Navbar, Sidebar, ThemeSettings } from "./path";
+import MaintenanceCountdown from "./MaintenanceCountdown";
 import "./main.css";
 
 const SIDEBAR_EXPANDED_WIDTH  = 272;
@@ -74,6 +75,7 @@ const MainLayout: React.FC = () => {
           </main>
         </div>
       </div>
+      <MaintenanceCountdown />
     </div>
   );
 };

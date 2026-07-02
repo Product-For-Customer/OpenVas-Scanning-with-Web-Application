@@ -77,8 +77,11 @@ const LoginPage: React.FC = () => {
 
       setError(t("auth.noPermission"));
     } catch (err: any) {
+      const backendError = err?.response?.data?.error;
       setError(
-        err?.response?.data?.error || err?.message || t("auth.loginFailed")
+        backendError === "system is under maintenance"
+          ? t("auth.maintenanceActive")
+          : backendError || err?.message || t("auth.loginFailed")
       );
     } finally {
       if (isMounted.current) setSubmitting(false);

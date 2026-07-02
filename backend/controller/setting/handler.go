@@ -11,6 +11,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 // ─────────────────────────────────────────────────────────────
@@ -48,6 +49,57 @@ func setTimezoneCache(tz string) {
 	tzMu.Lock()
 	tzCached = tz
 	tzMu.Unlock()
+}
+
+// ─────────────────────────────────────────────────────────────
+// Maintenance mode
+// ─────────────────────────────────────────────────────────────
+
+const (
+	maintenanceKey          = "argus_maintenance_mode"
+	maintenanceActiveAtKey  = "argus_maintenance_active_at"
+	maintenanceGraceSeconds = 60
+)
+
+// upsertMaintenanceActiveAt writes/refreshes the Unix timestamp at which
+// the auth middleware should start blocking non-admin requests
+// (now + maintenanceGraceSeconds). This gives the frontend countdown modal
+// time to auto-logout the user before the backend starts rejecting calls.
+func upsertMaintenanceActiveAt(db *gorm.DB) {
+	activeAt := strconv.FormatInt(time.Now().Add(maintenanceGraceSeconds*time.Second).Unix(), 10)
+
+	var cfg entity.SystemConfig
+	if err := db.Where("key = ?", maintenanceActiveAtKey).First(&cfg).Error; err != nil {
+		db.Create(&entity.SystemConfig{Key: maintenanceActiveAtKey, Value: activeAt})
+		return
+	}
+	cfg.Value = activeAt
+	db.Save(&cfg)
+}
+
+// GetMaintenanceStatus godoc
+// GET /maintenance/status — public, no auth required. Polled by the
+// frontend so non-admin users can see the auto-logout countdown.
+func GetMaintenanceStatus(c *gin.Context) {
+	db := config.DB()
+
+	var cfg entity.SystemConfig
+	if err := db.Where("key = ?", maintenanceKey).First(&cfg).Error; err != nil || cfg.Value != "true" {
+		c.JSON(http.StatusOK, gin.H{"enabled": false, "seconds_remaining": 0})
+		return
+	}
+
+	secondsRemaining := 0
+	var activeCfg entity.SystemConfig
+	if err := db.Where("key = ?", maintenanceActiveAtKey).First(&activeCfg).Error; err == nil {
+		if activeAt, err := strconv.ParseInt(activeCfg.Value, 10, 64); err == nil {
+			if rem := int(activeAt - time.Now().Unix()); rem > 0 {
+				secondsRemaining = rem
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"enabled": true, "seconds_remaining": secondsRemaining})
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -108,6 +160,13 @@ func UpdateSetting(c *gin.Context) {
 	if body.Key == "timezone" {
 		setTimezoneCache(body.Value)
 		go recalculateAllSchedules(body.Value)
+	}
+
+	// Turning maintenance mode on (re)starts the grace period, giving the
+	// frontend countdown modal time to auto-logout non-admin users before
+	// the auth middleware starts rejecting their requests with 503.
+	if body.Key == maintenanceKey && body.Value == "true" {
+		upsertMaintenanceActiveAt(db)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"key": cfg.Key, "value": cfg.Value})

@@ -72,6 +72,7 @@ func main() {
 	r.POST("/auth/direct-signup",            auth.DirectSignUpHandler)         // PUBLIC: register without OTP
 	r.POST("/auth/direct-reset-password",    auth.DirectResetPasswordHandler)  // PUBLIC: reset password without OTP
 	r.GET("/settings",                       setting.GetSettings)              // PUBLIC: app settings (timezone, etc.)
+	r.GET("/maintenance/status",             setting.GetMaintenanceStatus)     // PUBLIC: polled for the auto-logout countdown modal
 	r.GET("/password-policy",                passwordpolicy.GetPolicy)         // PUBLIC: rules shown live on Register/Reset Password forms
 	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
 

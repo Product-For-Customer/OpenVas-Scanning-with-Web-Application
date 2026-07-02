@@ -32,6 +32,7 @@ const (
 	keyOTPRegister = "argus_otp_register"
 	keyOTPReset    = "argus_otp_reset_password"
 	keyTOTPEnabled = "argus_totp_enabled"
+	keyMaintenance = "argus_maintenance_mode"
 )
 
 // getServiceSetting reads a key from SystemConfig; returns defaultVal when missing.
@@ -318,6 +319,17 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	roleName := ""
+	if user.AppRole != nil {
+		roleName = user.AppRole.Role
+	}
+
+	// ── Maintenance mode gate (after credential check so admin can still log in) ──
+	if strings.ToLower(roleName) != "admin" && getServiceSetting(db, keyMaintenance, "false") == "true" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "system is under maintenance"})
+		return
+	}
+
 	// Priority 1: user-level TOTP — only when TOTP service is globally enabled
 	if totpServiceEnabled(db) && user.TOTPEnabled {
 		if err := setPendingTOTPCookie(c, user.ID, user.Email); err != nil {
@@ -349,11 +361,6 @@ func Login(c *gin.Context) {
 			"masked_email":      maskEmail(user.Email),
 		})
 		return
-	}
-
-	roleName := ""
-	if user.AppRole != nil {
-		roleName = user.AppRole.Role
 	}
 
 	token, err := services.GenerateJWT(user.ID, user.Email, roleName)
