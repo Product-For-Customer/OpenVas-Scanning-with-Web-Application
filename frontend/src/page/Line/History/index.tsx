@@ -1148,7 +1148,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
         <div className="flex flex-col gap-2.5 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+              <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                 {t("line.notificationHistory")}
               </h2>
             </div>

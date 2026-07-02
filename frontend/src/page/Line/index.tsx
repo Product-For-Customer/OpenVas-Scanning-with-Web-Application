@@ -100,7 +100,7 @@ const Index: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-              MANAGEMENT · LINE NOTIFY
+              {t("line.kicker")}
             </p>
             <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
               {t("line.scanNotificationStats")}

@@ -1982,7 +1982,7 @@ const ScanManagement: React.FC = () => {
         {statCards.map(({ label, val, icon, color }) => (
           <div key={label} className="rounded-xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">{label}</p>
+              <p className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-white/55">{label}</p>
               <span style={{ color: ICON_COLOR[color] }} className="text-[15px] opacity-75">{icon}</span>
             </div>
             <p className="mt-2.5 text-[30px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
@@ -2012,14 +2012,14 @@ const ScanManagement: React.FC = () => {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setActiveTab("tasks")}
             style={activeTab === "tasks" ? { background: accentGrad } : undefined}
-            className={["rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+            className={["rounded-lg border px-4 py-2 text-[12px] font-bold transition-all",
               activeTab === "tasks" ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"].join(" ")}>
             {`${t("scan.tasks")} (${tasks.length})`}
           </button>
           <button type="button" onClick={() => setActiveTab("schedule")}
             style={activeTab === "schedule" ? { background: accentGrad } : undefined}
-            className={["flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+            className={["flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-bold transition-all",
               activeTab === "schedule" ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"].join(" ")}>
             <FiClock className="text-[12px]" />

@@ -4,7 +4,7 @@ import { baseApi } from "./api";
 // DTOs
 // ========================
 
-export type HostAssetInfo = {
+type HostAssetInfo = {
   criticality: string;
   criticality_score: number;
   asset_type: string;
@@ -12,7 +12,7 @@ export type HostAssetInfo = {
   business_impact: string;
 };
 
-export type KEVHitItem = {
+type KEVHitItem = {
   cve_id: string;
   vulnerability_name: string;
   product: string;
@@ -20,7 +20,7 @@ export type KEVHitItem = {
   due_date: string;
 };
 
-export type EPSSHitItem = {
+type EPSSHitItem = {
   cve_id: string;
   epss_score: number;
   percentile: number;
@@ -87,18 +87,6 @@ export type SLABreachesResponse = {
   total: number;
 };
 
-export type CellData = {
-  count: number;
-  severity: number;
-};
-
-export type AttackSurfaceMatrix = {
-  hosts: string[];
-  families: string[];
-  matrix: Record<string, Record<string, CellData>>;
-  max_cell: number;
-};
-
 // ========================
 // API calls
 // ========================
@@ -124,14 +112,3 @@ export const GetSLABreaches = async (): Promise<SLABreachesResponse | null> => {
     return null;
   }
 };
-
-export const GetAttackSurfaceMatrix =
-  async (): Promise<AttackSurfaceMatrix | null> => {
-    try {
-      const res = await baseApi.get("/attack-surface/matrix");
-      return (res.data?.data ?? res.data) as AttackSurfaceMatrix;
-    } catch (err) {
-      console.error("GetAttackSurfaceMatrix error:", err);
-      return null;
-    }
-  };

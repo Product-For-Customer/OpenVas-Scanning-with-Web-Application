@@ -11,7 +11,7 @@ import { ListCriticalForReport } from "../../../services/report";
 
 type HighlightTone = "good" | "warning" | "critical" | "neutral";
 
-export type CriticalForReportDTO = {
+type CriticalForReportDTO = {
   task_id: string;
   task_name: string;
   ip: string;

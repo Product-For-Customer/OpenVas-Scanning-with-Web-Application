@@ -8,7 +8,7 @@ export const apiUrl: string = envBackendUrl || "http://localhost:9000";
 export const pathOpenVas: string =
   envOpenVasUrl || "http://localhost:9392";
 
-export const defaultHeaders = {
+const defaultHeaders = {
   "Content-Type": "application/json",
   "ngrok-skip-browser-warning": "true",
 };

@@ -22,7 +22,7 @@ export type LoginInput = {
   password: string;
 };
 
-export type LoginUser = {
+type LoginUser = {
   id: number;
   email: string;
   first_name: string;

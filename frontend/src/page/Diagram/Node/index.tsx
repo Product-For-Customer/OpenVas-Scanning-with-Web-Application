@@ -31,6 +31,7 @@ import DiagramNodeFormModal, {
 } from "../Model/DiagramNodeFormModal";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,7 @@ const DiagramNodePage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { isUser: isUserRole } = useAuth();
   const { currentColor } = useStateContext();
+  const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const diagramIdParam = searchParams.get("diagramId");
@@ -155,7 +157,7 @@ const DiagramNodePage: React.FC = () => {
 
   const loadData = useCallback(async (showLoading = true) => {
     if (!diagramId || Number.isNaN(diagramId)) {
-      if (isMountedRef.current) { setError("ไม่พบ DiagramID"); setLoading(false); setReloading(false); }
+      if (isMountedRef.current) { setError(t("diagramNode.errorNoDiagramId")); setLoading(false); setReloading(false); }
       return;
     }
     if (isLoadingDataRef.current) return;
@@ -170,7 +172,7 @@ const DiagramNodePage: React.FC = () => {
       ]);
       if (!isMountedRef.current) return;
       if (!diagramData) {
-        setError("ไม่สามารถโหลดข้อมูล Diagram ได้");
+        setError(t("diagramNode.errorLoadDiagram"));
         setDiagram(null); setNodes([]); setAllNodes([]); setTargets([]);
         return;
       }

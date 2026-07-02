@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { VulnerabilityLevelDTO } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -30,7 +31,7 @@ type VulnRow = {
 
 type FilterOption = {
   key: VulnRow["severity"];
-  label: VulnRow["severity"];
+  label: string;
 };
 
 interface Props {
@@ -61,6 +62,18 @@ const SEVERITY_BADGE: Record<VulnRow["severity"], string> = {
 const SEVERITY_RANK: Record<VulnRow["severity"], number> = {
   CRITICAL: 1, HIGH: 2, MEDIUM: 3, LOW: 4, INFO: 5,
 };
+
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const SEVERITY_LABEL_KEY: Record<VulnRow["severity"], TranslationKey> = {
+  CRITICAL: "severity.critical",
+  HIGH: "severity.high",
+  MEDIUM: "severity.medium",
+  LOW: "severity.low",
+  INFO: "severity.info",
+};
+
+const severityLabel = (k: VulnRow["severity"], t: TFn): string => t(SEVERITY_LABEL_KEY[k]);
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -179,8 +192,8 @@ const TopVulnerability: React.FC<Props> = ({
   }, [vulnerabilityData]);
 
   const levelOptions = useMemo<FilterOption[]>(
-    () => (["CRITICAL","HIGH","MEDIUM","LOW","INFO"] as VulnRow["severity"][]).map(k => ({ key: k, label: k })),
-    []
+    () => (["CRITICAL","HIGH","MEDIUM","LOW","INFO"] as VulnRow["severity"][]).map(k => ({ key: k, label: severityLabel(k, t) })),
+    [t]
   );
 
   const filteredOptions = useMemo(() => {
@@ -198,8 +211,8 @@ const TopVulnerability: React.FC<Props> = ({
 
   const filterButtonLabel =
     selectedLevels.length === 0 ? t("dashboard.levelFilter") :
-    selectedLevels.length === 1 ? selectedLevels[0] :
-    `${selectedLevels.length} levels`;
+    selectedLevels.length === 1 ? severityLabel(selectedLevels[0], t) :
+    t("dashboard.nLevels", { n: selectedLevels.length });
 
   const allVisible = filteredOptions.length > 0 && filteredOptions.every(o => selectedLevels.includes(o.key));
 
@@ -230,7 +243,7 @@ const TopVulnerability: React.FC<Props> = ({
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+          <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
             {t("dashboard.totalVulnerability")}
           </h2>
           <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
@@ -338,7 +351,7 @@ const TopVulnerability: React.FC<Props> = ({
                 <div className="flex shrink-0 items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: SEVERITY_COLOR[row.severity] }} />
                   <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold tracking-wide ${SEVERITY_BADGE[row.severity]}`}>
-                    {row.severity}
+                    {severityLabel(row.severity, t).toUpperCase()}
                   </span>
                 </div>
 
@@ -371,7 +384,7 @@ const TopVulnerability: React.FC<Props> = ({
             return (
               <div key={k} className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: SEVERITY_COLOR[k] }} />
-                <span className="text-[10px] text-slate-500 dark:text-white/40">{k.charAt(0) + k.slice(1).toLowerCase()}</span>
+                <span className="text-[10px] text-slate-500 dark:text-white/40">{severityLabel(k, t)}</span>
                 <span className="text-[10px] font-semibold text-slate-700 dark:text-white/65">{cnt}</span>
               </div>
             );

@@ -224,7 +224,7 @@ const Compliance: React.FC = () => {
           <div className="mb-5 overflow-hidden rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-[11px] font-semibold uppercase text-gray-500 dark:text-white/40">{t("compliance.overallScore")}</div>
+                <div className="text-[11px] font-bold uppercase text-gray-600 dark:text-white/55">{t("compliance.overallScore")}</div>
                 <div className={`mt-1 text-[40px] font-extrabold ${scoreColor(report.overall_score)}`}>
                   {report.overall_score}<span className="text-[20px]">%</span>
                 </div>

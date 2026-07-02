@@ -261,7 +261,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
         {/* Left: title + badges */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+          <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
             {t("target.title")}
           </h2>
           {!loading && (

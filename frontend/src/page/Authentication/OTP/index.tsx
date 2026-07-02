@@ -79,10 +79,10 @@ const OTPPage: React.FC = () => {
         await VerifyLoginEmailOTP(code);
       }
       message.success(t("auth.loginSuccess"));
-      // Navigate to the dedicated /logo-animation route — it plays the
+      // Navigate to the dedicated /after-login-animation route — it plays the
       // success animation, refreshes auth state, then switches to /admin
       // once the progress bar finishes.
-      navigate("/logo-animation", {
+      navigate("/after-login-animation", {
         replace: true,
         state: { redirectTo: "/admin", refreshAuth: true },
       });

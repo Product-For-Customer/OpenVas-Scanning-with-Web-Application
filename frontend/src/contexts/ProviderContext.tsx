@@ -20,7 +20,7 @@ interface InitialState {
   notification: boolean;
 }
 
-export type ThemeMode = "Light" | "Dark";
+type ThemeMode = "Light" | "Dark";
 
 interface StateContextType {
   screenSize: number | undefined;

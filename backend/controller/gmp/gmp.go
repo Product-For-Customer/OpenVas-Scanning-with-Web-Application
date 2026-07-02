@@ -15,23 +15,9 @@ import (
 // GMP XML Types
 // ===========================
 
-type gmpAuthenticateRequest struct {
-	XMLName     xml.Name `xml:"authenticate"`
-	Credentials struct {
-		Username string `xml:"username"`
-		Password string `xml:"password"`
-	} `xml:"credentials"`
-}
-
 type gmpResponse struct {
 	Status     string `xml:"status,attr"`
 	StatusText string `xml:"status_text,attr"`
-}
-
-type gmpGetVersionResponse struct {
-	XMLName xml.Name `xml:"get_version_response"`
-	gmpResponse
-	Version string `xml:"version"`
 }
 
 type gmpAuthResponse struct {
@@ -531,10 +517,6 @@ type CreateTargetParams struct {
 	SNMPCredID   string
 	ReverseLookup bool
 	ReverseUnify  bool
-}
-
-func CreateTarget(name, hosts, comment string) (string, error) {
-	return CreateTargetFull(CreateTargetParams{Name: name, Hosts: hosts, Comment: comment})
 }
 
 func CreateTargetFull(p CreateTargetParams) (string, error) {

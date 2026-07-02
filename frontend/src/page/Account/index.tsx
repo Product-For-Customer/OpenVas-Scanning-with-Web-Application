@@ -255,7 +255,7 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
                   <div className="flex items-start gap-3">
                     {/* QR */}
                     <div className="shrink-0 rounded-xl border-2 border-slate-100 bg-white p-1.5 shadow-sm dark:border-white/10">
-                      <img src={qrDataUrl} alt="TOTP QR Code" className="h-32.5 w-32.5" />
+                      <img src={qrDataUrl} alt={t("account.totpQrAlt")} className="h-32.5 w-32.5" />
                     </div>
                     {/* Instructions + manual key */}
                     <div className="min-w-0 flex-1">
@@ -627,7 +627,7 @@ const Account: React.FC = () => {
 
             {/* Banner + Avatar */}
             <div className="relative h-28 shrink-0">
-              <img src={profileBanner} alt="banner"
+              <img src={profileBanner} alt={t("account.profileBannerAlt")}
                 className="h-full w-full object-cover object-center" />
               <div className="absolute inset-0 bg-black/10 dark:bg-slate-950/25" />
               {/* Avatar */}

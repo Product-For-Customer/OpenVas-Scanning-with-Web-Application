@@ -51,7 +51,9 @@ const OtpOptionRow: React.FC<{
   checked: boolean;
   onChange: () => void;
   color: string;
-}> = ({ label, desc, checked, onChange, color }) => (
+}> = ({ label, desc, checked, onChange, color }) => {
+  const { t } = useLanguage();
+  return (
   <button
     type="button"
     onClick={onChange}
@@ -84,11 +86,12 @@ const OtpOptionRow: React.FC<{
         className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold"
         style={{ backgroundColor: `${color}15`, color }}
       >
-        ON
+        {t("common.on")}
       </span>
     )}
   </button>
-);
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // Service Page
@@ -187,7 +190,7 @@ const Service: React.FC = () => {
   const handleSave = async () => {
     if (!emailRecord) return;
     if (!form.email.trim()) { message.warning(t("service.enterEmail")); return; }
-    if (!isValidEmail)      { message.warning("Invalid email format."); return; }
+    if (!isValidEmail)      { message.warning(t("service.emailFormatInvalid")); return; }
     if (!form.pass_app.trim()) { message.warning(t("service.enterAppPassword")); return; }
     try {
       setSaving(true);
@@ -212,7 +215,7 @@ const Service: React.FC = () => {
 
   const persistSetting = (key: string, value: boolean) => {
     UpdateAppSetting(key, String(value)).catch(() => {
-      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      message.warning(t("service.persistFailed"));
     });
   };
 
@@ -250,7 +253,7 @@ const Service: React.FC = () => {
     const next = !maintenance;
     setMaintenance(next);
     UpdateAppSetting(MAINT_KEY, String(next)).catch(() => {
-      message.warning("บันทึกการตั้งค่าไปยัง Server ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      message.warning(t("service.persistFailed"));
     });
     message.success(next ? t("service.systemInMaintenance") : t("service.systemOperational"));
   };
@@ -301,7 +304,7 @@ const Service: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <FiLock className="text-[14px] text-slate-400 dark:text-white/35" />
             <div>
-              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+              <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                 {t("service.emailSecurityTitle")}
               </h2>
               <p className="text-[11px] text-slate-400 dark:text-white/35">
@@ -574,7 +577,7 @@ const Service: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <FiTool className="text-[14px] text-amber-500" />
             <div>
-              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+              <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                 {t("service.maintenanceMode")}
               </h2>
               <p className="text-[11px] text-slate-400 dark:text-white/35">

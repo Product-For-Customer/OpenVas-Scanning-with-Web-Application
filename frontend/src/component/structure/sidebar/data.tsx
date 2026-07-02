@@ -16,9 +16,6 @@ import {
   FiSliders,
   FiTrash2,
 } from "react-icons/fi";
-import { AiOutlineUser } from "react-icons/ai";
-import { RiCustomerService2Line } from "react-icons/ri";
-import type { JSX } from "react/jsx-dev-runtime";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
@@ -128,30 +125,3 @@ export const themeColors = [
   { name: "magenta",     color: "#EC4899" },
 ];
 
-export type UserProfileItem = {
-  icon: JSX.Element;
-  titleKey: TranslationKey;
-  descKey: TranslationKey;
-  iconColor: string;
-  iconBg: string;
-  link: string;
-};
-
-export const userProfileData: UserProfileItem[] = [
-  {
-    icon: <AiOutlineUser />,
-    titleKey: "profile.myProfile",
-    descKey: "profile.accountSettings",
-    iconColor: "#03C9D7",
-    iconBg: "#E5FAFB",
-    link: "/admin/profile",
-  },
-  {
-    icon: <RiCustomerService2Line />,
-    titleKey: "profile.service",
-    descKey: "profile.editServiceInfo",
-    iconColor: "#2563EB",
-    iconBg: "#EAF2FF",
-    link: "/admin/service",
-  },
-];

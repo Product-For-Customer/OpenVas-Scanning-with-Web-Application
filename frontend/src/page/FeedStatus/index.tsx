@@ -451,7 +451,7 @@ const FeedStatusPage: React.FC = () => {
 
       {/* ── OpenVAS Feeds table ── */}
       <section>
-        <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/28">
+        <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white/90">
           OpenVAS / Greenbone Feeds
         </p>
         <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
@@ -512,7 +512,7 @@ const FeedStatusPage: React.FC = () => {
 
       {/* ── KEV Status card ── */}
       <section>
-        <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/28">
+        <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white/90">
           Threat Intelligence Feeds
         </p>
         <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
@@ -588,7 +588,7 @@ const FeedStatusPage: React.FC = () => {
 
       {/* ── Update Schedule Config ── */}
       <section>
-        <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-white/28">
+        <p className="mb-2 text-[13px] font-bold text-slate-800 dark:text-white/90">
           {t("feedschedule.title")} — {t("feedschedule.subtitle")}
         </p>
 

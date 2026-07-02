@@ -46,18 +46,6 @@ export const GetComplianceReport = async (): Promise<ComplianceReportDTO | null>
   }
 };
 
-export const GetComplianceViolations = async (framework?: string): Promise<ControlStatus[]> => {
-  try {
-    const r = await complianceApi.get("/compliance/violations", {
-      params: framework ? { framework } : {},
-    });
-    const d = r.data?.data ?? r.data;
-    return Array.isArray(d) ? d : [];
-  } catch (e) {
-    return [];
-  }
-};
-
 export type ViolationVuln = {
   task_id: string;
   task_name: string;

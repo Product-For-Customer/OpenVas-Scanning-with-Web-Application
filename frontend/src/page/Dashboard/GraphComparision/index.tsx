@@ -404,12 +404,14 @@ const getRiskHeatColor = (risk: number) => {
   return interpolateColor(orange, red, t);
 };
 
-const getRiskLabel = (score: number): { label: string; color: string } => {
-  if (score >= 9)  return { label: "CRITICAL", color: "#ef4444" };
-  if (score >= 7)  return { label: "HIGH",     color: "#f97316" };
-  if (score >= 4)  return { label: "MEDIUM",   color: "#eab308" };
-  if (score > 0)   return { label: "LOW",      color: "#22c55e" };
-  return                   { label: "NONE",    color: "#94a3b8" };
+const getRiskLabel = (
+  score: number
+): { key: "critical" | "high" | "medium" | "low" | "none"; color: string } => {
+  if (score >= 9)  return { key: "critical", color: "#ef4444" };
+  if (score >= 7)  return { key: "high",     color: "#f97316" };
+  if (score >= 4)  return { key: "medium",   color: "#eab308" };
+  if (score > 0)   return { key: "low",      color: "#22c55e" };
+  return                   { key: "none",    color: "#94a3b8" };
 };
 
 const getVisibleTickIndexSet = (
@@ -474,6 +476,8 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
   coordinate,
   viewBox,
 }) => {
+  const { t } = useLanguage();
+
   if (!active || !payload || payload.length === 0) return null;
 
   const item = payload[0]?.payload;
@@ -497,17 +501,17 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
     >
       <div className="mb-2">
         <p className="text-[13px] font-semibold text-[#1f2240] wrap-anywhere dark:text-white/92">
-          {item.task_name || "Unknown Task"}
+          {item.task_name || t("graphCompare.unknownTask")}
         </p>
 
         <p className="mt-0.5 break-all text-[11px] text-gray-500 dark:text-white/45">
-          Host: {item.host || "-"}
+          {t("graphCompare.host")}: {item.host || "-"}
         </p>
       </div>
 
       <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[#8B7CFF]">Previous Risk</span>
+          <span className="text-[#8B7CFF]">{t("graphCompare.previousRisk")}</span>
           <span className="font-semibold text-[#1f2240] dark:text-white/92">
             {item.has_previous_record
               ? formatRisk(item.previous_risk_score)
@@ -517,7 +521,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
 
         <div className="flex items-center justify-between gap-3">
           <span className={isUp ? "text-[#FF6B88]" : "text-[#39C6F4]"}>
-            Latest Risk
+            {t("graphCompare.latestRisk")}
           </span>
           <span className="font-semibold text-[#1f2240] dark:text-white/92">
             {formatRisk(item.latest_risk_score)}
@@ -528,42 +532,42 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
 
         <div className="grid grid-cols-1 gap-1.5">
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Target Name</span>
+            <span>{t("graphCompare.targetName")}</span>
             <span className="text-right font-medium wrap-anywhere">
               {item.task_name || "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Host</span>
+            <span>{t("graphCompare.host")}</span>
             <span className="break-all text-right font-medium">
               {item.host || "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Latest Total</span>
+            <span>{t("graphCompare.latestTotal")}</span>
             <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.latest_total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Previous Total</span>
+            <span>{t("graphCompare.previousTotal")}</span>
             <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.has_previous_record ? item.previous_total ?? 0 : "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Latest Time</span>
+            <span>{t("graphCompare.latestTime")}</span>
             <span className="text-right font-medium">
               {formatUnixThai(item.latest_creation_time)}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Previous Time</span>
+            <span>{t("graphCompare.previousTime")}</span>
             <span className="text-right font-medium">
               {item.has_previous_record
                 ? formatUnixThai(item.previous_creation_time)
@@ -588,7 +592,7 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({
             ) : isDown ? (
               <MdTrendingDown className="text-[13px]" />
             ) : null}
-            Risk Change:{" "}
+            {t("graphCompare.riskChange")}:{" "}
             {item.has_previous_record
               ? `${diff > 0 ? "+" : ""}${formatRisk(diff)}`
               : "0.00"}
@@ -612,6 +616,8 @@ const DetailTooltip: React.FC<DetailTooltipProps> = ({
   coordinate,
   viewBox,
 }) => {
+  const { t } = useLanguage();
+
   if (!active || !payload || payload.length === 0) return null;
 
   const item = payload[0]?.payload;
@@ -635,13 +641,13 @@ const DetailTooltip: React.FC<DetailTooltipProps> = ({
         </p>
 
         <p className="mt-0.5 text-[11px] text-gray-500 dark:text-white/45">
-          Date-Time: {item.detected_date_label || "-"}
+          {t("graphCompare.dateTime")}: {item.detected_date_label || "-"}
         </p>
       </div>
 
       <div className="space-y-1.5 text-[11px]">
         <div className="flex items-center justify-between gap-3">
-          <span style={{ color: item.detail_color }}>Risk Score</span>
+          <span style={{ color: item.detail_color }}>{t("graphCompare.riskScore")}</span>
           <span className="font-semibold text-[#1f2240] dark:text-white/92">
             {formatRisk(item.risk_score)}
           </span>
@@ -651,28 +657,28 @@ const DetailTooltip: React.FC<DetailTooltipProps> = ({
 
         <div className="grid grid-cols-1 gap-1.5">
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Host IP</span>
+            <span>{t("graphCompare.hostIp")}</span>
             <span className="break-all text-right font-medium">
               {item.host_ip || "-"}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Vulnerability Total</span>
+            <span>{t("graphCompare.vulnerabilityTotal")}</span>
             <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.total ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>Critical</span>
+            <span>{t("severity.critical")}</span>
             <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.critical ?? 0}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 text-gray-600 dark:text-white/68">
-            <span>High</span>
+            <span>{t("severity.high")}</span>
             <span className="text-right font-semibold text-[#1f2240] dark:text-white/90">
               {item.high ?? 0}
             </span>
@@ -766,42 +772,74 @@ const DetailXAxisTick = (props: {
   );
 };
 
-const MinimalLegend = ({ detailMode = false, avgRisk = 0 }: { detailMode?: boolean; avgRisk?: number }) => (
-  <div className="mt-2 flex flex-wrap items-center gap-4">
-    {detailMode ? (
-      <>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-emerald-400" />Low Risk
-        </span>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-amber-400" />Medium Risk
-        </span>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-rose-400" />High Risk
-        </span>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/25">
-          <span className="inline-block h-px w-4 border-t border-dashed border-slate-400 dark:border-white/30" />
-          Avg: {avgRisk.toFixed(2)}
-        </span>
-      </>
-    ) : (
-      <>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-[#8B7CFF]" />Previous Risk
-        </span>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-[#39C6F4]" />Latest Risk
-        </span>
-        <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
-          <span className="h-2 w-2 rounded-full bg-[#FF6B88]" />Risk Increased
-        </span>
-      </>
-    )}
-  </div>
-);
+const MinimalLegend = ({ detailMode = false, avgRisk = 0 }: { detailMode?: boolean; avgRisk?: number }) => {
+  const { t } = useLanguage();
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-4">
+      {detailMode ? (
+        <>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />{t("graphCompare.lowRisk")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-amber-400" />{t("graphCompare.mediumRisk")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-rose-400" />{t("graphCompare.highRisk")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-400 dark:text-white/25">
+            <span className="inline-block h-px w-4 border-t border-dashed border-slate-400 dark:border-white/30" />
+            {t("graphCompare.avg")}: {avgRisk.toFixed(2)}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-[#8B7CFF]" />{t("graphCompare.previousRisk")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-[#39C6F4]" />{t("graphCompare.latestRisk")}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-slate-500 dark:text-white/35">
+            <span className="h-2 w-2 rounded-full bg-[#FF6B88]" />{t("graphCompare.riskIncreased")}
+          </span>
+        </>
+      )}
+    </div>
+  );
+};
 
 const index: React.FC = () => {
   const { t } = useLanguage();
+
+  const translateSort = (option: SortType) =>
+    option === "Latest Updated"
+      ? t("graphCompare.sortLatestUpdated")
+      : t("graphCompare.sortHighestLatestRisk");
+
+  const translateViewMode = (option: ViewMode) =>
+    option === "By Page"
+      ? t("graphCompare.viewByPage")
+      : t("graphCompare.viewSummary");
+
+  const translateRange = (option: RangeKey) => {
+    switch (option) {
+      case "Today":
+        return t("graphCompare.rangeToday");
+      case "This Week":
+        return t("graphCompare.rangeThisWeek");
+      case "This Month":
+        return t("graphCompare.rangeThisMonth");
+      case "This Year":
+        return t("graphCompare.rangeThisYear");
+      case "Custom Range":
+        return t("graphCompare.rangeCustom");
+      default:
+        return option;
+    }
+  };
+
   const sectionRef = useRef<HTMLElement | null>(null);
 
   const [containerWidth, setContainerWidth] = useState<number>(() => {
@@ -932,15 +970,15 @@ const index: React.FC = () => {
     if (range !== "Custom Range") return "";
 
     if (!startDate || !endDate) {
-      return "Please select both a start date and an end date.";
+      return t("graphCompare.selectBothDates");
     }
 
     if (startDate > endDate) {
-      return "The start date cannot be later than the end date.";
+      return t("graphCompare.startAfterEnd");
     }
 
     return "";
-  }, [range, startDate, endDate]);
+  }, [range, startDate, endDate, t]);
 
   const fetchData = async (mode: "initial" | "refresh" = "initial") => {
     if (isFetchingRef.current) return;
@@ -1400,18 +1438,18 @@ const index: React.FC = () => {
   const selectedCount = selectedKeys.length;
 
   const dropdownButtonLabel = useMemo(() => {
-    if (selectedCount === 0) return "Target Filter";
+    if (selectedCount === 0) return t("graphCompare.targetFilter");
 
     if (selectedCount === 1) {
       const found = filterOptions.find(
         (x: FilterOption) => x.key === selectedKeys[0]
       );
 
-      return found?.label || "1 selected";
+      return found?.label || `1 ${t("graphCompare.selected")}`;
     }
 
-    return `${selectedCount} selected`;
-  }, [selectedCount, filterOptions, selectedKeys]);
+    return `${selectedCount} ${t("graphCompare.selected")}`;
+  }, [selectedCount, filterOptions, selectedKeys, t]);
 
   const pageNumbers = useMemo(() => {
     return buildPageNumbers(currentPage, totalPages);
@@ -1472,14 +1510,14 @@ const index: React.FC = () => {
             <div className="min-w-0">
               {detailMode ? (
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                  <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                     {t("dashboard.graphComparison")}
                     {detailTaskName ? ` · ${detailTaskName}` : ""}
                   </h2>
                 </div>
               ) : (
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                  <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                     {t("dashboard.graphComparison")}
                   </h2>
                   <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
@@ -1506,7 +1544,7 @@ const index: React.FC = () => {
                     onClick={() => setViewModeOpen((prev) => !prev)}
                     className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
-                    <span className="truncate">{viewMode}</span>
+                    <span className="truncate">{translateViewMode(viewMode)}</span>
                     <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${viewModeOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -1521,7 +1559,7 @@ const index: React.FC = () => {
                             onClick={() => { setViewMode(option); setViewModeOpen(false); }}
                             className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
                           >
-                            <span>{option}</span>
+                            <span>{translateViewMode(option)}</span>
                             {checked && <FiCheck className="text-[11px]" />}
                           </button>
                         );
@@ -1613,7 +1651,7 @@ const index: React.FC = () => {
                     onClick={() => setSortOpen((prev) => !prev)}
                     className="flex h-8 w-full items-center justify-between gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                   >
-                    <span className="truncate">{sortBy}</span>
+                    <span className="truncate">{translateSort(sortBy)}</span>
                     <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                   </button>
 
@@ -1628,7 +1666,7 @@ const index: React.FC = () => {
                             onClick={() => { setSortBy(option); setSortOpen(false); }}
                             className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
                           >
-                            <span>{option}</span>
+                            <span>{translateSort(option)}</span>
                             {checked && <FiCheck className="text-[11px]" />}
                           </button>
                         );
@@ -1648,7 +1686,7 @@ const index: React.FC = () => {
                   >
                     <span className="flex min-w-0 items-center gap-1.5 truncate">
                       <FiCalendar className="shrink-0 text-[11px] text-blue-400" />
-                      <span className="truncate">{range}</span>
+                      <span className="truncate">{translateRange(range)}</span>
                     </span>
                     <FiChevronDown className={`shrink-0 text-[11px] transition-transform ${rangeOpen ? "rotate-180" : ""}`} />
                   </button>
@@ -1664,7 +1702,7 @@ const index: React.FC = () => {
                             onClick={() => { setRange(option); if (option !== "Custom Range") setRangeOpen(false); }}
                             className={["flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] font-medium transition", checked ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300" : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5"].join(" ")}
                           >
-                            <span>{option}</span>
+                            <span>{translateRange(option)}</span>
                             {checked && <FiCheck className="text-[11px]" />}
                           </button>
                         );
@@ -1674,16 +1712,16 @@ const index: React.FC = () => {
                         <div className="mt-1 border-t border-slate-100 p-2 dark:border-white/8">
                           <div className="grid grid-cols-1 gap-2">
                             <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
-                              Start Date
+                              {t("common.startDate")}
                               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
                             </label>
                             <label className="text-[10px] font-medium text-slate-500 dark:text-white/40">
-                              End Date
+                              {t("common.endDate")}
                               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200/70 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80" />
                             </label>
                             {customRangeError && <p className="text-[10px] text-rose-500 dark:text-rose-300">{customRangeError}</p>}
                             <button type="button" disabled={Boolean(customRangeError)} onClick={() => setRangeOpen(false)} className={["h-8 rounded-lg text-[11px] font-semibold transition", customRangeError ? "cursor-not-allowed bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-white/25" : "bg-blue-500 text-white hover:bg-blue-600"].join(" ")}>
-                              Apply
+                              {t("common.apply")}
                             </button>
                           </div>
                         </div>
@@ -1694,7 +1732,7 @@ const index: React.FC = () => {
 
                 {refreshing && (
                   <div className="w-full text-right text-[10px] font-medium text-cyan-600 dark:text-cyan-300">
-                    Refreshing...
+                    {t("graphCompare.refreshing")}
                   </div>
                 )}
                 </div>
@@ -1707,7 +1745,7 @@ const index: React.FC = () => {
                   className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
                 >
                   <FiArrowLeft className="text-[11px]" />
-                  Back
+                  {t("common.back")}
                 </button>
               </div>
             )}
@@ -1721,7 +1759,7 @@ const index: React.FC = () => {
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    {detailMode ? "Data Points" : "Total Targets"}
+                    {detailMode ? t("graphCompare.dataPoints") : t("graphCompare.totalTargets")}
                   </p>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[15px] text-blue-500 dark:bg-blue-500/10 dark:text-blue-300">
                     <FiServer />
@@ -1731,7 +1769,7 @@ const index: React.FC = () => {
                   {loading ? "—" : (detailMode ? detailRows.length : summary.totalAssets)}
                 </p>
                 <p className="mt-1.5 text-[9px] text-slate-400 dark:text-white/25">
-                  {detailMode ? "scan records" : "monitored assets"}
+                  {detailMode ? t("graphCompare.scanRecords") : t("graphCompare.monitoredAssets")}
                 </p>
               </div>
             </div>
@@ -1739,14 +1777,15 @@ const index: React.FC = () => {
             {/* ── Card 2 : Avg Risk Score ── */}
             {(() => {
               const avgScore = detailMode ? detailAvgRisk : summary.avgLatestRisk;
-              const { label: riskLabel, color: labelColor } = getRiskLabel(avgScore);
+              const { key: riskKey, color: labelColor } = getRiskLabel(avgScore);
+              const riskLabel = t(`severity.${riskKey}` as const);
               return (
                 <div className="overflow-hidden rounded-2xl border border-slate-200/60 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-white/6 dark:bg-white/3">
                   <div className="h-1 w-full transition-all duration-500" style={{ background: `linear-gradient(to right, ${labelColor}, ${labelColor}88)` }} />
                   <div className="px-4 py-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                        Avg Risk Score
+                        {t("graphCompare.avgRiskScore")}
                       </p>
                       <span
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[15px]"
@@ -1759,7 +1798,7 @@ const index: React.FC = () => {
                       <span className="text-[34px] font-black tracking-tight" style={{ color: labelColor }}>
                         {formatRisk(avgScore)}
                       </span>
-                      <span className="text-[34px] font-black tracking-tight text-slate-400 dark:text-white/25">/ 10</span>
+                      <span className="text-[34px] font-black tracking-tight" style={{ color: labelColor }}>{t("graphCompare.per10")}</span>
                     </div>
                     <span
                       className="mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
@@ -1778,7 +1817,7 @@ const index: React.FC = () => {
               <div className="px-4 py-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                    {detailMode ? "CVSS Range" : "Risk Change"}
+                    {detailMode ? t("graphCompare.cvssRange") : t("graphCompare.riskChange")}
                   </p>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-[15px] text-slate-500 dark:bg-white/10 dark:text-white/40">
                     <FiBarChart2 />
@@ -1787,16 +1826,16 @@ const index: React.FC = () => {
                 {detailMode ? (
                   <div className="mt-3.5">
                     <p className="text-[34px] font-black leading-none tracking-tight text-slate-900 dark:text-white">
-                      0 – 10
+                      {t("graphCompare.cvssScaleRange")}
                     </p>
-                    <p className="mt-1.5 text-[9px] text-slate-400 dark:text-white/25">CVSS v3.1 scale</p>
+                    <p className="mt-1.5 text-[9px] text-slate-400 dark:text-white/25">{t("graphCompare.cvssV31Scale")}</p>
                   </div>
                 ) : (
                   <div className="mt-3.5 space-y-2.5">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 shrink-0 rounded-full bg-rose-400" />
-                        <span className="text-[10px] text-slate-500 dark:text-white/35">Risk Increased</span>
+                        <span className="text-[10px] text-slate-500 dark:text-white/35">{t("graphCompare.riskIncreased")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <MdTrendingUp className="text-[14px] text-rose-400" />
@@ -1809,7 +1848,7 @@ const index: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
-                        <span className="text-[10px] text-slate-500 dark:text-white/35">Risk Decreased</span>
+                        <span className="text-[10px] text-slate-500 dark:text-white/35">{t("graphCompare.riskDecreased")}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <MdTrendingDown className="text-[14px] text-emerald-400" />
@@ -1874,7 +1913,7 @@ const index: React.FC = () => {
                     interval={0}
                     height={82}
                     label={{
-                      value: "Scan Date",
+                      value: t("graphCompare.scanDate"),
                       position: "insideBottom",
                       offset: 2,
                       style: {
@@ -1896,7 +1935,7 @@ const index: React.FC = () => {
                     domain={[0, 10]}
                     ticks={[0, 2, 4, 6, 8, 10]}
                     label={{
-                      value: "CVSS Score",
+                      value: t("graphCompare.cvssScore"),
                       angle: -90,
                       position: "insideLeft",
                       offset: 14,
@@ -2010,7 +2049,7 @@ const index: React.FC = () => {
                         interval={0}
                         height={52}
                         label={{
-                          value: "Target Name",
+                          value: t("graphCompare.targetName"),
                           position: "insideBottom",
                           offset: 2,
                           style: {
@@ -2034,7 +2073,7 @@ const index: React.FC = () => {
                         domain={[0, maxRisk]}
                         ticks={yTicks}
                         label={{
-                          value: "CVSS Score",
+                          value: t("graphCompare.cvssScore"),
                           angle: -90,
                           position: "insideLeft",
                           offset: 14,
@@ -2175,15 +2214,15 @@ const index: React.FC = () => {
               {!summaryMode && totalPages > 1 && (
                 <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
                   <div className="text-[11px] text-gray-500 dark:text-white/45">
-                    Showing{" "}
+                    {t("graphCompare.showing")}{" "}
                     <span className="font-semibold text-gray-700 dark:text-white/75">
                       {chartData.length}
                     </span>{" "}
-                    of{" "}
+                    {t("common.of")}{" "}
                     <span className="font-semibold text-gray-700 dark:text-white/75">
                       {sortedChartRows.length}
                     </span>{" "}
-                    targets
+                    {t("graphCompare.targets")}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-1.5">
@@ -2193,7 +2232,7 @@ const index: React.FC = () => {
                       disabled={currentPage === 1}
                       className={["h-8 rounded-lg border px-3 text-[11px] font-medium transition", currentPage === 1 ? "cursor-not-allowed border-slate-200/70 bg-slate-100 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25" : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"].join(" ")}
                     >
-                      Prev
+                      {t("common.prev")}
                     </button>
 
                     {pageNumbers.map((page) => {
@@ -2216,7 +2255,7 @@ const index: React.FC = () => {
                       disabled={currentPage === totalPages}
                       className={["h-8 rounded-lg border px-3 text-[11px] font-medium transition", currentPage === totalPages ? "cursor-not-allowed border-slate-200/70 bg-slate-100 text-slate-400 dark:border-white/8 dark:bg-white/5 dark:text-white/25" : "border-slate-200/70 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/8"].join(" ")}
                     >
-                      Next
+                      {t("common.next")}
                     </button>
                   </div>
                 </div>
@@ -2225,11 +2264,11 @@ const index: React.FC = () => {
               {summaryMode && (
                 <div className="mt-3 border-t border-slate-100 pt-3 dark:border-white/8">
                   <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                    Summary mode: showing{" "}
+                    {t("graphCompare.summaryModePrefix")}{" "}
                     <span className="font-semibold text-slate-600 dark:text-white/55">
                       {chartData.length}
                     </span>{" "}
-                    targets in one chart. Scroll horizontally to view all targets clearly.
+                    {t("graphCompare.summaryModeSuffixChart")}
                   </p>
                   <MinimalLegend detailMode={detailMode} avgRisk={detailMode ? detailAvgRisk : summary.avgLatestRisk} />
                 </div>

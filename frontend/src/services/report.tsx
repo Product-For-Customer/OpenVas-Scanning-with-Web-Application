@@ -5,7 +5,7 @@ import { apiUrl } from "./api";
 // Axios instance for PUBLIC report endpoints
 // ไม่ส่ง cookie / credential
 // =======================
-export const publicReportApi = axios.create({
+const publicReportApi = axios.create({
   baseURL: apiUrl,
   withCredentials: false,
   timeout: 120000,
@@ -19,7 +19,7 @@ export const publicReportApi = axios.create({
 // Axios instance for PROTECTED report endpoints
 // ส่ง cookie / credential
 // =======================
-export const protectedReportApi = axios.create({
+const protectedReportApi = axios.create({
   baseURL: apiUrl,
   withCredentials: true,
   timeout: 120000,
@@ -591,15 +591,3 @@ export const SendPDFToEmail = async (
   return response.data as { message: string; email: string };
 };
 
-const reportService = {
-  ListTaskVulnSummaryForReport,
-  ListCriticalForReport,
-  ListDeviceRiskForReport,
-  ListTargetDifferForReport,
-  ListAppReport,
-  UpdateAppReportByID,
-  SendPDFToLine,
-  DownloadPDFFile,
-};
-
-export default reportService;

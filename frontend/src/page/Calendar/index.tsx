@@ -296,11 +296,11 @@ const CalendarPage: React.FC = () => {
   const LegendRow = (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-1">
       {[
-        { label: t("calendar.latestScan"), color: "#EF4444", sub: "Critical" },
-        { label: "",                        color: "#F97316", sub: "High" },
-        { label: "",                        color: "#EAB308", sub: "Medium" },
-        { label: "",                        color: "#22C55E", sub: "Low" },
-        { label: t("calendar.previousScan"), color: PREVIOUS_COLOR, sub: "Prev" },
+        { label: t("calendar.latestScan"), color: "#EF4444", sub: t("severity.critical") },
+        { label: "",                        color: "#F97316", sub: t("severity.high") },
+        { label: "",                        color: "#EAB308", sub: t("severity.medium") },
+        { label: "",                        color: "#22C55E", sub: t("severity.low") },
+        { label: t("calendar.previousScan"), color: PREVIOUS_COLOR, sub: t("common.prev") },
       ].map(({ label, color, sub }) => (
         <span key={sub} className="flex items-center gap-1.5">
           <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
@@ -359,7 +359,7 @@ const CalendarPage: React.FC = () => {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-              APPS · CALENDAR
+              {t("calendar.kicker")}
             </p>
             <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[22px] dark:text-white/90">
               {t("calendar.title")}
@@ -579,7 +579,7 @@ const CalendarPage: React.FC = () => {
                 {/* Task name */}
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35">
-                    Task Name
+                    {t("calendar.taskName")}
                   </span>
                   <span className="text-[14px] font-semibold text-slate-800 dark:text-white/90">
                     {selectedEvent.taskName}
@@ -686,8 +686,8 @@ const CalendarPage: React.FC = () => {
                   }
                 >
                   {selectedEvent.type === "previous"
-                    ? `↩ ${t("calendar.previousScan")} — ${selectedEvent.reports} total scans`
-                    : `✓ ${t("calendar.latestScan")} — ${selectedEvent.reports} total scans`}
+                    ? `↩ ${t("calendar.previousScan")} — ${selectedEvent.reports} ${t("calendar.totalScansSuffix")}`
+                    : `✓ ${t("calendar.latestScan")} — ${selectedEvent.reports} ${t("calendar.totalScansSuffix")}`}
                 </div>
               </div>
             </div>

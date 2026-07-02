@@ -13,6 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { VulnerabilityLevelDTO } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -24,11 +25,14 @@ type CardDef = {
   id: number;
   title: SeverityKey;
   icon: React.ReactNode;
-  color: string;
-  rgb: string;
-  gradFrom: string;
-  gradTo: string;
+  accent: string;
   cvssRange: string;
+  bg: string;
+  ring: string;
+  glow: string;
+  iconBox: string;
+  pill: string;
+  bar: string;
 };
 
 type TargetOption = {
@@ -59,128 +63,20 @@ interface Props {
 
 
 // ─────────────────────────────────────────────────────────────
-// Per-severity danger decorations (SVG art, white on gradient)
-// ─────────────────────────────────────────────────────────────
-
-const getSeverityDeco = (title: SeverityKey): React.ReactNode => {
-  switch (title) {
-    // Critical — virus particle (spiky ball = biohazard/pathogen)
-    case "Critical":
-      return (
-        <svg viewBox="0 0 100 100" fill="none" aria-hidden>
-          <circle cx="50" cy="50" r="17" fill="white" />
-          {/* Cardinal spikes */}
-          <line x1="50" y1="33" x2="50" y2="16" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="50" y1="67" x2="50" y2="84" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="33" y1="50" x2="16" y2="50" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="67" y1="50" x2="84" y2="50" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          {/* Diagonal spikes */}
-          <line x1="38" y1="38" x2="27" y2="27" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="62" y1="38" x2="73" y2="27" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="38" y1="62" x2="27" y2="73" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          <line x1="62" y1="62" x2="73" y2="73" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
-          {/* Tip balls */}
-          <circle cx="50" cy="12" r="4.5" fill="white" />
-          <circle cx="50" cy="88" r="4.5" fill="white" />
-          <circle cx="12" cy="50" r="4.5" fill="white" />
-          <circle cx="88" cy="50" r="4.5" fill="white" />
-          <circle cx="23" cy="23" r="4.5" fill="white" />
-          <circle cx="77" cy="23" r="4.5" fill="white" />
-          <circle cx="23" cy="77" r="4.5" fill="white" />
-          <circle cx="77" cy="77" r="4.5" fill="white" />
-        </svg>
-      );
-
-    // High — remote-controlled botnet: an attacker's console broadcasting
-    // a signal down to a row of hijacked devices (deliberately a top-to-
-    // bottom broadcast layout, not a radial burst, so it reads distinctly
-    // from the Critical virus icon)
-    case "High":
-      return (
-        <svg viewBox="0 0 100 100" fill="white" aria-hidden>
-          {/* Attacker's remote console */}
-          <rect x="32" y="8" width="36" height="24" rx="4" />
-          <rect x="44" y="32" width="12" height="6" />
-          <rect x="37" y="38" width="26" height="4" rx="2" />
-
-          {/* Broadcast signal arcs beaming down to the botnet */}
-          <path d="M40 50 Q50 57 60 50" stroke="white" strokeWidth="4" strokeLinecap="round" fill="none" />
-          <path d="M31 58 Q50 71 69 58" stroke="white" strokeWidth="4" strokeLinecap="round" fill="none" />
-
-          {/* Hijacked devices in a row, each still tethered to the signal */}
-          <line x1="21" y1="74" x2="21" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-          <line x1="50" y1="74" x2="50" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-          <line x1="79" y1="74" x2="79" y2="80" stroke="white" strokeWidth="3.5" strokeLinecap="round" />
-          <rect x="10" y="80" width="22" height="14" rx="2.5" />
-          <rect x="39" y="80" width="22" height="14" rx="2.5" />
-          <rect x="68" y="80" width="22" height="14" rx="2.5" />
-        </svg>
-      );
-
-    // Medium — warning triangle with circuit traces
-    case "Medium":
-      return (
-        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeLinecap="round" aria-hidden>
-          <polygon points="50,8 93,83 7,83" strokeWidth="5.5" strokeLinejoin="round" />
-          <line x1="50" y1="34" x2="50" y2="60" strokeWidth="5.5" />
-          <circle cx="50" cy="72" r="4.5" fill="white" stroke="none" />
-          {/* Corner circuit traces */}
-          <polyline points="7,83 0,93 15,93" strokeWidth="2.5" />
-          <circle cx="15" cy="93" r="3" fill="white" stroke="none" />
-          <polyline points="93,83 100,93 85,93" strokeWidth="2.5" />
-          <circle cx="85" cy="93" r="3" fill="white" stroke="none" />
-          <line x1="50" y1="83" x2="50" y2="97" strokeWidth="2.5" />
-          <circle cx="50" cy="97" r="3" fill="white" stroke="none" />
-        </svg>
-      );
-
-    // Low — bug / insect
-    case "Low":
-      return (
-        <svg viewBox="0 0 100 100" fill="none" stroke="white" strokeLinecap="round" aria-hidden>
-          {/* Body */}
-          <ellipse cx="50" cy="63" rx="16" ry="24" strokeWidth="4.5" />
-          {/* Head */}
-          <circle cx="50" cy="33" r="15" strokeWidth="4.5" />
-          {/* Antennae */}
-          <line x1="43" y1="20" x2="31" y2="6" strokeWidth="3" />
-          <line x1="57" y1="20" x2="69" y2="6" strokeWidth="3" />
-          <circle cx="31" cy="6"  r="4" fill="white" stroke="none" />
-          <circle cx="69" cy="6"  r="4" fill="white" stroke="none" />
-          {/* Legs (3 pairs) */}
-          <line x1="34" y1="54" x2="15" y2="44" strokeWidth="3" />
-          <line x1="34" y1="63" x2="13" y2="63" strokeWidth="3" />
-          <line x1="34" y1="72" x2="15" y2="82" strokeWidth="3" />
-          <line x1="66" y1="54" x2="85" y2="44" strokeWidth="3" />
-          <line x1="66" y1="63" x2="87" y2="63" strokeWidth="3" />
-          <line x1="66" y1="72" x2="85" y2="82" strokeWidth="3" />
-        </svg>
-      );
-
-    // Info — radar sweep
-    case "Info":
-      return (
-        <svg viewBox="0 0 100 100" fill="none" stroke="white" aria-hidden>
-          <circle cx="50" cy="50" r="46" strokeWidth="1.5" strokeDasharray="9 5" />
-          <circle cx="50" cy="50" r="34" strokeWidth="1.5" strokeDasharray="6 4" />
-          <circle cx="50" cy="50" r="22" strokeWidth="2" />
-          <circle cx="50" cy="50" r="5.5" fill="white" stroke="none" />
-          {/* Crosshairs */}
-          <line x1="50" y1="4"  x2="50" y2="96" strokeWidth="1" strokeDasharray="3 4" />
-          <line x1="4"  y1="50" x2="96" y2="50" strokeWidth="1" strokeDasharray="3 4" />
-          {/* Sweep sector */}
-          <path d="M50 50 L96 50 A46 46 0 0 1 71.5 89.5Z" fill="white" fillOpacity="0.22" stroke="none" />
-        </svg>
-      );
-
-    default:
-      return null;
-  }
-};
-
-// ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
+
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const SEVERITY_KEY_MAP: Record<SeverityKey, TranslationKey> = {
+  Critical: "severity.critical",
+  High: "severity.high",
+  Medium: "severity.medium",
+  Low: "severity.low",
+  Info: "severity.info",
+};
+
+const severityLabel = (k: SeverityKey, t: TFn): string => t(SEVERITY_KEY_MAP[k]);
 
 const getTargetHost = (item: any) => {
   const host =
@@ -193,15 +89,174 @@ const getTargetKey   = (t: string, h: string) => `${t.trim() || "-"}__${h.trim()
 const getTargetLabel = (t: string, h: string) => `${t.trim() || "-"} - ${h.trim() || "-"}`;
 
 // ─────────────────────────────────────────────────────────────
+// Per-severity watermark art — drawn in `currentColor` so it can be
+// tinted with the card's own accent color at low opacity
+// ─────────────────────────────────────────────────────────────
+
+const getSeverityDeco = (title: SeverityKey): React.ReactNode => {
+  switch (title) {
+    // Critical — virus particle (spiky ball = biohazard/pathogen)
+    case "Critical":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" aria-hidden>
+          <circle cx="50" cy="50" r="17" fill="currentColor" />
+          <line x1="50" y1="33" x2="50" y2="16" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="50" y1="67" x2="50" y2="84" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="33" y1="50" x2="16" y2="50" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="67" y1="50" x2="84" y2="50" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="38" y1="38" x2="27" y2="27" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="62" y1="38" x2="73" y2="27" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="38" y1="62" x2="27" y2="73" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <line x1="62" y1="62" x2="73" y2="73" stroke="currentColor" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="50" cy="12" r="4.5" fill="currentColor" />
+          <circle cx="50" cy="88" r="4.5" fill="currentColor" />
+          <circle cx="12" cy="50" r="4.5" fill="currentColor" />
+          <circle cx="88" cy="50" r="4.5" fill="currentColor" />
+          <circle cx="23" cy="23" r="4.5" fill="currentColor" />
+          <circle cx="77" cy="23" r="4.5" fill="currentColor" />
+          <circle cx="23" cy="77" r="4.5" fill="currentColor" />
+          <circle cx="77" cy="77" r="4.5" fill="currentColor" />
+        </svg>
+      );
+
+    // High — remote-controlled botnet: an attacker's console broadcasting
+    // a signal down to a row of hijacked devices
+    case "High":
+      return (
+        <svg viewBox="0 0 100 100" fill="currentColor" aria-hidden>
+          <rect x="32" y="8" width="36" height="24" rx="4" />
+          <rect x="44" y="32" width="12" height="6" />
+          <rect x="37" y="38" width="26" height="4" rx="2" />
+          <path d="M40 50 Q50 57 60 50" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <path d="M31 58 Q50 71 69 58" stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none" />
+          <line x1="21" y1="74" x2="21" y2="80" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="50" y1="74" x2="50" y2="80" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="79" y1="74" x2="79" y2="80" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+          <rect x="10" y="80" width="22" height="14" rx="2.5" />
+          <rect x="39" y="80" width="22" height="14" rx="2.5" />
+          <rect x="68" y="80" width="22" height="14" rx="2.5" />
+        </svg>
+      );
+
+    // Medium — warning triangle with circuit traces
+    case "Medium":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden>
+          <polygon points="50,8 93,83 7,83" strokeWidth="5.5" strokeLinejoin="round" />
+          <line x1="50" y1="34" x2="50" y2="60" strokeWidth="5.5" />
+          <circle cx="50" cy="72" r="4.5" fill="currentColor" stroke="none" />
+          <polyline points="7,83 0,93 15,93" strokeWidth="2.5" />
+          <circle cx="15" cy="93" r="3" fill="currentColor" stroke="none" />
+          <polyline points="93,83 100,93 85,93" strokeWidth="2.5" />
+          <circle cx="85" cy="93" r="3" fill="currentColor" stroke="none" />
+          <line x1="50" y1="83" x2="50" y2="97" strokeWidth="2.5" />
+          <circle cx="50" cy="97" r="3" fill="currentColor" stroke="none" />
+        </svg>
+      );
+
+    // Low — bug / insect
+    case "Low":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden>
+          <ellipse cx="50" cy="63" rx="16" ry="24" strokeWidth="4.5" />
+          <circle cx="50" cy="33" r="15" strokeWidth="4.5" />
+          <line x1="43" y1="20" x2="31" y2="6" strokeWidth="3" />
+          <line x1="57" y1="20" x2="69" y2="6" strokeWidth="3" />
+          <circle cx="31" cy="6"  r="4" fill="currentColor" stroke="none" />
+          <circle cx="69" cy="6"  r="4" fill="currentColor" stroke="none" />
+          <line x1="34" y1="54" x2="15" y2="44" strokeWidth="3" />
+          <line x1="34" y1="63" x2="13" y2="63" strokeWidth="3" />
+          <line x1="34" y1="72" x2="15" y2="82" strokeWidth="3" />
+          <line x1="66" y1="54" x2="85" y2="44" strokeWidth="3" />
+          <line x1="66" y1="63" x2="87" y2="63" strokeWidth="3" />
+          <line x1="66" y1="72" x2="85" y2="82" strokeWidth="3" />
+        </svg>
+      );
+
+    // Info — radar sweep
+    case "Info":
+      return (
+        <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" aria-hidden>
+          <circle cx="50" cy="50" r="46" strokeWidth="1.5" strokeDasharray="9 5" />
+          <circle cx="50" cy="50" r="34" strokeWidth="1.5" strokeDasharray="6 4" />
+          <circle cx="50" cy="50" r="22" strokeWidth="2" />
+          <circle cx="50" cy="50" r="5.5" fill="currentColor" stroke="none" />
+          <line x1="50" y1="4"  x2="50" y2="96" strokeWidth="1" strokeDasharray="3 4" />
+          <line x1="4"  y1="50" x2="96" y2="50" strokeWidth="1" strokeDasharray="3 4" />
+          <path d="M50 50 L96 50 A46 46 0 0 1 71.5 89.5Z" fill="currentColor" fillOpacity="0.22" stroke="none" />
+        </svg>
+      );
+
+    default:
+      return null;
+  }
+};
+
+// ─────────────────────────────────────────────────────────────
 // Card definitions — CVSS v3.1 score ranges (official)
 // ─────────────────────────────────────────────────────────────
 
 const CARDS: CardDef[] = [
-  { id: 1, title: "Critical", icon: <FiAlertOctagon />,  color: "#ef4444", rgb: "239,68,68",   gradFrom: "#ff6b7a", gradTo: "#c2182e", cvssRange: "9.0 – 10.0" },
-  { id: 2, title: "High",     icon: <FiAlertTriangle />, color: "#f97316", rgb: "249,115,22",  gradFrom: "#ffaa40", gradTo: "#d46200", cvssRange: "7.0 – 8.9"  },
-  { id: 3, title: "Medium",   icon: <FiInfo />,           color: "#d97706", rgb: "217,119,6",   gradFrom: "#ffc840", gradTo: "#c07a00", cvssRange: "4.0 – 6.9"  },
-  { id: 4, title: "Low",      icon: <FiMinusCircle />,    color: "#16a34a", rgb: "22,163,74",   gradFrom: "#4ecb71", gradTo: "#1a8c3a", cvssRange: "0.1 – 3.9"  },
-  { id: 5, title: "Info",     icon: <FiShield />,         color: "#2563eb", rgb: "37,99,235",   gradFrom: "#56aaff", gradTo: "#1460c8", cvssRange: "0.0"        },
+  {
+    id: 1, title: "Critical", icon: <FiAlertOctagon />, accent: "#e11d48", cvssRange: "9.0 – 10.0",
+    bg: [
+      "bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.24),transparent_36%),linear-gradient(135deg,#fff0f1_0%,#ffd7dc_45%,#fda4af_100%)]",
+      "dark:bg-[radial-gradient(circle_at_top_right,rgba(251,113,133,0.20),transparent_36%),linear-gradient(135deg,#120408_0%,#3a0a12_45%,#7f1d1d_100%)]",
+    ].join(" "),
+    ring: "border border-rose-300/80 ring-1 ring-rose-400/35 dark:border-white/10 dark:ring-rose-400/20",
+    glow: "shadow-[0_8px_20px_-14px_rgba(239,68,68,0.30)] dark:shadow-[0_12px_28px_-16px_rgba(239,68,68,0.48)]",
+    iconBox: "bg-white/75 border border-rose-200/80 text-rose-700 dark:bg-white/10 dark:border-white/10 dark:text-white",
+    pill: "bg-white/75 text-rose-700 border border-rose-200/80 dark:bg-white/10 dark:text-white dark:border-white/15",
+    bar: "bg-gradient-to-r from-[#fb7185] via-[#ef4444] to-[#991b1b]",
+  },
+  {
+    id: 2, title: "High", icon: <FiAlertTriangle />, accent: "#ea580c", cvssRange: "7.0 – 8.9",
+    bg: [
+      "bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.24),transparent_36%),linear-gradient(135deg,#fff3e8_0%,#ffdfb8_45%,#fdba74_100%)]",
+      "dark:bg-[radial-gradient(circle_at_top_right,rgba(253,186,116,0.20),transparent_36%),linear-gradient(135deg,#0f0703_0%,#3a1607_45%,#9a3412_100%)]",
+    ].join(" "),
+    ring: "border border-orange-300/80 ring-1 ring-orange-400/35 dark:border-white/10 dark:ring-orange-300/20",
+    glow: "shadow-[0_8px_20px_-14px_rgba(249,115,22,0.30)] dark:shadow-[0_12px_28px_-16px_rgba(249,115,22,0.48)]",
+    iconBox: "bg-white/75 border border-orange-200/80 text-orange-700 dark:bg-white/10 dark:border-white/10 dark:text-white",
+    pill: "bg-white/75 text-orange-700 border border-orange-200/80 dark:bg-white/10 dark:text-white dark:border-white/15",
+    bar: "bg-gradient-to-r from-[#fdba74] via-[#f97316] to-[#c2410c]",
+  },
+  {
+    id: 3, title: "Medium", icon: <FiInfo />, accent: "#b45309", cvssRange: "4.0 – 6.9",
+    bg: [
+      "bg-[radial-gradient(circle_at_top_right,rgba(234,179,8,0.24),transparent_36%),linear-gradient(135deg,#fffaeb_0%,#feecad_45%,#fcd34d_100%)]",
+      "dark:bg-[radial-gradient(circle_at_top_right,rgba(253,230,138,0.18),transparent_36%),linear-gradient(135deg,#0f0b02_0%,#2a1a05_45%,#854d0e_100%)]",
+    ].join(" "),
+    ring: "border border-amber-300/80 ring-1 ring-amber-400/35 dark:border-white/10 dark:ring-amber-300/20",
+    glow: "shadow-[0_8px_20px_-14px_rgba(234,179,8,0.28)] dark:shadow-[0_12px_28px_-16px_rgba(250,204,21,0.40)]",
+    iconBox: "bg-white/75 border border-amber-200/80 text-amber-800 dark:bg-white/10 dark:border-white/10 dark:text-white",
+    pill: "bg-white/75 text-amber-800 border border-amber-200/80 dark:bg-white/10 dark:text-white dark:border-white/15",
+    bar: "bg-gradient-to-r from-[#fde68a] via-[#facc15] to-[#a16207]",
+  },
+  {
+    id: 4, title: "Low", icon: <FiMinusCircle />, accent: "#15803d", cvssRange: "0.1 – 3.9",
+    bg: [
+      "bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.24),transparent_36%),linear-gradient(135deg,#e9fcf3_0%,#b8f3d3_45%,#6ee7b7_100%)]",
+      "dark:bg-[radial-gradient(circle_at_top_right,rgba(134,239,172,0.18),transparent_36%),linear-gradient(135deg,#03120b_0%,#062e1f_45%,#065f46_100%)]",
+    ].join(" "),
+    ring: "border border-emerald-300/80 ring-1 ring-emerald-400/35 dark:border-white/10 dark:ring-emerald-300/20",
+    glow: "shadow-[0_8px_20px_-14px_rgba(34,197,94,0.28)] dark:shadow-[0_12px_28px_-16px_rgba(34,197,94,0.40)]",
+    iconBox: "bg-white/75 border border-emerald-200/80 text-emerald-800 dark:bg-white/10 dark:border-white/10 dark:text-white",
+    pill: "bg-white/75 text-emerald-800 border border-emerald-200/80 dark:bg-white/10 dark:text-white dark:border-white/15",
+    bar: "bg-gradient-to-r from-[#86efac] via-[#22c55e] to-[#15803d]",
+  },
+  {
+    id: 5, title: "Info", icon: <FiShield />, accent: "#1d4ed8", cvssRange: "0.0",
+    bg: [
+      "bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.24),transparent_36%),linear-gradient(135deg,#eef6ff_0%,#c3e0fe_45%,#93c5fd_100%)]",
+      "dark:bg-[radial-gradient(circle_at_top_right,rgba(125,211,252,0.18),transparent_36%),linear-gradient(135deg,#020b16_0%,#06243a_45%,#075985_100%)]",
+    ].join(" "),
+    ring: "border border-sky-300/80 ring-1 ring-sky-400/35 dark:border-white/10 dark:ring-sky-300/20",
+    glow: "shadow-[0_8px_20px_-14px_rgba(56,189,248,0.28)] dark:shadow-[0_12px_28px_-16px_rgba(56,189,248,0.40)]",
+    iconBox: "bg-white/75 border border-sky-200/80 text-sky-800 dark:bg-white/10 dark:border-white/10 dark:text-white",
+    pill: "bg-white/75 text-sky-800 border border-sky-200/80 dark:bg-white/10 dark:text-white dark:border-white/15",
+    bar: "bg-gradient-to-r from-[#7dd3fc] via-[#38bdf8] to-[#0284c7]",
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -329,13 +384,13 @@ const OverallSeverity: React.FC<Props> = ({
 
   const targetButtonLabel =
     selectedTargets.length === 0 ? t("dashboard.targetQuery") :
-    selectedTargets.length === 1 ? (selectedTargetOptions[0]?.label ?? "1 selected") :
-    `${selectedTargets.length} selected`;
+    selectedTargets.length === 1 ? (selectedTargetOptions[0]?.label ?? t("dashboard.oneSelected")) :
+    t("dashboard.nSelected", { n: selectedTargets.length });
 
   const selectedScopeLabel =
-    selectedTargets.length === 0 ? "All Targets" :
-    selectedTargets.length === 1 ? (selectedTargetOptions[0]?.label ?? "1 selected") :
-    `${selectedTargets.length} targets selected`;
+    selectedTargets.length === 0 ? t("dashboard.allTargets") :
+    selectedTargets.length === 1 ? (selectedTargetOptions[0]?.label ?? t("dashboard.oneSelected")) :
+    t("dashboard.nTargetsSelected", { n: selectedTargets.length });
 
   const toggleTarget = (key: string) =>
     setSelectedTargets(prev =>
@@ -403,7 +458,7 @@ const OverallSeverity: React.FC<Props> = ({
             </div>
 
             <p className="mt-0.5 text-[10px] text-slate-400 dark:text-white/30">
-              CVSS v3 Severity Distribution
+              {t("dashboard.cvssSeverityDistribution")}
               {selectedTargets.length > 0 && (
                 <> · <span className="font-medium text-slate-500 dark:text-white/45">{selectedScopeLabel}</span></>
               )}
@@ -538,61 +593,66 @@ const OverallSeverity: React.FC<Props> = ({
               key={card.id}
               type="button"
               onClick={() => handleNavigateByLevel(card.title)}
-              className="group relative overflow-hidden rounded-3xl text-left shadow-md transition-all duration-200 hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]"
-              style={{ background: `linear-gradient(145deg, ${card.gradFrom}, ${card.gradTo})` }}
+              className={[
+                "group relative overflow-hidden rounded-3xl text-left transition-all duration-200",
+                card.bg, card.ring, card.glow,
+                "hover:-translate-y-1.5 hover:shadow-xl active:scale-[0.98]",
+              ].join(" ")}
             >
-              {/* ── Danger-level decoration ── */}
-              <div className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 opacity-[0.16] transition-opacity duration-300 group-hover:opacity-[0.30]" aria-hidden>
+              {/* ── Watermark art (tinted with the card's accent) ── */}
+              <div
+                className="pointer-events-none absolute -bottom-3 -right-3 h-24 w-24 opacity-[0.16] transition-opacity duration-300 group-hover:opacity-[0.26] dark:opacity-[0.12]"
+                style={{ color: card.accent }}
+                aria-hidden
+              >
                 {getSeverityDeco(card.title)}
               </div>
 
               {/* ── Content ── */}
               <div className="relative flex flex-col p-4">
 
-                {/* Row 1 — icon circle + count badge */}
+                {/* Row 1 — icon circle + found badge */}
                 <div className="mb-3 flex items-start justify-between">
-                  {/* Icon circle */}
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/25 text-white text-[20px] ring-1 ring-white/20 transition-transform duration-200 group-hover:scale-105">
+                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-[20px] transition-transform duration-200 group-hover:scale-105 ${card.iconBox}`}>
                     {card.icon}
                   </div>
-                  {/* Count badge (like "Ranking" in reference) */}
-                  <div className="flex min-w-11.5 flex-col items-center rounded-2xl bg-white/20 px-2 pt-2 pb-1.5 text-center ring-1 ring-white/15 backdrop-blur-sm">
-                    <p className="text-[20px] font-black leading-none text-white">
+                  <div className={`flex min-w-11.5 flex-col items-center rounded-2xl px-2 pt-2 pb-1.5 text-center backdrop-blur-sm ${card.pill}`}>
+                    <p className="text-[20px] font-black leading-none">
                       {loading ? "—" : rawNumber.toLocaleString()}
                     </p>
-                    <p className="mt-0.5 text-[7px] font-semibold uppercase tracking-widest text-white/55">
-                      found
+                    <p className="mt-0.5 text-[7px] font-semibold uppercase tracking-widest opacity-70">
+                      {t("dashboard.foundLabel")}
                     </p>
                   </div>
                 </div>
 
                 {/* Row 2 — title + CVSS */}
-                <p className="text-[13.5px] font-extrabold leading-tight tracking-wide text-white">
-                  {card.title}
+                <p className="text-[13.5px] font-extrabold leading-tight tracking-wide text-slate-800 dark:text-white/90">
+                  {severityLabel(card.title, t)}
                 </p>
-                <p className="mb-4 text-[10px] text-white/55">
-                  CVSS {card.cvssRange}
+                <p className="mb-4 text-[10px] text-slate-500/90 dark:text-white/50">
+                  {t("common.cvss")} {card.cvssRange}
                 </p>
 
-                {/* Row 3 — stats */}
+                {/* Row 3 — total / share stats */}
                 <div className="mb-2.5 flex items-center gap-3">
                   <div>
-                    <p className="text-[13px] font-bold leading-none text-white">
+                    <p className="text-[13px] font-bold leading-none text-slate-800 dark:text-white/90">
                       {loading ? "—" : rawNumber.toLocaleString()}
                     </p>
-                    <p className="mt-0.5 text-[8px] uppercase tracking-wider text-white/45">
-                      Total
+                    <p className="mt-0.5 text-[8px] uppercase tracking-wider text-slate-500/80 dark:text-white/40">
+                      {t("vulnOverallSeverity.total")}
                     </p>
                   </div>
                   {totals.totalAll > 0 && (
                     <>
-                      <span className="h-5 w-px bg-white/20" />
+                      <span className="h-5 w-px bg-slate-900/10 dark:bg-white/15" />
                       <div>
-                        <p className="text-[13px] font-bold leading-none text-white">
+                        <p className="text-[13px] font-bold leading-none text-slate-800 dark:text-white/90">
                           {loading ? "—" : `${pct.toFixed(1)}%`}
                         </p>
-                        <p className="mt-0.5 text-[8px] uppercase tracking-wider text-white/45">
-                          Share
+                        <p className="mt-0.5 text-[8px] uppercase tracking-wider text-slate-500/80 dark:text-white/40">
+                          {t("dashboard.share")}
                         </p>
                       </div>
                     </>
@@ -600,9 +660,9 @@ const OverallSeverity: React.FC<Props> = ({
                 </div>
 
                 {/* Row 4 — progress bar */}
-                <div className="h-1 w-full overflow-hidden rounded-full bg-white/20">
+                <div className="h-1 w-full overflow-hidden rounded-full bg-white/55 dark:bg-white/10">
                   <div
-                    className="h-full rounded-full bg-white/65 transition-all duration-700"
+                    className={`h-full rounded-full transition-all duration-700 ${card.bar}`}
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
                 </div>

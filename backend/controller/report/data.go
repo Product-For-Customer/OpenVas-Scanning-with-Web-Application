@@ -140,27 +140,6 @@ LIMIT ?;
 	return taskIDs, nil
 }
 
-func BuildReportCriticalManageLimitTaskIDSet(db *gorm.DB) (map[string]bool, error) {
-	taskIDs, err := FindReportCriticalManageLimitTaskIDs(db)
-	if err != nil {
-		return nil, err
-	}
-
-	allowedTaskIDs := make(map[string]bool)
-
-	for _, taskID := range taskIDs {
-		cleanTaskID := normalizeReportCriticalTaskIDForManageLimit(taskID)
-
-		if cleanTaskID == "" {
-			continue
-		}
-
-		allowedTaskIDs[cleanTaskID] = true
-	}
-
-	return allowedTaskIDs, nil
-}
-
 func sortCriticalForReportByManageLogic(out []CriticalForReportDTO) {
 	sort.SliceStable(out, func(i int, j int) bool {
 		if out[i].Severity != out[j].Severity {

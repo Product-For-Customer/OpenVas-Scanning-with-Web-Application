@@ -99,7 +99,6 @@ func SetupDatabase() {
 		&entity.AppEPSSCache{},
 		&entity.AppComplianceMapping{},
 		&entity.AppAPIKey{},
-		&entity.AppAuditLog{},
 		&entity.SystemConfig{},
 		&entity.AutoScanSchedule{},
 		&entity.FeedUpdateSchedule{},

@@ -56,7 +56,7 @@ export type KEVSyncStatusDTO = {
 // NVD / CVE Enrich Types
 // ===========================
 
-export type NVDCVEDetailDTO = {
+type NVDCVEDetailDTO = {
   cve_id: string;
   // CVSS v3.x (primary — v3.1 preferred)
   cvss_score: number;
@@ -78,7 +78,7 @@ export type NVDCVEDetailDTO = {
   from_cache: boolean;
 };
 
-export type CVEEnrichDTO = {
+type CVEEnrichDTO = {
   cve_id: string;
   nvd: NVDCVEDetailDTO | null;
   kev: KEVEntryDTO | null;
@@ -92,19 +92,19 @@ export type CVEEnrichMap = Record<string, CVEEnrichDTO | null>;
 // GET https://api.github.com/advisories?cve_id={id}&per_page=5
 // ===========================
 
-export type GitHubAdvisoryVulnerability = {
+type GitHubAdvisoryVulnerability = {
   package: { ecosystem: string; name: string };
   first_patched_version: string | null;
   vulnerable_version_range: string | null;
   vulnerable_functions: string[];
 };
 
-export type GitHubAdvisoryCredit = {
+type GitHubAdvisoryCredit = {
   user: { login: string; html_url: string; avatar_url: string } | null;
   type: string; // "reporter" | "finder" | "analyst" | ...
 };
 
-export type GitHubAdvisory = {
+type GitHubAdvisory = {
   ghsa_id: string;
   cve_id: string | null;
   url: string;
@@ -188,21 +188,6 @@ export const ListKEVCatalog = async (params?: {
   } catch (error) {
     console.error("ListKEVCatalog error:", error);
     return [];
-  }
-};
-
-export const CheckKEVByCVEIDs = async (
-  cveIds: string[]
-): Promise<Record<string, KEVEntryDTO | null>> => {
-  if (!cveIds || cveIds.length === 0) return {};
-  try {
-    const response = await threatApi.get("/threats/kev/check", {
-      params: { cve_ids: cveIds.join(",") },
-    });
-    return (response.data ?? {}) as Record<string, KEVEntryDTO | null>;
-  } catch (error) {
-    console.error("CheckKEVByCVEIDs error:", error);
-    return {};
   }
 };
 

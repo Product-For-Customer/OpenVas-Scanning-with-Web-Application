@@ -84,9 +84,9 @@ const PasswordPolicyPage: React.FC = () => {
       setLoading(true);
       const data = await GetPasswordPolicy();
       setPolicy(data); setDraft(data); setHasChanges(false);
-    } catch { message.error("Failed to load password policy"); }
+    } catch { message.error(t("passwordpolicy.loadFailed")); }
     finally { setLoading(false); }
-  }, []);
+  }, [t]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -103,9 +103,9 @@ const PasswordPolicyPage: React.FC = () => {
       setSaving(true);
       const updated = await UpdatePasswordPolicy(draft);
       setPolicy(updated); setDraft(updated); setHasChanges(false);
-      message.success("Password policy updated");
+      message.success(t("passwordpolicy.updateSuccess"));
     } catch (err: any) {
-      message.error(err?.response?.data?.error || "Failed to save policy");
+      message.error(err?.response?.data?.error || t("passwordpolicy.saveFailed"));
     } finally { setSaving(false); }
   };
 
@@ -142,7 +142,7 @@ const PasswordPolicyPage: React.FC = () => {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-                  MANAGEMENT · SECURITY
+                  {t("passwordpolicy.kicker")}
                 </p>
               </div>
               <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
@@ -196,8 +196,8 @@ const PasswordPolicyPage: React.FC = () => {
           <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3.5 dark:border-white/8">
             <FiShield className="text-[14px] text-slate-500 dark:text-white/40" />
             <div>
-              <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">Complexity Rules</h2>
-              <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">Requirements for password strength</p>
+              <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">{t("passwordpolicy.complexityRules")}</h2>
+              <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">{t("passwordpolicy.complexityDesc")}</p>
             </div>
           </div>
 
@@ -205,8 +205,8 @@ const PasswordPolicyPage: React.FC = () => {
             {/* Min Length */}
             <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-200/70 bg-white px-4 py-3.5 dark:border-white/8 dark:bg-white/4">
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">Minimum Length</p>
-                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/40">Minimum number of characters required</p>
+                <p className="text-[12px] font-semibold text-slate-800 dark:text-white/85">{t("passwordpolicy.minLength")}</p>
+                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/40">{t("passwordpolicy.minLengthDesc")}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button"
@@ -227,22 +227,22 @@ const PasswordPolicyPage: React.FC = () => {
             </div>
 
             <ToggleRow
-              label="Require Uppercase"
-              desc="At least one uppercase letter (A–Z)"
+              label={t("passwordpolicy.requireUppercase")}
+              desc={t("passwordpolicy.requireUppercaseDesc")}
               value={draft.require_uppercase}
               onChange={v => updateDraft("require_uppercase", v)}
               currentColor={currentColor}
             />
             <ToggleRow
-              label="Require Number"
-              desc="At least one numeric digit (0–9)"
+              label={t("passwordpolicy.requireNumber")}
+              desc={t("passwordpolicy.requireNumberDesc")}
               value={draft.require_number}
               onChange={v => updateDraft("require_number", v)}
               currentColor={currentColor}
             />
             <ToggleRow
-              label="Require Special Character"
-              desc={`At least one special character (!@#$%^&*)`}
+              label={t("passwordpolicy.requireSpecial")}
+              desc={t("passwordpolicy.requireSpecialDesc")}
               value={draft.require_special}
               onChange={v => updateDraft("require_special", v)}
               currentColor={currentColor}
@@ -258,8 +258,8 @@ const PasswordPolicyPage: React.FC = () => {
             <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3.5 dark:border-white/8">
               <FiClock className="text-[14px] text-amber-500" />
               <div>
-                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">Password Expiry</h2>
-                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">How often passwords must be changed (0 = never)</p>
+                <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">{t("passwordpolicy.expiry")}</h2>
+                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">{t("passwordpolicy.expiryDesc")}</p>
               </div>
             </div>
             <div className="p-4">
@@ -268,14 +268,14 @@ const PasswordPolicyPage: React.FC = () => {
                   onChange={e => updateDraft("expiry_days", Math.min(365, Math.max(0, parseInt(e.target.value) || 0)))}
                   className="h-10 w-20 rounded-lg border border-slate-200/70 bg-white px-0 text-center text-[16px] font-bold text-slate-900 outline-none dark:border-white/8 dark:bg-white/8 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span className="text-[12px] text-slate-500 dark:text-white/45">days</span>
+                <span className="text-[12px] text-slate-500 dark:text-white/45">{t("passwordpolicy.expiryDays")}</span>
                 {draft.expiry_days === 0 ? (
                   <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10.5px] font-semibold text-emerald-600 dark:border-emerald-500/20 dark:bg-emerald-500/8 dark:text-emerald-400">
-                    Never expires
+                    {t("passwordpolicy.neverExpires")}
                   </span>
                 ) : (
                   <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10.5px] font-semibold text-amber-600 dark:border-amber-500/20 dark:bg-amber-500/8 dark:text-amber-400">
-                    Expires every {draft.expiry_days} days
+                    {t("passwordpolicy.expiresEvery", { n: draft.expiry_days })}
                   </span>
                 )}
               </div>
@@ -283,7 +283,7 @@ const PasswordPolicyPage: React.FC = () => {
                 <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/20 dark:bg-amber-500/8">
                   <FiAlertTriangle className="mt-0.5 shrink-0 text-[11px] text-amber-500" />
                   <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                    Users will be required to change their password every {draft.expiry_days} days.
+                    {t("passwordpolicy.expiryWarning", { n: draft.expiry_days })}
                   </p>
                 </div>
               )}
@@ -295,17 +295,17 @@ const PasswordPolicyPage: React.FC = () => {
             <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3.5 dark:border-white/8">
               <FiLock className="text-[14px] text-slate-500 dark:text-white/40" />
               <div>
-                <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">Policy Preview</h2>
-                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">Active rules for password validation</p>
+                <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">{t("passwordpolicy.preview")}</h2>
+                <p className="mt-0.5 text-[11px] text-slate-400 dark:text-white/30">{t("passwordpolicy.previewDesc")}</p>
               </div>
             </div>
             <div className="space-y-1.5 p-4">
               {[
-                { label: `Minimum ${draft.min_length} characters`, active: true },
-                { label: "At least one uppercase letter",           active: draft.require_uppercase },
-                { label: "At least one number",                     active: draft.require_number },
-                { label: "At least one special character",          active: draft.require_special },
-                { label: draft.expiry_days > 0 ? `Password expires every ${draft.expiry_days} days` : "No expiry", active: true },
+                { label: t("passwordpolicy.minChars", { n: draft.min_length }), active: true },
+                { label: t("passwordpolicy.oneUppercase"),           active: draft.require_uppercase },
+                { label: t("passwordpolicy.oneNumber"),              active: draft.require_number },
+                { label: t("passwordpolicy.oneSpecial"),             active: draft.require_special },
+                { label: draft.expiry_days > 0 ? t("passwordpolicy.expiresLabel", { n: draft.expiry_days }) : t("passwordpolicy.noExpiry"), active: true },
               ].map(rule => (
                 <div key={rule.label}
                   className={[

@@ -389,7 +389,7 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex shrink-0 items-center gap-2.5">
             <FiList className="text-[14px] text-slate-400 dark:text-white/35" />
-            <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+            <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
               {t("threatConfig.tabs.portLists")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredLists.length}/{lists.length})</span>}
             </p>
@@ -1304,7 +1304,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
         <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
           <div className="flex shrink-0 items-center gap-2.5">
             <FiKey className="text-[14px] text-slate-400 dark:text-white/35" />
-            <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+            <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
               {t("threatConfig.tabs.credentials")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredCreds.length}/{creds.length})</span>}
             </p>
@@ -1819,7 +1819,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           {/* Title */}
           <div className="flex shrink-0 items-center gap-2.5">
             <FiTarget className="text-[14px] text-slate-400 dark:text-white/35" />
-            <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+            <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
               {t("threatConfig.tabs.targets")}
               {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({filteredTargets.length}/{targets.length})</span>}
             </p>
@@ -2305,7 +2305,7 @@ const ThreatConfigPage: React.FC = () => {
             onClick={() => setActiveTab(tab.key)}
             style={activeTab === tab.key ? { background: accentGrad } : undefined}
             className={[
-              "flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+              "flex items-center gap-1.5 rounded-lg border px-4 py-2 text-[12px] font-bold transition-all",
               activeTab === tab.key
                 ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",

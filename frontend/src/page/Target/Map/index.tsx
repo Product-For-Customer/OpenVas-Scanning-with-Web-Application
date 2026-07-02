@@ -34,7 +34,7 @@ import ModalDelete from "./modal/ModalDelete";
 import { useAuth } from "../../../contexts/AuthContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
 
-export type DeviceStatus = "online" | "offline" | "warning";
+type DeviceStatus = "online" | "offline" | "warning";
 
 export type Device = {
   id: number;
@@ -727,7 +727,7 @@ const MapDevice: React.FC = () => {
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2.5">
-                    <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+                    <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
                       {t("target.map")}
                     </h2>
                     <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">

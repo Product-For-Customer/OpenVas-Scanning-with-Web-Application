@@ -44,7 +44,7 @@ const ResetOTPPage       = Loadable(lazy(() => import("../page/Authentication/Re
 // ===== Utility =====
 const Loader         = Loadable(lazy(() => import("../component/load/Loader")));
 const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
-const LogoAnimation  = Loadable(lazy(() => import("../page/Authentication/animation/route")));
+const AfterLoginAnimation = Loadable(lazy(() => import("../page/Authentication/animation/route")));
 
 // ======================= ROUTES =======================
 
@@ -83,7 +83,7 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "recycle-bin",                                  element: <RecycleBin /> },
     ],
   },
-  { path: "logo-animation",  element: <LogoAnimation /> },
+  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
   { path: "*",               element: <Navigate to="/admin" replace /> },
 ];
 
@@ -113,7 +113,7 @@ const UserRoutes = (): RouteObject[] => [
       { path: "vulnerability-delta",           element: <VulnerabilityDelta /> },
     ],
   },
-  { path: "logo-animation",  element: <LogoAnimation /> },
+  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
   { path: "*", element: <Navigate to="/admin" replace /> },
 ];
 
@@ -131,7 +131,7 @@ const MainRoutes = (): RouteObject[] => [
       { path: "register-otp",           element: <RegisterOTPPage /> },
       { path: "reset-otp",              element: <ResetOTPPage /> },
       { path: "capture",                element: <CaptureTest /> },
-      { path: "logo-animation",         element: <LogoAnimation /> },
+      { path: "after-login-animation",  element: <AfterLoginAnimation /> },
       { path: "*",                      element: <LoginPage /> },
     ],
   },

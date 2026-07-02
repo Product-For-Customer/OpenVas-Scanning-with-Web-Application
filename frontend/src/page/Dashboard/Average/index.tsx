@@ -9,6 +9,7 @@ import {
 } from "react-icons/fi";
 import { ListAssetRisk, type AssetRiskDTO } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -26,10 +27,12 @@ const getKey = (t: string, h: string) => `${t.trim() || "-"}__${h.trim() || "-"}
 const getLabel = (t: string, h: string) => `${t.trim() || "-"} - ${h.trim() || "-"}`;
 
 // CVSS v3 standard thresholds
-const riskTone = (risk: number) => {
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const riskTone = (risk: number, t: TFn) => {
   if (risk >= 9.0)
     return {
-      label: "Critical", statusLabel: "CRITICAL RISK",
+      label: t("severity.critical"), statusLabel: t("dashboard.riskCritical"),
       dot: "bg-red-500",
       text: "text-red-600 dark:text-red-400",
       chip: "bg-red-50 border-red-200 text-red-600 dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300",
@@ -38,7 +41,7 @@ const riskTone = (risk: number) => {
     };
   if (risk >= 7.0)
     return {
-      label: "High", statusLabel: "HIGH RISK",
+      label: t("severity.high"), statusLabel: t("dashboard.riskHigh"),
       dot: "bg-orange-500",
       text: "text-orange-600 dark:text-orange-400",
       chip: "bg-orange-50 border-orange-200 text-orange-600 dark:bg-orange-500/10 dark:border-orange-400/20 dark:text-orange-300",
@@ -47,7 +50,7 @@ const riskTone = (risk: number) => {
     };
   if (risk >= 4.0)
     return {
-      label: "Medium", statusLabel: "MEDIUM RISK",
+      label: t("severity.medium"), statusLabel: t("dashboard.riskMedium"),
       dot: "bg-yellow-500",
       text: "text-yellow-600 dark:text-yellow-400",
       chip: "bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-500/10 dark:border-yellow-400/20 dark:text-yellow-300",
@@ -56,7 +59,7 @@ const riskTone = (risk: number) => {
     };
   if (risk > 0)
     return {
-      label: "Low", statusLabel: "LOW RISK",
+      label: t("severity.low"), statusLabel: t("dashboard.riskLow"),
       dot: "bg-green-500",
       text: "text-green-600 dark:text-green-400",
       chip: "bg-green-50 border-green-200 text-green-700 dark:bg-green-500/10 dark:border-green-400/20 dark:text-green-300",
@@ -64,7 +67,7 @@ const riskTone = (risk: number) => {
       cvssRange: "0.1 – 3.9",
     };
   return {
-    label: "Info", statusLabel: "NO RISK DETECTED",
+    label: t("severity.info"), statusLabel: t("dashboard.riskNone"),
     dot: "bg-blue-500",
     text: "text-blue-600 dark:text-blue-400",
     chip: "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-400/20 dark:text-blue-300",
@@ -82,12 +85,12 @@ const riskTone = (risk: number) => {
 
 const GAUGE_SEGS = [
   // from/to map directly to the 0–10 CVSS score axis
-  { label: "Info",     from: 0,    to: 0.5,  color: "#3b82f6" }, // min-visible slit
-  { label: "Low",      from: 0.5,  to: 4.0,  color: "#22c55e" }, // 0.1–3.9
-  { label: "Medium",   from: 4.0,  to: 7.0,  color: "#eab308" }, // 4.0–6.9
-  { label: "High",     from: 7.0,  to: 9.0,  color: "#f97316" }, // 7.0–8.9
-  { label: "Critical", from: 9.0,  to: 10.0, color: "#ef4444" }, // 9.0–10.0
-];
+  { key: "info",     labelKey: "severity.info",     from: 0,    to: 0.5,  color: "#3b82f6" }, // min-visible slit
+  { key: "low",      labelKey: "severity.low",      from: 0.5,  to: 4.0,  color: "#22c55e" }, // 0.1–3.9
+  { key: "medium",   labelKey: "severity.medium",   from: 4.0,  to: 7.0,  color: "#eab308" }, // 4.0–6.9
+  { key: "high",     labelKey: "severity.high",     from: 7.0,  to: 9.0,  color: "#f97316" }, // 7.0–8.9
+  { key: "critical", labelKey: "severity.critical", from: 9.0,  to: 10.0, color: "#ef4444" }, // 9.0–10.0
+] as const;
 
 const GCX = 150, GCY = 148;         // pivot center in SVG units
 const ROUT = 120, RIN = 78;         // outer / inner radius
@@ -120,6 +123,7 @@ const segPath = (fromScore: number, toScore: number): string => {
 interface GaugeProps { score: number; loading?: boolean }
 
 const RiskGaugeChart: React.FC<GaugeProps> = ({ score, loading = false }) => {
+  const { t } = useLanguage();
   const safe     = clamp(score, 0, 10);
   const rotation = scoreToAngle(safe) - 270; // base needle points at 270° (top)
   const NEEDLE_LEN = ROUT - 12;
@@ -136,7 +140,7 @@ const RiskGaugeChart: React.FC<GaugeProps> = ({ score, loading = false }) => {
       {/* Colored CVSS segments */}
       {GAUGE_SEGS.map(seg => (
         <path
-          key={seg.label}
+          key={seg.key}
           d={segPath(seg.from, seg.to)}
           fill={loading ? "rgba(148,163,184,0.18)" : seg.color}
         />
@@ -146,10 +150,11 @@ const RiskGaugeChart: React.FC<GaugeProps> = ({ score, loading = false }) => {
       {GAUGE_SEGS.map(seg => {
         const mid = (seg.from + seg.to) / 2;
         const pos = pt(scoreToAngle(mid), LABEL_R);
-        const words = seg.label.split(" ");
+        const label = t(seg.labelKey);
+        const words = label.split(" ");
         return (
           <text
-            key={`lbl-${seg.label}`}
+            key={`lbl-${seg.key}`}
             textAnchor="middle"
             dominantBaseline="middle"
             fontSize="7.2"
@@ -159,7 +164,7 @@ const RiskGaugeChart: React.FC<GaugeProps> = ({ score, loading = false }) => {
             style={{ fontFamily: "inherit" }}
           >
             {words.length === 1 ? (
-              <tspan x={f(pos.x)} y={f(pos.y)}>{seg.label.toUpperCase()}</tspan>
+              <tspan x={f(pos.x)} y={f(pos.y)}>{label.toUpperCase()}</tspan>
             ) : (
               <>
                 <tspan x={f(pos.x)} y={f(pos.y - 4.5)}>{words[0].toUpperCase()}</tspan>
@@ -277,8 +282,8 @@ const AverageVulnerability: React.FC = () => {
     return { taskCount, avgRisk, maxRisk };
   }, [filteredData]);
 
-  const tone    = useMemo(() => riskTone(summary.avgRisk), [summary.avgRisk]);
-  const maxTone = useMemo(() => riskTone(summary.maxRisk), [summary.maxRisk]);
+  const tone    = useMemo(() => riskTone(summary.avgRisk, t), [summary.avgRisk, t]);
+  const maxTone = useMemo(() => riskTone(summary.maxRisk, t), [summary.maxRisk, t]);
 
   const allVisible =
     filteredTargetOptions.length > 0 &&
@@ -286,8 +291,8 @@ const AverageVulnerability: React.FC = () => {
 
   const filterButtonLabel =
     selectedTargets.length === 0 ? t("dashboard.targetQuery") :
-    selectedTargets.length === 1 ? "1 selected" :
-    `${selectedTargets.length} selected`;
+    selectedTargets.length === 1 ? t("dashboard.oneSelected") :
+    t("dashboard.nSelected", { n: selectedTargets.length });
 
   const toggleTarget = (key: string) =>
     setSelectedTargets(prev =>
@@ -309,7 +314,7 @@ const AverageVulnerability: React.FC = () => {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+          <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
             {t("dashboard.averageRiskOverview")}
           </h2>
           {!loading && (
@@ -408,7 +413,7 @@ const AverageVulnerability: React.FC = () => {
           {/* Range label */}
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-white/35">
-              {t("dashboard.range")} (CVSS Rating Score)
+              {t("dashboard.range")} {t("dashboard.cvssRatingScoreSuffix")}
             </p>
             <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/45">0.00 – 10.00</p>
           </div>
@@ -465,7 +470,7 @@ const AverageVulnerability: React.FC = () => {
                 {loading ? "—" : fmtNumber(summary.taskCount)}
               </p>
               <p className="mt-1 text-[9px] text-slate-400 dark:text-white/30">
-                {loading ? "" : "total assets"}
+                {loading ? "" : t("dashboard.totalAssets")}
               </p>
             </div>
 

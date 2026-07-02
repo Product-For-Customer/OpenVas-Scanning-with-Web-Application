@@ -529,5 +529,3 @@ export const TriggerHistoryNotifyCleanup = async (): Promise<TriggerCleanupRespo
     return null;
   }
 };
-
-export default historyNotifyApi;

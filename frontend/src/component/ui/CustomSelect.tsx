@@ -24,7 +24,7 @@ import { FiCheck, FiChevronDown, FiSearch, FiX } from "react-icons/fi";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
-export interface SelectOption {
+interface SelectOption {
   value: string;
   label: string;
   /** Optional count badge shown on the right of the option row */
@@ -116,7 +116,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 z-[9999] mt-1.5 w-full min-w-[220px] overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+        <div className="absolute left-0 z-9999 mt-1.5 w-full min-w-55 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
           {showSearch && (
             <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
               <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
@@ -296,7 +296,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 z-[9999] mt-1.5 w-full min-w-[240px] overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+        <div className="absolute left-0 z-9999 mt-1.5 w-full min-w-60 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
           {/* Search + select-all row */}
           <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
             <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
@@ -386,5 +386,3 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
     </div>
   );
 };
-
-export default CustomSelect;

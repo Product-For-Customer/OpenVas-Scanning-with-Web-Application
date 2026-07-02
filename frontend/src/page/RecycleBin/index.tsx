@@ -116,18 +116,21 @@ const Actions: React.FC<{
   onRestore: () => void;
   onDelete: () => void;
   busy?: boolean;
-}> = ({ onRestore, onDelete, busy }) => (
-  <div className="flex items-center justify-end gap-1.5">
-    <button type="button" onClick={onRestore} disabled={busy} title="Restore"
-      className="grid h-7 w-7 place-items-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-40 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-      {busy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiRotateCcw className="text-[11px]" />}
-    </button>
-    <button type="button" onClick={onDelete} disabled={busy} title="Delete permanently"
-      className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-      {busy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiX className="text-[11px]" />}
-    </button>
-  </div>
-);
+}> = ({ onRestore, onDelete, busy }) => {
+  const { t } = useLanguage();
+  return (
+    <div className="flex items-center justify-end gap-1.5">
+      <button type="button" onClick={onRestore} disabled={busy} title={t("recycleBin.restore")}
+        className="grid h-7 w-7 place-items-center rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-40 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+        {busy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiRotateCcw className="text-[11px]" />}
+      </button>
+      <button type="button" onClick={onDelete} disabled={busy} title={t("recycleBin.deleteForever")}
+        className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+        {busy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiX className="text-[11px]" />}
+      </button>
+    </div>
+  );
+};
 
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 const Section: React.FC<{
@@ -149,7 +152,7 @@ const Section: React.FC<{
           <RowCheck checked={allSelected} onChange={onSelectAll} accent={currentColor} />
         )}
         <span className="text-[14px] text-slate-400 dark:text-white/35">{icon}</span>
-        <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{title}</h2>
+        <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">{title}</h2>
         <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-100 px-1.5 text-[10.5px] font-bold text-slate-500 dark:bg-white/8 dark:text-white/40">
           {count}
         </span>
@@ -314,7 +317,7 @@ const RecycleBinPage: React.FC = () => {
       void fetchTrash();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      message.error(msg || `Failed to ${action} "${name}"`);
+      message.error(msg || t(action === "restore" ? "recycleBin.restoreFailed" : "recycleBin.deletePermFailed").replace("{name}", name));
     } finally {
       setBusy(id, false);
     }
@@ -342,14 +345,12 @@ const RecycleBinPage: React.FC = () => {
           else if (type === "portlist")   await DeleteGMPTrashPortList(id);
         }
       } catch {
-        message.error(`Failed to ${action} "${name}"`);
+        message.error(t(action === "restore" ? "recycleBin.restoreFailed" : "recycleBin.deletePermFailed").replace("{name}", name));
       } finally {
         setBusy(id, false);
       }
     }
-    message.success(action === "restore"
-      ? `${ids.length} item(s) restored`
-      : `${ids.length} item(s) permanently deleted`);
+    message.success(t(action === "restore" ? "recycleBin.bulkRestoredSuccess" : "recycleBin.bulkDeletedSuccess").replace("{n}", String(ids.length)));
     hasFetched.current = false;
     void fetchTrash();
   };
@@ -435,7 +436,7 @@ const RecycleBinPage: React.FC = () => {
             onClick={() => { setActiveCategory(cat.key); setSelectedIds(new Set()); }}
             style={activeCategory === cat.key ? { background: accentGrad } : undefined}
             className={[
-              "flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[11.5px] font-semibold transition-all",
+              "flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-[11.5px] font-bold transition-all",
               activeCategory === cat.key
                 ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
@@ -770,9 +771,7 @@ const RecycleBinPage: React.FC = () => {
         <ConfirmDialog
           title={confirmBulk === "restore" ? t("recycleBin.restoreTitle") : t("recycleBin.deleteTitle")}
           body={
-            confirmBulk === "restore"
-              ? `Restore ${selectedCount} selected item(s) back to OpenVAS?`
-              : `Permanently delete ${selectedCount} selected item(s)? This cannot be undone.`
+            t(confirmBulk === "restore" ? "recycleBin.bulkRestoreConfirm" : "recycleBin.bulkDeleteConfirm").replace("{n}", String(selectedCount))
           }
           confirmLabel={confirmBulk === "restore" ? t("recycleBin.restore") : t("recycleBin.deleteForever")}
           danger={confirmBulk === "delete"}

@@ -48,7 +48,7 @@ export type DeleteDiagramResponse = {
 // =======================
 // Types: AppDiagramNode
 // =======================
-export type DiagramInfo = {
+type DiagramInfo = {
   id: number;
   name: string;
   description: string;
@@ -58,7 +58,7 @@ export type DiagramInfo = {
   updated_at?: string;
 };
 
-export type AppLocationResponse = {
+type AppLocationResponse = {
   id: number;
   location: string;
   building: string;
@@ -422,5 +422,3 @@ export const DeleteAppDiagramNodeByID = async (
     return null;
   }
 };
-
-export default diagramApi;

@@ -167,9 +167,6 @@ export const DeleteUserByID = async (
   }
 };
 
-export default userApi;
-
-
 export type RoleResponse = {
   id: number;
   role: string;
@@ -306,36 +303,6 @@ export const UpdateSendEmailByID = async (
 };
 
 // =======================
-// Types: AppTarget
-// =======================
-export type AppTargetResponse = {
-  id: number;
-  name: string;
-  ip_host: string;
-  mac_address: string;
-  created_at?: string;
-  updated_at?: string;
-  message?: string;
-  error?: string;
-};
-
-export type CreateAppTargetInput = {
-  name: string;
-  ip_host: string;
-  mac_address?: string;
-};
-
-export type UpdateAppTargetInput = {
-  name?: string;
-  ip_host?: string;
-  mac_address?: string;
-};
-
-export type DeleteAppTargetResponse = {
-  message: string;
-};
-
-// =======================
 // Types: Location
 // =======================
 export type LocationResponse = {
@@ -405,26 +372,6 @@ export const ListLocation = async (): Promise<LocationResponse[] | null> => {
     return null;
   } catch (error) {
     console.error("ListLocation error:", error);
-    return null;
-  }
-};
-
-// GET /locations/:id
-export const ListLocationByID = async (
-  id: number | string
-): Promise<LocationResponse | null> => {
-  try {
-    const response = await userApi.get(`/locations/${id}`);
-    const data = response.data?.data ?? response.data;
-
-    if (data && typeof data === "object") {
-      return normalizeLocation(data);
-    }
-
-    console.error("Unexpected ListLocationByID response:", response.data);
-    return null;
-  } catch (error) {
-    console.error("ListLocationByID error:", error);
     return null;
   }
 };

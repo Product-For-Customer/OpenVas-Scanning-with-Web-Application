@@ -28,7 +28,7 @@ import { useStateContext } from "../../contexts/ProviderContext";
 // ─────────────────────────────────────────────────────────────
 
 const Pulse: React.FC = () => (
-  <span className="inline-block h-9 w-14 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
+  <span className="inline-block h-5.5 w-12 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
 );
 
 type SummaryCardProps = {
@@ -44,47 +44,74 @@ type SummaryCardProps = {
 const SummaryCard: React.FC<SummaryCardProps> = ({
   label, value, sub, icon, iconColor, loading, pulse,
 }) => (
-  <div className="rounded-xl border border-slate-200/70 bg-white px-5 py-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
-    <div className="flex items-center justify-between">
-      <p className="text-[11px] font-medium tracking-wide text-slate-500 dark:text-white/45">
+  <div
+    className="group relative overflow-hidden rounded-xl border bg-white px-3.5 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 dark:bg-[#0d0b1a]/80"
+    style={{
+      borderColor: `${iconColor}55`,
+      boxShadow: `0 6px 14px -12px ${iconColor}60`,
+    }}
+  >
+    {/* corner glow */}
+    <div
+      className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-35 blur-2xl transition-opacity duration-300 group-hover:opacity-60"
+      style={{ backgroundColor: `${iconColor}20` }}
+      aria-hidden
+    />
+    <div
+      className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25"
+      style={{ background: `linear-gradient(160deg, ${iconColor}10, transparent 65%)` }}
+      aria-hidden
+    />
+    <div className="relative flex items-center justify-between">
+      <p className="text-[10.5px] font-bold tracking-wide text-slate-600 dark:text-white/55">
         {label}
       </p>
-      <span style={{ color: iconColor }} className="relative text-[15px] opacity-75">
+      <span
+        className="relative flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg text-[12px] transition-transform duration-300 group-hover:scale-110"
+        style={{
+          backgroundColor: `${iconColor}1c`,
+          color: iconColor,
+        }}
+      >
         {icon}
         {pulse && !loading && (
-          <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+          <span className="absolute -right-1 -top-1 flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-[#0d0b1a]" />
           </span>
         )}
       </span>
     </div>
-    <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+    <p className="relative mt-1.5 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
       {loading ? <Pulse /> : value}
     </p>
-    <p className="mt-2 text-[11px] text-slate-400 dark:text-white/35">{sub}</p>
+    <p className="relative mt-1 truncate text-[10px] text-slate-400 dark:text-white/35">{sub}</p>
   </div>
 );
 
-const KEVBadge: React.FC<{ isRansomware?: boolean }> = ({ isRansomware }) => (
-  <span
-    className={[
-      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9.5px] font-bold",
-      isRansomware
-        ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300"
-        : "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300",
-    ].join(" ")}
-  >
-    <FiZap className="text-[9px]" />
-    {isRansomware ? "RANSOMWARE" : "KEV"}
-  </span>
-);
+const KEVBadge: React.FC<{ isRansomware?: boolean }> = ({ isRansomware }) => {
+  const { t } = useLanguage();
+  return (
+    <span
+      className={[
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9.5px] font-bold",
+        isRansomware
+          ? "border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-300"
+          : "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300",
+      ].join(" ")}
+    >
+      <FiZap className="text-[9px]" />
+      {isRansomware ? t("threat.badgeRansomware") : t("threat.badgeKev")}
+    </span>
+  );
+};
 
 // ─────────────────────────────────────────────────────────────
 // KEV Table Row (Full Catalog)
 // ─────────────────────────────────────────────────────────────
 
 const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -119,7 +146,7 @@ const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
           </div>
           {entry.due_date && (
             <div className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">
-              Due: {entry.due_date}
+              {t("threat.due", { date: entry.due_date })}
             </div>
           )}
         </td>
@@ -136,23 +163,23 @@ const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
-                    Description
+                    {t("common.description")}
                   </p>
                   <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-white/70">
-                    {entry.short_description || "No description available"}
+                    {entry.short_description || t("threat.noDescription")}
                   </p>
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
-                    Required Action
+                    {t("threat.requiredAction")}
                   </p>
                   <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-white/70">
-                    {entry.required_action || "N/A"}
+                    {entry.required_action || t("threat.notAvailable")}
                   </p>
                   {entry.notes && (
                     <>
                       <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
-                        Notes
+                        {t("threat.notes")}
                       </p>
                       <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55">
                         {entry.notes}
@@ -323,13 +350,13 @@ const ThreatIntelligence: React.FC = () => {
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
-                THREAT INTELLIGENCE · KEV
+                {t("threat.kicker")}
               </p>
               <h1 className="truncate text-[18px] font-bold text-slate-900 sm:text-[20px] dark:text-white/90">
                 {t("threat.title")}
               </h1>
               <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
-                CISA Known Exploited Vulnerabilities Catalog
+                {t("threat.catalogSubtitle")}
               </p>
             </div>
           </div>
@@ -342,12 +369,12 @@ const ThreatIntelligence: React.FC = () => {
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
                 </span>
-                {summary!.total_kev_in_scans} Actively Exploited
+                {t("threat.activelyExploited", { n: summary!.total_kev_in_scans })}
               </span>
               {summary!.ransomware_related > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[10.5px] font-semibold text-orange-700 dark:border-orange-500/25 dark:bg-orange-500/10 dark:text-orange-300">
                   <FiZap className="text-[10px]" />
-                  {summary!.ransomware_related} Ransomware
+                  {t("threat.ransomwareCount", { n: summary!.ransomware_related })}
                 </span>
               )}
             </div>
@@ -360,7 +387,7 @@ const ThreatIntelligence: React.FC = () => {
         <SummaryCard
           label={t("threat.totalKEVEntries")}
           value={summary?.total_kev_in_scans ?? 0}
-          sub="Actively exploited CVEs found"
+          sub={t("threat.subActivelyExploited")}
           icon={<FiAlertTriangle />}
           iconColor="#ef4444"
           loading={loadingSummary}
@@ -369,7 +396,7 @@ const ThreatIntelligence: React.FC = () => {
         <SummaryCard
           label={t("threat.exploitedInWild")}
           value={summary?.ransomware_related ?? 0}
-          sub="Linked to ransomware campaigns"
+          sub={t("threat.subRansomwareLinked")}
           icon={<FiZap />}
           iconColor="#f97316"
           loading={loadingSummary}
@@ -378,15 +405,15 @@ const ThreatIntelligence: React.FC = () => {
         <SummaryCard
           label={t("threat.lastSync")}
           value={syncStatus?.total ?? summary?.total_kev_catalog ?? 0}
-          sub="Total entries in CISA catalog"
+          sub={t("threat.subTotalEntries")}
           icon={<FiDatabase />}
           iconColor="#06b6d4"
           loading={loadingSummary}
         />
         <SummaryCard
-          label="Hosts at Risk"
+          label={t("threat.hostsAtRisk")}
           value={kevByHostList.length}
-          sub="Hosts with active KEV CVEs"
+          sub={t("threat.subHostsAtRisk")}
           icon={<FiShield />}
           iconColor="#8b5cf6"
           loading={loadingSummary}
@@ -402,15 +429,15 @@ const ThreatIntelligence: React.FC = () => {
             onClick={() => setActiveTab(tab)}
             style={activeTab === tab ? { background: accentGrad } : undefined}
             className={[
-              "rounded-lg border px-4 py-2 text-[12px] font-semibold transition-all",
+              "rounded-lg border px-4 py-2 text-[12px] font-bold transition-all",
               activeTab === tab
                 ? "border-transparent text-white"
                 : "border-slate-200/70 bg-white text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8",
             ].join(" ")}
           >
             {tab === "scans"
-              ? `KEV in Scans (${summary?.total_kev_in_scans ?? 0})`
-              : `Full Catalog (${syncStatus?.total ?? 0})`}
+              ? t("threat.tabScans", { n: summary?.total_kev_in_scans ?? 0 })
+              : t("threat.tabCatalog", { n: syncStatus?.total ?? 0 })}
           </button>
         ))}
       </div>
@@ -430,10 +457,10 @@ const ThreatIntelligence: React.FC = () => {
                 <FiShield className="text-[22px]" />
               </div>
               <p className="text-[13px] font-semibold text-slate-600 dark:text-white/60">
-                No KEV CVEs found in your scans
+                {t("threat.emptyScansTitle")}
               </p>
               <p className="text-[11px] text-slate-400 dark:text-white/35">
-                Your scanned hosts do not have any actively exploited vulnerabilities
+                {t("threat.emptyScansSub")}
               </p>
             </div>
           ) : (
@@ -443,9 +470,9 @@ const ThreatIntelligence: React.FC = () => {
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
                       <th className="whitespace-nowrap w-10 px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">#</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Host / Task</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">KEV CVEs</th>
-                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Ransomware</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("threat.colHostTask")}</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("threat.colKevCves")}</th>
+                      <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("threat.colRansomware")}</th>
                       <th className="w-10 px-4 py-3" />
                     </tr>
                   </thead>
@@ -463,7 +490,7 @@ const ThreatIntelligence: React.FC = () => {
               </div>
               <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                  {kevByHostList.length} host{kevByHostList.length !== 1 ? "s" : ""} at risk
+                  {t("threat.hostsAtRiskCount", { n: kevByHostList.length })}
                 </p>
                 {scansTotalPages > 1 && (
                   <div className="flex items-center gap-1">
@@ -501,7 +528,7 @@ const ThreatIntelligence: React.FC = () => {
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400" />
               <input
                 type="text"
-                placeholder="Search CVE, vendor, product…"
+                placeholder={t("threat.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border border-slate-200/70 bg-white py-2 pl-8 pr-3 text-[12px] text-slate-700 placeholder-slate-400 outline-none focus:border-blue-300 dark:border-white/8 dark:bg-white/5 dark:text-white/80 dark:placeholder-white/30"
@@ -518,7 +545,7 @@ const ThreatIntelligence: React.FC = () => {
               ].join(" ")}
             >
               <FiZap className="text-[11px]" />
-              Ransomware Only
+              {t("threat.ransomwareOnly")}
             </button>
           </div>
 
@@ -530,7 +557,7 @@ const ThreatIntelligence: React.FC = () => {
             </div>
           ) : filteredCatalog.length === 0 ? (
             <div className="py-14 text-center text-[12px] text-slate-400 dark:text-white/35">
-              No KEV entries found
+              {t("threat.noEntriesFound")}
             </div>
           ) : (
             <>
@@ -538,7 +565,13 @@ const ThreatIntelligence: React.FC = () => {
                 <table className="w-full min-w-160">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
-                      {["CVE ID", "Vulnerability", "Tags", "Date Added", "Required Action"].map((h, i) => (
+                      {[
+                        t("threat.cveId"),
+                        t("threat.colVulnerability"),
+                        t("threat.colTags"),
+                        t("threat.colDateAdded"),
+                        t("threat.requiredAction"),
+                      ].map((h, i) => (
                         <th
                           key={h}
                           className={[
@@ -561,7 +594,11 @@ const ThreatIntelligence: React.FC = () => {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
-                  {filteredCatalog.length.toLocaleString()} entries · page {catalogPage} of {catalogTotalPages}
+                  {t("threat.entriesPage", {
+                    n: filteredCatalog.length.toLocaleString(),
+                    x: catalogPage,
+                    y: catalogTotalPages,
+                  })}
                 </p>
                 {catalogTotalPages > 1 && (
                   <div className="flex items-center gap-1">
@@ -610,7 +647,7 @@ const ThreatIntelligence: React.FC = () => {
       {/* ── Footer ── */}
       <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/25">
         <FiExternalLink className="text-[11px]" />
-        <span>Data source: CISA Known Exploited Vulnerabilities Catalog</span>
+        <span>{t("threat.dataSource")}</span>
       </div>
     </div>
   );

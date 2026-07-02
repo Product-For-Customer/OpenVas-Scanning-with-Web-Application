@@ -1023,7 +1023,7 @@ const ReportPreviewIndex: React.FC = () => {
       <div className="sticky top-0 z-10 border-b border-slate-200/70 bg-white py-3 dark:border-white/8 dark:bg-[#0d0b1a]">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 ml-4">
-            <h1 className="text-base font-semibold text-slate-900 sm:text-lg dark:text-white/92">
+            <h1 className="text-base font-bold text-slate-900 sm:text-lg dark:text-white/95">
               PDF Preview
             </h1>
             <p className="text-[13px] text-slate-500 sm:text-sm dark:text-white/50">

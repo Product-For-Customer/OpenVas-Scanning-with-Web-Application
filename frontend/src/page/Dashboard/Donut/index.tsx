@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { VulnerabilityLevelDTO } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -64,6 +65,18 @@ const COLORS: Record<SeverityKey, string> = {
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+const SEVERITY_KEY_MAP: Record<SeverityKey, TranslationKey> = {
+  Critical: "severity.critical",
+  High: "severity.high",
+  Medium: "severity.medium",
+  Low: "severity.low",
+  Info: "severity.info",
+};
+
+const severityLabel = (k: SeverityKey, t: TFn): string => t(SEVERITY_KEY_MAP[k]);
+
 const getTargetHost = (item: any) =>
   String(item?.host ?? item?.host_ip ?? item?.ip ?? item?.target_ip ?? item?.ip_host ?? item?.asset_ip ?? item?.target_host ?? item?.target ?? "").trim() || "-";
 
@@ -80,6 +93,7 @@ const CustomTooltip: React.FC<{
   payload?: Array<{ payload?: SeverityItem }>;
   total: number;
 }> = ({ active, payload, total }) => {
+  const { t } = useLanguage();
   if (!active || !payload?.length) return null;
   const item = payload[0]?.payload as SeverityItem | undefined;
   if (!item) return null;
@@ -90,10 +104,10 @@ const CustomTooltip: React.FC<{
       style={{ background: item.color, minWidth: 140 }}
     >
       <div className="flex items-center justify-between gap-2">
-        <span>{item.name}</span>
+        <span>{severityLabel(item.name, t)}</span>
         <span className="tabular-nums">{item.value.toLocaleString()}</span>
       </div>
-      <p className="mt-0.5 text-[10px] text-white/85">{formatPercent(pct)} of findings</p>
+      <p className="mt-0.5 text-[10px] text-white/85">{formatPercent(pct)} {t("dashboard.ofFindings")}</p>
     </div>
   );
 };
@@ -206,8 +220,8 @@ const DonutVulnerability: React.FC<Props> = ({
 
   const filterButtonLabel =
     selectedTargets.length === 0 ? t("dashboard.targetQuery") :
-    selectedTargets.length === 1 ? "1 selected" :
-    `${selectedTargets.length} selected`;
+    selectedTargets.length === 1 ? t("dashboard.oneSelected") :
+    t("dashboard.nSelected", { n: selectedTargets.length });
 
   const toggleTarget = (key: string) =>
     setSelectedTargets(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
@@ -238,7 +252,7 @@ const DonutVulnerability: React.FC<Props> = ({
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[13px] font-semibold text-slate-700 dark:text-white/80">
+          <h2 className="text-[13px] font-bold text-slate-800 dark:text-white/90">
             {t("dashboard.vulnerabilityDistribution")}
           </h2>
           <span className="rounded-full border border-slate-200/70 bg-slate-50 px-2.5 py-0.5 text-[10.5px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
@@ -359,7 +373,7 @@ const DonutVulnerability: React.FC<Props> = ({
                   className="flex items-center gap-1.5 transition hover:opacity-75"
                 >
                   <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: COLORS[k] }} />
-                  <span className="text-[10.5px] font-medium text-slate-700 dark:text-white/80">{k}</span>
+                  <span className="text-[10.5px] font-medium text-slate-700 dark:text-white/80">{severityLabel(k, t)}</span>
                   <span className="text-[10px] tabular-nums text-slate-500 dark:text-white/45">
                     {loading ? "…" : item.value.toLocaleString()}
                   </span>

@@ -27,9 +27,9 @@ const vulnerabilityApi = axios.create({
 // Route Backend: authorized.GET("/tasks/status", vulnerability.ListStatus)
 // =======================
 
-export type TaskStatusValue = "Done" | "Running" | "New" | "Stopped" | string;
+type TaskStatusValue = "Done" | "Running" | "New" | "Stopped" | string;
 
-export type TaskSeverityLevel =
+type TaskSeverityLevel =
   | "Log"
   | "Low"
   | "Medium"
@@ -37,7 +37,7 @@ export type TaskSeverityLevel =
   | "Critical"
   | string;
 
-export type TaskTrendDirection = "up" | "down" | "same" | "none" | string;
+type TaskTrendDirection = "up" | "down" | "same" | "none" | string;
 
 export type TaskStatusDTO = {
   task_id: string;
@@ -484,6 +484,4 @@ export const ListALLTarget = async (): Promise<AllTargetDTO[] | null> => {
     return null;
   }
 };
-
-export default vulnerabilityApi;
 

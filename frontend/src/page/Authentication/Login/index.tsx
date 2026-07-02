@@ -32,7 +32,7 @@ const LoginPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
 
-  // Warm the success-animation image cache ahead of time so /logo-animation
+  // Warm the success-animation image cache ahead of time so /after-login-animation
   // starts rendering instantly once we navigate there.
   useEffect(() => {
     void preloadLoginSuccessAnimationAssets();
@@ -65,10 +65,10 @@ const LoginPage: React.FC = () => {
       const role = (res.user?.role ?? "").toLowerCase();
       if (role === "admin" || role === "user") {
         message.success(t("auth.loginSuccess"));
-        // Navigate to the dedicated /logo-animation route — it plays the
+        // Navigate to the dedicated /after-login-animation route — it plays the
         // success animation, refreshes auth state, then switches to /admin
         // once the progress bar finishes.
-        navigate("/logo-animation", {
+        navigate("/after-login-animation", {
           replace: true,
           state: { redirectTo: "/admin", refreshAuth: true },
         });

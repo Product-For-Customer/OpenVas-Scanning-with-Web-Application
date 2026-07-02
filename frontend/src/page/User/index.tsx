@@ -26,6 +26,13 @@ import ModalCreateandUpdateUser from "../../Model/ModalCreateandUpdateUser";
 
 type SortKey = "Newest" | "Role: Admin First" | "Role: User First" | "Name A-Z";
 
+const SORT_KEY_LABEL: Record<SortKey, "common.newest" | "user.roleAdminFirst" | "user.roleUserFirst" | "user.nameAZ"> = {
+  "Newest": "common.newest",
+  "Role: Admin First": "user.roleAdminFirst",
+  "Role: User First": "user.roleUserFirst",
+  "Name A-Z": "user.nameAZ",
+};
+
 const USERS_PER_PAGE = 5;
 
 type UiUser = {
@@ -92,7 +99,7 @@ const Index: React.FC = () => {
 
       if (!data) {
         setRows([]);
-        setError("Failed to load users");
+        setError(t("user.failedLoadUsers"));
         return;
       }
 
@@ -112,11 +119,11 @@ const Index: React.FC = () => {
     } catch (e) {
       console.error("fetchUsers error:", e);
       setRows([]);
-      setError("Failed to load users");
+      setError(t("user.failedLoadUsers"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -199,7 +206,7 @@ const Index: React.FC = () => {
 
   const openDeleteModal = (user: UiUser) => {
     if (currentUserId !== null && user.id === currentUserId) {
-      setDeleteError("You cannot delete your current account");
+      setDeleteError(t("user.cannotDeleteSelf"));
       setDeleteTarget(null);
       return;
     }
@@ -218,7 +225,7 @@ const Index: React.FC = () => {
     if (!deleteTarget) return;
 
     if (currentUserId !== null && deleteTarget.id === currentUserId) {
-      setDeleteError("You cannot delete your current account");
+      setDeleteError(t("user.cannotDeleteSelf"));
       return;
     }
 
@@ -229,16 +236,16 @@ const Index: React.FC = () => {
       const res = await DeleteUserByID(deleteTarget.id);
 
       if (!res) {
-        setDeleteError("Delete failed");
+        setDeleteError(t("user.deleteFailed"));
         return;
       }
 
       setRows((prev) => prev.filter((u) => u.id !== deleteTarget.id));
       setDeleteTarget(null);
-      message.success("Delete success");
+      message.success(t("user.userDeleted"));
     } catch (err: any) {
       setDeleteError(
-        err?.response?.data?.error || err?.message || "Something went wrong"
+        err?.response?.data?.error || err?.message || t("common.somethingWentWrong")
       );
     } finally {
       setDeleting(false);
@@ -315,12 +322,12 @@ const Index: React.FC = () => {
               {t("user.title")}
             </h1>
             <p className="mt-0.5 truncate text-[11px] text-slate-500 sm:text-[12px] dark:text-white/45">
-              Manage admin and user accounts with a smaller and cleaner layout.
+              {t("user.subtitle")}
             </p>
           </div>
           {!loading && (
             <span className="ml-auto shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-semibold text-white" style={{ background: accentGrad }}>
-              {rows.length} {rows.length === 1 ? "user" : "users"}
+              {rows.length} {t(rows.length === 1 ? "user.singularUser" : "user.pluralUsers")}
             </span>
           )}
         </div>
@@ -348,7 +355,7 @@ const Index: React.FC = () => {
                 onClick={() => setOpenSort((s) => !s)}
                 className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[10.5px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8"
               >
-                {sortBy}
+                {t(SORT_KEY_LABEL[sortBy])}
                 <FiChevronDown className={`text-[11px] text-slate-400 transition dark:text-white/35 ${openSort ? "rotate-180" : ""}`} />
               </button>
               {openSort && (
@@ -365,7 +372,7 @@ const Index: React.FC = () => {
                           : "text-slate-600 hover:bg-slate-50 dark:text-white/65 dark:hover:bg-white/5",
                       ].join(" ")}
                     >
-                      {opt}
+                      {t(SORT_KEY_LABEL[opt])}
                     </button>
                   ))}
                 </div>
@@ -388,13 +395,13 @@ const Index: React.FC = () => {
             {loading ? (
               <span className="inline-flex items-center gap-2">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500/70" />
-                Loading users...
+                {t("user.loadingUsers")}
               </span>
             ) : error ? (
               <span className="text-red-600 dark:text-red-300">{error}</span>
             ) : (
               <span>
-                Showing <span className="font-semibold">{users.length}</span> users
+                {t("user.showing")} <span className="font-semibold">{users.length}</span> {t("user.pluralUsers")}
               </span>
             )}
 
@@ -408,10 +415,10 @@ const Index: React.FC = () => {
               <table className="w-full min-w-175">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">User</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Contact</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Location</th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">Action</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableUser")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableContact")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableLocation")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("common.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -492,8 +499,8 @@ const Index: React.FC = () => {
                                 type="button"
                                 onClick={() => handleEdit(user)}
                                 className={editGradientIconBtn}
-                                title="Edit user"
-                                aria-label="Edit user"
+                                title={t("user.editUser")}
+                                aria-label={t("user.editUser")}
                               >
                                 <FiEdit2 className="text-[11px]" />
                               </button>
@@ -502,8 +509,8 @@ const Index: React.FC = () => {
                                   type="button"
                                   onClick={() => openDeleteModal(user)}
                                   className={deleteGradientIconBtn}
-                                  title="Delete user"
-                                  aria-label="Delete user"
+                                  title={t("user.deleteUserAction")}
+                                  aria-label={t("user.deleteUserAction")}
                                 >
                                   <FiTrash2 className="text-[11px]" />
                                 </button>
@@ -523,8 +530,8 @@ const Index: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                   {users.length > USERS_PER_PAGE
-                    ? `${(currentPage - 1) * USERS_PER_PAGE + 1}–${Math.min(currentPage * USERS_PER_PAGE, users.length)} of ${users.length} users`
-                    : `${users.length} user${users.length !== 1 ? "s" : ""} total`}
+                    ? `${(currentPage - 1) * USERS_PER_PAGE + 1}–${Math.min(currentPage * USERS_PER_PAGE, users.length)} ${t("common.of")} ${users.length} ${t("user.pluralUsers")}`
+                    : `${users.length} ${t(users.length === 1 ? "user.singularUser" : "user.pluralUsers")} ${t("common.total")}`}
                 </p>
                 {totalPages > 1 && (
                   <div className="flex items-center gap-1">
@@ -574,7 +581,7 @@ const Index: React.FC = () => {
             type="button"
             onClick={closeDeleteModal}
             className="absolute inset-0 bg-slate-950/35 backdrop-blur-[3px]"
-            aria-label="Close delete modal overlay"
+            aria-label={t("user.closeDeleteModal")}
           />
 
           <div className="relative z-10 w-full max-w-85 overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
@@ -583,7 +590,7 @@ const Index: React.FC = () => {
               onClick={closeDeleteModal}
               disabled={deleting}
               className="absolute right-3 top-3 z-20 inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white/70"
-              aria-label="Close delete modal"
+              aria-label={t("user.closeDeleteModal")}
             >
               <FiX className="text-[13px]" />
             </button>
@@ -596,13 +603,13 @@ const Index: React.FC = () => {
 
                 <div className="min-w-0">
                   <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-red-500/80 dark:text-red-300/80">
-                    Delete user
+                    {t("user.deleteUserAction")}
                   </p>
                   <h3 className="mt-1 text-[13px] font-semibold text-slate-900 dark:text-white">
-                    Remove this account?
+                    {t("user.removeAccountTitle")}
                   </h3>
                   <p className="mt-1 text-[10.5px] leading-5 text-slate-500 dark:text-white/50">
-                    This action will permanently remove the selected user from the system.
+                    {t("user.removeAccountDesc")}
                   </p>
                 </div>
               </div>
@@ -630,7 +637,7 @@ const Index: React.FC = () => {
                 <div className="flex items-start gap-2">
                   <FiInfo className="mt-px text-[11px] text-amber-700 dark:text-amber-300" />
                   <p className="text-[10px] leading-5 text-amber-800 dark:text-amber-200">
-                    Please confirm that this account is no longer required before deleting.
+                    {t("user.confirmRequiredWarning")}
                   </p>
                 </div>
               </div>
@@ -653,7 +660,7 @@ const Index: React.FC = () => {
                     "disabled:cursor-not-allowed disabled:opacity-60",
                   ].join(" ")}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </button>
 
                 <button
@@ -666,7 +673,7 @@ const Index: React.FC = () => {
                     "disabled:cursor-not-allowed disabled:opacity-60",
                   ].join(" ")}
                 >
-                  {deleting ? "Deleting..." : "Delete user"}
+                  {deleting ? t("common.deleting") : t("user.deleteUserAction")}
                 </button>
               </div>
             </div>
