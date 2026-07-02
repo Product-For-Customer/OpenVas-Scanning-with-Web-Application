@@ -54,6 +54,7 @@ type NavBtnProps = {
   badgeCount?: number;
   className?: string;
   "aria-label"?: string;
+  disabled?: boolean;
 };
 
 type TooltipPosition = "Top" | "TopCenter" | "BottomCenter" | "RightCenter" | "LeftCenter";
@@ -112,18 +113,20 @@ const createCoverThumbnail = async (imageSrc: string, size: number): Promise<str
 
 const NavButton: React.FC<NavBtnProps> = ({
   title, onClick, icon, dotColor, badgeCount, className = "",
-  "aria-label": ariaLabel,
+  "aria-label": ariaLabel, disabled = false,
 }) => (
   <SimpleTooltip content={title} position="BottomCenter">
     <button
       type="button"
       aria-label={ariaLabel ?? title}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled}
       style={{ WebkitTapHighlightColor: "transparent" }}
       className={[
         "relative inline-flex h-10 w-10 items-center justify-center rounded-xl text-[18px] transition-all duration-200",
-        "text-gray-600 hover:bg-gray-100 active:bg-gray-200",
-        "dark:text-white/75 dark:hover:bg-white/10 dark:active:bg-white/15",
+        disabled
+          ? "cursor-default text-gray-400 dark:text-white/35"
+          : "text-gray-600 hover:bg-gray-100 active:bg-gray-200 dark:text-white/75 dark:hover:bg-white/10 dark:active:bg-white/15",
         "focus:outline-none focus:ring-0",
         className,
       ].join(" ")}
@@ -446,7 +449,7 @@ const Navbar: React.FC = () => {
     setThemeSettings, userRefreshTrigger,
   } = useStateContext();
 
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const { t } = useLanguage();
 
   const [navbarUser, setNavbarUser]           = useState<UserResponse | null>(null);
@@ -596,6 +599,7 @@ const Navbar: React.FC = () => {
                 title={t("navbar.gotoOpenVAS")}
                 aria-label={t("navbar.gotoOpenVAS")}
                 onClick={openGreenbone}
+                disabled={!isAdmin}
                 icon={<img src={greenboneIcon} alt="Greenbone" className="h-7 w-7 object-contain" />}
               />
               <NavButton

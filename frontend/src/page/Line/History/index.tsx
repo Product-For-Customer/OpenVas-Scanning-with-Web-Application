@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { message } from "antd";
 import {
   FiSearch,
@@ -23,7 +24,6 @@ import {
 } from "react-icons/fi";
 import {
   DeleteHistoryNotifyByIDs,
-  TriggerHistoryNotifyCleanup,
   type HistoryNotifyResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -47,23 +47,6 @@ type CombinedFilterOption = {
   type: "month" | "year";
   order: number;
 };
-
-type StatusOption = {
-  key: FilterKey;
-  label: string;
-};
-
-const FILTER_OPTIONS: FilterKey[] = [
-  "All",
-  "Update Completed",
-  "No Update",
-  "Already Running",
-  "Update Failed",
-  "Status Notification",
-  "Unauthorized",
-  "Server Error",
-  "Timeout",
-];
 
 const MONTH_OPTIONS: { key: string; label: string; value: number }[] = [
   { key: "1", label: "January", value: 1 },
@@ -548,168 +531,6 @@ const CombinedMonthYearFilter: React.FC<CombinedFilterProps> = ({
   );
 };
 
-type StatusFilterProps = {
-  buttonLabel: string;
-  options: StatusOption[];
-  selectedValues: FilterKey[];
-  searchValue: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSearchChange: (value: string) => void;
-  onToggle: (value: FilterKey) => void;
-  onSelectAllVisible: () => void;
-  onClearAll: () => void;
-  allVisibleSelected: boolean;
-  containerRef: React.RefObject<HTMLDivElement | null>;
-};
-
-const StatusFilterDropdown: React.FC<StatusFilterProps> = ({
-  buttonLabel,
-  options,
-  selectedValues,
-  searchValue,
-  open,
-  onOpenChange,
-  onSearchChange,
-  onToggle,
-  onSelectAllVisible,
-  onClearAll,
-  allVisibleSelected,
-  containerRef,
-}) => {
-  const selectedCount = selectedValues.includes("All")
-    ? 0
-    : selectedValues.length;
-
-  return (
-    <div className="relative w-full sm:w-47.5" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className={[
-          "w-full h-8 rounded-[14px] px-3 inline-flex items-center justify-between gap-2 transition text-left",
-          "bg-white border border-gray-200/80 text-[11px] font-medium text-gray-700 hover:bg-gray-50",
-          "dark:bg-white/5 dark:border-white/10 dark:text-white/75 dark:hover:bg-white/8",
-        ].join(" ")}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate">{buttonLabel}</span>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {selectedCount > 1 && (
-            <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 px-1.5 rounded-full text-[9px] font-semibold bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-300 dark:border-cyan-400/20">
-              {selectedCount}
-            </span>
-          )}
-
-          <FiChevronDown
-            className={`pointer-events-none shrink-0 text-[12px] text-gray-400 dark:text-white/45 transition-transform ${
-              open ? "rotate-180" : ""
-            }`}
-          />
-        </div>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 mt-1.5 w-full rounded-xl border border-slate-200/80 bg-white shadow-xl overflow-hidden z-30 dark:border-white/10 dark:bg-[#0d0b1a]">
-          <div className="p-2 border-b border-gray-100 dark:border-white/10">
-            <div
-              className={[
-                "flex items-center gap-2 rounded-[14px] px-2.5 h-8",
-                "bg-slate-50 border border-slate-200/80",
-                "dark:bg-white/5 dark:border-white/10",
-              ].join(" ")}
-            >
-              <FiSearch className="text-[11px] text-gray-400 dark:text-white/40 shrink-0" />
-              <input
-                type="text"
-                value={searchValue}
-                onChange={(e) => onSearchChange(e.target.value)}
-                placeholder="Search status..."
-                className="w-full bg-transparent outline-none text-[10.5px] text-gray-700 placeholder:text-gray-400 dark:text-white/80 dark:placeholder:text-white/30"
-              />
-              {searchValue.trim() !== "" && (
-                <button
-                  type="button"
-                  onClick={() => onSearchChange("")}
-                  className="text-gray-400 hover:text-gray-600 dark:text-white/35 dark:hover:text-white/70"
-                  aria-label="Clear status search"
-                >
-                  <FiX className="text-[11px]" />
-                </button>
-              )}
-            </div>
-
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={onSelectAllVisible}
-                className="text-[10px] font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-              >
-                {allVisibleSelected ? "Unselect visible" : "Select visible"}
-              </button>
-
-              <button
-                type="button"
-                onClick={onClearAll}
-                className="text-[10px] font-medium text-gray-500 hover:text-gray-700 dark:text-white/50 dark:hover:text-white/75"
-              >
-                Clear all
-              </button>
-            </div>
-          </div>
-
-          <div className="max-h-72 overflow-y-auto p-2">
-            {options.length === 0 ? (
-              <div className="px-3 py-6 text-center text-[11px] text-gray-500 dark:text-white/50">
-                No matching status
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {options.map((opt) => {
-                  const checked = selectedValues.includes(opt.key);
-
-                  return (
-                    <button
-                      key={opt.key}
-                      type="button"
-                      onClick={() => onToggle(opt.key)}
-                      className={[
-                        "w-full flex items-start gap-2.5 rounded-[14px] px-2.5 py-2 text-left transition",
-                        checked
-                          ? "bg-cyan-50 border border-cyan-200 dark:bg-cyan-500/10 dark:border-cyan-400/20"
-                          : "border border-transparent hover:bg-gray-50 dark:hover:bg-white/5",
-                      ].join(" ")}
-                    >
-                      <span
-                        className={[
-                          "mt-0.5 h-4 w-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                          checked
-                            ? "bg-cyan-500 border-cyan-500 text-white"
-                            : "bg-white border-gray-300 text-transparent dark:bg-white/5 dark:border-white/20",
-                        ].join(" ")}
-                      >
-                        <FiCheck className="text-[9px]" />
-                      </span>
-
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[10px] sm:text-[10.5px] font-medium text-gray-700 dark:text-white/80 wrap-break-word">
-                          {opt.label}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
 type HistoryNotifyProps = {
   items: HistoryNotifyResponse[];
   setItems: React.Dispatch<React.SetStateAction<HistoryNotifyResponse[]>>;
@@ -724,14 +545,9 @@ const Index: React.FC<HistoryNotifyProps> = ({
   setItems,
   loading,
   error,
-  onRefresh,
 }) => {
   const { t } = useLanguage();
   const [search, setSearch] = useState("");
-
-  const [selectedFilters, setSelectedFilters] = useState<FilterKey[]>(["All"]);
-  const [openFilter, setOpenFilter] = useState(false);
-  const [filterSearch, setFilterSearch] = useState("");
 
   const [selected, setSelected] = useState<number[]>([]);
 
@@ -739,15 +555,11 @@ const Index: React.FC<HistoryNotifyProps> = ({
   const [deleting, setDeleting] = useState<boolean>(false);
   const [deleteError, setDeleteError] = useState<string>("");
 
-  const [cleaning, setCleaning] = useState<boolean>(false);
-  const [cleanupMsg, setCleanupMsg] = useState<string>("");
-
   const [openDateFilter, setOpenDateFilter] = useState(false);
   const [dateFilterSearch, setDateFilterSearch] = useState("");
   const [selectedDateKeys, setSelectedDateKeys] = useState<string[]>([]);
 
   const dateFilterRef = useRef<HTMLDivElement | null>(null);
-  const statusFilterRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -755,13 +567,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
       if (dateFilterRef.current && !dateFilterRef.current.contains(target)) {
         setOpenDateFilter(false);
-      }
-
-      if (
-        statusFilterRef.current &&
-        !statusFilterRef.current.contains(target)
-      ) {
-        setOpenFilter(false);
       }
     };
 
@@ -810,18 +615,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
     return all.filter((opt) => opt.label.toLowerCase().includes(keyword));
   }, [monthOptions, yearOptions, dateFilterSearch]);
 
-  const filteredStatusOptions = useMemo<StatusOption[]>(() => {
-    const keyword = filterSearch.trim().toLowerCase();
-    const all = FILTER_OPTIONS.map((opt) => ({
-      key: opt,
-      label: opt,
-    }));
-
-    if (!keyword) return all;
-
-    return all.filter((opt) => opt.label.toLowerCase().includes(keyword));
-  }, [filterSearch]);
-
   const selectedMonths = useMemo(
     () =>
       selectedDateKeys
@@ -837,34 +630,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
         .map((key) => key.replace("year:", "")),
     [selectedDateKeys]
   );
-
-  const normalizedSelectedFilters = useMemo<FilterKey[]>(() => {
-    if (selectedFilters.length === 0 || selectedFilters.includes("All")) {
-      return ["All"];
-    }
-    return selectedFilters;
-  }, [selectedFilters]);
-
-  const activeStatusFilters = useMemo<StatusKey[]>(() => {
-    return normalizedSelectedFilters.filter(
-      (value): value is StatusKey => value !== "All"
-    );
-  }, [normalizedSelectedFilters]);
-
-  const statusFilterButtonLabel = useMemo(() => {
-    if (
-      normalizedSelectedFilters.length === 0 ||
-      normalizedSelectedFilters.includes("All")
-    ) {
-      return "All";
-    }
-
-    if (normalizedSelectedFilters.length === 1) {
-      return normalizedSelectedFilters[0];
-    }
-
-    return `${normalizedSelectedFilters.length} selected`;
-  }, [normalizedSelectedFilters]);
 
   const dateFilterButtonLabel = useMemo(() => {
     if (selectedDateKeys.length === 0) return "Date Filter";
@@ -882,12 +647,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
   const allVisibleDateFiltersSelected =
     combinedFilterOptions.length > 0 &&
     combinedFilterOptions.every((opt) => selectedDateKeys.includes(opt.key));
-
-  const allVisibleStatusSelected =
-    filteredStatusOptions.filter((opt) => opt.key !== "All").length > 0 &&
-    filteredStatusOptions
-      .filter((opt) => opt.key !== "All")
-      .every((opt) => activeStatusFilters.includes(opt.key as StatusKey));
 
   const toggleDateFilter = (key: string) => {
     setSelectedDateKeys((prev) => {
@@ -943,49 +702,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
     });
   };
 
-  const toggleStatusFilter = (value: FilterKey) => {
-    setSelectedFilters((prev) => {
-      if (value === "All") {
-        return ["All"];
-      }
-
-      const base = prev.includes("All") ? [] : prev;
-
-      if (base.includes(value)) {
-        const next = base.filter((item) => item !== value);
-        return next.length === 0 ? ["All"] : next;
-      }
-
-      return [...base, value];
-    });
-  };
-
-  const handleSelectAllVisibleStatus = () => {
-    const visibleKeys = filteredStatusOptions
-      .map((x) => x.key)
-      .filter((key): key is StatusKey => key !== "All");
-
-    const current = normalizedSelectedFilters.includes("All")
-      ? []
-      : normalizedSelectedFilters.filter(
-          (key): key is StatusKey => key !== "All"
-        );
-
-    const currentSet = new Set(current);
-
-    const allSelected =
-      visibleKeys.length > 0 && visibleKeys.every((key) => currentSet.has(key));
-
-    if (allSelected) {
-      const next = current.filter((key) => !visibleKeys.includes(key));
-      setSelectedFilters(next.length === 0 ? ["All"] : next);
-      return;
-    }
-
-    const next = Array.from(new Set([...current, ...visibleKeys]));
-    setSelectedFilters(next.length === 0 ? ["All"] : next);
-  };
-
   const notifications = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -1005,14 +721,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
         itemDate && !Number.isNaN(itemDate.getTime())
           ? String(itemDate.getFullYear())
           : "";
-
-      const statusAll =
-        normalizedSelectedFilters.length === 0 ||
-        normalizedSelectedFilters.includes("All");
-
-      const matchFilter = statusAll
-        ? true
-        : activeStatusFilters.includes(normalizedStatus);
 
       const matchMonth =
         selectedMonths.length === 0 ? true : selectedMonths.includes(itemMonth);
@@ -1036,16 +744,9 @@ const Index: React.FC<HistoryNotifyProps> = ({
 
       const matchSearch = blob.includes(q);
 
-      return matchFilter && matchSearch && matchMonth && matchYear;
+      return matchSearch && matchMonth && matchYear;
     });
-  }, [
-    items,
-    search,
-    normalizedSelectedFilters,
-    activeStatusFilters,
-    selectedMonths,
-    selectedYears,
-  ]);
+  }, [items, search, selectedMonths, selectedYears]);
 
   const toggleSelect = (id: number) => {
     setSelected((prev) =>
@@ -1117,31 +818,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
     return items.filter((item) => selectedSet.has(item.id));
   }, [items, selected]);
 
-  const handleCleanup = async () => {
-    if (cleaning) return;
-    setCleaning(true);
-    setCleanupMsg("");
-    try {
-      const res = await TriggerHistoryNotifyCleanup();
-      if (!res) {
-        setCleanupMsg("Cleanup failed. Please try again.");
-        return;
-      }
-      const label =
-        res.deleted_count === 0
-          ? "No records older than 6 months found."
-          : `Deleted ${res.deleted_count} record${res.deleted_count !== 1 ? "s" : ""} older than ${res.cutoff}.`;
-      setCleanupMsg(label);
-      message.success(label);
-      // Refresh list so removed records disappear immediately
-      await onRefresh(true);
-    } catch {
-      setCleanupMsg("Cleanup failed. Please try again.");
-    } finally {
-      setCleaning(false);
-    }
-  };
-
   return (
     <section className="rounded-xl border border-slate-200/70 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/80 sm:p-5">
       <div>
@@ -1159,32 +835,6 @@ const Index: React.FC<HistoryNotifyProps> = ({
                 <FiDatabase className="shrink-0 text-[10px]" />
                 <span>Auto Delete: records older than 6 months are removed daily</span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => void handleCleanup()}
-                disabled={cleaning}
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium transition",
-                  cleaning
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                    : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15",
-                ].join(" ")}
-                title="Delete all records older than 6 months right now"
-              >
-                {cleaning ? (
-                  <FiRotateCw className="animate-spin text-[10px]" />
-                ) : (
-                  <FiTrash2 className="text-[10px]" />
-                )}
-                {cleaning ? "Running…" : "Run cleanup now"}
-              </button>
-
-              {cleanupMsg && (
-                <span className="text-[10px] text-slate-500 dark:text-white/40">
-                  {cleanupMsg}
-                </span>
-              )}
             </div>
           </div>
 
@@ -1209,10 +859,7 @@ const Index: React.FC<HistoryNotifyProps> = ({
               selectedKeys={selectedDateKeys}
               searchValue={dateFilterSearch}
               open={openDateFilter}
-              onOpenChange={(open) => {
-                setOpenDateFilter(open);
-                if (open) setOpenFilter(false);
-              }}
+              onOpenChange={setOpenDateFilter}
               onSearchChange={setDateFilterSearch}
               onToggle={toggleDateFilter}
               onSelectAllVisible={handleSelectAllVisibleDateFilters}
@@ -1221,40 +868,23 @@ const Index: React.FC<HistoryNotifyProps> = ({
               containerRef={dateFilterRef}
             />
 
-            <StatusFilterDropdown
-              buttonLabel={statusFilterButtonLabel}
-              options={filteredStatusOptions}
-              selectedValues={normalizedSelectedFilters}
-              searchValue={filterSearch}
-              open={openFilter}
-              onOpenChange={(open) => {
-                setOpenFilter(open);
-                if (open) setOpenDateFilter(false);
-              }}
-              onSearchChange={setFilterSearch}
-              onToggle={toggleStatusFilter}
-              onSelectAllVisible={handleSelectAllVisibleStatus}
-              onClearAll={() => setSelectedFilters(["All"])}
-              allVisibleSelected={allVisibleStatusSelected}
-              containerRef={statusFilterRef}
-            />
-
             <button
               type="button"
               onClick={toggleSelectAll}
               className={[
-                "inline-flex h-8 w-8 items-center justify-center rounded-[14px] transition",
+                "inline-flex h-8 items-center gap-1.5 rounded-[14px] px-3 text-[11px] font-medium transition",
                 allSelected
                   ? "bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-500/10 dark:text-cyan-200 dark:border-cyan-400/20"
                   : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-white/5 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/8",
               ].join(" ")}
-              title="Select all"
+              title={allSelected ? "Deselect all" : "Select all"}
             >
               {allSelected ? (
                 <FiCheckSquare className="text-[12px]" />
               ) : (
                 <FiSquare className="text-[12px]" />
               )}
+              {allSelected ? "Deselect All" : "Select All"}
             </button>
 
             <button
@@ -1417,8 +1047,8 @@ const Index: React.FC<HistoryNotifyProps> = ({
         </div>
       </div>
 
-      {deleteOpen && (
-        <div className="absolute inset-0 z-200 flex items-center justify-center p-4 ">
+      {deleteOpen && createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/55 p-4">
           <div className="w-full max-w-md overflow-hidden rounded-[22px] border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0B1220]">
             <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-white/10">
               <div className="flex items-start gap-3">
@@ -1499,7 +1129,8 @@ const Index: React.FC<HistoryNotifyProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );

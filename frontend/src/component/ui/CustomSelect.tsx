@@ -45,6 +45,10 @@ interface CustomSelectProps {
   className?: string;
   /** Icon shown before the trigger label */
   icon?: React.ReactNode;
+  /** Tailwind max-height class applied to the scrollable options list (default: "max-h-52", fits ~5 rows) */
+  maxListHeightClass?: string;
+  /** Which edge of the trigger the dropdown panel hangs from (default: "left") — use "right" to prevent viewport overflow when the trigger sits near the right edge */
+  menuAlign?: "left" | "right";
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -57,6 +61,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   disabled = false,
   className = "",
   icon,
+  maxListHeightClass = "max-h-52",
+  menuAlign = "left",
 }) => {
   const [open, setOpen]     = useState(false);
   const [query, setQuery]   = useState("");
@@ -116,7 +122,12 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute left-0 z-9999 mt-1.5 w-full min-w-55 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]">
+        <div
+          className={[
+            "absolute z-9999 mt-1.5 w-full min-w-55 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl dark:border-white/10 dark:bg-[#0d0b1a]",
+            menuAlign === "right" ? "right-0" : "left-0",
+          ].join(" ")}
+        >
           {showSearch && (
             <div className="border-b border-slate-100 p-2.5 dark:border-white/8">
               <div className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-slate-50 px-2.5 dark:border-white/8 dark:bg-white/5">
@@ -138,7 +149,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             </div>
           )}
 
-          <div className="max-h-52 overflow-y-auto p-2">
+          <div className={`${maxListHeightClass} overflow-y-auto p-2`}>
             {filtered.length === 0 ? (
               <p className="px-2.5 py-3 text-center text-[11px] text-slate-400 dark:text-white/30">
                 No results

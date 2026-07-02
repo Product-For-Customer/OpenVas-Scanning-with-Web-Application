@@ -1,23 +1,115 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { FiBell } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
+import { FiBell, FiClock, FiLink2, FiChevronRight } from "react-icons/fi";
 import HistoryNotify from "./History";
 import Notify from "./Notify";
 import {
   ListHistoryNotify,
+  ListAppNotification,
+  ListAppLineMaster,
   type HistoryNotifyResponse,
 } from "../../services";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
 
+// ─────────────────────────────────────────────────────────────
+// Summary card (matches ThreatIntelligence design)
+// ─────────────────────────────────────────────────────────────
+
+const Pulse: React.FC = () => (
+  <span className="inline-block h-5.5 w-12 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
+);
+
+type SummaryCardProps = {
+  label: string;
+  value: string | number;
+  sub: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  loading?: boolean;
+  onClick?: () => void;
+};
+
+const SummaryCard: React.FC<SummaryCardProps> = ({
+  label, value, sub, icon, iconColor, loading, onClick,
+}) => {
+  const clickable = typeof onClick === "function";
+  return (
+    <div
+      onClick={onClick}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick?.();
+              }
+            }
+          : undefined
+      }
+      className={[
+        "group relative overflow-hidden rounded-xl border bg-white px-3.5 py-3 shadow-sm transition-all duration-300 hover:-translate-y-0.5 dark:bg-[#0d0b1a]/80",
+        clickable ? "cursor-pointer focus:outline-none focus:ring-2" : "",
+      ].join(" ")}
+      style={{
+        borderColor: `${iconColor}55`,
+        boxShadow: `0 6px 14px -12px ${iconColor}60`,
+      }}
+    >
+      {/* corner glow */}
+      <div
+        className="pointer-events-none absolute -right-6 -top-6 h-20 w-20 rounded-full opacity-35 blur-2xl transition-opacity duration-300 group-hover:opacity-60"
+        style={{ backgroundColor: `${iconColor}20` }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-50 dark:opacity-25"
+        style={{ background: `linear-gradient(160deg, ${iconColor}10, transparent 65%)` }}
+        aria-hidden
+      />
+      <div className="relative flex items-center justify-between">
+        <p className="text-[10.5px] font-bold tracking-wide text-slate-600 dark:text-white/55">
+          {label}
+        </p>
+        <span
+          className="relative flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-lg text-[12px] transition-transform duration-300 group-hover:scale-110"
+          style={{ backgroundColor: `${iconColor}1c`, color: iconColor }}
+        >
+          {icon}
+        </span>
+      </div>
+      <p className="relative mt-1.5 text-[22px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+        {loading ? <Pulse /> : value}
+      </p>
+      <div className="relative mt-1 flex items-center gap-1">
+        <p className="truncate text-[10px] text-slate-400 dark:text-white/35">{sub}</p>
+        {clickable && (
+          <FiChevronRight
+            className="shrink-0 text-[11px] transition-transform duration-300 group-hover:translate-x-0.5"
+            style={{ color: iconColor }}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Index: React.FC = () => {
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [items, setItems] = useState<HistoryNotifyResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
+
+  const [notifCount, setNotifCount] = useState<number>(0);
+  const [integrationCount, setIntegrationCount] = useState<number>(0);
+  const [countsLoading, setCountsLoading] = useState<boolean>(true);
 
   const hasFetchedRef = useRef(false);
   const isFetchingRef = useRef(false);
@@ -79,6 +171,33 @@ const Index: React.FC = () => {
     void fetchHistoryNotify();
   }, [fetchHistoryNotify]);
 
+  const fetchCounts = useCallback(async () => {
+    try {
+      setCountsLoading(true);
+
+      const [notifications, integrations] = await Promise.all([
+        ListAppNotification(),
+        ListAppLineMaster(),
+      ]);
+
+      if (!isMountedRef.current) return;
+
+      setNotifCount(Array.isArray(notifications) ? notifications.length : 0);
+      setIntegrationCount(Array.isArray(integrations) ? integrations.length : 0);
+    } catch (err) {
+      console.error("fetchCounts error:", err);
+      if (!isMountedRef.current) return;
+      setNotifCount(0);
+      setIntegrationCount(0);
+    } finally {
+      if (isMountedRef.current) setCountsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchCounts();
+  }, [fetchCounts]);
+
   return (
     <div className="w-full space-y-4 sm:space-y-5">
 
@@ -110,6 +229,35 @@ const Index: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <SummaryCard
+          label={t("line.cardNotification")}
+          value={notifCount}
+          sub={t("line.cardNotificationSub")}
+          icon={<FiBell />}
+          iconColor="#06b6d4"
+          loading={countsLoading}
+        />
+        <SummaryCard
+          label={t("line.cardHistory")}
+          value={items.length}
+          sub={t("line.cardHistorySub")}
+          icon={<FiClock />}
+          iconColor="#8b5cf6"
+          loading={loading}
+        />
+        <SummaryCard
+          label={t("line.cardIntegrations")}
+          value={integrationCount}
+          sub={t("line.cardIntegrationsSub")}
+          icon={<FiLink2 />}
+          iconColor="#10b981"
+          loading={countsLoading}
+          onClick={() => navigate("/admin/line notification/integrations")}
+        />
       </div>
 
       <div>

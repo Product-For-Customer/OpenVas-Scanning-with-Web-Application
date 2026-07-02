@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FiChevronDown,
   FiChevronLeft,
@@ -575,12 +576,12 @@ const Index: React.FC = () => {
         </div>
       </section>
 
-      {deleteTarget && (
-        <div className="fixed inset-0 z-200 flex items-center justify-center p-4">
+      {deleteTarget && createPortal(
+        <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
           <button
             type="button"
             onClick={closeDeleteModal}
-            className="absolute inset-0 bg-slate-950/35 backdrop-blur-[3px]"
+            className="absolute inset-0 bg-black/55"
             aria-label={t("user.closeDeleteModal")}
           />
 
@@ -678,7 +679,8 @@ const Index: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ModalCreateandUpdateUser

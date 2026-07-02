@@ -404,6 +404,20 @@ export const translations = {
     "line.kicker": "MANAGEMENT · LINE NOTIFY",
     "line.subtitle": "Manage LINE notification channels and scan alerts",
 
+    // ── Line summary cards ────────────────────────────────────
+    "line.cardNotification": "Notifications",
+    "line.cardNotificationSub": "Active notification destinations",
+    "line.cardHistory": "Notification History",
+    "line.cardHistorySub": "Recorded notification events",
+    "line.cardIntegrations": "Bot Line",
+    "line.cardIntegrationsSub": "Connected LINE bots · click to manage",
+
+    // ── Line integrations page ────────────────────────────────
+    "line.integrationsKicker": "MANAGEMENT · LINE BOT",
+    "line.integrationsTitle": "Bot Line",
+    "line.integrationsSubtitle": "Manage and connect your LINE messaging bots",
+    "line.backToNotifications": "Back to Notifications",
+
     // ── Threat Config header ──────────────────────────────────
     "threatConfig.title": "Configuration",
     "threatConfig.subtitle": "Configure threat intelligence sources and scanner integrations",
@@ -2322,6 +2336,21 @@ export const translations = {
     "diagram.gridView": "ตาราง",
     "diagram.subtitle": "ออกแบบและจัดการผังโครงสร้างเครือข่าย",
     "line.subtitle": "จัดการช่องทาง LINE Notify และการแจ้งเตือนการสแกน",
+
+    // ── Line summary cards ────────────────────────────────────
+    "line.cardNotification": "การแจ้งเตือน",
+    "line.cardNotificationSub": "ปลายทางการแจ้งเตือนที่ใช้งาน",
+    "line.cardHistory": "ประวัติการแจ้งเตือน",
+    "line.cardHistorySub": "เหตุการณ์แจ้งเตือนที่บันทึกไว้",
+    "line.cardIntegrations": "Bot Line",
+    "line.cardIntegrationsSub": "บอท LINE ที่เชื่อมต่อ · คลิกเพื่อจัดการ",
+
+    // ── Line integrations page ────────────────────────────────
+    "line.integrationsKicker": "การจัดการ · LINE บอท",
+    "line.integrationsTitle": "Bot Line",
+    "line.integrationsSubtitle": "จัดการและเชื่อมต่อบอทข้อความ LINE ของคุณ",
+    "line.backToNotifications": "กลับไปหน้าการแจ้งเตือน",
+
     "threatConfig.title": "ตั้งค่า",
     "threatConfig.subtitle": "ตั้งค่าแหล่งข้อมูลภัยคุกคามและการผสานระบบสแกน",
 
@@ -4041,6 +4070,21 @@ export const translations = {
     "diagram.gridView": "网格",
     "diagram.subtitle": "设计和管理网络拓扑图",
     "line.subtitle": "管理 LINE 通知渠道和扫描警报",
+
+    // ── Line summary cards ────────────────────────────────────
+    "line.cardNotification": "通知",
+    "line.cardNotificationSub": "启用的通知目标",
+    "line.cardHistory": "通知历史",
+    "line.cardHistorySub": "已记录的通知事件",
+    "line.cardIntegrations": "Bot Line",
+    "line.cardIntegrationsSub": "已连接的 LINE 机器人 · 点击管理",
+
+    // ── Line integrations page ────────────────────────────────
+    "line.integrationsKicker": "管理 · LINE 机器人",
+    "line.integrationsTitle": "Bot Line",
+    "line.integrationsSubtitle": "管理并连接您的 LINE 消息机器人",
+    "line.backToNotifications": "返回通知",
+
     "threatConfig.title": "配置",
     "threatConfig.subtitle": "配置威胁情报来源和扫描仪集成",
 

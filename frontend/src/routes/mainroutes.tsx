@@ -9,6 +9,7 @@ const Account            = Loadable(lazy(() => import("../page/Account/index")))
 const Target             = Loadable(lazy(() => import("../page/Target/index")));
 const StatusTargetData   = Loadable(lazy(() => import("../page/Target/Status/data/index")));
 const LineNotification   = Loadable(lazy(() => import("../page/Line/index")));
+const LineIntegrations   = Loadable(lazy(() => import("../page/Line/Integrations/index")));
 const User               = Loadable(lazy(() => import("../page/User/index")));
 const MainLayout         = Loadable(lazy(() => import("../component/structure/MainLayout")));
 const Service            = Loadable(lazy(() => import("../component/structure/navbar/Service")));
@@ -60,6 +61,7 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "target",                                       element: <Target /> },
       { path: "vulnerability",                                element: <Vulnerability /> },
       { path: "line notification",                            element: <LineNotification /> },
+      { path: "line notification/integrations",               element: <LineIntegrations /> },
       { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
       { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
       { path: "user",                                         element: <User /> },
