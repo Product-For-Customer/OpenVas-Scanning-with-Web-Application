@@ -1785,7 +1785,7 @@ const index: React.FC = () => {
                   <div className="px-4 py-4">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-                        {t("graphCompare.avgRiskScore")}
+                        {t("graphCompare.avgRiskScoreCvss")}
                       </p>
                       <span
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[15px]"
