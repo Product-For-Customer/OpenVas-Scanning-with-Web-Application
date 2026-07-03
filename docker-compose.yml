@@ -320,6 +320,8 @@ services:
       - PORT=${PORT}
       - PATH_API_URL=${PATH_API_URL}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - JWT_SECRET=${JWT_SECRET}
+      - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
     depends_on:
       - pg-gvm
 

@@ -33,6 +33,10 @@ import (
 )
 
 func main() {
+	// Fail fast at boot instead of crashing mid-request on first login —
+	// GetJWTSecret() itself log.Fatal()s if JWT_SECRET is unset.
+	services.GetJWTSecret()
+
 	config.ConnectDB()     // เชื่อมต่อฐานข้อมูล
 	config.SetupDatabase() // สร้างตารางและข้อมูลเริ่มต้น
 	config.SeedDatabase()  // เติมข้อมูลเริ่มต้นเพิ่มเติม
