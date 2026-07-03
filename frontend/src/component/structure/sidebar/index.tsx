@@ -318,10 +318,15 @@ const Sidebar: React.FC = () => {
                         ].join(" ")} />
                       </button>
 
-                      {/* Links */}
+                      {/* Links — max-h must comfortably fit the largest section
+                          (Management has 5: Line Notification/User/Roles/
+                          Password Policy/Service); it's a fixed cap because
+                          the open/close transition animates max-height, not
+                          "auto", so it needs headroom above any section's
+                          actual link count or the last item(s) get clipped. */}
                       <div className={`overflow-hidden transition-all duration-200 ${
                         isOpen
-                          ? isTablet ? "max-h-44 pb-0.5 pt-1 opacity-100" : "max-h-55 pb-0.5 pt-1 opacity-100"
+                          ? isTablet ? "max-h-72 pb-0.5 pt-1 opacity-100" : "max-h-88 pb-0.5 pt-1 opacity-100"
                           : "max-h-0 opacity-0"
                       }`}>
                         <div className={isTablet ? "space-y-1 pl-5 pr-1.5" : "space-y-1 pl-5.5 pr-2"}>

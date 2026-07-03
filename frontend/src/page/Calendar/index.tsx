@@ -5,7 +5,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
-import type { EventClickArg, CalendarApi } from "@fullcalendar/core";
+import type { EventClickArg, CalendarApi, DatesSetArg } from "@fullcalendar/core";
 import { BsCalendar3 } from "react-icons/bs";
 import { FiX, FiChevronDown, FiTarget, FiClock, FiShield, FiInfo } from "react-icons/fi";
 import { MdOutlineRadar } from "react-icons/md";
@@ -80,6 +80,7 @@ const CalendarPage: React.FC = () => {
   const [differs,     setDiffers]     = useState<TargetDifferDTO[]>([]);
   const [loading,     setLoading]     = useState(false);
   const [currentView, setCurrentView] = useState("dayGridMonth");
+  const [calendarTitle, setCalendarTitle] = useState("");
   const [showActivity, setShowActivity] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ScanEvent | null>(null);
 
@@ -189,6 +190,7 @@ const CalendarPage: React.FC = () => {
     setCurrentView(v);
     getApi()?.changeView(v);
   };
+  const handleDatesSet = (arg: DatesSetArg) => setCalendarTitle(arg.view.title);
 
   // ── Event click handler ────────────────────────────────────────────────────
   const handleEventClick = (info: EventClickArg) => {
@@ -418,6 +420,7 @@ const CalendarPage: React.FC = () => {
             <div className="flex items-center gap-1.5">
               <div className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-0.5 dark:border-white/10 dark:bg-white/4">
                 <button type="button" onClick={goPrev} className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] text-slate-500 hover:bg-white dark:text-white/50 dark:hover:bg-white/10 transition-all focus:outline-none">‹</button>
+                <span className="min-w-24 px-1 text-center text-[11px] font-semibold text-slate-600 dark:text-white/70">{calendarTitle}</span>
                 <button type="button" onClick={goNext} className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] text-slate-500 hover:bg-white dark:text-white/50 dark:hover:bg-white/10 transition-all focus:outline-none">›</button>
               </div>
               <button
@@ -449,6 +452,7 @@ const CalendarPage: React.FC = () => {
               plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               headerToolbar={false}
+              datesSet={handleDatesSet}
               events={fcEvents}
               editable={false}
               selectable={false}
@@ -484,6 +488,7 @@ const CalendarPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-slate-50 p-0.5 dark:border-white/10 dark:bg-white/4">
                 <button type="button" onClick={goPrev} className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] text-slate-500 hover:bg-white dark:text-white/50 dark:hover:bg-white/10 transition-all focus:outline-none">‹</button>
+                <span className="min-w-28 px-1.5 text-center text-[12px] font-semibold text-slate-600 dark:text-white/70">{calendarTitle}</span>
                 <button type="button" onClick={goNext} className="flex h-7 w-7 items-center justify-center rounded-lg text-[16px] text-slate-500 hover:bg-white dark:text-white/50 dark:hover:bg-white/10 transition-all focus:outline-none">›</button>
               </div>
               <button
@@ -517,6 +522,7 @@ const CalendarPage: React.FC = () => {
               plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
               initialView="dayGridMonth"
               headerToolbar={false}
+              datesSet={handleDatesSet}
               events={fcEvents}
               editable={false}
               selectable={false}

@@ -31,6 +31,7 @@ import {
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useAuth } from "../../../contexts/AuthContext";
 import { CustomSelect } from "../../../component/ui/CustomSelect";
 import type { TranslationKey } from "../../../locales";
 
@@ -180,6 +181,8 @@ const getReceiverTypeOptions = (t: TFn) => [
 const index: React.FC = () => {
   const { t } = useLanguage();
   const { currentColor } = useStateContext();
+  const { can } = useAuth();
+  const canManage = can("line_management", "manage");
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const [search, setSearch] = useState("");
   const [alertFilter, setAlertFilter] = useState("all");
@@ -753,15 +756,17 @@ const index: React.FC = () => {
           </div>
           <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">{t("line.noNotificationDestinations")}</p>
           <p className="text-[11px] text-slate-400 dark:text-white/30">{t("line.addReceiverHint")}</p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className={notifyPrimaryGradientBtn}
-            style={{ background: accentGrad }}
-          >
-            <FiPlus className="text-[12px]" />
-            {t("line.addNotify")}
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={openCreate}
+              className={notifyPrimaryGradientBtn}
+              style={{ background: accentGrad }}
+            >
+              <FiPlus className="text-[12px]" />
+              {t("line.addNotify")}
+            </button>
+          )}
         </div>
       );
     }
@@ -808,32 +813,36 @@ const index: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3.5 align-middle">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => openTestLineModal(item)}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200 text-cyan-600 transition hover:bg-cyan-50 dark:border-cyan-400/20 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
-                          title={t("line.testAction")}
-                        >
-                          <FiSend className="text-[13px]" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openEdit(item)}
-                          className={editGradientIconBtn}
-                          title={t("common.edit")}
-                        >
-                          <FiEdit2 className="text-[13px]" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(item)}
-                          className={deleteGradientIconBtn}
-                          title={t("common.delete")}
-                        >
-                          <FiTrash2 className="text-[13px]" />
-                        </button>
-                      </div>
+                      {canManage ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openTestLineModal(item)}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-200 text-cyan-600 transition hover:bg-cyan-50 dark:border-cyan-400/20 dark:text-cyan-300 dark:hover:bg-cyan-500/10"
+                            title={t("line.testAction")}
+                          >
+                            <FiSend className="text-[13px]" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            className={editGradientIconBtn}
+                            title={t("common.edit")}
+                          >
+                            <FiEdit2 className="text-[13px]" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(item)}
+                            className={deleteGradientIconBtn}
+                            title={t("common.delete")}
+                          >
+                            <FiTrash2 className="text-[13px]" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -921,15 +930,17 @@ const index: React.FC = () => {
                 {t("common.refresh")}
               </ActionButton>
 
-              <button
-                type="button"
-                onClick={openCreate}
-                className={notifyPrimaryGradientBtn}
-                style={{ background: accentGrad }}
-              >
-                <FiPlus className="text-[12px]" />
-                {t("line.addNotify")}
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className={notifyPrimaryGradientBtn}
+                  style={{ background: accentGrad }}
+                >
+                  <FiPlus className="text-[12px]" />
+                  {t("line.addNotify")}
+                </button>
+              )}
             </div>
           </div>
 

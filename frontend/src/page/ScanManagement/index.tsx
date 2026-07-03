@@ -24,6 +24,7 @@ import {
 } from "../../services";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
+import { useAuth } from "../../contexts/AuthContext";
 import type { TranslationKey } from "../../locales";
 
 // ─────────────────────────────────────────────────────────────
@@ -1462,6 +1463,8 @@ function fmtLastReport(raw: string): string {
 
 const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDelete }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManageScan = can("threat_intel", "manage");
   const [startBusy, setStartBusy] = useState(false);
   const [stopBusy,  setStopBusy]  = useState(false);
 
@@ -1545,49 +1548,53 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onStart, onStop, onEdit, onDele
         }
       </td>
 
-      {/* Actions */}
+      {/* Actions — hidden entirely for View-only roles (no Manage on threat_intel) */}
       <td className="px-4 py-3.5">
-        <div className="flex items-center gap-1">
-          {/* Stop — shown when running or requested (not stop-requested, that's already stopping) */}
-          {isRunning && !isStopRequested ? (
-            <button type="button" title={t("scan.stopScanTip")} onClick={() => void handleStop()}
-              disabled={stopBusy || isRequested}
-              className={`${iconBtn} border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300`}>
-              {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiStopCircle className="text-[12px]" />}
-            </button>
-          ) : isStopRequested ? (
-            /* Waiting to stop — show a disabled spinner */
-            <button type="button" disabled
-              className={`${iconBtn} border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-white/5`}>
-              <FiRefreshCw className="animate-spin text-[11px]" />
-            </button>
-          ) : (
-            /* Idle — Start / Re-run */
-            <button type="button"
-              title={isDone || isStopped ? t("scan.rerunTip") : t("scan.start")}
-              onClick={() => void handleStart()}
-              disabled={startBusy}
-              className={[iconBtn, isDone || isStopped
-                ? "border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300"
-                : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"].join(" ")}>
-              {startBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiPlay className="text-[11px]" />}
-            </button>
-          )}
+        {canManageScan ? (
+          <div className="flex items-center gap-1">
+            {/* Stop — shown when running or requested (not stop-requested, that's already stopping) */}
+            {isRunning && !isStopRequested ? (
+              <button type="button" title={t("scan.stopScanTip")} onClick={() => void handleStop()}
+                disabled={stopBusy || isRequested}
+                className={`${iconBtn} border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-50 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300`}>
+                {stopBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiStopCircle className="text-[12px]" />}
+              </button>
+            ) : isStopRequested ? (
+              /* Waiting to stop — show a disabled spinner */
+              <button type="button" disabled
+                className={`${iconBtn} border-slate-200 bg-slate-50 text-slate-400 opacity-60 cursor-not-allowed dark:border-white/10 dark:bg-white/5`}>
+                <FiRefreshCw className="animate-spin text-[11px]" />
+              </button>
+            ) : (
+              /* Idle — Start / Re-run */
+              <button type="button"
+                title={isDone || isStopped ? t("scan.rerunTip") : t("scan.start")}
+                onClick={() => void handleStart()}
+                disabled={startBusy}
+                className={[iconBtn, isDone || isStopped
+                  ? "border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300"
+                  : "border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"].join(" ")}>
+                {startBusy ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiPlay className="text-[11px]" />}
+              </button>
+            )}
 
-          {/* Edit — disabled while task is in any active/transitioning state */}
-          <button type="button" title={t("scan.editTaskTip")} onClick={() => onEdit(task)}
-            disabled={isActive || isTransitioning}
-            className={`${iconBtn} border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10`}>
-            <FiEdit2 className="text-[11px]" />
-          </button>
+            {/* Edit — disabled while task is in any active/transitioning state */}
+            <button type="button" title={t("scan.editTaskTip")} onClick={() => onEdit(task)}
+              disabled={isActive || isTransitioning}
+              className={`${iconBtn} border-slate-200 bg-white text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10`}>
+              <FiEdit2 className="text-[11px]" />
+            </button>
 
-          {/* Delete — disabled while task is in any active/transitioning state */}
-          <button type="button" title={t("scan.deleteTaskTip")} onClick={() => onDelete(task.id, task.name)}
-            disabled={isActive || isTransitioning || stopBusy || startBusy}
-            className={`${iconBtn} border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300`}>
-            <FiTrash2 className="text-[11px]" />
-          </button>
-        </div>
+            {/* Delete — disabled while task is in any active/transitioning state */}
+            <button type="button" title={t("scan.deleteTaskTip")} onClick={() => onDelete(task.id, task.name)}
+              disabled={isActive || isTransitioning || stopBusy || startBusy}
+              className={`${iconBtn} border-red-200 bg-red-50 text-red-500 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300`}>
+              <FiTrash2 className="text-[11px]" />
+            </button>
+          </div>
+        ) : (
+          <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+        )}
       </td>
     </tr>
   );
@@ -1606,6 +1613,13 @@ const ScanManagement: React.FC = () => {
   const MONTHS = useMemo(() => getMonths(t), [t]);
   const { currentColor, appTimezone, setAppTimezone } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+  const { can } = useAuth();
+  // View-only roles (threat_intel granted but not Manage) see the same
+  // task/schedule data but never the create/edit/delete/start/stop controls.
+  const canManageScan = can("threat_intel", "manage");
+  // The global timezone picker on this page writes app-wide settings
+  // (/settings), which the backend categorizes under line_settings.
+  const canManageSettings = can("line_settings", "manage");
 
   const [gmpStatus,      setGmpStatus]      = useState<GMPStatusResponse | null>(null);
   const [tasks,          setTasks]          = useState<GMPTaskDTO[]>([]);
@@ -1918,15 +1932,23 @@ const ScanManagement: React.FC = () => {
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <GMPStatusBadge status={gmpStatus} loading={loadingStatus} />
 
-            {/* ── Global Timezone Picker ── */}
+            {/* ── Global Timezone Picker — writes /settings (line_settings category),
+                 so View-only roles get a plain read-only badge instead ── */}
             <div className="relative" ref={tzDropRef}>
-              <button type="button" onClick={() => { setTzDropOpen(p => !p); setTzSearch(""); }}
-                className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
-                <FiCalendar className="text-[11px]" style={{ color: currentColor }} />
-                <span className="max-w-30 truncate">{pendingTz ?? appTimezone}</span>
-                <FiChevronDown className={`text-[10px] text-slate-400 transition-transform ${tzDropOpen ? "rotate-180" : ""}`} />
-              </button>
-              {tzDropOpen && (
+              {canManageSettings ? (
+                <button type="button" onClick={() => { setTzDropOpen(p => !p); setTzSearch(""); }}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[11px] font-medium text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:bg-white/8">
+                  <FiCalendar className="text-[11px]" style={{ color: currentColor }} />
+                  <span className="max-w-30 truncate">{pendingTz ?? appTimezone}</span>
+                  <FiChevronDown className={`text-[10px] text-slate-400 transition-transform ${tzDropOpen ? "rotate-180" : ""}`} />
+                </button>
+              ) : (
+                <span className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-2.5 text-[11px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/45">
+                  <FiCalendar className="text-[11px]" style={{ color: currentColor }} />
+                  <span className="max-w-30 truncate">{appTimezone}</span>
+                </span>
+              )}
+              {canManageSettings && tzDropOpen && (
                 <div className="absolute right-0 z-9999 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-2xl dark:border-white/10 dark:bg-[#0d0b1a]">
                   <div className="border-b border-slate-100 p-2 dark:border-white/8">
                     <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">{t("scan.timezone")}</p>
@@ -2051,14 +2073,14 @@ const ScanManagement: React.FC = () => {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {activeTab === "tasks" && (
+          {activeTab === "tasks" && canManageScan && (
             <button type="button" onClick={() => setShowCreateTask(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
               <FiPlus className="text-[13px]" />{t("scan.addTask")}
             </button>
           )}
-          {activeTab === "schedule" && (
+          {activeTab === "schedule" && canManageScan && (
             <button type="button" onClick={() => setShowScheduleModal(true)}
               style={{ background: accentGrad }}
               className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
@@ -2102,11 +2124,13 @@ const ScanManagement: React.FC = () => {
               <p className="text-[13px] font-semibold text-slate-600 dark:text-white/55">{t("scan.noTasks")}</p>
               <p className="text-[11px] text-slate-400 dark:text-white/30">{t("scan.createTaskHint")}</p>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => setShowCreateTask(true)}
-                  style={{ background: accentGrad }}
-                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white transition hover:opacity-90">
-                  <FiPlus className="text-[12px]" />{t("scan.addTask")}
-                </button>
+                {canManageScan && (
+                  <button type="button" onClick={() => setShowCreateTask(true)}
+                    style={{ background: accentGrad }}
+                    className="flex items-center gap-2 rounded-lg px-4 py-2 text-[12px] font-semibold text-white transition hover:opacity-90">
+                    <FiPlus className="text-[12px]" />{t("scan.addTask")}
+                  </button>
+                )}
                 <button type="button" onClick={() => void handleRefresh()}
                   className="flex items-center gap-2 rounded-lg border border-slate-200/70 bg-white px-4 py-2 text-[12px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
                   <FiRefreshCw className="text-[12px]" />{t("common.refresh")}
@@ -2260,11 +2284,13 @@ const ScanManagement: React.FC = () => {
                 <FiRepeat className="text-[22px]" />
               </div>
               <p className="text-[13px] font-semibold text-slate-500 dark:text-white/50">{t("scan.noSchedules")}</p>
-              <button type="button" onClick={() => setShowScheduleModal(true)}
-                style={{ background: accentGrad }}
-                className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:opacity-90">
-                <FiPlus className="text-[13px]" />{t("scan.newSchedule")}
-              </button>
+              {canManageScan && (
+                <button type="button" onClick={() => setShowScheduleModal(true)}
+                  style={{ background: accentGrad }}
+                  className="flex items-center gap-2 rounded-lg px-5 py-2.5 text-[12.5px] font-semibold text-white shadow-sm transition hover:opacity-90">
+                  <FiPlus className="text-[13px]" />{t("scan.newSchedule")}
+                </button>
+              )}
             </div>
           ) : (
             <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
@@ -2301,17 +2327,22 @@ const ScanManagement: React.FC = () => {
                       <span className="hidden text-[10.5px] text-slate-400 dark:text-white/30 sm:block">
                         {s.enabled ? t("scan.scheduleEnabled") : t("scan.scheduleDisabled")}
                       </span>
-                      <button type="button" onClick={() => void toggleSchedule(s.id, s.enabled)} aria-label="toggle schedule"
-                        className="relative inline-flex h-5.5 w-10 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none"
-                        style={{ backgroundColor: s.enabled ? currentColor : "#e2e8f0" }}>
+                      <button type="button"
+                        onClick={canManageScan ? () => void toggleSchedule(s.id, s.enabled) : undefined}
+                        aria-label="toggle schedule"
+                        disabled={!canManageScan}
+                        className="relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed"
+                        style={{ backgroundColor: s.enabled ? currentColor : "#e2e8f0", cursor: canManageScan ? "pointer" : "not-allowed" }}>
                         <span className="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
                           style={{ transform: s.enabled ? "translateX(18px)" : "translateX(2px)" }} />
                       </button>
                     </div>
-                    <button type="button" onClick={() => void deleteSchedule(s.id)}
-                      className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                      <FiTrash2 className="text-[12px]" />
-                    </button>
+                    {canManageScan && (
+                      <button type="button" onClick={() => void deleteSchedule(s.id)}
+                        className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                        <FiTrash2 className="text-[12px]" />
+                      </button>
+                    )}
                   </div>
                 );
               })}

@@ -13,6 +13,7 @@ import {
 import { GetAppSettings, UpdateAppSetting } from "../../../services/setting";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { useAuth } from "../../../contexts/AuthContext";
 
 // ─────────────────────────────────────────────────────────────
 // Toggle Switch
@@ -51,13 +52,15 @@ const OtpOptionRow: React.FC<{
   checked: boolean;
   onChange: () => void;
   color: string;
-}> = ({ label, desc, checked, onChange, color }) => {
+  disabled?: boolean;
+}> = ({ label, desc, checked, onChange, color, disabled }) => {
   const { t } = useLanguage();
   return (
   <button
     type="button"
     onClick={onChange}
-    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white/70 px-4 py-3 text-left transition-all hover:bg-white dark:bg-white/3 dark:hover:bg-white/6 focus:outline-none"
+    disabled={disabled}
+    className="flex w-full items-center justify-between gap-3 rounded-xl border bg-white/70 px-4 py-3 text-left transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white/3 dark:hover:bg-white/6 focus:outline-none"
     style={{ borderColor: checked ? `${color}35` : "transparent" }}
   >
     <div className="flex items-center gap-3 min-w-0">
@@ -107,6 +110,8 @@ const OTP_RESET_KEY    = "argus_otp_reset_password";
 const Service: React.FC = () => {
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("line_settings", "manage");
 
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
@@ -356,16 +361,18 @@ const Service: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => editingEmail ? cancelEdit() : setEditingEmail(true)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8"
-                  >
-                    {editingEmail
-                      ? <><FiX className="text-[11px]" />{t("service.cancel")}</>
-                      : <><FiEdit2 className="text-[11px]" />{t("service.edit")}</>
-                    }
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => editingEmail ? cancelEdit() : setEditingEmail(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8"
+                    >
+                      {editingEmail
+                        ? <><FiX className="text-[11px]" />{t("service.cancel")}</>
+                        : <><FiEdit2 className="text-[11px]" />{t("service.edit")}</>
+                      }
+                    </button>
+                  )}
                 </div>
 
                 {/* Inline edit form */}
@@ -474,7 +481,7 @@ const Service: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <Toggle checked={twoFA} onChange={toggleTwoFA} color={currentColor} />
+                    <Toggle checked={twoFA} onChange={toggleTwoFA} color={currentColor} disabled={!canManage} />
                   </div>
 
                   {/* OTP sub-options — slide in when twoFA is on */}
@@ -507,6 +514,7 @@ const Service: React.FC = () => {
                         checked={otpLogin}
                         onChange={toggleOtpLogin}
                         color={currentColor}
+                        disabled={!canManage}
                       />
                       <OtpOptionRow
                         label={t("service.otpRegister")}
@@ -514,6 +522,7 @@ const Service: React.FC = () => {
                         checked={otpRegister}
                         onChange={toggleOtpRegister}
                         color={currentColor}
+                        disabled={!canManage}
                       />
                       <OtpOptionRow
                         label={t("service.otpResetPassword")}
@@ -521,6 +530,7 @@ const Service: React.FC = () => {
                         checked={otpReset}
                         onChange={toggleOtpReset}
                         color={currentColor}
+                        disabled={!canManage}
                       />
                     </div>
                   </div>
@@ -562,7 +572,7 @@ const Service: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <Toggle checked={totpEnabled} onChange={toggleTotp} color="#0891b2" />
+                  <Toggle checked={totpEnabled} onChange={toggleTotp} color="#0891b2" disabled={!canManage} />
                 </div>
               </div>
             </>
@@ -609,7 +619,7 @@ const Service: React.FC = () => {
                 </p>
               </div>
             </div>
-            <Toggle checked={maintenance} onChange={toggleMaintenance} color="#f59e0b" />
+            <Toggle checked={maintenance} onChange={toggleMaintenance} color="#f59e0b" disabled={!canManage} />
           </div>
         </div>
       </div>

@@ -33,6 +33,7 @@ import {
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useStateContext } from "../../../contexts/ProviderContext";
+import { useAuth } from "../../../contexts/AuthContext";
 import type { TranslationKey } from "../../../locales";
 
 type FormMode = "create" | "edit";
@@ -159,6 +160,8 @@ const ActionButton: React.FC<{
 const Index: React.FC = () => {
   const { t } = useLanguage();
   const { currentColor } = useStateContext();
+  const { can } = useAuth();
+  const canManage = can("line_management", "manage");
   const navigate = useNavigate();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
@@ -526,34 +529,38 @@ const Index: React.FC = () => {
         <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-500 dark:text-white/45">
           {t("line.webhookSecretDesc")}
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <div className="relative w-full max-w-80">
-            <input
-              type={showWebhookSecret ? "text" : "password"}
-              value={webhookSecret}
-              onChange={(e) => setWebhookSecret(e.target.value)}
-              placeholder={t("line.webhookSecretPlaceholder")}
-              className="w-full rounded-lg border border-slate-200/80 bg-white py-2 pl-3 pr-9 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25"
-            />
+        {canManage ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="relative w-full max-w-80">
+              <input
+                type={showWebhookSecret ? "text" : "password"}
+                value={webhookSecret}
+                onChange={(e) => setWebhookSecret(e.target.value)}
+                placeholder={t("line.webhookSecretPlaceholder")}
+                className="w-full rounded-lg border border-slate-200/80 bg-white py-2 pl-3 pr-9 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25"
+              />
+              <button
+                type="button"
+                onClick={() => setShowWebhookSecret((prev) => !prev)}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/35"
+              >
+                {showWebhookSecret ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setShowWebhookSecret((prev) => !prev)}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/35"
+              onClick={() => void handleSaveWebhookSecret()}
+              disabled={webhookSecretSaving || !normalizeText(webhookSecret)}
+              style={{ background: accentGrad }}
+              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {showWebhookSecret ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
+              <FiSave className="text-[13px]" />
+              {t("line.webhookSecretSave")}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => void handleSaveWebhookSecret()}
-            disabled={webhookSecretSaving || !normalizeText(webhookSecret)}
-            style={{ background: accentGrad }}
-            className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FiSave className="text-[13px]" />
-            {t("line.webhookSecretSave")}
-          </button>
-        </div>
+        ) : (
+          <p className="mt-3 text-[11.5px] text-slate-400 dark:text-white/30">••••••••••••••••</p>
+        )}
       </div>
 
       {/* ── Integrations table ── */}
@@ -595,14 +602,16 @@ const Index: React.FC = () => {
             >
               <FiRefreshCw className={`text-[12px] ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <button
-              type="button"
-              onClick={openCreateMasterModal}
-              style={{ background: accentGrad }}
-              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90"
-            >
-              <FiPlus className="text-[13px]" /> {t("line.botLabel")}
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={openCreateMasterModal}
+                style={{ background: accentGrad }}
+                className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90"
+              >
+                <FiPlus className="text-[13px]" /> {t("line.botLabel")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -661,28 +670,32 @@ const Index: React.FC = () => {
                         </td>
                         <td className="px-4 py-3.5 font-mono text-[12px] text-slate-500 dark:text-white/45">{maskToken(item.token)}</td>
                         <td className="px-4 py-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openEditMasterModal(lineMasters.find((m) => m.id === item.id)!)
-                              }
-                              title={t("line.editBotLine")}
-                              className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
-                            >
-                              <FiEdit2 className="text-[11px]" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                openDeleteMasterModal(lineMasters.find((m) => m.id === item.id)!)
-                              }
-                              title={t("line.deleteBotLine")}
-                              className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-                            >
-                              <FiTrash2 className="text-[11px]" />
-                            </button>
-                          </div>
+                          {canManage ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openEditMasterModal(lineMasters.find((m) => m.id === item.id)!)
+                                }
+                                title={t("line.editBotLine")}
+                                className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300"
+                              >
+                                <FiEdit2 className="text-[11px]" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  openDeleteMasterModal(lineMasters.find((m) => m.id === item.id)!)
+                                }
+                                title={t("line.deleteBotLine")}
+                                className="grid h-7 w-7 place-items-center rounded-lg border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                              >
+                                <FiTrash2 className="text-[11px]" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}

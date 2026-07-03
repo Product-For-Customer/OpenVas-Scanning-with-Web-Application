@@ -263,6 +263,12 @@ const MapDevice: React.FC = () => {
   const mapRef = useRef<MapRef | null>(null);
   const { can } = useAuth();
   const isUser = !can("reports_diagrams", "manage");
+  // Roles that can see this page (e.g. via dashboard.view for the Target
+  // dashboard it's embedded in) but lack reports_diagrams.view don't have
+  // access to Location data specifically — that's an expected permission
+  // boundary, not a system failure, so we skip the fetch entirely instead of
+  // surfacing the 403 as a scary "failed to load" error.
+  const canViewLocations = can("reports_diagrams", "view");
 
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Device[]>([]);
@@ -370,7 +376,7 @@ const MapDevice: React.FC = () => {
       }
 
       const [locationData, allTargets] = await Promise.all([
-        ListLocation(),
+        canViewLocations ? ListLocation() : Promise.resolve([]),
         fetchTargets(),
       ]);
 
@@ -441,7 +447,7 @@ const MapDevice: React.FC = () => {
       }
       isFetchingLocationsRef.current = false;
     }
-  }, [fetchTargets, t]);
+  }, [fetchTargets, t, canViewLocations]);
 
   useEffect(() => {
     if (hasFetchedInitialRef.current) return;

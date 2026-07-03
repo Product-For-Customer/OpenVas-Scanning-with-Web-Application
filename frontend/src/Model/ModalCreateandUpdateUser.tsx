@@ -319,6 +319,8 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
       if (dup) next.email = t("auth.emailInUse");
     }
 
+    // Admin editing another user never touches password here — there's no
+    // input for it in edit mode, so only creation needs this check.
     if (!isEdit) {
       if (!form.password.trim()) {
         next.password = t("auth.enterPasswordRequired");
@@ -326,9 +328,6 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
         const pe = validatePasswordAgainstPolicy(form.password, policy);
         if (pe) next.password = pe;
       }
-    } else if (form.password.trim()) {
-      const pe = validatePasswordAgainstPolicy(form.password, policy);
-      if (pe) next.password = pe;
     }
 
     if (!form.app_role_id) next.app_role_id = t("userModal.selectRoleRequired");
@@ -360,13 +359,15 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
         if (!res || (res as any).error) throw new Error((res as any)?.error || t("userModal.createUserFailed"));
         message.success(t("user.userCreated"));
       } else {
+        // Admin edit never sends a password — there's no field for it in
+        // this form, and the backend's admin-edit endpoint no longer even
+        // accepts one (see UpdateUserIDByAdmin in backend/controller/user/user.go).
         const payload: Record<string, any> = {
           first_name:  form.first_name.trim(),
           last_name:   form.last_name.trim(),
           email:       normalizeEmail(form.email),
           app_role_id: Number(form.app_role_id),
         };
-        if (form.password.trim()) payload.password = form.password.trim();
         const res = await UpdateUserIDByAdmin(user!.id, payload);
         if (!res || (res as any).error) throw new Error((res as any)?.error || t("userModal.updateUserFailed"));
         message.success((res as any).message || t("user.userUpdated"));
@@ -481,36 +482,36 @@ const UserModal: React.FC<UserModalProps> = ({ open, user, onClose, onDone }) =>
             {errMsg("email")}
           </div>
 
-          {/* Password */}
-          <div>
-            <label className={labelCls}>
-              <FiLock className="text-[10px]" />
-              {t("auth.password")}{!isEdit && <span className="text-red-400">*</span>}
-              {isEdit && (
-                <span className="ml-1 text-[9px] normal-case font-normal text-slate-400 dark:text-white/30">
-                  {t("userModal.leaveBlankToKeep")}
-                </span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type={showPass ? "text" : "password"}
-                name="password" value={form.password}
-                onChange={handleChange}
-                placeholder={isEdit ? "••••••••" : t("auth.enterPassword")}
-                disabled={submitting}
-                className={`${errors.password ? inputErr : inputBase} pr-10`}
-              />
-              <button type="button" onClick={() => setShowPass((p) => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:text-white/30 dark:hover:text-white/60">
-                {showPass ? <FiEyeOff className="text-[14px]" /> : <FiEye className="text-[14px]" />}
-              </button>
+          {/* Password — create only. Admin editing another user's account
+              never sets their password from here (see validate()/handleSubmit
+              above and UpdateUserIDByAdmin on the backend, which no longer
+              accepts a password field at all). */}
+          {!isEdit && (
+            <div>
+              <label className={labelCls}>
+                <FiLock className="text-[10px]" />
+                {t("auth.password")} <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPass ? "text" : "password"}
+                  name="password" value={form.password}
+                  onChange={handleChange}
+                  placeholder={t("auth.enterPassword")}
+                  disabled={submitting}
+                  className={`${errors.password ? inputErr : inputBase} pr-10`}
+                />
+                <button type="button" onClick={() => setShowPass((p) => !p)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600 dark:text-white/30 dark:hover:text-white/60">
+                  {showPass ? <FiEyeOff className="text-[14px]" /> : <FiEye className="text-[14px]" />}
+                </button>
+              </div>
+              {errors.password
+                ? <p className="mt-1 text-[10px] text-red-500 dark:text-red-400">{errors.password}</p>
+                : <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{policyHint}</p>
+              }
             </div>
-            {errors.password
-              ? <p className="mt-1 text-[10px] text-red-500 dark:text-red-400">{errors.password}</p>
-              : <p className="mt-1 text-[10px] text-slate-400 dark:text-white/30">{policyHint}</p>
-            }
-          </div>
+          )}
 
           {/* Role */}
           <div>

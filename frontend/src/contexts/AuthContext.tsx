@@ -23,7 +23,7 @@ type AuthContextValue = {
   role: string;
   roleId: number;
   permissions: PermissionMap;
-  /** can("scan_management", "manage") / can("dashboard", "view") */
+  /** can("threat_intel", "manage") / can("dashboard", "view") */
   can: (category: string, level: "view" | "manage") => boolean;
   refreshMe: () => Promise<void>;
   logout: () => Promise<void>;

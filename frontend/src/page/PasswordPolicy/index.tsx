@@ -64,7 +64,13 @@ const ToggleRow: React.FC<{
 // ─────────────────────────────────────────────────────────────
 
 const PasswordPolicyPage: React.FC = () => {
-  const { isAdmin } = useAuth() as any;
+  const { can } = useAuth();
+  // This page is routed under the line_settings category (see mainroutes.tsx)
+  // — the redirect guard must match that, not the unrelated user_management
+  // "isAdmin" compat flag, or a role with line_settings.view but not
+  // user_management.manage would get bounced off a page it's allowed to see.
+  const canView   = can("line_settings", "view");
+  const canManage = can("line_settings", "manage");
   const navigate    = useNavigate();
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
@@ -77,7 +83,7 @@ const PasswordPolicyPage: React.FC = () => {
   const [saving, setSaving]       = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => { if (!isAdmin) navigate("/admin", { replace: true }); }, [isAdmin, navigate]);
+  useEffect(() => { if (!canView) navigate("/admin", { replace: true }); }, [canView, navigate]);
 
   const load = useCallback(async () => {
     try {
@@ -154,28 +160,30 @@ const PasswordPolicyPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Action buttons inline with header */}
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={!hasChanges || saving}
-              className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60"
-            >
-              <FiRefreshCw className="text-[11px]" />
-              <span className="hidden sm:inline">{t("passwordpolicy.reset")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={!hasChanges || saving}
-              className="flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ background: accentGrad }}
-            >
-              {saving ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiSave className="text-[11px]" />}
-              <span className="hidden sm:inline">{saving ? t("passwordpolicy.saving") : t("passwordpolicy.saveChanges")}</span>
-            </button>
-          </div>
+          {/* Action buttons inline with header — hidden for View-only roles */}
+          {canManage && (
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={handleReset}
+                disabled={!hasChanges || saving}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 bg-white px-3 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60"
+              >
+                <FiRefreshCw className="text-[11px]" />
+                <span className="hidden sm:inline">{t("passwordpolicy.reset")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={!hasChanges || saving}
+                className="flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: accentGrad }}
+              >
+                {saving ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiSave className="text-[11px]" />}
+                <span className="hidden sm:inline">{saving ? t("passwordpolicy.saving") : t("passwordpolicy.saveChanges")}</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -211,16 +219,19 @@ const PasswordPolicyPage: React.FC = () => {
               <div className="flex shrink-0 items-center gap-2">
                 <button type="button"
                   onClick={() => updateDraft("min_length", Math.max(6, draft.min_length - 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:border-white/30 dark:hover:text-white">
+                  disabled={!canManage}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-600 transition hover:border-slate-900 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:border-white/30 dark:hover:text-white">
                   −
                 </button>
                 <input type="number" min={6} max={128} value={draft.min_length}
                   onChange={e => updateDraft("min_length", Math.min(128, Math.max(6, parseInt(e.target.value) || 6)))}
-                  className="h-7 w-12 rounded-lg border border-slate-200/70 bg-white px-0 text-center text-[13px] font-bold text-slate-900 outline-none dark:border-white/8 dark:bg-white/8 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  disabled={!canManage}
+                  className="h-7 w-12 rounded-lg border border-slate-200/70 bg-white px-0 text-center text-[13px] font-bold text-slate-900 outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/8 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <button type="button"
                   onClick={() => updateDraft("min_length", Math.min(128, draft.min_length + 1))}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-600 transition hover:border-slate-900 hover:text-slate-900 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:border-white/30 dark:hover:text-white">
+                  disabled={!canManage}
+                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-600 transition hover:border-slate-900 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/60 dark:hover:border-white/30 dark:hover:text-white">
                   +
                 </button>
               </div>
@@ -231,6 +242,7 @@ const PasswordPolicyPage: React.FC = () => {
               desc={t("passwordpolicy.requireUppercaseDesc")}
               value={draft.require_uppercase}
               onChange={v => updateDraft("require_uppercase", v)}
+              disabled={!canManage}
               currentColor={currentColor}
             />
             <ToggleRow
@@ -238,6 +250,7 @@ const PasswordPolicyPage: React.FC = () => {
               desc={t("passwordpolicy.requireNumberDesc")}
               value={draft.require_number}
               onChange={v => updateDraft("require_number", v)}
+              disabled={!canManage}
               currentColor={currentColor}
             />
             <ToggleRow
@@ -245,6 +258,7 @@ const PasswordPolicyPage: React.FC = () => {
               desc={t("passwordpolicy.requireSpecialDesc")}
               value={draft.require_special}
               onChange={v => updateDraft("require_special", v)}
+              disabled={!canManage}
               currentColor={currentColor}
             />
           </div>
@@ -266,7 +280,8 @@ const PasswordPolicyPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <input type="number" min={0} max={365} value={draft.expiry_days}
                   onChange={e => updateDraft("expiry_days", Math.min(365, Math.max(0, parseInt(e.target.value) || 0)))}
-                  className="h-10 w-20 rounded-lg border border-slate-200/70 bg-white px-0 text-center text-[16px] font-bold text-slate-900 outline-none dark:border-white/8 dark:bg-white/8 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  disabled={!canManage}
+                  className="h-10 w-20 rounded-lg border border-slate-200/70 bg-white px-0 text-center text-[16px] font-bold text-slate-900 outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/8 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <span className="text-[12px] text-slate-500 dark:text-white/45">{t("passwordpolicy.expiryDays")}</span>
                 {draft.expiry_days === 0 ? (

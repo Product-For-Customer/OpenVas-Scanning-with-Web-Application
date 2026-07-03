@@ -27,6 +27,7 @@ import {
   type HistoryNotifyResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { useAuth } from "../../../contexts/AuthContext";
 import type { TranslationKey } from "../../../locales";
 
 type FilterKey =
@@ -563,6 +564,8 @@ const Index: React.FC<HistoryNotifyProps> = ({
   error,
 }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("line_management", "manage");
   const [search, setSearch] = useState("");
 
   const [selected, setSelected] = useState<number[]>([]);
@@ -903,20 +906,22 @@ const Index: React.FC<HistoryNotifyProps> = ({
               {allSelected ? t("line.deselectAllLabel") : t("line.selectAllLabel")}
             </button>
 
-            <button
-              type="button"
-              onClick={openDeleteModal}
-              disabled={selected.length === 0}
-              className={[
-                "inline-flex h-8 w-8 items-center justify-center rounded-[14px] transition",
-                selected.length > 0
-                  ? "bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300 dark:hover:bg-red-500/15"
-                  : "bg-white border border-gray-200 text-gray-300 cursor-not-allowed dark:bg-white/5 dark:border-white/10 dark:text-white/20",
-              ].join(" ")}
-              title={t("line.deleteSelected")}
-            >
-              <FiTrash2 className="text-[12px]" />
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={openDeleteModal}
+                disabled={selected.length === 0}
+                className={[
+                  "inline-flex h-8 w-8 items-center justify-center rounded-[14px] transition",
+                  selected.length > 0
+                    ? "bg-red-50 border border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:border-red-400/20 dark:text-red-300 dark:hover:bg-red-500/15"
+                    : "bg-white border border-gray-200 text-gray-300 cursor-not-allowed dark:bg-white/5 dark:border-white/10 dark:text-white/20",
+                ].join(" ")}
+                title={t("line.deleteSelected")}
+              >
+                <FiTrash2 className="text-[12px]" />
+              </button>
+            )}
           </div>
         </div>
 

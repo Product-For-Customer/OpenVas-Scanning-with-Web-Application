@@ -15,6 +15,7 @@ import {
 } from "../../services/gmp";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 // ─── Category filter types ────────────────────────────────────────────────────
 type CategoryTab = "all" | "tasks" | "targets" | "credentials" | "portlists";
@@ -118,6 +119,12 @@ const Actions: React.FC<{
   busy?: boolean;
 }> = ({ onRestore, onDelete, busy }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  // View-only roles (threat_intel granted but not Manage) see trash
+  // contents but get no restore/delete controls at all.
+  if (!can("threat_intel", "manage")) {
+    return <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>;
+  }
   return (
     <div className="flex items-center justify-end gap-1.5">
       <button type="button" onClick={onRestore} disabled={busy} title={t("recycleBin.restore")}
@@ -180,6 +187,8 @@ const Section: React.FC<{
 const RecycleBinPage: React.FC = () => {
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManageScan = can("threat_intel", "manage");
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [trash,         setTrash]         = useState<GMPTrashDTO | null>(null);
@@ -418,12 +427,14 @@ const RecycleBinPage: React.FC = () => {
               className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiRefreshCw className={`text-[13px] ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={() => setConfirmEmpty(true)}
-              disabled={loading || emptyingTrash || totalItems === 0}
-              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-[12px] font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-              {emptyingTrash ? <FiRefreshCw className="animate-spin text-[12px]" /> : <FiTrash2 className="text-[12px]" />}
-              {t("recycleBin.emptyTrash")}
-            </button>
+            {canManageScan && (
+              <button type="button" onClick={() => setConfirmEmpty(true)}
+                disabled={loading || emptyingTrash || totalItems === 0}
+                className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-2 text-[12px] font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                {emptyingTrash ? <FiRefreshCw className="animate-spin text-[12px]" /> : <FiTrash2 className="text-[12px]" />}
+                {t("recycleBin.emptyTrash")}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -467,23 +478,29 @@ const RecycleBinPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Bulk action bar (appears when items selected) ── */}
+      {/* ── Bulk action bar (appears when items selected) — restore/delete
+           only for roles with threat_intel Manage; a View-only role can
+           still select rows but only sees the clear-selection control. ── */}
       {selectedCount > 0 && (
         <div className="flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-4 py-3 dark:border-white/8 dark:bg-[#0d0b1a]/60">
           <span className="text-[12px] font-semibold text-slate-700 dark:text-white/75">
             {t("recycleBin.selected").replace("{n}", String(selectedCount))}
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <button type="button" onClick={() => setConfirmBulk("restore")}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-              <FiRotateCcw className="text-[12px]" />
-              {t("recycleBin.bulkRestore").replace("{n}", String(selectedCount))}
-            </button>
-            <button type="button" onClick={() => setConfirmBulk("delete")}
-              className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 text-[12px] font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-              <FiTrash2 className="text-[12px]" />
-              {t("recycleBin.bulkDelete").replace("{n}", String(selectedCount))}
-            </button>
+            {canManageScan && (
+              <>
+                <button type="button" onClick={() => setConfirmBulk("restore")}
+                  className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-[12px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  <FiRotateCcw className="text-[12px]" />
+                  {t("recycleBin.bulkRestore").replace("{n}", String(selectedCount))}
+                </button>
+                <button type="button" onClick={() => setConfirmBulk("delete")}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3.5 py-1.5 text-[12px] font-semibold text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                  <FiTrash2 className="text-[12px]" />
+                  {t("recycleBin.bulkDelete").replace("{n}", String(selectedCount))}
+                </button>
+              </>
+            )}
             <button type="button" onClick={() => setSelectedIds(new Set())}
               className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiX className="text-[12px]" />

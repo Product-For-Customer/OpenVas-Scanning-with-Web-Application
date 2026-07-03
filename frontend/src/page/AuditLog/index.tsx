@@ -238,9 +238,9 @@ const AuditLogPage: React.FC = () => {
               <p className="text-[12.5px] text-slate-400 dark:text-white/35">{t("auditLog.noResults")}</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[65vh] overflow-y-auto overflow-x-auto">
               <table className="w-full min-w-180">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white dark:bg-[#0d0b1a]">
                   <tr className="border-b border-slate-100 dark:border-white/8">
                     {[t("auditLog.colTime"), t("auditLog.colActor"), t("auditLog.colAction"), t("auditLog.colTarget"), t("auditLog.colDetail"), t("auditLog.colIP")].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>

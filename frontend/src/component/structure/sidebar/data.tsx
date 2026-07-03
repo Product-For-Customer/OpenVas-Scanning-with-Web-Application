@@ -16,7 +16,7 @@ import {
   FiSliders,
   FiTrash2,
   FiClipboard,
-  FiShieldOff,
+  FiKey,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
@@ -64,9 +64,9 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.apps",
       icon: <BsCalendar3 />,
       links: filterLinks([
-        { name: "calendar",    icon: <BsCalendar3 />,      labelKey: "nav.calendar", category: "scan_management" },
+        { name: "calendar",    icon: <BsCalendar3 />,      labelKey: "nav.calendar", category: "dashboard" },
         { name: "diagrams",    icon: <FaProjectDiagram />, labelKey: "nav.diagrams", category: "reports_diagrams" },
-        { name: "recycle-bin", icon: <FiTrash2 />,         labelKey: "nav.recycleBin", category: "scan_management" },
+        { name: "recycle-bin", icon: <FiTrash2 />,         labelKey: "nav.recycleBin", category: "threat_intel" },
         { name: "audit-log",   icon: <FiClipboard />,      labelKey: "nav.auditLog", category: "audit_log" },
       ]),
     },
@@ -78,7 +78,7 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
         { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
         { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus", category: "threat_intel" },
         { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig", category: "threat_intel" },
-        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement", category: "scan_management" },
+        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement", category: "threat_intel" },
       ]),
     },
     {
@@ -86,9 +86,9 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.management",
       icon: <MdAdminPanelSettings />,
       links: filterLinks([
-        { name: "line notification", icon: <FiBell />,      labelKey: "nav.lineNotification", category: "line_settings" },
+        { name: "line notification", icon: <FiBell />,      labelKey: "nav.lineNotification", category: "line_management" },
         { name: "user",              icon: <FiUsers />,      labelKey: "nav.user", category: "user_management" },
-        { name: "roles",             icon: <FiShieldOff />,  labelKey: "nav.roles", category: "user_management" },
+        { name: "roles",             icon: <FiKey />,        labelKey: "nav.roles", category: "user_management" },
         { name: "password-policy",   icon: <FiLock />,       labelKey: "nav.passwordPolicy", category: "line_settings" },
         { name: "service",           icon: <FiServer />,     labelKey: "nav.service", category: "line_settings" },
       ]),
@@ -98,8 +98,8 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.analytics",
       icon: <FiBarChart2 />,
       links: filterLinks([
-        { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "reports_diagrams" },
-        { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "reports_diagrams" },
+        { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "dashboard" },
+        { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "dashboard" },
         { name: "vulnerability-delta", icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta", category: "dashboard" },
       ]),
     },

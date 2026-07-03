@@ -62,20 +62,23 @@ const LoginPage: React.FC = () => {
         return;
       }
 
-      const role = (res.user?.role ?? "").toLowerCase();
-      if (role === "admin" || role === "user") {
-        message.success(t("auth.loginSuccess"));
-        // Navigate to the dedicated /after-login-animation route — it plays the
-        // success animation, refreshes auth state, then switches to /admin
-        // once the progress bar finishes.
-        navigate("/after-login-animation", {
-          replace: true,
-          state: { redirectTo: "/admin", refreshAuth: true },
-        });
-        return;
-      }
-
-      setError(t("auth.noPermission"));
+      // Any successfully authenticated login proceeds — which pages/actions
+      // the account can actually reach is decided by its permission matrix
+      // (AuthContext.permissions, resolved from /auth/me) once inside the
+      // app, not by a hardcoded role-name allowlist here. This used to only
+      // let "admin"/"user" through and reject every other role (including
+      // any custom role created via /admin/roles) with a false "no
+      // permission" error — the account WAS logged in (the cookie was
+      // already set by the backend), it just never got routed past this
+      // screen, which is why a manual refresh "fixed" it.
+      message.success(t("auth.loginSuccess"));
+      // Navigate to the dedicated /after-login-animation route — it plays the
+      // success animation, refreshes auth state, then switches to /admin
+      // once the progress bar finishes.
+      navigate("/after-login-animation", {
+        replace: true,
+        state: { redirectTo: "/admin", refreshAuth: true },
+      });
     } catch (err: any) {
       const backendError = err?.response?.data?.error;
       setError(

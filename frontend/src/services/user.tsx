@@ -174,9 +174,10 @@ export type RoleResponse = {
   user_count?: number;
 };
 
+// No password field — an admin editing someone else's account never resets
+// their password from this endpoint (backend no longer accepts one either).
 export type UpdateUserByAdminPayload = {
   email?: string;
-  password?: string;
   first_name?: string;
   last_name?: string;
   profile?: string;

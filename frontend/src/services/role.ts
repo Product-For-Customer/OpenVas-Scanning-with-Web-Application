@@ -22,6 +22,8 @@ export type PermissionCategory = {
   key: string;
   label: string;
   supports_manage: boolean;
+  /** Manage is never toggled independently — it always equals View. */
+  manage_mirrors_view: boolean;
 };
 
 export type PermissionInput = {

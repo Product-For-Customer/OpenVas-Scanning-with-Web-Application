@@ -72,26 +72,26 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "status-target-data",                  element: <StatusTargetData />, category: "dashboard" },
   { path: "host/:ip",                            element: <HostDetail />, category: "dashboard" },
 
-  { path: "scan-management",                     element: <ScanManagement />, category: "scan_management" },
-  { path: "recycle-bin",                          element: <RecycleBin />, category: "scan_management" },
-  { path: "calendar",                             element: <CalendarPage />, category: "scan_management" },
+  { path: "scan-management",                     element: <ScanManagement />, category: "threat_intel" },
+  { path: "recycle-bin",                          element: <RecycleBin />, category: "threat_intel" },
+  { path: "calendar",                             element: <CalendarPage />, category: "dashboard" },
 
   { path: "threat-intelligence",                  element: <ThreatIntelligence />, category: "threat_intel" },
   { path: "threat-intelligence/detail/:hostIp",   element: <ThreatIntelligenceDetail />, category: "threat_intel" },
   { path: "feed-status",                          element: <FeedStatus />, category: "threat_intel" },
   { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
 
-  { path: "report",                              element: <Report />, category: "reports_diagrams" },
+  { path: "report",                              element: <Report />, category: "dashboard" },
   { path: "diagrams",                            element: <Diagram />, category: "reports_diagrams" },
   { path: "diagram-node",                         element: <DiagramNode />, category: "reports_diagrams" },
-  { path: "compliance",                          element: <Compliance />, category: "reports_diagrams" },
-  { path: "compliance/:framework/:controlId",     element: <ComplianceControl />, category: "reports_diagrams" },
+  { path: "compliance",                          element: <Compliance />, category: "dashboard" },
+  { path: "compliance/:framework/:controlId",     element: <ComplianceControl />, category: "dashboard" },
 
   { path: "user",                                element: <User />, category: "user_management" },
   { path: "roles",                               element: <RoleManagement />, category: "user_management" },
 
-  { path: "line notification",                    element: <LineNotification />, category: "line_settings" },
-  { path: "line notification/integrations",       element: <LineIntegrations />, category: "line_settings" },
+  { path: "line notification",                    element: <LineNotification />, category: "line_management" },
+  { path: "line notification/integrations",       element: <LineIntegrations />, category: "line_management" },
   { path: "service",                              element: <Service />, category: "line_settings" },
   { path: "password-policy",                      element: <PasswordPolicy />, category: "line_settings" },
 

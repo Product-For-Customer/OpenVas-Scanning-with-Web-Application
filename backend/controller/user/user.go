@@ -424,9 +424,13 @@ type RoleResponse struct {
 	UserCount int64  `json:"user_count"`
 }
 
+// UpdateUserByAdminInput deliberately has no Password field — an admin
+// editing someone else's account never resets their password from this
+// endpoint (self-service password change/reset is a separate OTP-backed
+// flow). This also means an admin can never be tricked into overwriting
+// another user's password via a raw API call, not just via the UI.
 type UpdateUserByAdminInput struct {
 	Email       *string `json:"email"`
-	Password    *string `json:"password"`
 	FirstName   *string `json:"first_name"`
 	LastName    *string `json:"last_name"`
 	Profile     *string `json:"profile"`
@@ -509,7 +513,6 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 	}
 
 	if input.Email == nil &&
-		input.Password == nil &&
 		input.FirstName == nil &&
 		input.LastName == nil &&
 		input.Profile == nil &&
@@ -538,7 +541,6 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{}
-	var newPlainPassword string
 
 	if input.Email != nil {
 		newEmail := strings.TrimSpace(*input.Email)
@@ -612,34 +614,11 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		updates["AppRoleID"] = *input.AppRoleID
 	}
 
-	if input.Password != nil {
-		newPlainPassword = strings.TrimSpace(*input.Password)
-		validateUser.Password = newPlainPassword
-	}
-
 	if ok, err := govalidator.ValidateStruct(validateUser); !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
 		return
-	}
-
-	if input.Password != nil {
-		if err := passwordpolicy.ValidatePassword(db, newPlainPassword); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-	}
-
-	if input.Password != nil {
-		hashedPassword, err := services.HashPassword(newPlainPassword)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "failed to hash password",
-			})
-			return
-		}
-		updates["Password"] = hashedPassword
 	}
 
 	tx := db.Model(&entity.AppUser{}).

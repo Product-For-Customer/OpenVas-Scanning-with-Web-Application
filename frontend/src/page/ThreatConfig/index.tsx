@@ -20,6 +20,7 @@ import {
 } from "../../services/gmp";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
 import type { TranslationKey } from "../../locales";
 
 // ─────────────────────────────────────────────────────────────
@@ -237,6 +238,8 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("threat_intel", "manage");
   const [lists,   setLists]   = useState<GMPPortListDTO[]>([]);
   const [targets, setTargets] = useState<GMPTargetDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -473,15 +476,19 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiRefreshCw className={`text-[12px] ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={() => setShowImportModal(true)} title={t("threatConfig.importPortList")}
-              className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
-              <FiUpload className="text-[12px]" />
-            </button>
-            <button type="button" onClick={() => setShowModal(true)}
-              style={{ background: accentGrad }}
-              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> {t("threatConfig.newPortList")}
-            </button>
+            {canManage && (
+              <button type="button" onClick={() => setShowImportModal(true)} title={t("threatConfig.importPortList")}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                <FiUpload className="text-[12px]" />
+              </button>
+            )}
+            {canManage && (
+              <button type="button" onClick={() => setShowModal(true)}
+                style={{ background: accentGrad }}
+                className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
+                <FiPlus className="text-[13px]" /> {t("threatConfig.newPortList")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -570,8 +577,9 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                         {pl.udp === 0 ? <span className="text-slate-300 dark:text-white/20">0</span> : pl.udp.toLocaleString()}
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions — hidden entirely for View-only roles */}
                       <td className="px-4 py-3.5 text-right">
+                        {canManage ? (
                         <div className="flex items-center justify-end gap-1.5">
                           {/* Edit */}
                           <button type="button" title={editTip}
@@ -597,6 +605,9 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                             <FiTrash2 className="text-[11px]" />
                           </button>
                         </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -909,6 +920,8 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
   currentColor, accentGrad,
 }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("threat_intel", "manage");
   const CRED_TYPES = useMemo(() => getCredTypes(t), [t]);
   const [creds,      setCreds]      = useState<GMPCredentialDTO[]>([]);
   const [tgList,     setTgList]     = useState<GMPTargetDTO[]>([]);
@@ -1408,11 +1421,13 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiRefreshCw className={`text-[12px] ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={() => setShowModal(true)}
-              style={{ background: accentGrad }}
-              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> {t("threatConfig.newCredential")}
-            </button>
+            {canManage && (
+              <button type="button" onClick={() => setShowModal(true)}
+                style={{ background: accentGrad }}
+                className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
+                <FiPlus className="text-[13px]" /> {t("threatConfig.newCredential")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1483,6 +1498,7 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                         {cr.login || <span className="text-slate-300 dark:text-white/20">—</span>}
                       </td>
                       <td className="px-4 py-3.5 text-right">
+                        {canManage ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <button type="button" onClick={() => openEdit(cr)}
                             className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
@@ -1499,6 +1515,9 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
                             <FiTrash2 className="text-[11px]" />
                           </button>
                         </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1700,6 +1719,8 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("threat_intel", "manage");
   const ALIVE_TESTS = useMemo(() => getAliveTests(t), [t]);
   const [targets,   setTargets]   = useState<GMPTargetDTO[]>([]);
   const [portLists, setPortLists] = useState<GMPPortListDTO[]>([]);
@@ -1970,11 +1991,13 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
               <FiRefreshCw className={`text-[12px] ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button type="button" onClick={() => setShowModal(true)}
-              style={{ background: accentGrad }}
-              className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
-              <FiPlus className="text-[13px]" /> {t("threatConfig.newTarget")}
-            </button>
+            {canManage && (
+              <button type="button" onClick={() => setShowModal(true)}
+                style={{ background: accentGrad }}
+                className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90">
+                <FiPlus className="text-[13px]" /> {t("threatConfig.newTarget")}
+              </button>
+            )}
           </div>
         </div>
 
@@ -2036,6 +2059,7 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       </td>
                       <td className="px-4 py-3.5 text-[11.5px] text-slate-500 dark:text-white/45">{credsSummary(tg)}</td>
                       <td className="px-4 py-3.5 text-right">
+                        {canManage ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <button type="button" onClick={() => openEdit(tg)}
                             className="grid h-7 w-7 place-items-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
@@ -2052,6 +2076,9 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                             <FiTrash2 className="text-[11px]" />
                           </button>
                         </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                        )}
                       </td>
                     </tr>
                   );

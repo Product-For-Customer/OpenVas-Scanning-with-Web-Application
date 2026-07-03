@@ -16,6 +16,7 @@ import {
 } from "../../services/feedschedule";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
 import type { TranslationKey } from "../../locales";
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ interface ScheduleRowProps {
 
 const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentColor, accentGrad }) => {
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("threat_intel", "manage");
   const [editing,    setEditing]    = useState(false);
   const [saving,     setSaving]     = useState(false);
   const [triggering, setTriggering] = useState(false);
@@ -159,26 +162,29 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
             {enabled ? t("feedschedule.enabled") : t("feedschedule.disabled")}
           </span>
 
-          {/* Trigger now */}
-          <button type="button" onClick={() => void handleTrigger()} disabled={triggering}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
-            {triggering
-              ? <FiRefreshCw className="animate-spin text-[11px]" />
-              : <FiPlay className="text-[11px]" />}
-            <span className="hidden sm:inline">{t("feedschedule.triggerNow")}</span>
-          </button>
+          {/* Trigger now + Edit — hidden entirely for View-only roles */}
+          {canManage && (
+            <>
+              <button type="button" onClick={() => void handleTrigger()} disabled={triggering}
+                className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
+                {triggering
+                  ? <FiRefreshCw className="animate-spin text-[11px]" />
+                  : <FiPlay className="text-[11px]" />}
+                <span className="hidden sm:inline">{t("feedschedule.triggerNow")}</span>
+              </button>
 
-          {/* Edit */}
-          {!editing
-            ? <button type="button" onClick={() => setEditing(true)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
-                <FiEdit2 className="text-[12px]" />
-              </button>
-            : <button type="button" onClick={cancelEdit}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
-                <FiX className="text-[12px]" />
-              </button>
-          }
+              {!editing
+                ? <button type="button" onClick={() => setEditing(true)}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                    <FiEdit2 className="text-[12px]" />
+                  </button>
+                : <button type="button" onClick={cancelEdit}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                    <FiX className="text-[12px]" />
+                  </button>
+              }
+            </>
+          )}
         </div>
       </div>
 
@@ -371,6 +377,8 @@ const EpssFeedCard: React.FC = () => {
 const FeedStatusPage: React.FC = () => {
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManage = can("threat_intel", "manage");
 
   const [feeds,      setFeeds]      = useState<GMPFeedDTO[]>([]);
   const [kevStatus,  setKevStatus]  = useState<KEVSyncStatusDTO | null>(null);
@@ -552,12 +560,14 @@ const FeedStatusPage: React.FC = () => {
                         <FiCheckCircle className="text-[10px]" /> {t("feed.idle")}
                       </span>
               )}
-              <button type="button" onClick={() => void handleKEVSync()}
-                disabled={syncingKEV || !!kevStatus?.is_syncing}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8">
-                <FiRefreshCw className={`text-[11px] ${syncingKEV ? "animate-spin" : ""}`} />
-                {syncingKEV ? t("feed.syncing") : t("feed.syncNow")}
-              </button>
+              {canManage && (
+                <button type="button" onClick={() => void handleKEVSync()}
+                  disabled={syncingKEV || !!kevStatus?.is_syncing}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11.5px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55 dark:hover:bg-white/8">
+                  <FiRefreshCw className={`text-[11px] ${syncingKEV ? "animate-spin" : ""}`} />
+                  {syncingKEV ? t("feed.syncing") : t("feed.syncNow")}
+                </button>
+              )}
             </div>
           </div>
           {loadingKev ? (

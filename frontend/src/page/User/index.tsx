@@ -53,9 +53,15 @@ const isBase64DataImage = (v: string) => {
   return /^data:image\/(png|jpe?g|gif|webp|bmp|svg\+xml);base64,/i.test(s);
 };
 
+const getRoleBadgeClass = (role: string) =>
+  role.toLowerCase() === "admin"
+    ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/25 dark:bg-violet-500/12 dark:text-violet-200"
+    : "border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-500/12 dark:text-cyan-200";
+
 const Index: React.FC = () => {
   const { t } = useLanguage();
   const auth = useAuth() as any;
+  const canManage: boolean = auth?.can ? auth.can("user_management", "manage") : false;
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
@@ -381,15 +387,17 @@ const Index: React.FC = () => {
             </div>
 
             {/* Add User */}
-            <button
-              type="button"
-              onClick={handleCreate}
-              className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-medium text-white transition hover:opacity-90"
-              style={{ background: accentGrad }}
-            >
-              <FiPlus className="text-[12px]" />
-              {t("user.addUser")}
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[11px] font-medium text-white transition hover:opacity-90"
+                style={{ background: accentGrad }}
+              >
+                <FiPlus className="text-[12px]" />
+                {t("user.addUser")}
+              </button>
+            )}
           </div>
 
           <div className="mt-2.5 flex flex-col gap-1 text-[10px] text-slate-500 dark:text-white/50">
@@ -417,6 +425,7 @@ const Index: React.FC = () => {
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50/60 dark:border-white/8 dark:bg-white/3">
                     <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableUser")}</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableRole")}</th>
                     <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableContact")}</th>
                     <th className="whitespace-nowrap px-4 py-3 text-left text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("user.tableLocation")}</th>
                     <th className="whitespace-nowrap px-4 py-3 text-right text-[10.5px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35">{t("common.actions")}</th>
@@ -435,6 +444,7 @@ const Index: React.FC = () => {
                             </div>
                           </div>
                         </td>
+                        <td className="px-4 py-3.5"><div className="h-5 w-16 animate-pulse rounded-full bg-slate-100 dark:bg-white/10" /></td>
                         <td className="px-4 py-3.5"><div className="h-3 w-36 animate-pulse rounded bg-slate-100 dark:bg-white/10" /></td>
                         <td className="px-4 py-3.5"><div className="h-3 w-24 animate-pulse rounded bg-slate-100 dark:bg-white/10" /></td>
                         <td className="px-4 py-3.5"><div className="ml-auto h-7 w-16 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" /></td>
@@ -442,7 +452,7 @@ const Index: React.FC = () => {
                     ))
                   ) : pagedUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/45">
+                      <td colSpan={5} className="px-4 py-8 text-center text-[11px] text-slate-500 dark:text-white/45">
                         {t("common.noResults")}
                       </td>
                     </tr>
@@ -459,16 +469,18 @@ const Index: React.FC = () => {
                                 <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-white/85">
                                   {user.first_name} {user.last_name}
                                 </p>
-                                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                                  <span className="text-[10px] text-slate-400 dark:text-white/30">
-                                    {user.role || "-"}
-                                  </span>
-                                  {user.position && (
-                                    <span className="text-[10px] text-slate-400 dark:text-white/30">· {user.position}</span>
-                                  )}
-                                </div>
+                                {user.position && (
+                                  <span className="text-[10px] text-slate-400 dark:text-white/30">{user.position}</span>
+                                )}
                               </div>
                             </div>
+                          </td>
+
+                          {/* Role */}
+                          <td className="min-w-28 px-4 py-3.5">
+                            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10.5px] font-semibold ${getRoleBadgeClass(user.role)}`}>
+                              {user.role || "-"}
+                            </span>
                           </td>
 
                           {/* Contact */}
@@ -493,30 +505,34 @@ const Index: React.FC = () => {
                             </div>
                           </td>
 
-                          {/* Actions */}
+                          {/* Actions — hidden entirely for View-only roles */}
                           <td className="whitespace-nowrap px-4 py-3.5 text-right">
-                            <div className="inline-flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleEdit(user)}
-                                className={editGradientIconBtn}
-                                title={t("user.editUser")}
-                                aria-label={t("user.editUser")}
-                              >
-                                <FiEdit2 className="text-[11px]" />
-                              </button>
-                              {!isCurrentUser && (
+                            {canManage ? (
+                              <div className="inline-flex items-center gap-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => openDeleteModal(user)}
-                                  className={deleteGradientIconBtn}
-                                  title={t("user.deleteUserAction")}
-                                  aria-label={t("user.deleteUserAction")}
+                                  onClick={() => handleEdit(user)}
+                                  className={editGradientIconBtn}
+                                  title={t("user.editUser")}
+                                  aria-label={t("user.editUser")}
                                 >
-                                  <FiTrash2 className="text-[11px]" />
+                                  <FiEdit2 className="text-[11px]" />
                                 </button>
-                              )}
-                            </div>
+                                {!isCurrentUser && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openDeleteModal(user)}
+                                    className={deleteGradientIconBtn}
+                                    title={t("user.deleteUserAction")}
+                                    aria-label={t("user.deleteUserAction")}
+                                  >
+                                    <FiTrash2 className="text-[11px]" />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-slate-300 dark:text-white/15">—</span>
+                            )}
                           </td>
                         </tr>
                       );

@@ -129,7 +129,7 @@ type UpdateInput struct {
 // defense-in-depth check since this endpoint changes account security rules).
 func UpdatePolicy(c *gin.Context) {
 	if !permission.Has(c.GetUint("user_role_id"), "line_settings", true) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "LINE, Settings & Password Policy access required"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "LINE, Services & Password Policy access required"})
 		return
 	}
 

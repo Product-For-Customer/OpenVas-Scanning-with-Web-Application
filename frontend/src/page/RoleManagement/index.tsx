@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  FiShieldOff,
+  FiKey,
   FiPlus,
   FiEdit2,
   FiTrash2,
@@ -20,11 +20,14 @@ import {
 } from "../../services/role";
 import { useLanguage } from "../../contexts/LanguageContext";
 import { useStateContext } from "../../contexts/ProviderContext";
+import { useAuth } from "../../contexts/AuthContext";
 import ModalCreateandUpdateRole from "../../Model/ModalCreateandUpdateRole";
 
 const RoleManagementPage: React.FC = () => {
   const { t } = useLanguage();
   const { currentColor } = useStateContext();
+  const { can } = useAuth();
+  const canManage = can("user_management", "manage");
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [roles, setRoles] = useState<RoleResponse[]>([]);
@@ -79,13 +82,39 @@ const RoleManagementPage: React.FC = () => {
     setModalOpen(true);
   };
 
+  // Only "Admin" and "User" are permanently protected — they can never be
+  // deleted, full stop, regardless of user count (matches backend
+  // isProtectedRole() in role/handler.go). Every other role, including the
+  // built-in Operator/Auditor defaults, is deletable once zero users are
+  // assigned to it, same as any custom role.
+  //
+  // Surfaced two ways: the delete button itself is disabled (with a tooltip
+  // explaining why) so it can never be clicked into an error state, and
+  // openDeleteModal re-checks the same condition as a defense-in-depth guard
+  // in case the role list is stale (e.g. another admin session just assigned
+  // a user to it). The backend re-validates both conditions again
+  // regardless, since frontend state can never be fully trusted.
+  const isProtectedRoleName = (roleName: string) => {
+    const name = roleName.trim().toLowerCase();
+    return name === "admin" || name === "user";
+  };
+
+  // The Admin role specifically (not User) gets no action buttons at all —
+  // its permissions can never be edited (locked to full access on the
+  // backend) and it can never be deleted, so Edit/Delete would just be
+  // dead ends. Matches backend isAdminRole() in role/handler.go.
+  const isAdminRoleRow = (r: RoleResponse) => !!r.is_built_in && r.role.trim().toLowerCase() === "admin";
+
+  const deleteBlockReason = (r: RoleResponse): string | null => {
+    if (isProtectedRoleName(r.role)) return t("roleMgmt.deleteBlockedBuiltIn");
+    if ((r.user_count ?? 0) > 0) return t("roleMgmt.deleteBlockedHasUsers", { count: r.user_count ?? 0 });
+    return null;
+  };
+
   const openDeleteModal = (r: RoleResponse) => {
-    if (r.is_built_in) {
-      message.error(t("roleMgmt.deleteBlockedBuiltIn"));
-      return;
-    }
-    if ((r.user_count ?? 0) > 0) {
-      message.error(t("roleMgmt.deleteBlockedHasUsers", { count: r.user_count ?? 0 }));
+    const blockReason = deleteBlockReason(r);
+    if (blockReason) {
+      message.error(blockReason);
       return;
     }
     setDeleteError("");
@@ -125,7 +154,7 @@ const RoleManagementPage: React.FC = () => {
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg sm:h-13 sm:w-13"
             style={{ background: accentGrad, boxShadow: `0 8px 24px -6px ${currentColor}50` }}
           >
-            <FiShieldOff className="text-[20px] sm:text-[22px]" />
+            <FiKey className="text-[20px] sm:text-[22px]" />
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] sm:text-[10.5px]" style={{ color: currentColor }}>
@@ -138,15 +167,17 @@ const RoleManagementPage: React.FC = () => {
               {t("roleMgmt.subtitle")}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleCreate}
-            className="ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[11.5px] font-medium text-white transition hover:opacity-90"
-            style={{ background: accentGrad }}
-          >
-            <FiPlus className="text-[13px]" />
-            {t("roleMgmt.addRole")}
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={handleCreate}
+              className="ml-auto flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3.5 text-[11.5px] font-medium text-white transition hover:opacity-90"
+              style={{ background: accentGrad }}
+            >
+              <FiPlus className="text-[13px]" />
+              {t("roleMgmt.addRole")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -187,7 +218,7 @@ const RoleManagementPage: React.FC = () => {
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
                         <div className="grid h-7 w-7 place-items-center rounded-lg bg-slate-50 text-slate-500 dark:bg-white/5 dark:text-white/55">
-                          <FiShieldOff className="text-[12px]" />
+                          <FiKey className="text-[12px]" />
                         </div>
                         <span className="text-[12.5px] font-medium text-slate-700 dark:text-white/80">{r.role}</span>
                       </div>
@@ -211,24 +242,45 @@ const RoleManagementPage: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => void handleEdit(r)}
-                          title={t("roleMgmt.edit")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15"
-                        >
-                          <FiEdit2 className="text-[11px]" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(r)}
-                          title={t("roleMgmt.delete")}
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
-                        >
-                          <FiTrash2 className="text-[11px]" />
-                        </button>
-                      </div>
+                      {isAdminRoleRow(r) || !canManage ? (
+                        // The Admin role always has full access and can never
+                        // be renamed-away-from-protected or deleted — there's
+                        // nothing actionable here, so no buttons at all rather
+                        // than disabled ones that invite "why can't I click this?"
+                        // Same em-dash for View-only roles (no user_management Manage).
+                        <span className="text-[10.5px] text-slate-300 dark:text-white/15">—</span>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => void handleEdit(r)}
+                            title={t("roleMgmt.edit")}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:bg-blue-500/15"
+                          >
+                            <FiEdit2 className="text-[11px]" />
+                          </button>
+                          {(() => {
+                            const blockReason = deleteBlockReason(r);
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => openDeleteModal(r)}
+                                disabled={!!blockReason}
+                                title={blockReason ?? t("roleMgmt.delete")}
+                                aria-label={blockReason ?? t("roleMgmt.delete")}
+                                className={[
+                                  "inline-flex h-8 w-8 items-center justify-center rounded-lg border transition",
+                                  blockReason
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 dark:border-white/8 dark:bg-white/5 dark:text-white/20"
+                                    : "border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15",
+                                ].join(" ")}
+                              >
+                                <FiTrash2 className="text-[11px]" />
+                              </button>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

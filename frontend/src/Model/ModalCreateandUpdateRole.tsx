@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiShieldOff, FiX, FiSave, FiAlertTriangle } from "react-icons/fi";
+import { FiKey, FiX, FiSave, FiAlertTriangle, FiLock } from "react-icons/fi";
 import { message } from "antd";
 import {
   CreateRole,
@@ -15,11 +15,10 @@ import type { TranslationKey } from "../locales";
 
 const CATEGORY_LABEL_KEY: Record<string, TranslationKey> = {
   dashboard: "roleMgmt.category.dashboard",
-  scan_management: "roleMgmt.category.scan_management",
   threat_intel: "roleMgmt.category.threat_intel",
-  risk_scoring: "roleMgmt.category.risk_scoring",
   reports_diagrams: "roleMgmt.category.reports_diagrams",
   user_management: "roleMgmt.category.user_management",
+  line_management: "roleMgmt.category.line_management",
   line_settings: "roleMgmt.category.line_settings",
   audit_log: "roleMgmt.category.audit_log",
 };
@@ -29,6 +28,15 @@ type PermState = Record<string, { view: boolean; manage: boolean }>;
 const emptyPermState = (categories: PermissionCategory[]): PermState => {
   const state: PermState = {};
   for (const c of categories) state[c.key] = { view: false, manage: false };
+  return state;
+};
+
+// The Admin role always has full access to every category — enforced here
+// (checkboxes disabled) AND on the backend (role/handler.go UpdateRole
+// rejects any attempt to submit anything less than full access for it).
+const fullAccessPermState = (categories: PermissionCategory[]): PermState => {
+  const state: PermState = {};
+  for (const c of categories) state[c.key] = { view: true, manage: c.supports_manage };
   return state;
 };
 
@@ -51,46 +59,58 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
   const [error, setError] = useState("");
 
   const isEdit = !!role;
-  const lockAdminUserManagement = !!role?.is_built_in && role.role.toLowerCase() === "admin";
+  // The built-in Admin role can do everything and that can never be edited
+  // away — matches the backend's isAdminRole()/adminPermissionsLocked() guard.
+  const isAdminRole = !!role?.is_built_in && role.role.toLowerCase() === "admin";
 
   useEffect(() => {
     if (!open) return;
     setError("");
     if (role) {
-      const next = emptyPermState(categories);
-      for (const [cat, p] of Object.entries(role.permissions)) {
-        next[cat] = { view: p.view, manage: p.manage };
+      if (isAdminRole) {
+        setPerms(fullAccessPermState(categories));
+      } else {
+        const next = emptyPermState(categories);
+        for (const [cat, p] of Object.entries(role.permissions)) {
+          next[cat] = { view: p.view, manage: p.manage };
+        }
+        setPerms(next);
       }
-      setPerms(next);
       setRoleName(role.role);
     } else {
       setPerms(emptyPermState(categories));
       setRoleName("");
     }
-  }, [open, role, categories]);
+  }, [open, role, categories, isAdminRole]);
 
   const permissionsPayload = useMemo<PermissionInput[]>(
     () =>
-      categories.map((c) => ({
-        category: c.key,
-        can_view: perms[c.key]?.view ?? false,
-        can_manage: c.supports_manage ? perms[c.key]?.manage ?? false : false,
-      })),
+      categories.map((c) => {
+        const p = perms[c.key];
+        const view = p?.view ?? false;
+        let manage = false;
+        if (c.supports_manage) {
+          manage = c.manage_mirrors_view ? view : p?.manage ?? false;
+        }
+        return { category: c.key, can_view: view, can_manage: manage };
+      }),
     [categories, perms]
   );
 
-  const toggleView = (key: string) => {
+  const toggleView = (key: string, manageMirrorsView: boolean) => {
+    if (isAdminRole) return;
     setPerms((prev) => {
       const cur = prev[key] ?? { view: false, manage: false };
       const nextView = !cur.view;
-      // Unchecking View also clears Manage — you can't manage what you can't see.
-      return { ...prev, [key]: { view: nextView, manage: nextView ? cur.manage : false } };
+      // Unchecking View also clears Manage — you can't manage what you can't
+      // see. For categories where Manage mirrors View, it always follows.
+      const nextManage = manageMirrorsView ? nextView : nextView ? cur.manage : false;
+      return { ...prev, [key]: { view: nextView, manage: nextManage } };
     });
   };
 
-  const toggleManage = (key: string, supportsManage: boolean) => {
-    if (!supportsManage) return;
-    if (key === "user_management" && lockAdminUserManagement) return;
+  const toggleManage = (key: string, supportsManage: boolean, manageMirrorsView: boolean) => {
+    if (!supportsManage || manageMirrorsView || isAdminRole) return;
     setPerms((prev) => {
       const cur = prev[key] ?? { view: false, manage: false };
       // Checking Manage implies View.
@@ -150,7 +170,7 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white"
               style={{ background: accentGrad }}
             >
-              <FiShieldOff className="text-[15px]" />
+              <FiKey className="text-[15px]" />
             </div>
             <h3 className="text-[13px] font-semibold text-slate-900 dark:text-white">
               {t(isEdit ? "roleMgmt.editTitle" : "roleMgmt.createTitle")}
@@ -172,6 +192,14 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
           <p className="mb-1.5 mt-3.5 block text-[10.5px] font-semibold text-slate-500 dark:text-white/45">
             {t("roleMgmt.permissionsLabel")}
           </p>
+
+          {isAdminRole && (
+            <div className="mb-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[10.5px] text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+              <FiLock className="mt-px shrink-0 text-[11px]" />
+              <span>{t("roleMgmt.adminFullAccessNotice")}</span>
+            </div>
+          )}
+
           <div className="overflow-hidden rounded-xl border border-slate-200/70 dark:border-white/8">
             <table className="w-full">
               <thead>
@@ -190,7 +218,6 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
               <tbody>
                 {categories.map((c) => {
                   const p = perms[c.key] ?? { view: false, manage: false };
-                  const manageLocked = c.key === "user_management" && lockAdminUserManagement;
                   return (
                     <tr key={c.key} className="border-b border-slate-100 last:border-0 dark:border-white/5">
                       <td className="px-3 py-2 text-[11.5px] text-slate-700 dark:text-white/70">
@@ -200,18 +227,26 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
                         <input
                           type="checkbox"
                           checked={p.view}
-                          onChange={() => toggleView(c.key)}
-                          className="h-3.5 w-3.5 cursor-pointer accent-current"
+                          disabled={isAdminRole}
+                          onChange={() => toggleView(c.key, c.manage_mirrors_view)}
+                          title={isAdminRole ? t("roleMgmt.adminLockGuard") : undefined}
+                          className="h-3.5 w-3.5 cursor-pointer accent-current disabled:cursor-not-allowed disabled:opacity-30"
                           style={{ color: currentColor }}
                         />
                       </td>
                       <td className="px-2 py-2 text-center">
                         <input
                           type="checkbox"
-                          checked={c.supports_manage && p.manage}
-                          disabled={!c.supports_manage || manageLocked}
-                          onChange={() => toggleManage(c.key, c.supports_manage)}
-                          title={manageLocked ? t("roleMgmt.adminLockGuard") : undefined}
+                          checked={c.supports_manage && (c.manage_mirrors_view ? p.view : p.manage)}
+                          disabled={!c.supports_manage || c.manage_mirrors_view || isAdminRole}
+                          onChange={() => toggleManage(c.key, c.supports_manage, c.manage_mirrors_view)}
+                          title={
+                            isAdminRole
+                              ? t("roleMgmt.adminLockGuard")
+                              : c.manage_mirrors_view
+                                ? t("roleMgmt.manageMirrorsViewHint")
+                                : undefined
+                          }
                           className="h-3.5 w-3.5 cursor-pointer accent-current disabled:cursor-not-allowed disabled:opacity-30"
                           style={{ color: currentColor }}
                         />

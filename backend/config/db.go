@@ -150,42 +150,27 @@ type defaultRolePermission struct {
 
 // defaultPermissionsByRole mirrors the pre-existing hardcoded access levels
 // (readonly.go's old operatorAllowedPaths + the frontend route tables) so
-// nothing regresses for the 4 built-in roles on the first deploy of the
-// dynamic permission system.
+// nothing regresses for the 2 auto-seeded roles on the first deploy of the
+// dynamic permission system. Operator/Auditor are no longer auto-seeded (see
+// SeedDatabase), so they're not listed here — an admin creating them by hand
+// via /admin/roles picks their permissions explicitly instead.
 var defaultPermissionsByRole = map[string][]defaultRolePermission{
 	"admin": {
-		{"dashboard", true, false},
-		{"scan_management", true, true},
+		{"dashboard", true, true},
 		{"threat_intel", true, true},
-		{"risk_scoring", true, true},
 		{"reports_diagrams", true, true},
 		{"user_management", true, true},
+		{"line_management", true, true},
 		{"line_settings", true, true},
 		{"audit_log", true, false},
 	},
-	"operator": {
-		{"dashboard", true, false},
-		{"scan_management", true, true},
-		{"threat_intel", true, true},
-		{"risk_scoring", true, false},
-		{"reports_diagrams", true, false},
-	},
-	"auditor": {
-		{"dashboard", true, false},
-		{"scan_management", true, false},
-		{"threat_intel", true, false},
-		{"risk_scoring", true, false},
-		{"reports_diagrams", true, false},
-		{"audit_log", true, false},
-	},
 	"user": {
-		{"dashboard", true, false},
+		{"dashboard", true, false}, // also covers the Calendar page
 		{"reports_diagrams", true, false},
-		{"scan_management", true, false}, // Calendar page reads /scan-schedules
 	},
 }
 
-// seedDefaultRolePermissions gives each of the 4 built-in roles their default
+// seedDefaultRolePermissions gives each auto-seeded role its default
 // permission matrix, but ONLY the first time — if a role already has any
 // AppRolePermission rows (because an admin customized it, or this ran
 // before), it's left untouched so restarts never clobber admin edits.
@@ -206,6 +191,140 @@ func seedDefaultRolePermissions() {
 			})
 		}
 		fmt.Printf("✅ Seeded default permissions for role: %s\n", role.Role)
+	}
+}
+
+// migrateMergedPermissionCategories folds any leftover AppRolePermission rows
+// under the old "scan_management"/"risk_scoring" category keys into their
+// 2026-07-03 replacements ("threat_intel"/"dashboard") for every role —
+// custom roles included, not just Admin/User. View/Manage are OR'd into
+// whatever the target category already had so nothing a role could already
+// do is lost. Idempotent: runs on every startup but no-ops once no legacy
+// rows remain.
+func migrateMergedPermissionCategories() {
+	merges := map[string]string{
+		"scan_management": "threat_intel",
+		"risk_scoring":     "dashboard",
+	}
+	for oldCategory, newCategory := range merges {
+		var oldRows []entity.AppRolePermission
+		if err := db.Where("category = ?", oldCategory).Find(&oldRows).Error; err != nil {
+			log.Printf("⚠️ failed to load legacy %q permission rows: %v", oldCategory, err)
+			continue
+		}
+		for _, old := range oldRows {
+			var target entity.AppRolePermission
+			err := db.Where("app_role_id = ? AND category = ?", old.AppRoleID, newCategory).First(&target).Error
+			switch {
+			case err == nil:
+				target.CanView = target.CanView || old.CanView
+				target.CanManage = target.CanManage || old.CanManage
+				if saveErr := db.Save(&target).Error; saveErr != nil {
+					log.Printf("⚠️ failed to merge %q into %q for role %d: %v", oldCategory, newCategory, old.AppRoleID, saveErr)
+					continue
+				}
+			case err == gorm.ErrRecordNotFound:
+				target = entity.AppRolePermission{
+					AppRoleID: old.AppRoleID, Category: newCategory,
+					CanView: old.CanView, CanManage: old.CanManage,
+				}
+				if createErr := db.Create(&target).Error; createErr != nil {
+					log.Printf("⚠️ failed to create merged %q row for role %d: %v", newCategory, old.AppRoleID, createErr)
+					continue
+				}
+			default:
+				log.Printf("⚠️ failed to look up %q row for role %d: %v", newCategory, old.AppRoleID, err)
+				continue
+			}
+			if delErr := db.Unscoped().Delete(&entity.AppRolePermission{}, old.ID).Error; delErr != nil {
+				log.Printf("⚠️ failed to delete legacy %q row (role %d): %v", oldCategory, old.AppRoleID, delErr)
+			}
+		}
+		if len(oldRows) > 0 {
+			fmt.Printf("✅ Migrated %d legacy %q permission row(s) into %q\n", len(oldRows), oldCategory, newCategory)
+		}
+	}
+}
+
+// backfillCategoryFrom copies View/Manage forward from every role's
+// sourceCategory row into its targetCategory row (OR'd, created if missing)
+// without touching or deleting the source row. Used when a category is split
+// in two and the source keeps gating part of what it always gated — so
+// unlike migrateMergedPermissionCategories's merge-and-delete, this is a
+// one-way, non-destructive copy. Idempotent: a role whose target access
+// already covers its source access is skipped. Returns how many roles were
+// touched, for the caller to log with its own context.
+func backfillCategoryFrom(sourceCategory, targetCategory string) int {
+	var sourceRows []entity.AppRolePermission
+	if err := db.Where("category = ?", sourceCategory).Find(&sourceRows).Error; err != nil {
+		log.Printf("⚠️ failed to load %q rows for %q backfill: %v", sourceCategory, targetCategory, err)
+		return 0
+	}
+	migrated := 0
+	for _, r := range sourceRows {
+		if !r.CanView && !r.CanManage {
+			continue
+		}
+		var target entity.AppRolePermission
+		err := db.Where("app_role_id = ? AND category = ?", r.AppRoleID, targetCategory).First(&target).Error
+		switch {
+		case err == nil:
+			needView := r.CanView && !target.CanView
+			needManage := r.CanManage && !target.CanManage
+			if !needView && !needManage {
+				continue // target already covers everything source granted
+			}
+			target.CanView = target.CanView || r.CanView
+			target.CanManage = target.CanManage || r.CanManage
+			if saveErr := db.Save(&target).Error; saveErr != nil {
+				log.Printf("⚠️ failed to backfill %q for role %d: %v", targetCategory, r.AppRoleID, saveErr)
+				continue
+			}
+		case err == gorm.ErrRecordNotFound:
+			target = entity.AppRolePermission{AppRoleID: r.AppRoleID, Category: targetCategory, CanView: r.CanView, CanManage: r.CanManage}
+			if createErr := db.Create(&target).Error; createErr != nil {
+				log.Printf("⚠️ failed to create %q row for role %d: %v", targetCategory, r.AppRoleID, createErr)
+				continue
+			}
+		default:
+			log.Printf("⚠️ failed to look up %q row for role %d: %v", targetCategory, r.AppRoleID, err)
+			continue
+		}
+		migrated++
+	}
+	return migrated
+}
+
+// migrateReportsIntoDashboard backfills the "dashboard" category for any role
+// that already had "reports_diagrams" access, from the 2026-07-03 split of
+// Report + Compliance routes out of "reports_diagrams" into "dashboard"
+// (Diagrams/Locations stayed under "reports_diagrams", just relabeled).
+func migrateReportsIntoDashboard() {
+	if n := backfillCategoryFrom("reports_diagrams", "dashboard"); n > 0 {
+		fmt.Printf("✅ Backfilled dashboard access for %d role(s) from reports_diagrams (Report/Compliance category split)\n", n)
+	}
+}
+
+// migrateLineSettingsSplit backfills the new "line_management" category for
+// any role that already had "line_settings" access, from the 2026-07-03
+// split of LINE bot/notification routes out of "line_settings" into
+// "line_management" ("line_settings" kept only /settings + /password-policy).
+func migrateLineSettingsSplit() {
+	if n := backfillCategoryFrom("line_settings", "line_management"); n > 0 {
+		fmt.Printf("✅ Backfilled line_management access for %d role(s) from line_settings (Line Management category split)\n", n)
+	}
+}
+
+// migrateDashboardManageMirrorsView normalizes existing "dashboard" rows for
+// the 2026-07-03 change making dashboard.CanManage always mirror
+// dashboard.CanView (see entity.PermissionCategory.ManageMirrorsView) —
+// otherwise a role saved before this change could be stuck with
+// View=true/Manage=false until an admin happened to re-save it.
+func migrateDashboardManageMirrorsView() {
+	if err := db.Model(&entity.AppRolePermission{}).
+		Where("category = ? AND can_manage <> can_view", "dashboard").
+		Update("can_manage", gorm.Expr("can_view")).Error; err != nil {
+		log.Printf("⚠️ failed to normalize dashboard can_manage: %v", err)
 	}
 }
 
@@ -249,10 +368,15 @@ func SeedDatabase() {
 
 	// =========================
 	// Seed Roles
-	// เช็คทีละ role แทนที่จะข้ามทั้งตาราง — deploy ที่มีข้อมูลอยู่แล้ว
-	// (Admin/User) ก็ยังได้รับ role ใหม่ (Operator/Auditor) ที่เพิ่มเข้ามาทีหลัง
+	// เช็คทีละ role แทนที่จะข้ามทั้งตาราง — deploy ที่มีข้อมูลอยู่แล้วก็ยังได้
+	// role ใหม่ที่เพิ่มเข้ามาทีหลัง (ถ้ามี)
+	//
+	// Only Admin and User are auto-seeded — with the dynamic role/permission
+	// system, Operator/Auditor (and any other role) are created on demand via
+	// the Role Management UI (/admin/roles) instead of being force-created on
+	// every startup.
 	// =========================
-	for _, roleName := range []string{"Admin", "User", "Operator", "Auditor"} {
+	for _, roleName := range []string{"Admin", "User"} {
 		if _, err := getRoleByName(roleName); err == nil {
 			continue // มีอยู่แล้ว
 		}
@@ -262,12 +386,19 @@ func SeedDatabase() {
 		fmt.Printf("✅ Seeded AppRole: %s\n", roleName)
 	}
 
-	// Backfill IsBuiltIn for deployments that seeded these 4 roles before the
-	// dynamic permission system existed (harmless no-op otherwise).
+	// Backfill IsBuiltIn for deployments that seeded these roles before the
+	// dynamic permission system existed (harmless no-op otherwise). Operator/
+	// Auditor are included here too so any leftover rows from an earlier run
+	// keep their original IsBuiltIn flag — they just won't be recreated if
+	// an admin deletes them now.
 	db.Model(&entity.AppRole{}).
 		Where("LOWER(role) IN ?", []string{"admin", "user", "operator", "auditor"}).
 		Update("is_built_in", true)
 
+	migrateMergedPermissionCategories()
+	migrateReportsIntoDashboard()
+	migrateLineSettingsSplit()
+	migrateDashboardManageMirrorsView()
 	seedDefaultRolePermissions()
 
 	// =========================
