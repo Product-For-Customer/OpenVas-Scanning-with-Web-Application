@@ -33,7 +33,7 @@ const getAdminLinkPath = (linkName: string) => `/admin/${linkName}`;
 const Sidebar: React.FC = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { logout, isAdmin, isOperator, isAuditor } = useAuth();
+  const { logout, permissions } = useAuth();
   const { activeMenu, setActiveMenu, screenSize, currentColor } = useStateContext();
   const { t } = useLanguage();
 
@@ -90,7 +90,7 @@ const Sidebar: React.FC = () => {
   /* ── Load links ─────────────────────────────────────────────── */
   useEffect(() => {
     try {
-      const data   = getLinks({ isAdmin, isOperator, isAuditor });
+      const data   = getLinks(permissions);
       const safeData = Array.isArray(data) ? data : [];
       setMenuLinks(safeData);
 
@@ -109,7 +109,7 @@ const Sidebar: React.FC = () => {
       clearMiniCloseTimer();
       setActiveMiniSection(null);
     }
-  }, [location.pathname, isAdmin, isOperator, isAuditor]);
+  }, [location.pathname, permissions]);
 
   useEffect(() => {
     if (isExpanded) { clearMiniCloseTimer(); setActiveMiniSection(null); }

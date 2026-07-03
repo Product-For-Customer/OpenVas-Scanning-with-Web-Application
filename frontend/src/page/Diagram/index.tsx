@@ -70,7 +70,8 @@ const index: React.FC = () => {
   const { t } = useLanguage();
   const { currentColor } = useStateContext();
   const navigate = useNavigate();
-  const { isUser: isUserRole } = useAuth();
+  const { can } = useAuth();
+  const isUserRole = !can("reports_diagrams", "manage");
 
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 

@@ -10,25 +10,109 @@ import { useLanguage } from "../../contexts/LanguageContext";
 const PAGE_SIZE = 25;
 
 const ACTIONS = [
+  // Auth / account security
+  "auth.login_success",
+  "auth.login_failed",
+  "auth.direct_signup",
+  "auth.direct_password_reset",
+  "totp.enabled",
+  "totp.disabled",
+  "password_policy.updated",
+  // Users
   "user.role_changed",
   "user.created",
   "user.deleted",
-  "setting.updated",
+  // GMP credentials (scan secrets)
+  "credential.created",
+  "credential.updated",
+  "credential.deleted",
+  // GMP trash / permanent delete
+  "trash.restored",
+  "trash.emptied",
+  "trash.permanently_deleted",
+  // GMP tasks
+  "task.created",
+  "task.started",
+  "task.stopped",
+  "task.updated",
+  "task.deleted",
+  // GMP targets
+  "target.created",
+  "target.updated",
   "target.deleted",
+  // GMP port lists
+  "portlist.created",
+  "portlist.updated",
+  "portlist.deleted",
+  "portlist.imported",
+  "portrange.created",
+  "portrange.deleted",
+  // Scan schedules
+  "schedule.created",
+  "schedule.updated",
   "schedule.deleted",
+  // Risk asset criticality
+  "asset_criticality.created",
+  "asset_criticality.updated",
+  "asset_criticality.deleted",
+  // Feeds / intel
+  "feed_schedule.updated",
+  "feed_schedule.triggered",
+  "kev.sync_triggered",
+  // Settings / LINE
+  "setting.updated",
   "line_master.updated",
   "line_master.deleted",
 ] as const;
 
+const GREEN = "#10b981";
+const BLUE = "#3b82f6";
+const RED = "#ef4444";
+const AMBER = "#f59e0b";
+
 const ACTION_COLOR: Record<string, string> = {
-  "user.role_changed": "#f59e0b",
-  "user.created": "#10b981",
-  "user.deleted": "#ef4444",
-  "setting.updated": "#3b82f6",
-  "target.deleted": "#ef4444",
-  "schedule.deleted": "#ef4444",
-  "line_master.updated": "#3b82f6",
-  "line_master.deleted": "#ef4444",
+  "auth.login_success": GREEN,
+  "auth.login_failed": RED,
+  "auth.direct_signup": GREEN,
+  "auth.direct_password_reset": AMBER,
+  "totp.enabled": GREEN,
+  "totp.disabled": RED,
+  "password_policy.updated": BLUE,
+  "user.role_changed": AMBER,
+  "user.created": GREEN,
+  "user.deleted": RED,
+  "credential.created": GREEN,
+  "credential.updated": BLUE,
+  "credential.deleted": RED,
+  "trash.restored": GREEN,
+  "trash.emptied": RED,
+  "trash.permanently_deleted": RED,
+  "task.created": GREEN,
+  "task.started": GREEN,
+  "task.stopped": AMBER,
+  "task.updated": BLUE,
+  "task.deleted": RED,
+  "target.created": GREEN,
+  "target.updated": BLUE,
+  "target.deleted": RED,
+  "portlist.created": GREEN,
+  "portlist.updated": BLUE,
+  "portlist.deleted": RED,
+  "portlist.imported": GREEN,
+  "portrange.created": GREEN,
+  "portrange.deleted": RED,
+  "schedule.created": GREEN,
+  "schedule.updated": BLUE,
+  "schedule.deleted": RED,
+  "asset_criticality.created": GREEN,
+  "asset_criticality.updated": BLUE,
+  "asset_criticality.deleted": RED,
+  "feed_schedule.updated": BLUE,
+  "feed_schedule.triggered": AMBER,
+  "kev.sync_triggered": AMBER,
+  "setting.updated": BLUE,
+  "line_master.updated": BLUE,
+  "line_master.deleted": RED,
 };
 
 const fmtDateTime = (iso: string): string => {

@@ -821,7 +821,8 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
 
 const ReportPreviewIndex: React.FC = () => {
   const { t } = useLanguage();
-  const { isUser } = useAuth();
+  const { can } = useAuth();
+  const isUser = !can("reports_diagrams", "manage");
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const [openEditModal, setOpenEditModal] = useState(false);

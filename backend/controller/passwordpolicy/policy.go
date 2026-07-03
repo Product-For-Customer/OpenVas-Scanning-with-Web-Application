@@ -7,8 +7,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -122,16 +124,12 @@ type UpdateInput struct {
 	ExpiryDays       *int  `json:"expiry_days"`
 }
 
-// PATCH /password-policy  (admin only)
+// PATCH /password-policy  (requires line_settings.manage — enforced by
+// EnforcePermissions middleware for this route already; kept here too as a
+// defense-in-depth check since this endpoint changes account security rules).
 func UpdatePolicy(c *gin.Context) {
-	roleRaw, exists := c.Get("user_role")
-	if !exists {
-		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
-		return
-	}
-	role, ok := roleRaw.(string)
-	if !ok || strings.ToLower(strings.TrimSpace(role)) != "admin" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "admin access required"})
+	if !permission.Has(c.GetUint("user_role_id"), "line_settings", true) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "LINE, Settings & Password Policy access required"})
 		return
 	}
 
@@ -158,8 +156,14 @@ func UpdatePolicy(c *gin.Context) {
 		upsertConfig(db, "password_expiry_days", strconv.Itoa(v))
 	}
 
+	updated := GetCurrentPolicy(db)
+	audit.Log(c, "password_policy.updated", "password_policy", "", fmt.Sprintf(
+		"min_length=%d uppercase=%t number=%t special=%t expiry_days=%d",
+		updated.MinLength, updated.RequireUppercase, updated.RequireNumber, updated.RequireSpecial, updated.ExpiryDays,
+	))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "policy updated",
-		"data":    GetCurrentPolicy(db),
+		"data":    updated,
 	})
 }

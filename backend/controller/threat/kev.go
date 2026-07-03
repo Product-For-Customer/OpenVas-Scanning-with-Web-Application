@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
@@ -552,6 +553,7 @@ func TriggerKEVSync(c *gin.Context) {
 		}
 	}()
 
+	audit.Log(c, "kev.sync_triggered", "kev_catalog", "", "manually triggered CISA KEV catalog sync")
 	c.JSON(http.StatusOK, gin.H{"message": "kev sync started"})
 }
 

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
@@ -508,6 +509,7 @@ func CreateAssetCriticality(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "asset_criticality.created", "asset_criticality", fmt.Sprintf("%d", item.ID), fmt.Sprintf("set %s criticality=%s", item.HostIP, item.Criticality))
 	c.JSON(http.StatusCreated, gin.H{"data": item})
 }
 
@@ -567,6 +569,7 @@ func UpdateAssetCriticality(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "asset_criticality.updated", "asset_criticality", id, fmt.Sprintf("updated criticality for %s", item.HostIP))
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
@@ -577,5 +580,6 @@ func DeleteAssetCriticality(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "asset_criticality.deleted", "asset_criticality", id, "deleted asset criticality entry")
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }

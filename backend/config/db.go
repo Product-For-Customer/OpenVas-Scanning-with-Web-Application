@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Tawunchai/openvas/entity"
@@ -83,6 +84,7 @@ func SetupDatabase() {
 	err := db.AutoMigrate(
 		&entity.OTP{},
 		&entity.AppRole{},
+		&entity.AppRolePermission{},
 		&entity.AppUser{},
 		&entity.SendEmail{},
 		&entity.AppLineMaster{},
@@ -139,6 +141,74 @@ func getRoleByName(roleName string) (*entity.AppRole, error) {
 	return &role, nil
 }
 
+// defaultRolePermission is one row of the built-in default permission matrix.
+type defaultRolePermission struct {
+	category  string
+	canView   bool
+	canManage bool
+}
+
+// defaultPermissionsByRole mirrors the pre-existing hardcoded access levels
+// (readonly.go's old operatorAllowedPaths + the frontend route tables) so
+// nothing regresses for the 4 built-in roles on the first deploy of the
+// dynamic permission system.
+var defaultPermissionsByRole = map[string][]defaultRolePermission{
+	"admin": {
+		{"dashboard", true, false},
+		{"scan_management", true, true},
+		{"threat_intel", true, true},
+		{"risk_scoring", true, true},
+		{"reports_diagrams", true, true},
+		{"user_management", true, true},
+		{"line_settings", true, true},
+		{"audit_log", true, false},
+	},
+	"operator": {
+		{"dashboard", true, false},
+		{"scan_management", true, true},
+		{"threat_intel", true, true},
+		{"risk_scoring", true, false},
+		{"reports_diagrams", true, false},
+	},
+	"auditor": {
+		{"dashboard", true, false},
+		{"scan_management", true, false},
+		{"threat_intel", true, false},
+		{"risk_scoring", true, false},
+		{"reports_diagrams", true, false},
+		{"audit_log", true, false},
+	},
+	"user": {
+		{"dashboard", true, false},
+		{"reports_diagrams", true, false},
+		{"scan_management", true, false}, // Calendar page reads /scan-schedules
+	},
+}
+
+// seedDefaultRolePermissions gives each of the 4 built-in roles their default
+// permission matrix, but ONLY the first time — if a role already has any
+// AppRolePermission rows (because an admin customized it, or this ran
+// before), it's left untouched so restarts never clobber admin edits.
+func seedDefaultRolePermissions() {
+	for roleName, perms := range defaultPermissionsByRole {
+		role, err := getRoleByName(strings.ToUpper(roleName[:1]) + roleName[1:])
+		if err != nil {
+			continue
+		}
+		var count int64
+		db.Model(&entity.AppRolePermission{}).Where("app_role_id = ?", role.ID).Count(&count)
+		if count > 0 {
+			continue // already has a matrix (seeded before, or admin customized it)
+		}
+		for _, p := range perms {
+			db.Create(&entity.AppRolePermission{
+				AppRoleID: role.ID, Category: p.category, CanView: p.canView, CanManage: p.canManage,
+			})
+		}
+		fmt.Printf("✅ Seeded default permissions for role: %s\n", role.Role)
+	}
+}
+
 // =========================
 // Helper: หา StatusNotify ตามชื่อ
 // =========================
@@ -186,11 +256,19 @@ func SeedDatabase() {
 		if _, err := getRoleByName(roleName); err == nil {
 			continue // มีอยู่แล้ว
 		}
-		if err := db.Create(&entity.AppRole{Role: roleName}).Error; err != nil {
+		if err := db.Create(&entity.AppRole{Role: roleName, IsBuiltIn: true}).Error; err != nil {
 			log.Fatalf("❌ failed to seed AppRole %q: %v", roleName, err)
 		}
 		fmt.Printf("✅ Seeded AppRole: %s\n", roleName)
 	}
+
+	// Backfill IsBuiltIn for deployments that seeded these 4 roles before the
+	// dynamic permission system existed (harmless no-op otherwise).
+	db.Model(&entity.AppRole{}).
+		Where("LOWER(role) IN ?", []string{"admin", "user", "operator", "auditor"}).
+		Update("is_built_in", true)
+
+	seedDefaultRolePermissions()
 
 	// =========================
 	// Seed AppUser

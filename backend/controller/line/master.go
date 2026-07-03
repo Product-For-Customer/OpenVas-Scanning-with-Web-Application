@@ -10,6 +10,7 @@ import (
 	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -213,12 +214,12 @@ func ListAppLineMaster(c *gin.Context) {
 		return
 	}
 
-	isAdmin := strings.ToLower(c.GetString("user_role")) == "admin"
+	canManageLineSettings := permission.Has(c.GetUint("user_role_id"), "line_settings", true)
 
 	response := make([]AppLineMasterResponse, 0, len(lineMasters))
 	for _, item := range lineMasters {
 		mapped := mapAppLineMasterResponse(item)
-		if !isAdmin {
+		if !canManageLineSettings {
 			mapped.Token = ""
 		}
 		response = append(response, mapped)

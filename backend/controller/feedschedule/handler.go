@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
@@ -171,6 +172,7 @@ func UpdateSchedule(c *gin.Context) {
 	s.NextRunAt = next
 
 	db.Save(&s)
+	audit.Log(c, "feed_schedule.updated", "feed_schedule", feedType, fmt.Sprintf("updated %s feed schedule (freq=%s, enabled=%t)", feedType, s.Frequency, s.Enabled))
 	c.JSON(http.StatusOK, toDTO(s))
 }
 
@@ -181,6 +183,7 @@ func TriggerFeedNow(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "feed_schedule.triggered", "feed_schedule", feedType, fmt.Sprintf("manually triggered %s feed update", feedType))
 	c.JSON(http.StatusOK, gin.H{"message": "Feed update triggered: " + feedType})
 }
 

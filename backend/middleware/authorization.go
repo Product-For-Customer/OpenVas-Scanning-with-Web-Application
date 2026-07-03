@@ -3,11 +3,11 @@ package middlewares
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
@@ -35,12 +35,15 @@ func Authorizes() gin.HandlerFunc {
 		c.Set("user_id", claims.UserID)
 		c.Set("user_email", claims.Email)
 		c.Set("user_role", claims.Role)
+		c.Set("user_role_id", claims.RoleID)
 
 		// ── Maintenance mode check ──────────────────────────────────────────
-		// Admins bypass entirely. Non-admins are blocked only after the grace
-		// period (60s) that starts when an admin turns maintenance mode on,
-		// giving the frontend countdown modal time to auto-logout gracefully.
-		if strings.ToLower(claims.Role) != "admin" {
+		// Roles with user_management.manage bypass entirely (the closest
+		// dynamic equivalent of "is an admin-tier role"). Everyone else is
+		// blocked only after the grace period (60s) that starts when
+		// maintenance mode is turned on, giving the frontend countdown modal
+		// time to auto-logout gracefully.
+		if !permission.Has(claims.RoleID, "user_management", true) {
 			db := config.DB()
 			var cfg entity.SystemConfig
 			if err := db.Where("key = ?", "argus_maintenance_mode").First(&cfg).Error; err == nil && cfg.Value == "true" {

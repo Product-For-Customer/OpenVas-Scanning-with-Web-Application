@@ -40,6 +40,13 @@ export type LoginResponse = {
   masked_email?: string;
 };
 
+export type CategoryPerm = {
+  view: boolean;
+  manage: boolean;
+};
+
+export type PermissionMap = Record<string, CategoryPerm>;
+
 export type MeResponse = {
   id: number;
   email: string;
@@ -50,6 +57,8 @@ export type MeResponse = {
   location: string;
   position: string;
   role: string;
+  role_id: number;
+  permissions: PermissionMap;
 };
 
 export type LogoutResponse = {

@@ -92,7 +92,8 @@ const CONTAINER_PADDING = 12;
 const DiagramNodePage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isUser: isUserRole } = useAuth();
+  const { can } = useAuth();
+  const isUserRole = !can("reports_diagrams", "manage");
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;

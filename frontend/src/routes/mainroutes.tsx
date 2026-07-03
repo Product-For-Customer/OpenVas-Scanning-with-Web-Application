@@ -2,6 +2,7 @@ import { lazy } from "react";
 import { Navigate, useRoutes, type RouteObject } from "react-router-dom";
 import Loadable from "../component/load/Loadable";
 import { useAuth } from "../contexts/AuthContext";
+import type { PermissionMap } from "../services/auth";
 
 // ===== Admin Pages =====
 const Dashboard          = Loadable(lazy(() => import("../page/Dashboard/index")));
@@ -11,6 +12,7 @@ const StatusTargetData   = Loadable(lazy(() => import("../page/Target/Status/dat
 const LineNotification   = Loadable(lazy(() => import("../page/Line/index")));
 const LineIntegrations   = Loadable(lazy(() => import("../page/Line/Integrations/index")));
 const User               = Loadable(lazy(() => import("../page/User/index")));
+const RoleManagement     = Loadable(lazy(() => import("../page/RoleManagement/index")));
 const MainLayout         = Loadable(lazy(() => import("../component/structure/MainLayout")));
 const Service            = Loadable(lazy(() => import("../component/structure/navbar/Service")));
 const VulnerabilityByDevice = Loadable(lazy(() => import("../page/Target/TableTarget/vulnerability/index")));
@@ -49,153 +51,70 @@ const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
 const AfterLoginAnimation = Loadable(lazy(() => import("../page/Authentication/animation/route")));
 
 // ======================= ROUTES =======================
+// Single source of truth: every /admin/* page + the permission category that
+// gates it (undefined = always visible to any authenticated role, used only
+// for the personal Account/profile page which is self-service on the backend
+// too). ConfigRoutes filters this list against the logged-in role's
+// permission matrix — replacing the old per-role duplicated route arrays.
 
-const AdminRoutes = (): RouteObject[] => [
+type AdminRouteDef = RouteObject & { category?: string };
+
+const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
+  { index: true,                                element: <Dashboard /> },
+  { path: "dashboard",                          element: <Dashboard />, category: "dashboard" },
+  { path: "profile",                            element: <Account /> }, // self-service, always visible
+  { path: "target",                             element: <Target />, category: "dashboard" },
+  { path: "vulnerability",                      element: <Vulnerability />, category: "dashboard" },
+  { path: "vulnerability-by-device",            element: <VulnerabilityByDevice />, category: "dashboard" },
+  { path: "vulnerability-by-level",              element: <VulnerabilityByLevel />, category: "dashboard" },
+  { path: "vulnerability-detail",                element: <VulnerabilityDetail />, category: "dashboard" },
+  { path: "vulnerability-delta",                  element: <VulnerabilityDelta />, category: "dashboard" },
+  { path: "status-target-data",                  element: <StatusTargetData />, category: "dashboard" },
+  { path: "host/:ip",                            element: <HostDetail />, category: "dashboard" },
+
+  { path: "scan-management",                     element: <ScanManagement />, category: "scan_management" },
+  { path: "recycle-bin",                          element: <RecycleBin />, category: "scan_management" },
+  { path: "calendar",                             element: <CalendarPage />, category: "scan_management" },
+
+  { path: "threat-intelligence",                  element: <ThreatIntelligence />, category: "threat_intel" },
+  { path: "threat-intelligence/detail/:hostIp",   element: <ThreatIntelligenceDetail />, category: "threat_intel" },
+  { path: "feed-status",                          element: <FeedStatus />, category: "threat_intel" },
+  { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
+
+  { path: "report",                              element: <Report />, category: "reports_diagrams" },
+  { path: "diagrams",                            element: <Diagram />, category: "reports_diagrams" },
+  { path: "diagram-node",                         element: <DiagramNode />, category: "reports_diagrams" },
+  { path: "compliance",                          element: <Compliance />, category: "reports_diagrams" },
+  { path: "compliance/:framework/:controlId",     element: <ComplianceControl />, category: "reports_diagrams" },
+
+  { path: "user",                                element: <User />, category: "user_management" },
+  { path: "roles",                               element: <RoleManagement />, category: "user_management" },
+
+  { path: "line notification",                    element: <LineNotification />, category: "line_settings" },
+  { path: "line notification/integrations",       element: <LineIntegrations />, category: "line_settings" },
+  { path: "service",                              element: <Service />, category: "line_settings" },
+  { path: "password-policy",                      element: <PasswordPolicy />, category: "line_settings" },
+
+  { path: "audit-log",                           element: <AuditLog />, category: "audit_log" },
+];
+
+const canView = (permissions: PermissionMap, category?: string) =>
+  !category || permissions[category]?.view === true;
+
+const AdminRoutes = (permissions: PermissionMap): RouteObject[] => [
   { path: "/", element: <Navigate to="/admin" replace /> },
   {
     path: "/admin",
     element: <MainLayout />,
     children: [
-      { index: true,                                          element: <Dashboard /> },
-      { path: "dashboard",                                    element: <Dashboard /> },
-      { path: "profile",                                      element: <Account /> },
-      { path: "target",                                       element: <Target /> },
-      { path: "vulnerability",                                element: <Vulnerability /> },
-      { path: "line notification",                            element: <LineNotification /> },
-      { path: "line notification/integrations",               element: <LineIntegrations /> },
-      { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
-      { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
-      { path: "user",                                         element: <User /> },
-      { path: "vulnerability-detail",                         element: <VulnerabilityDetail /> },
-      { path: "service",                                      element: <Service /> },
-      { path: "report",                                       element: <Report /> },
-      { path: "diagrams",                                     element: <Diagram /> },
-      { path: "diagram-node",                                 element: <DiagramNode /> },
-      { path: "status-target-data",                           element: <StatusTargetData /> },
-      { path: "threat-intelligence",                          element: <ThreatIntelligence /> },
-      { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
-      { path: "scan-management",                              element: <ScanManagement /> },
-      { path: "compliance",                                   element: <Compliance /> },
-      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
-      { path: "password-policy",                              element: <PasswordPolicy /> },
-      { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
-      { path: "host/:ip",                                     element: <HostDetail /> },
-      { path: "calendar",                                     element: <CalendarPage /> },
-      { path: "feed-status",                                  element: <FeedStatus /> },
-      { path: "threat-config",                                element: <ThreatConfig /> },
-      { path: "recycle-bin",                                  element: <RecycleBin /> },
-      { path: "audit-log",                                    element: <AuditLog /> },
+      ...ADMIN_CHILD_ROUTES.filter((r) => canView(permissions, r.category)),
+      // Unauthorized deep-links (bookmarked, typed) redirect home instead of
+      // rendering a page the role can't reach.
+      { path: "*", element: <Navigate to="/admin" replace /> },
     ],
   },
   { path: "after-login-animation",  element: <AfterLoginAnimation /> },
   { path: "*",               element: <Navigate to="/admin" replace /> },
-];
-
-// Operator: full scan-management access (targets, tasks, credentials, port
-// lists, schedules, trash) but no User Management, Service, Password Policy,
-// or LINE integration — those stay admin-only governance tools.
-const OperatorRoutes = (): RouteObject[] => [
-  { path: "/", element: <Navigate to="/admin" replace /> },
-  {
-    path: "/admin",
-    element: <MainLayout />,
-    children: [
-      { index: true,                                          element: <Dashboard /> },
-      { path: "dashboard",                                    element: <Dashboard /> },
-      { path: "profile",                                      element: <Account /> },
-      { path: "target",                                       element: <Target /> },
-      { path: "vulnerability",                                element: <Vulnerability /> },
-      { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
-      { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
-      { path: "vulnerability-detail",                         element: <VulnerabilityDetail /> },
-      { path: "diagrams",                                     element: <Diagram /> },
-      { path: "diagram-node",                                 element: <DiagramNode /> },
-      { path: "report",                                       element: <Report /> },
-      { path: "status-target-data",                           element: <StatusTargetData /> },
-      { path: "threat-intelligence",                          element: <ThreatIntelligence /> },
-      { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
-      { path: "scan-management",                              element: <ScanManagement /> },
-      { path: "compliance",                                   element: <Compliance /> },
-      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
-      { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
-      { path: "host/:ip",                                     element: <HostDetail /> },
-      { path: "calendar",                                     element: <CalendarPage /> },
-      { path: "feed-status",                                  element: <FeedStatus /> },
-      { path: "threat-config",                                element: <ThreatConfig /> },
-      { path: "recycle-bin",                                  element: <RecycleBin /> },
-    ],
-  },
-  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
-  { path: "*",               element: <Navigate to="/admin" replace /> },
-];
-
-// Auditor: same visibility as Operator plus the Audit Log page — but every
-// write endpoint is blocked server-side (backend/middleware/readonly.go), so
-// this role is read-only in practice even though the pages render normally.
-const AuditorRoutes = (): RouteObject[] => [
-  { path: "/", element: <Navigate to="/admin" replace /> },
-  {
-    path: "/admin",
-    element: <MainLayout />,
-    children: [
-      { index: true,                                          element: <Dashboard /> },
-      { path: "dashboard",                                    element: <Dashboard /> },
-      { path: "profile",                                      element: <Account /> },
-      { path: "target",                                       element: <Target /> },
-      { path: "vulnerability",                                element: <Vulnerability /> },
-      { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
-      { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
-      { path: "vulnerability-detail",                         element: <VulnerabilityDetail /> },
-      { path: "diagrams",                                     element: <Diagram /> },
-      { path: "diagram-node",                                 element: <DiagramNode /> },
-      { path: "report",                                       element: <Report /> },
-      { path: "status-target-data",                           element: <StatusTargetData /> },
-      { path: "threat-intelligence",                          element: <ThreatIntelligence /> },
-      { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
-      { path: "scan-management",                              element: <ScanManagement /> },
-      { path: "compliance",                                   element: <Compliance /> },
-      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
-      { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
-      { path: "host/:ip",                                     element: <HostDetail /> },
-      { path: "calendar",                                     element: <CalendarPage /> },
-      { path: "feed-status",                                  element: <FeedStatus /> },
-      { path: "threat-config",                                element: <ThreatConfig /> },
-      { path: "recycle-bin",                                  element: <RecycleBin /> },
-      { path: "audit-log",                                    element: <AuditLog /> },
-    ],
-  },
-  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
-  { path: "*",               element: <Navigate to="/admin" replace /> },
-];
-
-
-const UserRoutes = (): RouteObject[] => [
-  { path: "/", element: <Navigate to="/admin" replace /> },
-  {
-    path: "/admin",
-    element: <MainLayout />,
-    children: [
-      { index: true,                           element: <Dashboard /> },
-      { path: "dashboard",                     element: <Dashboard /> },
-      { path: "profile",                       element: <Account /> },
-      { path: "target",                        element: <Target /> },
-      { path: "status-target-data",            element: <StatusTargetData /> },
-      { path: "vulnerability",                 element: <Vulnerability /> },
-      { path: "vulnerability-by-device",       element: <VulnerabilityByDevice /> },
-      { path: "vulnerability-detail",          element: <VulnerabilityDetail /> },
-      { path: "vulnerability-by-level",        element: <VulnerabilityByLevel /> },
-      { path: "diagrams",                      element: <Diagram /> },
-      { path: "diagram-node",                  element: <DiagramNode /> },
-      { path: "host/:ip",                      element: <HostDetail /> },
-      { path: "calendar",                      element: <CalendarPage /> },
-      { path: "report",                        element: <Report /> },
-      { path: "compliance",                    element: <Compliance /> },
-      { path: "compliance/:framework/:controlId", element: <ComplianceControl /> },
-      { path: "vulnerability-delta",           element: <VulnerabilityDelta /> },
-    ],
-  },
-  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
-  { path: "*", element: <Navigate to="/admin" replace /> },
 ];
 
 // ── Public auth routes (unauthenticated) ──
@@ -220,7 +139,7 @@ const MainRoutes = (): RouteObject[] => [
 
 // ======================= MAIN CONFIG =======================
 function ConfigRoutes() {
-  const { isLoading, isAuthed, isAdmin, isUser, isOperator, isAuditor } = useAuth();
+  const { isLoading, isAuthed, permissions } = useAuth();
 
   if (isLoading) {
     return useRoutes([{ path: "*", element: <Loader /> }]);
@@ -230,23 +149,7 @@ function ConfigRoutes() {
     return useRoutes(MainRoutes());
   }
 
-  if (isAdmin) {
-    return useRoutes(AdminRoutes());
-  }
-
-  if (isOperator) {
-    return useRoutes(OperatorRoutes());
-  }
-
-  if (isAuditor) {
-    return useRoutes(AuditorRoutes());
-  }
-
-  if (isUser) {
-    return useRoutes(UserRoutes());
-  }
-
-  return useRoutes(MainRoutes());
+  return useRoutes(AdminRoutes(permissions));
 }
 
 export default ConfigRoutes;

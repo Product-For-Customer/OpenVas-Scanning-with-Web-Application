@@ -20,6 +20,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/otp"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
+	"github.com/Tawunchai/openvas/controller/role"
 	"github.com/Tawunchai/openvas/controller/schedule"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/controller/threat"
@@ -104,7 +105,7 @@ func main() {
 	// ===== Protected Routes =====
 	authorized := r.Group("")
 	authorized.Use(middlewares.Authorizes())
-	authorized.Use(middlewares.RestrictReadOnlyUsers())
+	authorized.Use(middlewares.EnforcePermissions())
 	{
 		authorized.GET("/auth/me", auth.Me)
 
@@ -139,6 +140,13 @@ func main() {
 		authorized.POST("/create-users", user.CreateUser) // complete
 		authorized.GET("/roles", user.ListRoles) // complete
 		authorized.PATCH("/admin/users/:id", user.UpdateUserIDByAdmin) // complete
+
+		// ===== Dynamic Role & Permission Management =====
+		authorized.GET("/permission-categories", role.ListPermissionCategories)
+		authorized.GET("/roles/:id", role.GetRole)
+		authorized.POST("/roles", role.CreateRole)
+		authorized.PATCH("/roles/:id", role.UpdateRole)
+		authorized.DELETE("/roles/:id", role.DeleteRole)
 
 		// ===== Protected Routes for OTP Management Authorization =====
 		authorized.GET("/send-emails", otp.ListSendEmail) // complete

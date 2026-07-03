@@ -150,7 +150,7 @@ const NavButton: React.FC<NavBtnProps> = ({
 // ─── NavSearch (visible input field) ─────────────────────────────────────────
 
 const NavSearch: React.FC = () => {
-  const { isAdmin, isOperator, isAuditor } = useAuth();
+  const { permissions } = useAuth();
   const { t, lang } = useLanguage();
   const { currentColor } = useStateContext();
   const navigate = useNavigate();
@@ -165,7 +165,7 @@ const NavSearch: React.FC = () => {
   // Build flat page list (respects role)
   const allPages = useMemo<PageResult[]>(() => {
     const pages: PageResult[] = [];
-    for (const section of getLinks({ isAdmin, isOperator, isAuditor })) {
+    for (const section of getLinks(permissions)) {
       for (const link of section.links) {
         pages.push({
           name:        link.name,
@@ -178,7 +178,7 @@ const NavSearch: React.FC = () => {
       }
     }
     return pages;
-  }, [isAdmin, isOperator, isAuditor]);
+  }, [permissions]);
 
   // Filter by query (label, section, name, description)
   const filtered = useMemo<PageResult[]>(() => {

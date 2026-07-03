@@ -13,12 +13,15 @@ import (
 	"math/big"
 	"net/http"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -162,15 +165,17 @@ type LoginInput struct {
 }
 
 type MeResponse struct {
-	ID        uint   `json:"id"`
-	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Profile   string `json:"profile"`
-	Phone     string `json:"phone_number"`
-	Location  string `json:"location"`
-	Position  string `json:"position"`
-	Role      string `json:"role"`
+	ID          uint                              `json:"id"`
+	Email       string                            `json:"email"`
+	FirstName   string                            `json:"first_name"`
+	LastName    string                            `json:"last_name"`
+	Profile     string                            `json:"profile"`
+	Phone       string                            `json:"phone_number"`
+	Location    string                            `json:"location"`
+	Position    string                            `json:"position"`
+	Role        string                            `json:"role"`
+	RoleID      uint                              `json:"role_id"`
+	Permissions map[string]permission.CategoryPerm `json:"permissions"`
 }
 
 type SignUpInput struct {
@@ -306,6 +311,7 @@ func Login(c *gin.Context) {
 		Where("LOWER(email) = LOWER(?)", input.Email).
 		First(&user).Error
 	if err != nil {
+		audit.LogAs(c, 0, input.Email, "", "auth.login_failed", "user", "", "no account with this email")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid email or password",
 		})
@@ -313,6 +319,7 @@ func Login(c *gin.Context) {
 	}
 
 	if !services.CheckPasswordHash(input.Password, user.Password) {
+		audit.LogAs(c, user.ID, user.Email, "", "auth.login_failed", "user", strconv.FormatUint(uint64(user.ID), 10), "wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid email or password",
 		})
@@ -363,13 +370,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, err := services.GenerateJWT(user.ID, user.Email, roleName)
+	token, err := services.GenerateJWT(user.ID, user.Email, roleName, user.AppRoleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
 	}
 
 	setAuthCookie(c, token)
+	audit.LogAs(c, user.ID, user.Email, roleName, "auth.login_success", "user", strconv.FormatUint(uint64(user.ID), 10), "direct login")
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login success",
 		"user": gin.H{
@@ -433,7 +441,7 @@ func VerifyEmailLoginOTPHandler(c *gin.Context) {
 		roleName = user.AppRole.Role
 	}
 
-	token, err := services.GenerateJWT(user.ID, user.Email, roleName)
+	token, err := services.GenerateJWT(user.ID, user.Email, roleName, user.AppRoleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -441,6 +449,7 @@ func VerifyEmailLoginOTPHandler(c *gin.Context) {
 
 	clearLoginOTPCookie(c)
 	setAuthCookie(c, token)
+	audit.LogAs(c, user.ID, user.Email, roleName, "auth.login_success", "user", strconv.FormatUint(uint64(user.ID), 10), "login via email OTP")
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login success",
 		"user": gin.H{
@@ -526,6 +535,7 @@ func DirectSignUpHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
 	}
+	audit.LogAs(c, user.ID, user.Email, "", "auth.direct_signup", "user", strconv.FormatUint(uint64(user.ID), 10), "self-registered without OTP")
 	c.JSON(http.StatusOK, gin.H{"message": "สมัครสมาชิกสำเร็จ"})
 }
 
@@ -571,6 +581,7 @@ func DirectResetPasswordHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update password"})
 			return
 		}
+		audit.LogAs(c, user.ID, user.Email, "", "auth.direct_password_reset", "user", strconv.FormatUint(uint64(user.ID), 10), "password reset without OTP")
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "เปลี่ยนรหัสผ่านสำเร็จ"})
 }
@@ -643,7 +654,7 @@ func VerifyTOTPLoginHandler(c *gin.Context) {
 		roleName = user.AppRole.Role
 	}
 
-	token, err := services.GenerateJWT(user.ID, user.Email, roleName)
+	token, err := services.GenerateJWT(user.ID, user.Email, roleName, user.AppRoleID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -651,6 +662,7 @@ func VerifyTOTPLoginHandler(c *gin.Context) {
 
 	clearPendingTOTPCookie(c)
 	setAuthCookie(c, token)
+	audit.LogAs(c, user.ID, user.Email, roleName, "auth.login_success", "user", strconv.FormatUint(uint64(user.ID), 10), "login via TOTP")
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "login success",
@@ -692,15 +704,17 @@ func Me(c *gin.Context) {
 	}
 
 	response := MeResponse{
-		ID:        user.ID,
-		Email:     user.Email,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Profile:   user.Profile,
-		Phone:     user.PhoneNumber,
-		Location:  user.Location,
-		Position:  user.Position,
-		Role:      roleName,
+		ID:          user.ID,
+		Email:       user.Email,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Profile:     user.Profile,
+		Phone:       user.PhoneNumber,
+		Location:    user.Location,
+		Position:    user.Position,
+		Role:        roleName,
+		RoleID:      user.AppRoleID,
+		Permissions: permission.GetPermissions(user.AppRoleID),
 	}
 
 	c.JSON(http.StatusOK, response)

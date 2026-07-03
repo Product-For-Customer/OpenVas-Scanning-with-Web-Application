@@ -14,6 +14,7 @@ type JWTClaims struct {
 	UserID uint   `json:"user_id"`
 	Email  string `json:"email"`
 	Role   string `json:"role"`
+	RoleID uint   `json:"role_id"`
 	jwt.RegisteredClaims
 }
 
@@ -25,11 +26,12 @@ func GetJWTSecret() string {
 	return secret
 }
 
-func GenerateJWT(userID uint, email string, role string) (string, error) {
+func GenerateJWT(userID uint, email string, role string, roleID uint) (string, error) {
 	claims := JWTClaims{
 		UserID: userID,
 		Email:  email,
 		Role:   role,
+		RoleID: roleID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

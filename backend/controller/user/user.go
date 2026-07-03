@@ -11,6 +11,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
@@ -313,8 +314,8 @@ func UpdateUserByID(c *gin.Context) {
 
 	newRoleName := ""
 	if input.AppRoleID != nil {
-		if strings.ToLower(c.GetString("user_role")) != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "only an admin can change a user's role"})
+		if !permission.Has(c.GetUint("user_role_id"), "user_management", true) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only a role with User & Role Management access can change a user's role"})
 			return
 		}
 
@@ -417,8 +418,10 @@ func DeleteUserByID(c *gin.Context) {
 }
 
 type RoleResponse struct {
-	ID   uint   `json:"id"`
-	Role string `json:"role"`
+	ID        uint   `json:"id"`
+	Role      string `json:"role"`
+	IsBuiltIn bool   `json:"is_built_in"`
+	UserCount int64  `json:"user_count"`
 }
 
 type UpdateUserByAdminInput struct {
@@ -444,11 +447,27 @@ func ListRoles(c *gin.Context) {
 		return
 	}
 
+	type roleCount struct {
+		AppRoleID uint
+		Count     int64
+	}
+	var counts []roleCount
+	db.Model(&entity.AppUser{}).
+		Select("app_role_id, count(*) as count").
+		Group("app_role_id").
+		Scan(&counts)
+	countByRole := make(map[uint]int64, len(counts))
+	for _, rc := range counts {
+		countByRole[rc.AppRoleID] = rc.Count
+	}
+
 	response := make([]RoleResponse, 0, len(roles))
 	for _, role := range roles {
 		response = append(response, RoleResponse{
-			ID:   role.ID,
-			Role: role.Role,
+			ID:        role.ID,
+			Role:      role.Role,
+			IsBuiltIn: role.IsBuiltIn,
+			UserCount: countByRole[role.ID],
 		})
 	}
 

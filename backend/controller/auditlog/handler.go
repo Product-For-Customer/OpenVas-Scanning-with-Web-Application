@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/permission"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,13 +41,13 @@ func mapAuditLogResponse(a entity.AuditLog) AuditLogResponse {
 }
 
 // ListAuditLogs godoc
-// GET /audit-logs — admin/auditor only (checked here since the read-only
-// middleware allows GET for every authenticated role by default).
+// GET /audit-logs — requires audit_log view permission (also enforced by the
+// EnforcePermissions middleware for this route; kept here too as
+// defense-in-depth since this endpoint exposes cross-account activity).
 // Query params: action, actor_id, from (RFC3339), to (RFC3339), page, page_size
 func ListAuditLogs(c *gin.Context) {
-	role := strings.ToLower(c.GetString("user_role"))
-	if role != "admin" && role != "auditor" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only admin or auditor can view audit logs"})
+	if !permission.Has(c.GetUint("user_role_id"), "audit_log", false) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Audit Log access required"})
 		return
 	}
 

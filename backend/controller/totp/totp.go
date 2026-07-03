@@ -10,9 +10,11 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
@@ -179,6 +181,7 @@ func VerifyTOTPSetup(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "totp.enabled", "user", strconv.FormatUint(uint64(user.ID), 10), fmt.Sprintf("TOTP enabled for %s", user.Email))
 	c.JSON(http.StatusOK, gin.H{"message": "TOTP enabled successfully"})
 }
 
@@ -198,5 +201,6 @@ func DisableTOTP(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "totp.disabled", "user", strconv.FormatUint(uint64(user.ID), 10), fmt.Sprintf("TOTP disabled for %s", user.Email))
 	c.JSON(http.StatusOK, gin.H{"message": "TOTP disabled"})
 }

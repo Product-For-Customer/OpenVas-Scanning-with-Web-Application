@@ -7,7 +7,7 @@ import React, {
   useState,
   useCallback,
 } from "react";
-import { GetMe, Logout, type MeResponse } from "../services/auth";
+import { GetMe, Logout, type MeResponse, type PermissionMap } from "../services/auth";
 
 type AuthUser = MeResponse;
 
@@ -15,11 +15,16 @@ type AuthContextValue = {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthed: boolean;
+  /** Derived convenience flag: true when the role can manage User & Role
+   *  Management — the closest dynamic equivalent of "is an admin-tier role".
+   *  Kept only for the couple of places (maintenance countdown, password
+   *  policy self-guard) that just need a quick superuser check. */
   isAdmin: boolean;
-  isUser: boolean;
-  isOperator: boolean;
-  isAuditor: boolean;
   role: string;
+  roleId: number;
+  permissions: PermissionMap;
+  /** can("scan_management", "manage") / can("dashboard", "view") */
+  can: (category: string, level: "view" | "manage") => boolean;
   refreshMe: () => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -124,21 +129,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const value = useMemo<AuthContextValue>(() => {
     const isAuthed = !!user;
     const role = String(user?.role ?? "").trim().toLowerCase();
+    const roleId = user?.role_id ?? 0;
+    const permissions = user?.permissions ?? {};
 
-    const isAdmin = role === "admin";
-    const isUser = role === "user";
-    const isOperator = role === "operator";
-    const isAuditor = role === "auditor";
+    const can = (category: string, level: "view" | "manage") => {
+      const perm = permissions[category];
+      if (!perm) return false;
+      return level === "manage" ? perm.manage : perm.view;
+    };
+
+    const isAdmin = can("user_management", "manage");
 
     return {
       user,
       isLoading,
       isAuthed,
       isAdmin,
-      isUser,
-      isOperator,
-      isAuditor,
       role,
+      roleId,
+      permissions,
+      can,
       refreshMe,
       logout,
     };

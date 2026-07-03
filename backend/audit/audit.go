@@ -15,13 +15,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Log records one audit entry. Best-effort: a failure to write the log entry
-// is reported server-side but never aborts the caller's request.
+// Log records one audit entry using the actor identity attached to the
+// request context by the auth middleware. Best-effort: a failure to write
+// the log entry is reported server-side but never aborts the caller's request.
 func Log(c *gin.Context, action, targetType, targetID, detail string) {
+	LogAs(c, c.GetUint("user_id"), c.GetString("user_email"), c.GetString("user_role"), action, targetType, targetID, detail)
+}
+
+// LogAs records one audit entry with an explicit actor, for routes that run
+// before (or without) an authenticated session — e.g. login attempts, where
+// the attempted email is known but no JWT-derived context exists yet.
+func LogAs(c *gin.Context, actorID uint, actorEmail, actorRole, action, targetType, targetID, detail string) {
 	entry := entity.AuditLog{
-		ActorID:    c.GetUint("user_id"),
-		ActorEmail: c.GetString("user_email"),
-		ActorRole:  c.GetString("user_role"),
+		ActorID:    actorID,
+		ActorEmail: actorEmail,
+		ActorRole:  actorRole,
 		Action:     action,
 		TargetType: targetType,
 		TargetID:   targetID,

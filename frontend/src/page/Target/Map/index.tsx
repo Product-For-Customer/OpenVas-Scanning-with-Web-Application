@@ -261,7 +261,8 @@ const MapDevice: React.FC = () => {
   const { currentColor } = useStateContext();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
   const mapRef = useRef<MapRef | null>(null);
-  const { isUser } = useAuth();
+  const { can } = useAuth();
+  const isUser = !can("reports_diagrams", "manage");
 
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<Device[]>([]);

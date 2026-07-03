@@ -346,6 +346,7 @@ func CreateSchedule(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "schedule.created", "schedule", strconv.FormatUint(uint64(s.ID), 10), fmt.Sprintf("created %s schedule for task %q", req.Frequency, s.TaskName))
 	c.JSON(http.StatusCreated, toDTO(s))
 }
 
@@ -381,6 +382,7 @@ func UpdateSchedule(c *gin.Context) {
 	}
 
 	db.Save(&s)
+	audit.Log(c, "schedule.updated", "schedule", idStr, fmt.Sprintf("updated schedule for task %q (enabled=%t)", s.TaskName, s.Enabled))
 	c.JSON(http.StatusOK, toDTO(s))
 }
 

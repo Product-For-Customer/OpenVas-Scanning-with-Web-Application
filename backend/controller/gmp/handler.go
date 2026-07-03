@@ -1,6 +1,7 @@
 package gmp
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -333,6 +334,7 @@ func CreateGMPTarget(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "target.created", "target", id, fmt.Sprintf("created target %q (%s)", req.Name, req.Hosts))
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "target created"})
 }
 
@@ -407,6 +409,7 @@ func CreateGMPTask(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "task.created", "task", id, fmt.Sprintf("created task %q for target %s", req.Name, req.TargetID))
 	c.JSON(http.StatusCreated, gin.H{
 		"id":      id,
 		"message": "task created successfully",
@@ -427,6 +430,7 @@ func StartGMPTask(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "task.started", "task", taskID, fmt.Sprintf("started scan, report %s", reportID))
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "scan started",
 		"report_id": reportID,
@@ -446,6 +450,7 @@ func StopGMPTask(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "task.stopped", "task", taskID, "stopped scan")
 	c.JSON(http.StatusOK, gin.H{"message": "scan stopped"})
 }
 
@@ -513,6 +518,7 @@ func UpdateGMPTask(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "task.updated", "task", taskID, fmt.Sprintf("updated task %q", req.Name))
 	c.JSON(http.StatusOK, gin.H{"message": "task updated successfully"})
 }
 
@@ -529,6 +535,7 @@ func DeleteGMPTask(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "task.deleted", "task", taskID, "deleted GMP task")
 	c.JSON(http.StatusOK, gin.H{"message": "task deleted"})
 }
 
@@ -608,6 +615,7 @@ func CreateGMPPortList(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portlist.created", "port_list", id, fmt.Sprintf("created port list %q (%s)", req.Name, req.PortRange))
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list created"})
 }
 
@@ -622,6 +630,7 @@ func DeleteGMPPortList(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portlist.deleted", "port_list", id, "deleted port list")
 	c.JSON(http.StatusOK, gin.H{"message": "port list deleted"})
 }
 
@@ -645,6 +654,7 @@ func ImportGMPPortList(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portlist.imported", "port_list", id, "imported port list from XML file")
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list imported"})
 }
 
@@ -740,11 +750,13 @@ func CreateGMPPortRange(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portrange.created", "port_list", portListID, fmt.Sprintf("added %s range %d-%d", req.Protocol, req.Start, req.End))
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port range created"})
 }
 
 // DELETE /gmp/port-lists/:id/ranges/:range_id
 func DeleteGMPPortRange(c *gin.Context) {
+	portListID := strings.TrimSpace(c.Param("id"))
 	rangeID := strings.TrimSpace(c.Param("range_id"))
 	if rangeID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "range id required"})
@@ -754,6 +766,7 @@ func DeleteGMPPortRange(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portrange.deleted", "port_list", portListID, fmt.Sprintf("deleted port range %s", rangeID))
 	c.JSON(http.StatusOK, gin.H{"message": "port range deleted"})
 }
 
@@ -837,6 +850,7 @@ func CreateGMPCredential(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "credential.created", "credential", id, fmt.Sprintf("created %s credential %q (login=%q, secrets not logged)", req.Type, req.Name, req.Login))
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "credential created"})
 }
 
@@ -930,6 +944,7 @@ func RestoreGMPTrash(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "trash.restored", "trash_item", id, "restored item from trash")
 	c.JSON(http.StatusOK, gin.H{"message": "restored"})
 }
 
@@ -939,6 +954,7 @@ func EmptyGMPTrash(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "trash.emptied", "trash", "", "permanently emptied entire trashcan")
 	c.JSON(http.StatusOK, gin.H{"message": "trashcan emptied"})
 }
 
@@ -949,6 +965,7 @@ func DeleteGMPTrashTask(c *gin.Context) {
 	if err := DeleteTaskPermanent(id); err != nil {
 		services.RespondInternalError(c, err); return
 	}
+	audit.Log(c, "trash.permanently_deleted", "task", id, "permanently deleted task from trash")
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
 
@@ -959,6 +976,7 @@ func DeleteGMPTrashTarget(c *gin.Context) {
 	if err := DeleteTargetPermanent(id); err != nil {
 		services.RespondInternalError(c, err); return
 	}
+	audit.Log(c, "trash.permanently_deleted", "target", id, "permanently deleted target from trash")
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
 
@@ -969,6 +987,7 @@ func DeleteGMPTrashCredential(c *gin.Context) {
 	if err := DeleteCredentialPermanent(id); err != nil {
 		services.RespondInternalError(c, err); return
 	}
+	audit.Log(c, "trash.permanently_deleted", "credential", id, "permanently deleted credential from trash")
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
 
@@ -979,6 +998,7 @@ func DeleteGMPTrashPortList(c *gin.Context) {
 	if err := DeletePortListPermanent(id); err != nil {
 		services.RespondInternalError(c, err); return
 	}
+	audit.Log(c, "trash.permanently_deleted", "port_list", id, "permanently deleted port list from trash")
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
 
@@ -1006,6 +1026,7 @@ func UpdateGMPPortList(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "portlist.updated", "port_list", id, fmt.Sprintf("updated port list %q", req.Name))
 	c.JSON(http.StatusOK, gin.H{"message": "port list updated"})
 }
 
@@ -1039,6 +1060,7 @@ func UpdateGMPCredential(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "credential.updated", "credential", id, fmt.Sprintf("updated %s credential %q (secrets not logged)", req.Type, req.Name))
 	c.JSON(http.StatusOK, gin.H{"message": "credential updated"})
 }
 
@@ -1071,6 +1093,7 @@ func UpdateGMPTarget(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "target.updated", "target", id, fmt.Sprintf("updated target %q (%s)", req.Name, req.Hosts))
 	c.JSON(http.StatusOK, gin.H{"message": "target updated"})
 }
 
@@ -1085,5 +1108,6 @@ func DeleteGMPCredential(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
+	audit.Log(c, "credential.deleted", "credential", id, "deleted GMP credential")
 	c.JSON(http.StatusOK, gin.H{"message": "credential deleted"})
 }

@@ -16,17 +16,23 @@ import {
   FiSliders,
   FiTrash2,
   FiClipboard,
+  FiShieldOff,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
 import type { TranslationKey } from "../../../locales";
+import type { PermissionMap } from "../../../services/auth";
 
 export type SidebarLink = {
   name: string;
   icon?: React.ReactNode;
   badge?: string;
   labelKey: TranslationKey;
+  /** Permission category this link's page needs View access to. Omit for
+   *  links that should always show (none currently — every page maps to a
+   *  category now that access is dynamic). */
+  category?: string;
 };
 
 export type SidebarSection = {
@@ -36,95 +42,71 @@ export type SidebarSection = {
   titleKey: TranslationKey;
 };
 
-type GetLinksParams = {
-  isAdmin: boolean;
-  isOperator?: boolean;
-  isAuditor?: boolean;
-};
+const canView = (permissions: PermissionMap, category?: string) =>
+  !category || permissions[category]?.view === true;
 
-export const getLinks = ({ isAdmin, isOperator = false, isAuditor = false }: GetLinksParams): SidebarSection[] => {
-  // Operator/Auditor see the same scan-management surface as Admin (Operator
-  // can write, Auditor is read-only — enforced server-side either way), but
-  // never the user/settings/LINE governance tools further below.
-  const canSeeScanOps = isAdmin || isOperator || isAuditor;
-
-  // Apps — Calendar & Diagrams for everyone; Recycle Bin is a scan-lifecycle
-  // tool (Operator can restore/empty, Auditor views only); Audit Log is for
-  // accountability review (Admin + Auditor only).
-  const appsLinks: SidebarLink[] = [
-    { name: "calendar", icon: <BsCalendar3 />,      labelKey: "nav.calendar" },
-    { name: "diagrams", icon: <FaProjectDiagram />, labelKey: "nav.diagrams" },
-  ];
-  if (canSeeScanOps) {
-    appsLinks.push({ name: "recycle-bin", icon: <FiTrash2 />, labelKey: "nav.recycleBin" });
-  }
-  if (isAdmin || isAuditor) {
-    appsLinks.push({ name: "audit-log", icon: <FiClipboard />, labelKey: "nav.auditLog" });
-  }
+export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
+  const filterLinks = (links: SidebarLink[]) => links.filter((l) => canView(permissions, l.category));
 
   const sections: SidebarSection[] = [
     {
       title: "Dashboard",
       titleKey: "section.dashboard",
       icon: <MdDashboardCustomize />,
-      links: [
-        { name: "dashboard",     icon: <MdSpaceDashboard />,   labelKey: "nav.dashboard" },
-        { name: "vulnerability", icon: <FiShield />,            labelKey: "nav.vulnerability" },
-        { name: "target",        icon: <FiTarget />,            labelKey: "nav.target" },
-      ],
+      links: filterLinks([
+        { name: "dashboard",     icon: <MdSpaceDashboard />, labelKey: "nav.dashboard", category: "dashboard" },
+        { name: "vulnerability", icon: <FiShield />,          labelKey: "nav.vulnerability", category: "dashboard" },
+        { name: "target",        icon: <FiTarget />,          labelKey: "nav.target", category: "dashboard" },
+      ]),
     },
     {
       title: "Apps",
       titleKey: "section.apps",
       icon: <BsCalendar3 />,
-      links: appsLinks,
+      links: filterLinks([
+        { name: "calendar",    icon: <BsCalendar3 />,      labelKey: "nav.calendar", category: "scan_management" },
+        { name: "diagrams",    icon: <FaProjectDiagram />, labelKey: "nav.diagrams", category: "reports_diagrams" },
+        { name: "recycle-bin", icon: <FiTrash2 />,         labelKey: "nav.recycleBin", category: "scan_management" },
+        { name: "audit-log",   icon: <FiClipboard />,      labelKey: "nav.auditLog", category: "audit_log" },
+      ]),
     },
-  ];
-
-  if (canSeeScanOps) {
-    sections.push({
+    {
       title: "Threat Intelligence",
       titleKey: "section.threatIntelligence",
       icon: <FiZap />,
-      links: [
-        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog" },
-        { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus" },
-        { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig" },
-        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement" },
-      ],
-    });
-  }
+      links: filterLinks([
+        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
+        { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus", category: "threat_intel" },
+        { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig", category: "threat_intel" },
+        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement", category: "scan_management" },
+      ]),
+    },
+    {
+      title: "Management",
+      titleKey: "section.management",
+      icon: <MdAdminPanelSettings />,
+      links: filterLinks([
+        { name: "line notification", icon: <FiBell />,      labelKey: "nav.lineNotification", category: "line_settings" },
+        { name: "user",              icon: <FiUsers />,      labelKey: "nav.user", category: "user_management" },
+        { name: "roles",             icon: <FiShieldOff />,  labelKey: "nav.roles", category: "user_management" },
+        { name: "password-policy",   icon: <FiLock />,       labelKey: "nav.passwordPolicy", category: "line_settings" },
+        { name: "service",           icon: <FiServer />,     labelKey: "nav.service", category: "line_settings" },
+      ]),
+    },
+    {
+      title: "Analytics",
+      titleKey: "section.analytics",
+      icon: <FiBarChart2 />,
+      links: filterLinks([
+        { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "reports_diagrams" },
+        { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "reports_diagrams" },
+        { name: "vulnerability-delta", icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta", category: "dashboard" },
+      ]),
+    },
+  ];
 
-  if (isAdmin) {
-    sections.push(
-      {
-        title: "Management",
-        titleKey: "section.management",
-        icon: <MdAdminPanelSettings />,
-        links: [
-          { name: "line notification", icon: <FiBell />,    labelKey: "nav.lineNotification" },
-          { name: "user",              icon: <FiUsers />,   labelKey: "nav.user" },
-          { name: "password-policy",   icon: <FiLock />,    labelKey: "nav.passwordPolicy" },
-          { name: "service",           icon: <FiServer />,  labelKey: "nav.service" },
-        ],
-      },
-    );
-  }
-
-  // Analytics — shown to everyone (admin AND user); report download / email /
-  // line "send" actions stay allowed for the read-only user role.
-  sections.push({
-    title: "Analytics",
-    titleKey: "section.analytics",
-    icon: <FiBarChart2 />,
-    links: [
-      { name: "report",               icon: <FiFileText />, labelKey: "nav.report" },
-      { name: "compliance",           icon: <FiShield />,   labelKey: "nav.compliance" },
-      { name: "vulnerability-delta",  icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta" },
-    ],
-  });
-
-  return sections;
+  // Drop sections that ended up with no visible links for this role.
+  return sections.filter((s) => s.links.length > 0);
 };
 
 export const themeColors = [
@@ -139,4 +121,3 @@ export const themeColors = [
   { name: "orange",      color: "#F97316" },
   { name: "magenta",     color: "#EC4899" },
 ];
-

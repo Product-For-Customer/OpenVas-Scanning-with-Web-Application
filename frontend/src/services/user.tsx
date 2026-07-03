@@ -170,6 +170,8 @@ export const DeleteUserByID = async (
 export type RoleResponse = {
   id: number;
   role: string;
+  is_built_in?: boolean;
+  user_count?: number;
 };
 
 export type UpdateUserByAdminPayload = {
