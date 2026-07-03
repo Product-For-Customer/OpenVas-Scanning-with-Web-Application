@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -458,9 +459,7 @@ func SendPDFToLine(c *gin.Context) {
 		captureURL = buildCaptureURL(taskIDs)
 		filePath, err = generatePDFFromCapturePage(captureURL)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": fmt.Sprintf("generate pdf failed: %v", err),
-			})
+			services.RespondInternalError(c, err)
 			return
 		}
 	}
@@ -484,9 +483,7 @@ func SendPDFToLine(c *gin.Context) {
 
 	items, err := listAppNotificationsByIDs(requestedIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("load app notifications failed: %v", err),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -603,9 +600,7 @@ func DownloadPDF(c *gin.Context) {
 		captureURL = buildCaptureURL(taskIDs)
 		filePath, err = generatePDFFromCapturePage(captureURL)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": fmt.Sprintf("generate pdf failed: %v", err),
-			})
+			services.RespondInternalError(c, err)
 			return
 		}
 	}
@@ -722,7 +717,7 @@ func UpdateAppReportByID(c *gin.Context) {
 		Updates(updates)
 
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
+		services.RespondInternalError(c, tx.Error)
 		return
 	}
 

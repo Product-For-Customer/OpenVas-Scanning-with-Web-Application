@@ -9,6 +9,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -277,7 +278,7 @@ ORDER BY va.severity DESC, va.vuln_name
 	var rows []vulnRow
 	finalVulnSQL := strings.ReplaceAll(vulnSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
 	if err := db.Raw(finalVulnSQL, ip).Scan(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -536,7 +537,7 @@ ORDER BY
 	var items []SLABreachItem
 	finalSlaSQL := strings.ReplaceAll(slaSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
 	if err := db.Raw(finalSlaSQL).Scan(&items).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	if items == nil {
@@ -594,7 +595,7 @@ ORDER BY r.host, COUNT(DISTINCT COALESCE(NULLIF(BTRIM(n.name), ''), r.nvt::text)
 
 	var rows []AttackSurfaceRow
 	if err := db.Raw(matrixSQL).Scan(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 

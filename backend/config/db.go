@@ -102,6 +102,7 @@ func SetupDatabase() {
 		&entity.SystemConfig{},
 		&entity.AutoScanSchedule{},
 		&entity.FeedUpdateSchedule{},
+		&entity.AuditLog{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
@@ -178,20 +179,17 @@ func SeedDatabase() {
 
 	// =========================
 	// Seed Roles
-	// ถ้ามีข้อมูลแล้ว ข้ามทั้งตาราง
+	// เช็คทีละ role แทนที่จะข้ามทั้งตาราง — deploy ที่มีข้อมูลอยู่แล้ว
+	// (Admin/User) ก็ยังได้รับ role ใหม่ (Operator/Auditor) ที่เพิ่มเข้ามาทีหลัง
 	// =========================
-	if tableHasAnyRows(&entity.AppRole{}) {
-		fmt.Println("⏭️ Skip seeding AppRole: table already has data")
-	} else {
-		roles := []entity.AppRole{
-			{Role: "Admin"},
-			{Role: "User"},
+	for _, roleName := range []string{"Admin", "User", "Operator", "Auditor"} {
+		if _, err := getRoleByName(roleName); err == nil {
+			continue // มีอยู่แล้ว
 		}
-
-		if err := db.Create(&roles).Error; err != nil {
-			log.Fatalf("❌ failed to seed AppRole: %v", err)
+		if err := db.Create(&entity.AppRole{Role: roleName}).Error; err != nil {
+			log.Fatalf("❌ failed to seed AppRole %q: %v", roleName, err)
 		}
-		fmt.Println("✅ Seeded AppRole")
+		fmt.Printf("✅ Seeded AppRole: %s\n", roleName)
 	}
 
 	// =========================

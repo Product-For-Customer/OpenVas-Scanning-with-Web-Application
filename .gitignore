@@ -18,7 +18,7 @@ backend/*.exe
 logs/
 
 # ===== Environment =====
-# .env  ← ไม่ ignore เพราะ main ใช้ run dev
+.env
 
 # ===== OS =====
 .DS_Store

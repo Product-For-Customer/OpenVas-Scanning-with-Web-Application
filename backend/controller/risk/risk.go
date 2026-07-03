@@ -13,6 +13,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm/clause"
 )
@@ -304,7 +305,7 @@ LIMIT 500`
 
 	if err := db.Raw(scanQuery).Scan(&rows).Error; err != nil {
 		log.Printf("⚠️ Risk summary SQL error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	log.Printf("🔍 Risk summary: found %d CVE-mapped results", len(rows))
@@ -504,10 +505,19 @@ func CreateAssetCriticality(c *gin.Context) {
 		BusinessImpact:   input.BusinessImpact,
 	}
 	if err := db.Create(&item).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"data": item})
+}
+
+type updateAssetCritInput struct {
+	HostIP           *string `json:"host_ip"`
+	Criticality      *string `json:"criticality"`
+	CriticalityScore *int    `json:"criticality_score"`
+	AssetType        *string `json:"asset_type"`
+	Owner            *string `json:"owner"`
+	BusinessImpact   *string `json:"business_impact"`
 }
 
 func UpdateAssetCriticality(c *gin.Context) {
@@ -518,21 +528,43 @@ func UpdateAssetCriticality(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	var input assetCritInput
+	var input updateAssetCritInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	updates := map[string]interface{}{
-		"host_ip":           input.HostIP,
-		"criticality":       input.Criticality,
-		"criticality_score": input.CriticalityScore,
-		"asset_type":        input.AssetType,
-		"owner":             input.Owner,
-		"business_impact":   input.BusinessImpact,
+
+	updates := map[string]interface{}{}
+	if input.HostIP != nil {
+		updates["host_ip"] = *input.HostIP
 	}
+	if input.Criticality != nil {
+		updates["criticality"] = *input.Criticality
+	}
+	if input.CriticalityScore != nil {
+		score := *input.CriticalityScore
+		if score < 1 || score > 5 {
+			score = 3
+		}
+		updates["criticality_score"] = score
+	}
+	if input.AssetType != nil {
+		updates["asset_type"] = *input.AssetType
+	}
+	if input.Owner != nil {
+		updates["owner"] = *input.Owner
+	}
+	if input.BusinessImpact != nil {
+		updates["business_impact"] = *input.BusinessImpact
+	}
+
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no fields to update"})
+		return
+	}
+
 	if err := db.Model(&item).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": item})
@@ -542,7 +574,7 @@ func DeleteAssetCriticality(c *gin.Context) {
 	db := config.DB()
 	id := c.Param("id")
 	if err := db.Delete(&entity.AppAssetCriticality{}, id).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})

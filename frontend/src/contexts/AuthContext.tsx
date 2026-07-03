@@ -17,6 +17,8 @@ type AuthContextValue = {
   isAuthed: boolean;
   isAdmin: boolean;
   isUser: boolean;
+  isOperator: boolean;
+  isAuditor: boolean;
   role: string;
   refreshMe: () => Promise<void>;
   logout: () => Promise<void>;
@@ -125,6 +127,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const isAdmin = role === "admin";
     const isUser = role === "user";
+    const isOperator = role === "operator";
+    const isAuditor = role === "auditor";
 
     return {
       user,
@@ -132,6 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       isAuthed,
       isAdmin,
       isUser,
+      isOperator,
+      isAuditor,
       role,
       refreshMe,
       logout,

@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -68,7 +69,7 @@ func TriggerHistoryNotifyCleanup(c *gin.Context) {
 
 	deleted, err := deleteOldHistoryNotifies()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 

@@ -397,6 +397,14 @@ func VerifyEmailLoginOTPHandler(c *gin.Context) {
 		return
 	}
 
+	if locked, secondsRemaining := services.IsOTPLocked(claims.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "too many failed OTP attempts, please try again later",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+
 	var req struct {
 		Code string `json:"code" binding:"required"`
 	}
@@ -406,9 +414,12 @@ func VerifyEmailLoginOTPHandler(c *gin.Context) {
 	}
 
 	if strings.TrimSpace(req.Code) != claims.OTPCode {
+		services.RecordOTPFailure(claims.Email)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired OTP code"})
 		return
 	}
+
+	services.ResetOTPAttempts(claims.Email)
 
 	db := config.DB()
 	var user entity.AppUser
@@ -788,6 +799,14 @@ func VerifyOTPSignUp(c *gin.Context) {
 		return
 	}
 
+	if locked, secondsRemaining := services.IsOTPLocked(req.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "พยายามยืนยัน OTP ผิดหลายครั้งเกินไป กรุณาลองใหม่ภายหลัง",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+
 	db := config.DB()
 
 	// 1) ตรวจสอบ email ซ้ำก่อน
@@ -814,6 +833,7 @@ func VerifyOTPSignUp(c *gin.Context) {
 
 	// 2) หา OTP ตาม email และ code
 	if err := db.Where("email = ? AND code = ?", req.Email, req.OTP).First(&otpRecord).Error; err != nil {
+		services.RecordOTPFailure(req.Email)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "OTP ไม่ถูกต้อง",
 		})
@@ -912,6 +932,8 @@ func VerifyOTPSignUp(c *gin.Context) {
 
 	// preload role ถ้าต้องการ
 	db.Preload("AppRole").First(&user, user.ID)
+
+	services.ResetOTPAttempts(req.Email)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "สมัครสมาชิกสำเร็จ",

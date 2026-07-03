@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -94,7 +95,7 @@ func SendPDFToEmail(c *gin.Context) {
 	captureURL := buildCaptureURL(taskIDs)
 	filePath, err := generatePDFFromCapturePage(captureURL)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate PDF: " + err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	defer os.Remove(filePath) // clean up temp file
@@ -122,7 +123,7 @@ func SendPDFToEmail(c *gin.Context) {
 
 	// 6. Send email with PDF attachment
 	if err := sendEmailWithPDFAttachment(sendMail.Email, sendMail.PassApp, userEmail, fileName, pdfBytes); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to send email: " + err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 

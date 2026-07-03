@@ -1,6 +1,7 @@
 package setting
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -8,8 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -108,6 +111,12 @@ func GetMaintenanceStatus(c *gin.Context) {
 
 // GetSettings godoc
 // GET /settings → { "timezone": "Asia/Bangkok", ... }
+// publicSettingsBlocklist holds SystemConfig keys that must never be exposed
+// through this public, unauthenticated endpoint (secrets, tokens, etc.).
+var publicSettingsBlocklist = map[string]bool{
+	"line_channel_secret": true,
+}
+
 func GetSettings(c *gin.Context) {
 	db := config.DB()
 	var rows []entity.SystemConfig
@@ -115,6 +124,9 @@ func GetSettings(c *gin.Context) {
 
 	result := make(map[string]string, len(rows))
 	for _, r := range rows {
+		if publicSettingsBlocklist[r.Key] {
+			continue
+		}
 		result[r.Key] = r.Value
 	}
 	c.JSON(http.StatusOK, result)
@@ -145,13 +157,13 @@ func UpdateSetting(c *gin.Context) {
 	if err := db.Where("key = ?", body.Key).First(&cfg).Error; err != nil {
 		cfg = entity.SystemConfig{Key: body.Key, Value: body.Value}
 		if err2 := db.Create(&cfg).Error; err2 != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err2.Error()})
+			services.RespondInternalError(c, err2)
 			return
 		}
 	} else {
 		cfg.Value = body.Value
 		if err2 := db.Save(&cfg).Error; err2 != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err2.Error()})
+			services.RespondInternalError(c, err2)
 			return
 		}
 	}
@@ -168,6 +180,12 @@ func UpdateSetting(c *gin.Context) {
 	if body.Key == maintenanceKey && body.Value == "true" {
 		upsertMaintenanceActiveAt(db)
 	}
+
+	loggedValue := body.Value
+	if publicSettingsBlocklist[body.Key] {
+		loggedValue = "••••••••" // never write secrets into the audit trail either
+	}
+	audit.Log(c, "setting.updated", "setting", body.Key, fmt.Sprintf("set %q to %q", body.Key, loggedValue))
 
 	c.JSON(http.StatusOK, gin.H{"key": cfg.Key, "value": cfg.Value})
 }

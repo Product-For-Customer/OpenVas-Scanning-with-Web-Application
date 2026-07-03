@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
@@ -19,7 +20,7 @@ type JWTClaims struct {
 func GetJWTSecret() string {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		return "super-secret-dev-key-change-this"
+		log.Fatal("[FATAL] JWT_SECRET is not set. Refusing to start with an insecure default signing key.")
 	}
 	return secret
 }

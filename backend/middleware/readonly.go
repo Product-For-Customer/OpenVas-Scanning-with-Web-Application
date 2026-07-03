@@ -24,10 +24,41 @@ var selfServiceOwnIDPaths = map[string]bool{
 	"/update-users/:id": true, // update own profile (name/avatar/password)
 }
 
-// RestrictReadOnlyUsers enforces that the "user" role is GET-only across the
-// API. Everything else (POST/PUT/PATCH/DELETE) is rejected with 403, except
-// a small allowlist of self-service account actions above. The "admin" role
-// is unaffected.
+// operatorAllowedPaths — write endpoints the "operator" role may call on ANY
+// resource (not just their own), scoped to GMP scan management: targets,
+// tasks, credentials, port lists, the trash/recycle bin, and auto-scan
+// schedules. Everything else (users, roles, settings, LINE, password policy)
+// stays admin-only.
+var operatorAllowedPaths = map[string]bool{
+	"/gmp/targets":                         true,
+	"/gmp/targets/:id":                     true,
+	"/gmp/tasks":                           true,
+	"/gmp/tasks/:id":                       true,
+	"/gmp/tasks/:id/start":                 true,
+	"/gmp/tasks/:id/stop":                  true,
+	"/gmp/port-lists":                      true,
+	"/gmp/port-lists/import":               true,
+	"/gmp/port-lists/:id":                  true,
+	"/gmp/port-lists/:id/ranges":           true,
+	"/gmp/port-lists/:id/ranges/:range_id": true,
+	"/gmp/credentials":                     true,
+	"/gmp/credentials/:id":                 true,
+	"/gmp/trash":                           true,
+	"/gmp/trash/restore/:id":               true,
+	"/gmp/trash/task/:id":                  true,
+	"/gmp/trash/target/:id":                true,
+	"/gmp/trash/credential/:id":            true,
+	"/gmp/trash/portlist/:id":              true,
+	"/scan-schedules":                      true,
+	"/scan-schedules/:id":                  true,
+}
+
+// RestrictReadOnlyUsers enforces an explicit per-role allow-list for every
+// write (non-GET) request. "admin" passes everything. "operator" additionally
+// passes the GMP scan-management paths above. Every other role (including
+// "user", "auditor", and any future role) only gets the small self-service
+// allowlist below — anything not explicitly allowed is a 403 by default, so
+// adding a new role can never silently grant unrestricted write access.
 func RestrictReadOnlyUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		switch c.Request.Method {
@@ -37,12 +68,17 @@ func RestrictReadOnlyUsers() gin.HandlerFunc {
 		}
 
 		role := strings.ToLower(c.GetString("user_role"))
-		if role != "user" {
+		if role == "admin" {
 			c.Next()
 			return
 		}
 
 		routePath := c.FullPath()
+
+		if role == "operator" && operatorAllowedPaths[routePath] {
+			c.Next()
+			return
+		}
 
 		if selfServiceOpenPaths[routePath] {
 			c.Next()

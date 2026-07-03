@@ -3,6 +3,7 @@ package automation
 import (
 	"bytes"
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -259,9 +260,6 @@ func notifyFeedUpdateToAllNotifications(resultType string, message string, outpu
 
 func TriggerFeedUpdateHandler(c *gin.Context) {
 	requiredToken := strings.TrimSpace(os.Getenv("AUTOMATION_TOKEN"))
-	if requiredToken == "" {
-		requiredToken = "dev-automation-token"
-	}
 	gotToken := c.GetHeader("X-Automation-Token")
 
 	var req FeedUpdateRequest
@@ -327,7 +325,7 @@ func TriggerFeedUpdateHandler(c *gin.Context) {
 		return
 	}
 
-	if gotToken == "" || gotToken != requiredToken {
+	if gotToken == "" || subtle.ConstantTimeCompare([]byte(gotToken), []byte(requiredToken)) != 1 {
 		now := time.Now()
 		errMsg := "invalid automation token"
 

@@ -28,6 +28,7 @@ import {
   CreateAppLineMaster,
   UpdateAppLineMasterByID,
   DeleteAppLineMasterByID,
+  UpdateAppSetting,
   type AppLineMasterResponse,
 } from "../../../services";
 import { useLanguage } from "../../../contexts/LanguageContext";
@@ -187,6 +188,27 @@ const Index: React.FC = () => {
     useState<AppLineMasterResponse | null>(null);
   const [masterDeleteError, setMasterDeleteError] = useState("");
   const [masterDeleting, setMasterDeleting] = useState(false);
+
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [webhookSecretSaving, setWebhookSecretSaving] = useState(false);
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+
+  const handleSaveWebhookSecret = useCallback(async () => {
+    const value = normalizeText(webhookSecret);
+    if (!value) return;
+
+    setWebhookSecretSaving(true);
+    try {
+      await UpdateAppSetting("line_channel_secret", value);
+      message.success(t("line.webhookSecretSaved"));
+      setWebhookSecret("");
+    } catch (err) {
+      console.error("save webhook secret error:", err);
+      message.error(t("line.webhookSecretSaveFailed"));
+    } finally {
+      setWebhookSecretSaving(false);
+    }
+  }, [webhookSecret, t]);
 
   const masterFormSnapshot = useMemo(
     () =>
@@ -489,6 +511,47 @@ const Index: React.FC = () => {
           >
             <FiArrowLeft className="text-[13px]" />
             {t("line.backToNotifications")}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Webhook signature secret ── */}
+      <div className="rounded-xl border border-slate-200/80 bg-white p-4 dark:border-white/8 dark:bg-[#0d0b1a]/60 sm:p-5">
+        <div className="flex items-center gap-2.5">
+          <FiLock className="text-[14px] text-slate-400 dark:text-white/35" />
+          <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
+            {t("line.webhookSecretTitle")}
+          </p>
+        </div>
+        <p className="mt-1.5 text-[11.5px] leading-relaxed text-slate-500 dark:text-white/45">
+          {t("line.webhookSecretDesc")}
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="relative w-full max-w-80">
+            <input
+              type={showWebhookSecret ? "text" : "password"}
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              placeholder={t("line.webhookSecretPlaceholder")}
+              className="w-full rounded-lg border border-slate-200/80 bg-white py-2 pl-3 pr-9 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25"
+            />
+            <button
+              type="button"
+              onClick={() => setShowWebhookSecret((prev) => !prev)}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/35"
+            >
+              {showWebhookSecret ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleSaveWebhookSecret()}
+            disabled={webhookSecretSaving || !normalizeText(webhookSecret)}
+            style={{ background: accentGrad }}
+            className="flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[12px] font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FiSave className="text-[13px]" />
+            {t("line.webhookSecretSave")}
           </button>
         </div>
       </div>

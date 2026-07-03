@@ -48,6 +48,59 @@ const inputCls =
   "w-full rounded-lg border border-slate-200/80 bg-white px-3.5 py-2.5 text-[12.5px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25 dark:focus:ring-blue-500/10";
 const labelCls = "mb-1.5 block text-[10.5px] font-semibold uppercase tracking-wider text-slate-400 dark:text-white/35";
 
+// ─────────────────────────────────────────────────────────────
+// Hosts list validation — OpenVAS accepts a comma-separated mix of IPv4/IPv6
+// addresses, CIDR ranges, IPv4 ranges ("a.b.c.d-e.f.g.h" or "a.b.c.d-h"), and
+// hostnames. Reject anything that matches none of those shapes before it
+// reaches the backend/OpenVAS instead of surfacing a confusing GMP error.
+// ─────────────────────────────────────────────────────────────
+
+const isValidIPv4Octet = (s: string) => /^\d{1,3}$/.test(s) && Number(s) <= 255;
+
+const isValidIPv4 = (ip: string): boolean => {
+  const parts = ip.split(".");
+  return parts.length === 4 && parts.every(isValidIPv4Octet);
+};
+
+const isValidIPv6 = (ip: string): boolean =>
+  /^[0-9a-fA-F:]+$/.test(ip) && ip.includes(":") && ip.split(":").length <= 8;
+
+const isValidHostname = (host: string): boolean =>
+  /^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/.test(host);
+
+const isValidHostEntry = (raw: string): boolean => {
+  const entry = raw.trim();
+  if (!entry) return false;
+
+  const cidrMatch = entry.match(/^([^/]+)\/(\d{1,3})$/);
+  if (cidrMatch) {
+    const [, addr, prefixStr] = cidrMatch;
+    const prefix = Number(prefixStr);
+    if (isValidIPv4(addr)) return prefix >= 0 && prefix <= 32;
+    if (isValidIPv6(addr)) return prefix >= 0 && prefix <= 128;
+    return false;
+  }
+
+  if (entry.includes("-") && !entry.includes(":")) {
+    const [start, end] = entry.split("-").map(s => s.trim());
+    if (isValidIPv4(start)) {
+      return isValidIPv4(end) || isValidIPv4Octet(end);
+    }
+    return false;
+  }
+
+  return isValidIPv4(entry) || isValidIPv6(entry) || isValidHostname(entry);
+};
+
+// Returns the comma-separated list of invalid entries, or "" if all valid.
+const findInvalidHostEntries = (raw: string): string =>
+  raw.split(",").map(s => s.trim()).filter(Boolean).filter(e => !isValidHostEntry(e)).join(", ");
+
+// Credential/certificate/port-list files are small text/key material — cap
+// well below the 100MB image limit used elsewhere to catch accidental/bad uploads.
+const MAX_UPLOAD_FILE_SIZE_MB = 5;
+const MAX_UPLOAD_FILE_SIZE_BYTES = MAX_UPLOAD_FILE_SIZE_MB * 1024 * 1024;
+
 
 // ─────────────────────────────────────────────────────────────
 // Confirm Delete Dialog (portal)
@@ -111,6 +164,11 @@ const FileUploadArea: React.FC<{
       className="hidden"
       onChange={(e) => {
         const f = e.target.files?.[0] ?? null;
+        if (f && f.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+          message.warning(t("threatConfig.fileTooLarge", { mb: MAX_UPLOAD_FILE_SIZE_MB }));
+          e.target.value = "";
+          return;
+        }
         onChange(f);
         e.target.value = "";
       }}
@@ -146,6 +204,11 @@ const FileTextInput: React.FC<{
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (!f) return;
+          if (f.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+            message.warning(t("threatConfig.fileTooLarge", { mb: MAX_UPLOAD_FILE_SIZE_MB }));
+            e.target.value = "";
+            return;
+          }
           const reader = new FileReader();
           reader.onload = (ev) => onChange((ev.target?.result as string) || "");
           reader.readAsText(f);
@@ -1751,6 +1814,27 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   const handleSave = async () => {
     if (!form.name.trim()) { message.warning(t("threatConfig.nameRequired")); return; }
     if (!form.hosts.trim()) { message.warning(t("threatConfig.hostsRequired")); return; }
+
+    const invalidHosts = findInvalidHostEntries(form.hosts);
+    if (invalidHosts) {
+      message.warning(t("threatConfig.hostsInvalidFormat", { hosts: invalidHosts }));
+      return;
+    }
+    if ((form.exclude_hosts ?? "").trim()) {
+      const invalidExclude = findInvalidHostEntries(form.exclude_hosts ?? "");
+      if (invalidExclude) {
+        message.warning(t("threatConfig.excludeHostsInvalidFormat", { hosts: invalidExclude }));
+        return;
+      }
+    }
+    if (form.ssh_cred_id) {
+      const port = Number(form.ssh_port);
+      if (!form.ssh_port || !Number.isInteger(port) || port < 1 || port > 65535) {
+        message.warning(t("threatConfig.sshPortInvalid"));
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       if (editItem) {
@@ -2167,7 +2251,8 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                     extra={
                       <div className="flex shrink-0 items-center gap-1.5">
                         <span className="text-[11.5px] text-slate-500 dark:text-white/40 whitespace-nowrap">{t("threatConfig.onPort")}</span>
-                        <input type="text" value={form.ssh_port ?? "22"} onChange={e => setF("ssh_port", e.target.value)}
+                        <input type="number" min={1} max={65535} value={form.ssh_port ?? "22"}
+                          onChange={e => setF("ssh_port", e.target.value)}
                           disabled={isLocked}
                           className={`${inputCls} w-16 text-center ${isLocked ? "cursor-not-allowed opacity-50" : ""}`} />
                       </div>

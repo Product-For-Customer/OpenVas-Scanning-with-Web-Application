@@ -2,10 +2,12 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/entity"
@@ -154,9 +156,12 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := db.Create(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
+
+	audit.Log(c, "user.created", "user", strconv.FormatUint(uint64(user.ID), 10),
+		fmt.Sprintf("created user %s with role %q", user.Email, role.Role))
 
 	db.Preload("AppRole").First(&user, user.ID)
 
@@ -224,6 +229,11 @@ func UpdateUserByID(c *gin.Context) {
 	if err := db.Preload("AppRole").First(&user, uint(uid)).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
+	}
+
+	oldRoleName := ""
+	if user.AppRole != nil {
+		oldRoleName = user.AppRole.Role
 	}
 
 	if input.Email == nil &&
@@ -301,12 +311,19 @@ func UpdateUserByID(c *gin.Context) {
 		validateUser.Position = strings.TrimSpace(*input.Position)
 	}
 
+	newRoleName := ""
 	if input.AppRoleID != nil {
+		if strings.ToLower(c.GetString("user_role")) != "admin" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "only an admin can change a user's role"})
+			return
+		}
+
 		var role entity.AppRole
 		if err := db.First(&role, *input.AppRoleID).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "role not found"})
 			return
 		}
+		newRoleName = role.Role
 		validateUser.AppRoleID = *input.AppRoleID
 	}
 
@@ -361,8 +378,13 @@ func UpdateUserByID(c *gin.Context) {
 	}
 
 	if err := db.Save(&user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
+	}
+
+	if input.AppRoleID != nil && newRoleName != oldRoleName {
+		audit.Log(c, "user.role_changed", "user", strconv.FormatUint(uint64(user.ID), 10),
+			fmt.Sprintf("changed role from %q to %q for %s", oldRoleName, newRoleName, user.Email))
 	}
 
 	db.Preload("AppRole").First(&user, user.ID)
@@ -380,10 +402,16 @@ func DeleteUserByID(c *gin.Context) {
 	}
 
 	db := config.DB()
+
+	var deletedUser entity.AppUser
+	db.First(&deletedUser, uint(uid))
+
 	if tx := db.Delete(&entity.AppUser{}, uint(uid)); tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
+		services.RespondInternalError(c, tx.Error)
 		return
 	}
+
+	audit.Log(c, "user.deleted", "user", id, fmt.Sprintf("deleted user %s", deletedUser.Email))
 
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
 }
@@ -454,6 +482,11 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 			"error": "user not found",
 		})
 		return
+	}
+
+	oldRoleName := ""
+	if user.AppRole != nil {
+		oldRoleName = user.AppRole.Role
 	}
 
 	if input.Email == nil &&
@@ -545,6 +578,7 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		updates["Position"] = validateUser.Position
 	}
 
+	newRoleName := ""
 	if input.AppRoleID != nil {
 		var role entity.AppRole
 		if err := db.First(&role, *input.AppRoleID).Error; err != nil {
@@ -554,6 +588,7 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 			return
 		}
 
+		newRoleName = role.Role
 		validateUser.AppRoleID = *input.AppRoleID
 		updates["AppRoleID"] = *input.AppRoleID
 	}
@@ -593,10 +628,13 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		Updates(updates)
 
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": tx.Error.Error(),
-		})
+		services.RespondInternalError(c, tx.Error)
 		return
+	}
+
+	if input.AppRoleID != nil && newRoleName != oldRoleName {
+		audit.Log(c, "user.role_changed", "user", strconv.FormatUint(uint64(user.ID), 10),
+			fmt.Sprintf("changed role from %q to %q for %s", oldRoleName, newRoleName, user.Email))
 	}
 
 	var updatedUser entity.AppUser

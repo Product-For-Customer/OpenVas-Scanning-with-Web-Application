@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -177,7 +178,7 @@ func UpdateSchedule(c *gin.Context) {
 func TriggerFeedNow(c *gin.Context) {
 	feedType := strings.TrimSpace(c.Param("feed_type"))
 	if err := triggerFeedUpdate(feedType); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Feed update triggered: " + feedType})

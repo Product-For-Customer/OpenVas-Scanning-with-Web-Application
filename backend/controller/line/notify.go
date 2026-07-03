@@ -2,9 +2,13 @@ package line
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,10 +19,35 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/manage"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// lineChannelSecretKey is the SystemConfig key holding the LINE Messaging API
+// Channel Secret (distinct from the Channel Access Token stored per
+// AppLineMaster row). Deliberately excluded from GetSettings' public response.
+const lineChannelSecretKey = "line_channel_secret"
+
+// getLineChannelSecret reads the configured Channel Secret, or "" if not set yet.
+func getLineChannelSecret() string {
+	db := config.DB()
+	var cfg entity.SystemConfig
+	if err := db.Where("key = ?", lineChannelSecretKey).First(&cfg).Error; err != nil {
+		return ""
+	}
+	return strings.TrimSpace(cfg.Value)
+}
+
+// verifyLineSignature checks the X-Line-Signature header per LINE's webhook
+// spec: base64(HMAC-SHA256(channelSecret, rawBody)).
+func verifyLineSignature(rawBody []byte, signatureHeader string, channelSecret string) bool {
+	mac := hmac.New(sha256.New, []byte(channelSecret))
+	mac.Write(rawBody)
+	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(strings.TrimSpace(signatureHeader)))
+}
 
 const (
 	lineRiskInputTimeout     = 2 * time.Minute
@@ -153,7 +182,7 @@ func CreateAppNotification(c *gin.Context) {
 	}
 
 	if err := db.Create(&appNotification).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -292,12 +321,12 @@ func UpdateAppNotificationByID(c *gin.Context) {
 	}
 
 	if err := db.Model(&appNotification).Updates(updates).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
 	if err := db.Preload("AppLineMaster").First(&appNotification, appNotification.ID).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -325,7 +354,7 @@ func DeleteAppNotificationByID(c *gin.Context) {
 	}
 
 	if err := db.Delete(&appNotification).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -1417,8 +1446,21 @@ func handleExistingLineCommand(notification entity.AppNotification, lineMaster *
 }
 
 func CreateAppNotificationByLine(c *gin.Context) {
+	rawBody, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+		return
+	}
+
+	if channelSecret := getLineChannelSecret(); channelSecret == "" {
+		log.Println("⚠️ line_channel_secret is not configured — webhook signature is NOT being verified")
+	} else if !verifyLineSignature(rawBody, c.GetHeader("X-Line-Signature"), channelSecret) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid line signature"})
+		return
+	}
+
 	var input LineWebhookRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
+	if err := json.Unmarshal(rawBody, &input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 		})
@@ -1536,9 +1578,7 @@ func CreateAppNotificationByLine(c *gin.Context) {
 	}
 
 	if err := db.Create(&notification).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 

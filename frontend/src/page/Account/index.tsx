@@ -43,6 +43,9 @@ const inputErrCls = [
 
 const labelCls = "mb-1.5 block text-[11.5px] font-medium text-slate-500 dark:text-white/45";
 
+const MAX_PROFILE_IMAGE_MB = 5;
+const MAX_PROFILE_IMAGE_BYTES = MAX_PROFILE_IMAGE_MB * 1024 * 1024;
+
 const normalize      = (s: string) => s.trim();
 const normalizeEmail = (s: string) => s.trim().toLowerCase();
 const normalizePhone = (s: string) => s.replace(/\D/g, "").trim();
@@ -461,6 +464,10 @@ const Account: React.FC = () => {
   const handleFileChange = (file?: File) => {
     if (!file) return;
     if (!file.type.startsWith("image/")) { message.warning(t("account.imageOnly")); return; }
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+      message.warning(t("account.imageTooLarge", { mb: MAX_PROFILE_IMAGE_MB }));
+      return;
+    }
     const reader = new FileReader();
     reader.onloadend = () => setProfileBase64(reader.result as string);
     reader.readAsDataURL(file);

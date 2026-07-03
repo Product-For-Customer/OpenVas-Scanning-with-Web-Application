@@ -2,10 +2,12 @@ package line
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/asaskevich/govalidator"
@@ -211,9 +213,15 @@ func ListAppLineMaster(c *gin.Context) {
 		return
 	}
 
+	isAdmin := strings.ToLower(c.GetString("user_role")) == "admin"
+
 	response := make([]AppLineMasterResponse, 0, len(lineMasters))
 	for _, item := range lineMasters {
-		response = append(response, mapAppLineMasterResponse(item))
+		mapped := mapAppLineMasterResponse(item)
+		if !isAdmin {
+			mapped.Token = ""
+		}
+		response = append(response, mapped)
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -395,6 +403,8 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 		return
 	}
 
+	audit.Log(c, "line_master.updated", "line_master", id, fmt.Sprintf("updated LINE master %q", updated.Name))
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "update app line master success",
 		"data":    mapAppLineMasterResponse(updated),
@@ -435,6 +445,8 @@ func DeleteAppLineMasterByID(c *gin.Context) {
 		})
 		return
 	}
+
+	audit.Log(c, "line_master.deleted", "line_master", id, fmt.Sprintf("deleted LINE master %q", lineMaster.Name))
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "app line master deleted successfully",

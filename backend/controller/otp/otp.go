@@ -110,10 +110,19 @@ func VerifyOTPAddUpdatePassword(c *gin.Context) {
 		return
 	}
 
+	if locked, secondsRemaining := services.IsOTPLocked(req.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "พยายามยืนยัน OTP ผิดหลายครั้งเกินไป กรุณาลองใหม่ภายหลัง",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+
 	db := config.DB()
 
 	// หา OTP
 	if err := db.Where("email = ? AND code = ?", req.Email, req.OTP).First(&otp).Error; err != nil {
+		services.RecordOTPFailure(req.Email)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "OTP ไม่ถูกต้อง"})
 		return
 	}
@@ -181,6 +190,8 @@ func VerifyOTPAddUpdatePassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "บันทึกข้อมูลไม่สำเร็จ"})
 		return
 	}
+
+	services.ResetOTPAttempts(req.Email)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "ยืนยัน OTP และเปลี่ยนรหัสผ่านสำเร็จ",

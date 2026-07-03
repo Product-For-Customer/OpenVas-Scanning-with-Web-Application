@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Tawunchai/openvas/audit"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -327,7 +329,7 @@ func CreateGMPTarget(c *gin.Context) {
 		ReverseUnify:  req.ReverseUnify,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -401,7 +403,7 @@ func CreateGMPTask(c *gin.Context) {
 		MaxHosts:       maxHosts,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -421,7 +423,7 @@ func StartGMPTask(c *gin.Context) {
 
 	reportID, err := StartTask(taskID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -440,7 +442,7 @@ func StopGMPTask(c *gin.Context) {
 	}
 
 	if err := StopTask(taskID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -507,7 +509,7 @@ func UpdateGMPTask(c *gin.Context) {
 	}
 
 	if err := ModifyTask(taskID, params); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -523,7 +525,7 @@ func DeleteGMPTask(c *gin.Context) {
 	}
 
 	if err := DeleteTask(taskID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -539,9 +541,11 @@ func DeleteGMPTarget(c *gin.Context) {
 	}
 
 	if err := DeleteTarget(targetID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
+
+	audit.Log(c, "target.deleted", "target", targetID, "deleted GMP target")
 
 	c.JSON(http.StatusOK, gin.H{"message": "target deleted"})
 }
@@ -601,7 +605,7 @@ func CreateGMPPortList(c *gin.Context) {
 	}
 	id, err := CreatePortList(req.Name, req.Comment, req.PortRange)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list created"})
@@ -615,7 +619,7 @@ func DeleteGMPPortList(c *gin.Context) {
 		return
 	}
 	if err := DeletePortList(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "port list deleted"})
@@ -638,7 +642,7 @@ func ImportGMPPortList(c *gin.Context) {
 
 	id, err := ImportPortList(strings.TrimSpace(string(content)))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port list imported"})
@@ -675,7 +679,7 @@ func GetGMPPortListDetail(c *gin.Context) {
 	}
 	detail, err := GetPortListDetail(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	dto := PortListDetailDTO{
@@ -733,7 +737,7 @@ func CreateGMPPortRange(c *gin.Context) {
 	}
 	id, err := CreatePortRange(portListID, req.Start, req.End, req.Protocol, req.Comment)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "port range created"})
@@ -747,7 +751,7 @@ func DeleteGMPPortRange(c *gin.Context) {
 		return
 	}
 	if err := DeletePortRange(rangeID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "port range deleted"})
@@ -830,7 +834,7 @@ func CreateGMPCredential(c *gin.Context) {
 		CCPrivateKey: req.CCPrivateKey, CCPassphrase: req.CCPassphrase,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"id": id, "message": "credential created"})
@@ -923,7 +927,7 @@ func RestoreGMPTrash(c *gin.Context) {
 		return
 	}
 	if err := RestoreFromTrash(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "restored"})
@@ -932,7 +936,7 @@ func RestoreGMPTrash(c *gin.Context) {
 // DELETE /gmp/trash — empty entire trashcan
 func EmptyGMPTrash(c *gin.Context) {
 	if err := EmptyTrashcan(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "trashcan emptied"})
@@ -943,7 +947,7 @@ func DeleteGMPTrashTask(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "id required"}); return }
 	if err := DeleteTaskPermanent(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return
+		services.RespondInternalError(c, err); return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
@@ -953,7 +957,7 @@ func DeleteGMPTrashTarget(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "id required"}); return }
 	if err := DeleteTargetPermanent(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return
+		services.RespondInternalError(c, err); return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
@@ -963,7 +967,7 @@ func DeleteGMPTrashCredential(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "id required"}); return }
 	if err := DeleteCredentialPermanent(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return
+		services.RespondInternalError(c, err); return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
@@ -973,7 +977,7 @@ func DeleteGMPTrashPortList(c *gin.Context) {
 	id := strings.TrimSpace(c.Param("id"))
 	if id == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "id required"}); return }
 	if err := DeletePortListPermanent(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}); return
+		services.RespondInternalError(c, err); return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "permanently deleted"})
 }
@@ -999,7 +1003,7 @@ func UpdateGMPPortList(c *gin.Context) {
 		return
 	}
 	if err := ModifyPortList(id, req.Name, req.Comment); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "port list updated"})
@@ -1032,7 +1036,7 @@ func UpdateGMPCredential(c *gin.Context) {
 		Certificate: req.Certificate, PublicPGPKey: req.PublicPGPKey,
 		CCPrivateKey: req.CCPrivateKey, CCPassphrase: req.CCPassphrase,
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "credential updated"})
@@ -1064,7 +1068,7 @@ func UpdateGMPTarget(c *gin.Context) {
 		SMBCredID: req.SMBCredID, ESXiCredID: req.ESXiCredID, SNMPCredID: req.SNMPCredID,
 		ReverseLookup: req.ReverseLookup, ReverseUnify: req.ReverseUnify,
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "target updated"})
@@ -1078,7 +1082,7 @@ func DeleteGMPCredential(c *gin.Context) {
 		return
 	}
 	if err := DeleteCredential(id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "credential deleted"})

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/auditlog"
 	"github.com/Tawunchai/openvas/controller/auth"
 	"github.com/Tawunchai/openvas/controller/automation"
 	"github.com/Tawunchai/openvas/controller/compliance"
@@ -27,6 +28,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
 	middlewares "github.com/Tawunchai/openvas/middleware"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -44,6 +46,7 @@ func main() {
 	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
 	middlewares.StartRateLimitCleanup()
+	services.StartOTPLockoutCleanup()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -265,6 +268,9 @@ func main() {
 		authorized.GET("/host/:ip/summary", host.GetHostSummary)
 		authorized.GET("/vulnerabilities/sla-breaches", host.GetSLABreaches)
 		authorized.GET("/attack-surface/matrix", host.GetAttackSurfaceMatrix)
+
+		// ===== Audit Log (admin + auditor, checked inside handler) =====
+		authorized.GET("/audit-logs", auditlog.ListAuditLogs)
 
 	}
 

@@ -499,33 +499,3 @@ export const TestLineNotifyByAppNotificationID = async (
   }
 };
 
-// =======================
-// Types
-// =======================
-export type TriggerCleanupResponse = {
-  message: string;
-  deleted_count: number;
-  cutoff: string;
-};
-
-// =======================
-// API: POST /history-notifies/cleanup
-// Manually trigger the 6-month auto-delete cleanup
-// =======================
-export const TriggerHistoryNotifyCleanup = async (): Promise<TriggerCleanupResponse | null> => {
-  try {
-    const response = await historyNotifyApi.post("/history-notifies/cleanup");
-    if (
-      response.data &&
-      typeof response.data === "object" &&
-      "message" in response.data
-    ) {
-      return response.data as TriggerCleanupResponse;
-    }
-    console.error("Unexpected TriggerHistoryNotifyCleanup response:", response.data);
-    return null;
-  } catch (error) {
-    console.error("TriggerHistoryNotifyCleanup error:", error);
-    return null;
-  }
-};

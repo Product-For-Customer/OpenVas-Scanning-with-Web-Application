@@ -8,11 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/gmp"
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -97,6 +99,22 @@ func toDTO(s entity.AutoScanSchedule) ScheduleDTO {
 		dto.NextRunAt = &str
 	}
 	return dto
+}
+
+// validateScanTime rejects anything that isn't a strict "HH:MM" 24-hour time,
+// so a malformed value fails loudly at creation instead of silently producing
+// a schedule that computeNextRun can never resolve (nil NextRunAt, never fires).
+func validateScanTime(scanTime string) error {
+	parts := strings.Split(scanTime, ":")
+	if len(parts) != 2 {
+		return fmt.Errorf("scan_time must be in HH:MM format")
+	}
+	h, errH := strconv.Atoi(parts[0])
+	m, errM := strconv.Atoi(parts[1])
+	if errH != nil || errM != nil || h < 0 || h > 23 || m < 0 || m > 59 {
+		return fmt.Errorf("scan_time must be a valid 24-hour HH:MM time")
+	}
+	return nil
 }
 
 // computeNextRun always uses the current global timezone from SystemConfig.
@@ -287,11 +305,21 @@ func CreateSchedule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "frequency must be once | monthly | yearly"})
 		return
 	}
+	if err := validateScanTime(req.ScanTime); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	tz := setting.GetAppTimezone()
 	loc := resolveLocation(tz)
 
 	nextRun := computeNextRun(req.Frequency, req.ScanTime, req.ScheduleAt, req.DayOfMonth, req.Month, req.Day)
+	if nextRun == nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "could not compute the next run time — check that schedule_at/day_of_month/month/day match the selected frequency",
+		})
+		return
+	}
 
 	s := entity.AutoScanSchedule{
 		TaskID:     req.TaskID,
@@ -315,7 +343,7 @@ func CreateSchedule(c *gin.Context) {
 
 	db := config.DB()
 	if err := db.Create(&s).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, toDTO(s))
@@ -360,10 +388,17 @@ func UpdateSchedule(c *gin.Context) {
 func DeleteSchedule(c *gin.Context) {
 	idStr := c.Param("id")
 	db := config.DB()
+
+	var s entity.AutoScanSchedule
+	db.First(&s, idStr)
+
 	if err := db.Delete(&entity.AutoScanSchedule{}, idStr).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
+
+	audit.Log(c, "schedule.deleted", "schedule", idStr, fmt.Sprintf("deleted schedule for task %q", s.TaskName))
+
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 

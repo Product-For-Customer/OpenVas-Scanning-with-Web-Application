@@ -5,6 +5,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,7 +49,7 @@ func ListHistoryNotify(c *gin.Context) {
 	db := config.DB()
 	result := db.Preload("AppStatusNotify").Order("created_at DESC").Find(&historyNotifies)
 	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
+		services.RespondInternalError(c, result.Error)
 		return
 	}
 
@@ -77,7 +78,7 @@ func DeleteHistoryNotifyByIDs(c *gin.Context) {
 
 	var existing []entity.AppHistoryNotify
 	if err := db.Where("id IN ?", input.IDs).Find(&existing).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -88,7 +89,7 @@ func DeleteHistoryNotifyByIDs(c *gin.Context) {
 
 	tx := db.Where("id IN ?", input.IDs).Delete(&entity.AppHistoryNotify{})
 	if tx.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": tx.Error.Error()})
+		services.RespondInternalError(c, tx.Error)
 		return
 	}
 

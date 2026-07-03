@@ -15,6 +15,7 @@ import {
   FiDatabase,
   FiSliders,
   FiTrash2,
+  FiClipboard,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
@@ -37,17 +38,28 @@ export type SidebarSection = {
 
 type GetLinksParams = {
   isAdmin: boolean;
+  isOperator?: boolean;
+  isAuditor?: boolean;
 };
 
-export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
-  // Apps — Calendar & Diagrams for everyone; Recycle Bin is an admin-only
-  // destructive-data tool (permanent delete/restore), so it's admin-only.
+export const getLinks = ({ isAdmin, isOperator = false, isAuditor = false }: GetLinksParams): SidebarSection[] => {
+  // Operator/Auditor see the same scan-management surface as Admin (Operator
+  // can write, Auditor is read-only — enforced server-side either way), but
+  // never the user/settings/LINE governance tools further below.
+  const canSeeScanOps = isAdmin || isOperator || isAuditor;
+
+  // Apps — Calendar & Diagrams for everyone; Recycle Bin is a scan-lifecycle
+  // tool (Operator can restore/empty, Auditor views only); Audit Log is for
+  // accountability review (Admin + Auditor only).
   const appsLinks: SidebarLink[] = [
     { name: "calendar", icon: <BsCalendar3 />,      labelKey: "nav.calendar" },
     { name: "diagrams", icon: <FaProjectDiagram />, labelKey: "nav.diagrams" },
   ];
-  if (isAdmin) {
+  if (canSeeScanOps) {
     appsLinks.push({ name: "recycle-bin", icon: <FiTrash2 />, labelKey: "nav.recycleBin" });
+  }
+  if (isAdmin || isAuditor) {
+    appsLinks.push({ name: "audit-log", icon: <FiClipboard />, labelKey: "nav.auditLog" });
   }
 
   const sections: SidebarSection[] = [
@@ -69,19 +81,22 @@ export const getLinks = ({ isAdmin }: GetLinksParams): SidebarSection[] => {
     },
   ];
 
+  if (canSeeScanOps) {
+    sections.push({
+      title: "Threat Intelligence",
+      titleKey: "section.threatIntelligence",
+      icon: <FiZap />,
+      links: [
+        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog" },
+        { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus" },
+        { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig" },
+        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement" },
+      ],
+    });
+  }
+
   if (isAdmin) {
     sections.push(
-      {
-        title: "Threat Intelligence",
-        titleKey: "section.threatIntelligence",
-        icon: <FiZap />,
-        links: [
-          { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog" },
-          { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus" },
-          { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig" },
-          { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement" },
-        ],
-      },
       {
         title: "Management",
         titleKey: "section.management",

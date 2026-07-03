@@ -32,6 +32,7 @@ const CalendarPage       = Loadable(lazy(() => import("../page/Calendar/index"))
 const FeedStatus         = Loadable(lazy(() => import("../page/FeedStatus/index")));
 const ThreatConfig       = Loadable(lazy(() => import("../page/ThreatConfig/index")));
 const RecycleBin         = Loadable(lazy(() => import("../page/RecycleBin/index")));
+const AuditLog           = Loadable(lazy(() => import("../page/AuditLog/index")));
 
 // ===== Auth Pages =====
 const LoginPage          = Loadable(lazy(() => import("../page/Authentication/Login")));
@@ -83,6 +84,84 @@ const AdminRoutes = (): RouteObject[] => [
       { path: "feed-status",                                  element: <FeedStatus /> },
       { path: "threat-config",                                element: <ThreatConfig /> },
       { path: "recycle-bin",                                  element: <RecycleBin /> },
+      { path: "audit-log",                                    element: <AuditLog /> },
+    ],
+  },
+  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
+  { path: "*",               element: <Navigate to="/admin" replace /> },
+];
+
+// Operator: full scan-management access (targets, tasks, credentials, port
+// lists, schedules, trash) but no User Management, Service, Password Policy,
+// or LINE integration — those stay admin-only governance tools.
+const OperatorRoutes = (): RouteObject[] => [
+  { path: "/", element: <Navigate to="/admin" replace /> },
+  {
+    path: "/admin",
+    element: <MainLayout />,
+    children: [
+      { index: true,                                          element: <Dashboard /> },
+      { path: "dashboard",                                    element: <Dashboard /> },
+      { path: "profile",                                      element: <Account /> },
+      { path: "target",                                       element: <Target /> },
+      { path: "vulnerability",                                element: <Vulnerability /> },
+      { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
+      { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
+      { path: "vulnerability-detail",                         element: <VulnerabilityDetail /> },
+      { path: "diagrams",                                     element: <Diagram /> },
+      { path: "diagram-node",                                 element: <DiagramNode /> },
+      { path: "report",                                       element: <Report /> },
+      { path: "status-target-data",                           element: <StatusTargetData /> },
+      { path: "threat-intelligence",                          element: <ThreatIntelligence /> },
+      { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
+      { path: "scan-management",                              element: <ScanManagement /> },
+      { path: "compliance",                                   element: <Compliance /> },
+      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
+      { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
+      { path: "host/:ip",                                     element: <HostDetail /> },
+      { path: "calendar",                                     element: <CalendarPage /> },
+      { path: "feed-status",                                  element: <FeedStatus /> },
+      { path: "threat-config",                                element: <ThreatConfig /> },
+      { path: "recycle-bin",                                  element: <RecycleBin /> },
+    ],
+  },
+  { path: "after-login-animation",  element: <AfterLoginAnimation /> },
+  { path: "*",               element: <Navigate to="/admin" replace /> },
+];
+
+// Auditor: same visibility as Operator plus the Audit Log page — but every
+// write endpoint is blocked server-side (backend/middleware/readonly.go), so
+// this role is read-only in practice even though the pages render normally.
+const AuditorRoutes = (): RouteObject[] => [
+  { path: "/", element: <Navigate to="/admin" replace /> },
+  {
+    path: "/admin",
+    element: <MainLayout />,
+    children: [
+      { index: true,                                          element: <Dashboard /> },
+      { path: "dashboard",                                    element: <Dashboard /> },
+      { path: "profile",                                      element: <Account /> },
+      { path: "target",                                       element: <Target /> },
+      { path: "vulnerability",                                element: <Vulnerability /> },
+      { path: "vulnerability-by-device",                      element: <VulnerabilityByDevice /> },
+      { path: "vulnerability-by-level",                       element: <VulnerabilityByLevel /> },
+      { path: "vulnerability-detail",                         element: <VulnerabilityDetail /> },
+      { path: "diagrams",                                     element: <Diagram /> },
+      { path: "diagram-node",                                 element: <DiagramNode /> },
+      { path: "report",                                       element: <Report /> },
+      { path: "status-target-data",                           element: <StatusTargetData /> },
+      { path: "threat-intelligence",                          element: <ThreatIntelligence /> },
+      { path: "threat-intelligence/detail/:hostIp",           element: <ThreatIntelligenceDetail /> },
+      { path: "scan-management",                              element: <ScanManagement /> },
+      { path: "compliance",                                   element: <Compliance /> },
+      { path: "compliance/:framework/:controlId",             element: <ComplianceControl /> },
+      { path: "vulnerability-delta",                          element: <VulnerabilityDelta /> },
+      { path: "host/:ip",                                     element: <HostDetail /> },
+      { path: "calendar",                                     element: <CalendarPage /> },
+      { path: "feed-status",                                  element: <FeedStatus /> },
+      { path: "threat-config",                                element: <ThreatConfig /> },
+      { path: "recycle-bin",                                  element: <RecycleBin /> },
+      { path: "audit-log",                                    element: <AuditLog /> },
     ],
   },
   { path: "after-login-animation",  element: <AfterLoginAnimation /> },
@@ -141,7 +220,7 @@ const MainRoutes = (): RouteObject[] => [
 
 // ======================= MAIN CONFIG =======================
 function ConfigRoutes() {
-  const { isLoading, isAuthed, isAdmin, isUser } = useAuth();
+  const { isLoading, isAuthed, isAdmin, isUser, isOperator, isAuditor } = useAuth();
 
   if (isLoading) {
     return useRoutes([{ path: "*", element: <Loader /> }]);
@@ -153,6 +232,14 @@ function ConfigRoutes() {
 
   if (isAdmin) {
     return useRoutes(AdminRoutes());
+  }
+
+  if (isOperator) {
+    return useRoutes(OperatorRoutes());
+  }
+
+  if (isAuditor) {
+    return useRoutes(AuditorRoutes());
   }
 
   if (isUser) {

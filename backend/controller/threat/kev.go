@@ -14,6 +14,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -300,7 +301,7 @@ func ListKEVCatalog(c *gin.Context) {
 
 	var entries []entity.AppKEVCache
 	if err := query.Order("date_added DESC").Find(&entries).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -340,7 +341,7 @@ func CheckKEVByCVEIDs(c *gin.Context) {
 
 	var entries []entity.AppKEVCache
 	if err := db.Where("cve_id IN ?", cveIDs).Find(&entries).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -446,7 +447,7 @@ WHERE LOWER(BTRIM(vr.type)) = 'cve'
 	// หา KEV entries ที่ match กับ CVE IDs ที่พบ
 	var kevMatches []entity.AppKEVCache
 	if err := db.Where("cve_id IN ?", unique(allCVEIDs)).Find(&kevMatches).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 
