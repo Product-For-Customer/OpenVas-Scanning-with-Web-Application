@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   FiShield, FiRefreshCw, FiClock, FiUser, FiTag, FiChevronLeft, FiChevronRight,
+  FiDatabase, FiTrash2, FiEdit2, FiSave, FiX,
 } from "react-icons/fi";
+import { message } from "antd";
 import { CustomSelect } from "../../component/ui/CustomSelect";
-import { ListAuditLogs, type AuditLogDTO } from "../../services/auditlog";
+import { ListAuditLogs, TriggerAuditLogCleanup, type AuditLogDTO } from "../../services/auditlog";
+import { GetAppSettings, UpdateAppSetting } from "../../services/setting";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
+
+const RETENTION_KEY = "audit_log_retention_days";
 
 const PAGE_SIZE = 25;
 
@@ -127,6 +133,8 @@ const fmtDateTime = (iso: string): string => {
 const AuditLogPage: React.FC = () => {
   const { currentColor } = useStateContext();
   const { t } = useLanguage();
+  const { can } = useAuth();
+  const canManageRetention = can("user_management", "manage");
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [logs, setLogs] = useState<AuditLogDTO[]>([]);
@@ -135,6 +143,15 @@ const AuditLogPage: React.FC = () => {
   const [action, setAction] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Retention (audit_log_retention_days) — 0/unset = keep forever. See
+  // backend/controller/auditlog/cleanup.go for the auto-cleanup goroutine
+  // this setting drives.
+  const [retentionDays, setRetentionDays] = useState(0);
+  const [editingRetention, setEditingRetention] = useState(false);
+  const [retentionInput, setRetentionInput] = useState("0");
+  const [savingRetention, setSavingRetention] = useState(false);
+  const [runningCleanup, setRunningCleanup] = useState(false);
 
   const fetchLogs = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true); else setLoading(true);
@@ -152,6 +169,50 @@ const AuditLogPage: React.FC = () => {
   useEffect(() => {
     void fetchLogs();
   }, [fetchLogs]);
+
+  useEffect(() => {
+    void GetAppSettings().then((settings) => {
+      const days = parseInt(settings[RETENTION_KEY] ?? "0", 10);
+      setRetentionDays(Number.isFinite(days) && days > 0 ? days : 0);
+    });
+  }, []);
+
+  const openEditRetention = () => {
+    setRetentionInput(String(retentionDays));
+    setEditingRetention(true);
+  };
+
+  const handleSaveRetention = async () => {
+    const days = parseInt(retentionInput, 10);
+    if (!Number.isFinite(days) || days < 0) {
+      message.error(t("auditLog.retentionInvalid"));
+      return;
+    }
+    setSavingRetention(true);
+    try {
+      await UpdateAppSetting(RETENTION_KEY, String(days));
+      setRetentionDays(days);
+      setEditingRetention(false);
+      message.success(t("auditLog.retentionSaved"));
+    } catch {
+      message.error(t("auditLog.retentionSaveFailed"));
+    } finally {
+      setSavingRetention(false);
+    }
+  };
+
+  const handleRunCleanupNow = async () => {
+    setRunningCleanup(true);
+    try {
+      const res = await TriggerAuditLogCleanup();
+      message.success(t("auditLog.cleanupSuccess", { n: res.deleted_count }));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || t("auditLog.cleanupFailed"));
+    } finally {
+      setRunningCleanup(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -184,6 +245,68 @@ const AuditLogPage: React.FC = () => {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Retention */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-4 py-3 dark:border-white/8 dark:bg-[#0d0b1a]/60">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-500 dark:bg-white/8 dark:text-white/50">
+            <FiDatabase className="text-[13px]" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
+              {t("auditLog.retentionLabel")}
+            </p>
+            {editingRetention ? (
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <input
+                  type="number" min={0} value={retentionInput}
+                  onChange={(e) => setRetentionInput(e.target.value)}
+                  className="h-7 w-20 rounded-md border border-slate-200 bg-white px-2 text-[12px] text-slate-700 outline-none focus:ring-2 focus:ring-blue-200 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
+                />
+                <span className="text-[11px] text-slate-400 dark:text-white/35">{t("auditLog.retentionDaysSuffix")}</span>
+              </div>
+            ) : (
+              <p className="text-[13px] font-semibold text-slate-800 dark:text-white/85">
+                {retentionDays > 0 ? t("auditLog.retentionDays", { n: retentionDays }) : t("auditLog.retentionForever")}
+              </p>
+            )}
+          </div>
+        </div>
+        <p className="max-w-100 text-[10.5px] leading-4 text-slate-400 dark:text-white/30">{t("auditLog.retentionHint")}</p>
+
+        {canManageRetention && (
+          <div className="ml-auto flex items-center gap-2">
+            {editingRetention ? (
+              <>
+                <button type="button" onClick={() => setEditingRetention(false)} disabled={savingRetention}
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:text-white/50">
+                  <FiX className="text-[12px]" />
+                </button>
+                <button type="button" onClick={() => void handleSaveRetention()} disabled={savingRetention}
+                  className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-[11.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+                  style={{ background: accentGrad }}>
+                  <FiSave className="text-[11px]" />
+                  {t("auditLog.retentionSave")}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={openEditRetention}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-slate-200/70 px-3 text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/60 dark:hover:bg-white/8">
+                  <FiEdit2 className="text-[11px]" />
+                  {t("auditLog.retentionEdit")}
+                </button>
+                <button type="button" onClick={() => void handleRunCleanupNow()} disabled={runningCleanup || retentionDays <= 0}
+                  title={retentionDays <= 0 ? t("auditLog.retentionHint") : undefined}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-[11.5px] font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                  {runningCleanup ? <FiRefreshCw className="animate-spin text-[11px]" /> : <FiTrash2 className="text-[11px]" />}
+                  {t("auditLog.runCleanupNow")}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table */}

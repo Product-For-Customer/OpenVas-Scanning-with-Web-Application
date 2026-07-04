@@ -17,6 +17,7 @@ const CATEGORY_LABEL_KEY: Record<string, TranslationKey> = {
   dashboard: "roleMgmt.category.dashboard",
   threat_intel: "roleMgmt.category.threat_intel",
   reports_diagrams: "roleMgmt.category.reports_diagrams",
+  remediation: "roleMgmt.category.remediation",
   user_management: "roleMgmt.category.user_management",
   line_management: "roleMgmt.category.line_management",
   line_settings: "roleMgmt.category.line_settings",

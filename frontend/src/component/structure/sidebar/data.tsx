@@ -17,6 +17,7 @@ import {
   FiTrash2,
   FiClipboard,
   FiKey,
+  FiCheckCircle,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram } from "react-icons/fa";
@@ -67,6 +68,7 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
         { name: "calendar",    icon: <BsCalendar3 />,      labelKey: "nav.calendar", category: "dashboard" },
         { name: "diagrams",    icon: <FaProjectDiagram />, labelKey: "nav.diagrams", category: "reports_diagrams" },
         { name: "recycle-bin", icon: <FiTrash2 />,         labelKey: "nav.recycleBin", category: "threat_intel" },
+        { name: "remediation", icon: <FiCheckCircle />,    labelKey: "nav.remediation", category: "remediation" },
         { name: "audit-log",   icon: <FiClipboard />,      labelKey: "nav.auditLog", category: "audit_log" },
       ]),
     },

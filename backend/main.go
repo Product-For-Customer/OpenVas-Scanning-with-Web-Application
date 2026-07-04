@@ -18,6 +18,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
+	"github.com/Tawunchai/openvas/controller/remediation"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
 	"github.com/Tawunchai/openvas/controller/role"
@@ -45,6 +46,7 @@ func main() {
 
 	go line.StartLineStatusListener()
 	go line.StartHistoryNotifyAutoCleanup()
+	go auditlog.StartAuditLogAutoCleanup()
 	go automation.StartDailyFeedUpdateScheduler()
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
 	go risk.StartEPSSSyncScheduler()
@@ -52,6 +54,7 @@ func main() {
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
 	middlewares.StartRateLimitCleanup()
 	services.StartOTPLockoutCleanup()
+	services.StartAccountLockoutCleanup()
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -59,7 +62,9 @@ func main() {
 	}
 
 	r := gin.Default()
+	r.MaxMultipartMemory = middlewares.MaxRequestBodyBytes
 	r.Use(CORSMiddleware())
+	r.Use(middlewares.LimitRequestBody())
 	r.Use(middlewares.RateLimiter())
 
 	r.GET("/", func(c *gin.Context) {
@@ -283,6 +288,15 @@ func main() {
 
 		// ===== Audit Log (admin + auditor, checked inside handler) =====
 		authorized.GET("/audit-logs", auditlog.ListAuditLogs)
+		authorized.POST("/audit-logs/cleanup", auditlog.TriggerAuditLogCleanup)
+
+		// ===== Remediation Tickets =====
+		authorized.GET("/remediation-tickets/summary", remediation.GetRemediationSummary)
+		authorized.GET("/remediation-tickets", remediation.ListRemediationTickets)
+		authorized.GET("/remediation-tickets/:id", remediation.GetRemediationTicket)
+		authorized.POST("/remediation-tickets", remediation.CreateRemediationTicket)
+		authorized.PATCH("/remediation-tickets/:id", remediation.UpdateRemediationTicket)
+		authorized.DELETE("/remediation-tickets/:id", remediation.DeleteRemediationTicket)
 
 	}
 

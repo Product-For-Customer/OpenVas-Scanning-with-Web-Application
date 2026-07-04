@@ -52,6 +52,7 @@ var PermissionCategories = []PermissionCategory{
 	{Key: "dashboard", Label: "Dashboard & Vulnerability Intel", SupportsManage: true, ManageMirrorsView: true},
 	{Key: "threat_intel", Label: "Threat Intelligence", SupportsManage: true},
 	{Key: "reports_diagrams", Label: "Diagrams & Locations", SupportsManage: true},
+	{Key: "remediation", Label: "Remediation Tickets", SupportsManage: true},
 	{Key: "user_management", Label: "User & Role Management", SupportsManage: true},
 	{Key: "line_management", Label: "Line Management", SupportsManage: true},
 	{Key: "line_settings", Label: "Services & Password Policy", SupportsManage: true},

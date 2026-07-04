@@ -156,10 +156,7 @@ func GetGMPStatus(c *gin.Context) {
 func GetGMPFeeds(c *gin.Context) {
 	feeds, err := GetFeeds()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error":   err.Error(),
-			"message": "cannot retrieve feed status from gvmd",
-		})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -186,10 +183,7 @@ func GetGMPFeeds(c *gin.Context) {
 func ListGMPTasks(c *gin.Context) {
 	tasks, err := GetTasks()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error":   err.Error(),
-			"message": "cannot connect to gvmd. Check GVM_SOCKET_PATH or GVM_HOST/GVM_PORT environment variables.",
-		})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -224,7 +218,7 @@ func ListGMPTasks(c *gin.Context) {
 func ListGMPTargets(c *gin.Context) {
 	targets, err := GetTargets()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -262,7 +256,7 @@ func ListGMPTargets(c *gin.Context) {
 func ListGMPScanners(c *gin.Context) {
 	scanners, err := GetScanners()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -282,7 +276,7 @@ func ListGMPScanners(c *gin.Context) {
 func ListGMPConfigs(c *gin.Context) {
 	configs, err := GetScanConfigs()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 
@@ -580,7 +574,7 @@ type CreatePortListRequest struct {
 func ListGMPPortLists(c *gin.Context) {
 	lists, err := GetPortLists()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 	dtos := make([]PortListDTO, 0, len(lists))
@@ -805,7 +799,7 @@ type CreateCredentialRequest struct {
 func ListGMPCredentials(c *gin.Context) {
 	creds, err := GetCredentials()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		services.RespondError(c, http.StatusServiceUnavailable, err)
 		return
 	}
 	dtos := make([]CredentialDTO, 0, len(creds))

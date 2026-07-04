@@ -10,6 +10,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/permission"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -201,7 +202,7 @@ func CreateRole(c *gin.Context) {
 		}
 		return replacePermissions(tx, role.ID, perms)
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	permission.InvalidateCache()
@@ -277,7 +278,7 @@ func UpdateRole(c *gin.Context) {
 		}
 		return nil
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		services.RespondInternalError(c, err)
 		return
 	}
 	permission.InvalidateCache()

@@ -304,6 +304,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	if locked, secondsRemaining := services.IsAccountLocked("login", input.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "too many failed login attempts, please try again later",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+
 	db := config.DB()
 
 	var user entity.AppUser
@@ -311,6 +319,7 @@ func Login(c *gin.Context) {
 		Where("LOWER(email) = LOWER(?)", input.Email).
 		First(&user).Error
 	if err != nil {
+		services.RecordAccountFailure("login", input.Email)
 		audit.LogAs(c, 0, input.Email, "", "auth.login_failed", "user", "", "no account with this email")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid email or password",
@@ -319,12 +328,15 @@ func Login(c *gin.Context) {
 	}
 
 	if !services.CheckPasswordHash(input.Password, user.Password) {
+		services.RecordAccountFailure("login", input.Email)
 		audit.LogAs(c, user.ID, user.Email, "", "auth.login_failed", "user", strconv.FormatUint(uint64(user.ID), 10), "wrong password")
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "invalid email or password",
 		})
 		return
 	}
+
+	services.ResetAccountAttempts("login", input.Email)
 
 	roleName := ""
 	if user.AppRole != nil {
@@ -561,6 +573,22 @@ func DirectResetPasswordHandler(c *gin.Context) {
 		return
 	}
 
+	// This endpoint resets a password knowing only the account's email — no
+	// OTP/code proves the caller owns the mailbox (that's the whole point of
+	// the "direct" shortcut, gated behind the reset-OTP-disabled setting
+	// above). Without any other proof of ownership, a per-account cooldown is
+	// the only thing standing between "know an email" and "control the
+	// account" for repeat/automated attempts, so it's enforced tightly here
+	// rather than just relying on the shared per-IP RateLimiter.
+	if locked, secondsRemaining := services.IsAccountLocked("direct-reset-password", req.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "too many password reset attempts for this account, please try again later",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+	services.RecordAccountFailure("direct-reset-password", req.Email)
+
 	var user entity.AppUser
 	notFound := db.Where("email = ?", req.Email).First(&user).Error != nil
 
@@ -644,10 +672,20 @@ func VerifyTOTPLoginHandler(c *gin.Context) {
 		return
 	}
 
+	if locked, secondsRemaining := services.IsAccountLocked("totp-login", user.Email); locked {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":             "too many failed TOTP attempts, please try again later",
+			"seconds_remaining": secondsRemaining,
+		})
+		return
+	}
+
 	if !verifyTOTPCode(user.TOTPSecret, req.Code) {
+		services.RecordAccountFailure("totp-login", user.Email)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired TOTP code"})
 		return
 	}
+	services.ResetAccountAttempts("totp-login", user.Email)
 
 	roleName := ""
 	if user.AppRole != nil {
@@ -757,9 +795,7 @@ func CheckUserEmail(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": result.Error.Error(),
-		})
+		services.RespondInternalError(c, result.Error)
 		return
 	}
 

@@ -74,6 +74,11 @@ var RouteCategory = map[string]string{
 	"/feed-schedules/:feed_type":         "threat_intel",
 	"/feed-schedules/:feed_type/trigger": "threat_intel",
 
+	// ── Remediation Tickets ──────────────────────────────────────────────
+	"/remediation-tickets/summary": "remediation",
+	"/remediation-tickets":         "remediation",
+	"/remediation-tickets/:id":     "remediation",
+
 	// ── Diagrams & Locations ───────────────────────────────────────────────
 	"/locations":                "reports_diagrams",
 	"/locations/:id":            "reports_diagrams",
@@ -124,4 +129,9 @@ var RouteCategory = map[string]string{
 
 	// ── Audit Log ─────────────────────────────────────────────────────────
 	"/audit-logs": "audit_log",
+	// Retention cleanup is a system-policy action (deletes history), not a
+	// normal audit-log read — gated under user_management like other
+	// sensitive system-config actions, since "audit_log" is view-only
+	// (SupportsManage=false) by design and can never satisfy a Manage check.
+	"/audit-logs/cleanup": "user_management",
 }

@@ -203,7 +203,7 @@ func ListAppNotification(c *gin.Context) {
 	db := config.DB()
 	result := db.Preload("AppLineMaster").Find(&notifications)
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": result.Error.Error()})
+		services.RespondError(c, http.StatusNotFound, result.Error)
 		return
 	}
 

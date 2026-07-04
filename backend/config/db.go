@@ -105,12 +105,28 @@ func SetupDatabase() {
 		&entity.AutoScanSchedule{},
 		&entity.FeedUpdateSchedule{},
 		&entity.AuditLog{},
+		&entity.RemediationTicket{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
 
+	ensureAuditLogIndexes()
+
 	fmt.Println("✅ AutoMigrate completed")
+}
+
+// ensureAuditLogIndexes adds an index on audit_logs.created_at. GORM's
+// AutoMigrate doesn't add one automatically since CreatedAt comes from the
+// embedded gorm.Model (no per-field tag possible there), but ListAuditLogs
+// always filters/orders by created_at — as the table grows over a long
+// deployment lifetime, an unindexed created_at makes that query (and the
+// retention cleanup below) progressively slower. CREATE INDEX IF NOT EXISTS
+// makes this safe to run on every startup.
+func ensureAuditLogIndexes() {
+	if err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at)`).Error; err != nil {
+		log.Printf("⚠️ failed to create audit_logs created_at index: %v", err)
+	}
 }
 
 // =========================
@@ -159,6 +175,7 @@ var defaultPermissionsByRole = map[string][]defaultRolePermission{
 		{"dashboard", true, true},
 		{"threat_intel", true, true},
 		{"reports_diagrams", true, true},
+		{"remediation", true, true},
 		{"user_management", true, true},
 		{"line_management", true, true},
 		{"line_settings", true, true},
@@ -328,6 +345,31 @@ func migrateDashboardManageMirrorsView() {
 	}
 }
 
+// seedRemediationPermissionForAdmin grants the Admin role full access to the
+// new "remediation" category (Remediation Tickets, added 2026-07-04) on any
+// existing install — fresh installs already get it via
+// defaultPermissionsByRole/seedDefaultRolePermissions. Deliberately does NOT
+// touch any other pre-existing role (including the built-in "User" role):
+// unlike the same-day category splits/merges, remediation is a brand new
+// capability, not a renamed/reshuffled one, so there's no prior access to
+// preserve — an admin opts other roles in via /admin/roles, same as any
+// other new feature (default-deny).
+func seedRemediationPermissionForAdmin() {
+	adminRole, err := getRoleByName("Admin")
+	if err != nil {
+		return
+	}
+	var existing entity.AppRolePermission
+	if db.Where("app_role_id = ? AND category = ?", adminRole.ID, "remediation").First(&existing).Error == nil {
+		return // already has a row (fresh-install seed, or ran before)
+	}
+	if err := db.Create(&entity.AppRolePermission{AppRoleID: adminRole.ID, Category: "remediation", CanView: true, CanManage: true}).Error; err != nil {
+		log.Printf("⚠️ failed to seed remediation permission for Admin: %v", err)
+	} else {
+		fmt.Println("✅ Seeded remediation permission for role: Admin")
+	}
+}
+
 // =========================
 // Helper: หา StatusNotify ตามชื่อ
 // =========================
@@ -400,6 +442,7 @@ func SeedDatabase() {
 	migrateLineSettingsSplit()
 	migrateDashboardManageMirrorsView()
 	seedDefaultRolePermissions()
+	seedRemediationPermissionForAdmin()
 
 	// =========================
 	// Seed AppUser

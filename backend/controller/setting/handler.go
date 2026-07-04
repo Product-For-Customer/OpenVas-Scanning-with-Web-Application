@@ -62,6 +62,12 @@ const (
 	maintenanceKey          = "argus_maintenance_mode"
 	maintenanceActiveAtKey  = "argus_maintenance_active_at"
 	maintenanceGraceSeconds = 60
+
+	// auditLogRetentionKey is also read (as its own local constant, same
+	// string) by controller/auditlog's cleanup goroutine — kept as separate
+	// declarations per package rather than a cross-package import, matching
+	// how every other SystemConfig key in this file is scoped locally.
+	auditLogRetentionKey = "audit_log_retention_days"
 )
 
 // upsertMaintenanceActiveAt writes/refreshes the Unix timestamp at which
@@ -148,6 +154,17 @@ func UpdateSetting(c *gin.Context) {
 	if body.Key == "timezone" {
 		if _, err := time.LoadLocation(body.Value); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid IANA timezone: " + body.Value})
+			return
+		}
+	}
+
+	// audit_log_retention_days: "0" (or empty) means "keep forever" — must be
+	// a non-negative integer, checked here since the cleanup goroutine trusts
+	// this value blindly when computing its delete cutoff.
+	if body.Key == auditLogRetentionKey {
+		days, err := strconv.Atoi(strings.TrimSpace(body.Value))
+		if err != nil || days < 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "audit_log_retention_days must be a non-negative integer"})
 			return
 		}
 	}

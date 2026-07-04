@@ -35,6 +35,7 @@ const FeedStatus         = Loadable(lazy(() => import("../page/FeedStatus/index"
 const ThreatConfig       = Loadable(lazy(() => import("../page/ThreatConfig/index")));
 const RecycleBin         = Loadable(lazy(() => import("../page/RecycleBin/index")));
 const AuditLog           = Loadable(lazy(() => import("../page/AuditLog/index")));
+const Remediation        = Loadable(lazy(() => import("../page/Remediation/index")));
 
 // ===== Auth Pages =====
 const LoginPage          = Loadable(lazy(() => import("../page/Authentication/Login")));
@@ -96,6 +97,7 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "password-policy",                      element: <PasswordPolicy />, category: "line_settings" },
 
   { path: "audit-log",                           element: <AuditLog />, category: "audit_log" },
+  { path: "remediation",                         element: <Remediation />, category: "remediation" },
 ];
 
 const canView = (permissions: PermissionMap, category?: string) =>
