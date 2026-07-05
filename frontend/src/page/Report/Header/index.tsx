@@ -4,9 +4,10 @@ import {
   ListAppReport,
   type AppReportResponse,
 } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type ReportInfo = {
-  title: string;
+  title?: string;
   subtitle?: string;
   dateRange?: string;
   generatedAt?: string;
@@ -35,18 +36,11 @@ const formatEnglishDate = (date: Date): string => {
   }).format(date);
 };
 
-const defaultInfo: ReportInfo = {
-  title: "Network Vulnerability Assessment Report",
-  subtitle:
-    "Executive summary of scan coverage, severity distribution, and priority findings from the latest assessment.",
-  classification: "Internal Report",
-  version: "Version 1.0",
-};
-
 const index: React.FC<ReportHeaderProps> = ({
-  info = defaultInfo,
+  info = {},
   refreshToken = 0,
 }) => {
+  const { t } = useLanguage();
   const [appReport, setAppReport] = useState<AppReportResponse | null>(null);
 
   const generatedDate = useMemo(() => formatEnglishDate(new Date()), []);
@@ -95,31 +89,27 @@ const index: React.FC<ReportHeaderProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center border border-slate-900 bg-slate-900 px-2.5 py-1 text-[10px] font-bold uppercase tracking-normal text-white">
-                Network Security Report
+                {t("header.networkSecurityReport")}
               </span>
 
-              {info.classification ? (
-                <span className="inline-flex items-center border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-normal text-slate-700">
-                  {info.classification}
-                </span>
-              ) : null}
+              <span className="inline-flex items-center border border-slate-300 bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-normal text-slate-700">
+                {info.classification || t("header.defaultClassification")}
+              </span>
             </div>
 
             <h1 className="mt-3 text-[25px] font-bold leading-tight text-slate-950">
-              {info.title || defaultInfo.title}
+              {info.title || t("header.defaultTitle")}
             </h1>
 
-            {info.subtitle ? (
-              <p className="mt-2 max-w-190 text-[13.5px] leading-[1.75] text-slate-600">
-                {info.subtitle}
-              </p>
-            ) : null}
+            <p className="mt-2 max-w-190 text-[13.5px] leading-[1.75] text-slate-600">
+              {info.subtitle || t("header.defaultSubtitle")}
+            </p>
           </div>
 
           <div className="flex w-45 shrink-0 items-start justify-end pt-1">
             <img
               src={logoSrc}
-              alt="Security Report Logo"
+              alt={t("header.securityReportLogoAlt")}
               className="h-26 w-auto object-contain"
               onError={(e) => {
                 const target = e.currentTarget;
@@ -133,12 +123,12 @@ const index: React.FC<ReportHeaderProps> = ({
 
         <div className="mt-5 grid grid-cols-2 gap-4 border-t border-slate-200 pt-3">
           <div>
-            <p className={metaLabelClass}>Generated At</p>
+            <p className={metaLabelClass}>{t("header.generatedAt")}</p>
             <p className={metaValueClass}>{generatedDate}</p>
           </div>
 
           <div className="text-right">
-            <p className={metaLabelClass}>Prepared By</p>
+            <p className={metaLabelClass}>{t("header.preparedBy")}</p>
             <p className={metaValueClass}>{companyName}</p>
           </div>
         </div>

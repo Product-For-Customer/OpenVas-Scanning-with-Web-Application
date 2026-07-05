@@ -32,6 +32,7 @@ import {
   type CriticalForReportResponse,
   type ReportVulnerabilityMonthResponse,
 } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type ConclusionProps = {
   onReady?: (ready: boolean) => void;
@@ -62,8 +63,6 @@ type MonthlyRiskRow = {
   vulnerabilityCount: number;
   riskScore: number;
 };
-
-const currentYear = 2026;
 
 const MONTHS: string[] = [
   "Jan",
@@ -305,6 +304,11 @@ const index: React.FC<ConclusionProps> = ({
   onReady,
   selectedTaskIDs = [],
 }) => {
+  const { t } = useLanguage();
+  // Derived instead of hardcoded — the old literal "2026" would keep
+  // mislabeling this section's year badge/tooltip starting in 2027 while the
+  // sibling MonthlyRisk section (which does derive it) stayed correct.
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
   const initialQuery = useMemo(() => readTaskIDsFromQuery(), []);
 
   const [summaryRows, setSummaryRows] = useState<
@@ -598,14 +602,14 @@ const index: React.FC<ConclusionProps> = ({
 
         <div className="mt-2 space-y-1.5 text-[12.25px]">
           <div>
-            <span className="font-medium text-slate-700">Vulnerabilities:</span>{" "}
+            <span className="font-medium text-slate-700">{t("conclusion.vulnerabilitiesLabel")}</span>{" "}
             <span className="text-slate-600">
               {formatNumber(row.vulnerabilityCount)}
             </span>
           </div>
 
           <div>
-            <span className="font-medium text-slate-700">AVG Risk Score:</span>{" "}
+            <span className="font-medium text-slate-700">{t("conclusion.avgRiskScoreLabel")}</span>{" "}
             <span className="font-semibold text-slate-900">
               {formatRiskScore(row.riskScore)}
             </span>
@@ -639,15 +643,15 @@ const index: React.FC<ConclusionProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-normal text-slate-500">
-              Executive Conclusion
+              {t("conclusion.executiveConclusion")}
             </p>
 
             <h3 className="mt-1 text-[18px] font-bold leading-tight text-slate-900">
-              Consolidated Risk Summary and Final Observation
+              {t("conclusion.consolidatedTitle")}
             </h3>
 
             <p className="mt-1.5 max-w-full text-[12.25px] leading-[1.55] text-slate-600">
-              One-page report summary with monthly comparisons, severity insights, and key target risk trends.
+              {t("conclusion.pageSummaryDesc")}
             </p>
           </div>
         </div>
@@ -662,7 +666,7 @@ const index: React.FC<ConclusionProps> = ({
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-500">
-                Total Findings
+                {t("conclusion.totalFindings")}
               </p>
 
               <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
@@ -670,7 +674,7 @@ const index: React.FC<ConclusionProps> = ({
               </p>
 
               <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
-                จำนวนผลการค้นพบรวม
+                {t("conclusion.totalFindingsDesc")}
               </p>
             </div>
           </div>
@@ -684,7 +688,7 @@ const index: React.FC<ConclusionProps> = ({
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                Total Devices
+                {t("conclusion.totalDevices")}
               </p>
 
               <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
@@ -692,7 +696,7 @@ const index: React.FC<ConclusionProps> = ({
               </p>
 
               <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
-                จำนวน device ทั้งหมด
+                {t("conclusion.totalDevicesDesc")}
               </p>
             </div>
           </div>
@@ -706,7 +710,7 @@ const index: React.FC<ConclusionProps> = ({
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700">
-                Average Risk (0-10)
+                {t("conclusion.averageRisk")}
               </p>
 
               <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
@@ -714,7 +718,7 @@ const index: React.FC<ConclusionProps> = ({
               </p>
 
               <p className="mt-1 text-[11px] leading-[1.4] text-slate-600">
-                ค่าเฉลี่ย Risk Score
+                {t("conclusion.averageRiskDesc")}
               </p>
             </div>
           </div>
@@ -730,7 +734,7 @@ const index: React.FC<ConclusionProps> = ({
 
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">
-                Highest Priority (0-10)
+                {t("conclusion.highestPriority")}
               </p>
 
               <p className="mt-1 text-[20px] font-bold leading-none text-slate-900">
@@ -738,7 +742,7 @@ const index: React.FC<ConclusionProps> = ({
               </p>
 
               <p className="mt-1 text-[11px] leading-[1.4] text-slate-700">
-                เป้าหมายที่ควรติดตามก่อน
+                {t("conclusion.highestPriorityDesc")}
               </p>
             </div>
           </div>
@@ -751,16 +755,16 @@ const index: React.FC<ConclusionProps> = ({
             <div className="mb-2 flex items-center justify-between">
               <div>
                 <h4 className="text-[14.5px] font-semibold text-slate-900">
-                  Monthly Comparison Overview
+                  {t("conclusion.monthlyComparisonOverview")}
                 </h4>
 
                 <p className="text-[11.5px] leading-[1.4] text-slate-600">
-                  เปรียบเทียบ Risk Score ตลอดปี {currentYear}
+                  {t("conclusion.monthlyComparisonDesc", { year: currentYear })}
                 </p>
               </div>
 
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-                Year {currentYear}
+                {t("conclusion.yearBadge", { year: currentYear })}
               </span>
             </div>
 
@@ -811,8 +815,7 @@ const index: React.FC<ConclusionProps> = ({
             </div>
 
             <p className="mt-2 text-[12px] leading-4.5 text-slate-500">
-              Note: This section presents the monthly AVG risk score across the
-              year 2026.
+              {t("conclusion.monthlyNote", { year: currentYear })}
             </p>
           </div>
         </div>
@@ -829,11 +832,11 @@ const index: React.FC<ConclusionProps> = ({
 
                 <div>
                   <h4 className="text-[14px] font-semibold text-slate-900">
-                    Total Severity
+                    {t("conclusion.totalSeverity")}
                   </h4>
 
                   <p className="text-[11px] leading-[1.4] text-slate-600">
-                    สัดส่วนผลการค้นพบตามระดับความรุนแรง
+                    {t("conclusion.totalSeverityDesc")}
                   </p>
                 </div>
               </div>
@@ -843,14 +846,14 @@ const index: React.FC<ConclusionProps> = ({
               <div className="relative h-43.75">
                 <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center">
                   <p className="text-[9.5px] font-semibold uppercase tracking-normal text-slate-500">
-                    Total
+                    {t("conclusion.totalLabel")}
                   </p>
 
                   <p className="mt-1 text-[21px] font-bold leading-none text-slate-900">
                     {formatNumber(totalFindings)}
                   </p>
 
-                  <p className="mt-1 text-[9.5px] text-slate-500">Findings</p>
+                  <p className="mt-1 text-[9.5px] text-slate-500">{t("conclusion.findingsLabel")}</p>
                 </div>
 
                 <ResponsiveContainer width="100%" height="100%">
@@ -916,11 +919,11 @@ const index: React.FC<ConclusionProps> = ({
 
                 <div>
                   <h4 className="text-[14px] font-semibold text-slate-900">
-                    Top 3 Device Risk
+                    {t("conclusion.top3DeviceRisk")}
                   </h4>
 
                   <p className="text-[11px] leading-[1.4] text-slate-600">
-                    แสดงเฉพาะ Top 3 เป้าหมายที่มี risk score สูงสุดจริง
+                    {t("conclusion.top3DeviceRiskDesc")}
                   </p>
                 </div>
               </div>
@@ -961,16 +964,16 @@ const index: React.FC<ConclusionProps> = ({
                         if (String(name) === "riskScore") {
                           return [
                             formatRiskScore(Number(value || 0)),
-                            "Risk Score",
+                            t("conclusion.riskScoreTooltip"),
                           ];
                         }
 
                         return [
                           row ? formatNumber(row.vulnerabilities) : "0",
-                          "Vulnerabilities",
+                          t("conclusion.vulnerabilitiesTooltip"),
                         ];
                       }}
-                      labelFormatter={(label) => `Rank ${label}`}
+                      labelFormatter={(label) => t("conclusion.rankLabel", { label })}
                       contentStyle={{
                         borderRadius: 8,
                         borderColor: "#e2e8f0",
@@ -999,7 +1002,7 @@ const index: React.FC<ConclusionProps> = ({
 
               <div className="mt-2 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Target List
+                  {t("conclusion.targetList")}
                 </p>
 
                 <div className="mt-1.5 grid grid-cols-1 gap-1.5">
@@ -1025,7 +1028,7 @@ const index: React.FC<ConclusionProps> = ({
 
                         <div className="text-right">
                           <p className="text-[9px] uppercase tracking-widest text-slate-500">
-                            Risk
+                            {t("conclusion.riskColumn")}
                           </p>
 
                           <p className="text-[11px] font-semibold text-slate-900">
@@ -1035,7 +1038,7 @@ const index: React.FC<ConclusionProps> = ({
 
                         <div className="text-right">
                           <p className="text-[9px] uppercase tracking-widest text-slate-500">
-                            Vulns
+                            {t("conclusion.vulnsColumn")}
                           </p>
 
                           <p className="text-[11px] font-semibold text-slate-900">
@@ -1046,7 +1049,7 @@ const index: React.FC<ConclusionProps> = ({
                     ))
                   ) : (
                     <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-3 text-[11px] text-slate-500">
-                      No target data available
+                      {t("conclusion.noTargetData")}
                     </div>
                   )}
                 </div>
@@ -1067,11 +1070,11 @@ const index: React.FC<ConclusionProps> = ({
 
                 <div>
                   <h4 className="text-[14px] font-semibold text-slate-900">
-                    Critical Observation
+                    {t("conclusion.criticalObservation")}
                   </h4>
 
                   <p className="text-[11px] leading-[1.4] text-slate-600">
-                    ช่องโหว่สำคัญที่ควรติดตามเป็นลำดับต้น
+                    {t("conclusion.criticalObservationDesc")}
                   </p>
                 </div>
               </div>
@@ -1114,21 +1117,21 @@ const index: React.FC<ConclusionProps> = ({
 
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-600">
                                 <span>
-                                  Severity:{" "}
+                                  {t("conclusion.severityLabel")}{" "}
                                   <span className="font-semibold text-slate-800">
                                     {formatRiskScore(severity)}
                                   </span>
                                 </span>
 
                                 <span>
-                                  Host:{" "}
+                                  {t("conclusion.hostLabel")}{" "}
                                   <span className="font-semibold text-slate-800">
                                     {normalizeText(item.ip) || "-"}
                                   </span>
                                 </span>
 
                                 <span>
-                                  Detected:{" "}
+                                  {t("conclusion.detectedLabel")}{" "}
                                   <span className="font-semibold text-slate-800">
                                     {item.detected_date
                                       ? (() => {
@@ -1173,15 +1176,14 @@ const index: React.FC<ConclusionProps> = ({
                                 </span>
 
                                 <span>
-                                  Age:{" "}
+                                  {t("conclusion.ageLabel")}{" "}
                                   <span className="font-semibold text-slate-800">
-                                    {typeof getDetectedDays(
-                                      item.detected_date
-                                    ) === "number"
-                                      ? `${getDetectedDays(
-                                          item.detected_date
-                                        )} days`
-                                      : "-"}
+                                    {(() => {
+                                      const days = getDetectedDays(item.detected_date);
+                                      return typeof days === "number"
+                                        ? t("conclusion.daysSuffix", { n: days })
+                                        : "-";
+                                    })()}
                                   </span>
                                 </span>
                               </div>
@@ -1194,7 +1196,7 @@ const index: React.FC<ConclusionProps> = ({
                 </div>
               ) : (
                 <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-[11px] text-slate-500">
-                  No critical observation found.
+                  {t("conclusion.noCriticalObservation")}
                 </div>
               )}
             </div>
@@ -1205,11 +1207,11 @@ const index: React.FC<ConclusionProps> = ({
           <div className="flex h-full flex-col rounded-lg border border-slate-200 bg-white">
             <div className="border-b border-slate-200 bg-slate-50/80 px-3.5 py-2.5">
               <h4 className="text-[14px] font-semibold text-slate-900">
-                Recommended actions
+                {t("conclusion.recommendedActions")}
               </h4>
 
               <p className="text-[11px] leading-[1.4] text-slate-600">
-                ข้อเสนอแนะเชิงปฏิบัติการสำหรับรอบถัดไป
+                {t("conclusion.recommendedActionsDesc")}
               </p>
             </div>
 
@@ -1217,34 +1219,31 @@ const index: React.FC<ConclusionProps> = ({
               <div className="space-y-2">
                 <div className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5">
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
-                    1. Immediate
+                    {t("conclusion.immediate")}
                   </p>
 
                   <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
-                    Prioritize remediation for the highest-risk devices and close
-                    critical vulnerabilities first.
+                    {t("conclusion.immediateDesc")}
                   </p>
                 </div>
 
                 <div className="rounded-md border border-slate-200 bg-white px-3 py-2.5">
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
-                    2. Near-term
+                    {t("conclusion.nearTerm")}
                   </p>
 
                   <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
-                    Review Medium and High findings in sequence and verify that
-                    affected systems are patched or mitigated.
+                    {t("conclusion.nearTermDesc")}
                   </p>
                 </div>
 
                 <div className="rounded-md border border-slate-200 bg-slate-50/50 px-3 py-2.5">
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-800">
-                    3. Continuous
+                    {t("conclusion.continuous")}
                   </p>
 
                   <p className="mt-1 text-[11px] leading-[1.55] text-slate-600">
-                    Reassess risk trends monthly and compare future scan results
-                    against the current baseline.
+                    {t("conclusion.continuousDesc")}
                   </p>
                 </div>
               </div>

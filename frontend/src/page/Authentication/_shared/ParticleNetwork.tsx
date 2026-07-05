@@ -6,10 +6,13 @@ const P_MAXD  = 145;
 const P_SPD   = 2.8; // fast movement
 
 // ─── Colour constants ─────────────────────────────────────────────────────────
-const L_DOT  = "158, 161, 178";
-const L_LINE = "148, 151, 168";
-const D_DOT  = "82, 132, 202";
-const D_LINE = "70, 116, 182";
+// Fixed brand-blue scheme (#1A97F5) — auth pages no longer switch between a
+// light/dark particle palette, so there is just one pairing: the dot uses the
+// brand colour at full saturation, the connecting line uses a slightly
+// darker/desaturated companion shade (same relationship the old dark-mode
+// D_DOT/D_LINE pair had to each other).
+const BRAND_DOT  = "26, 151, 245";
+const BRAND_LINE = "20, 118, 205";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export const ParticleNetwork: React.FC = () => {
@@ -43,16 +46,13 @@ export const ParticleNetwork: React.FC = () => {
       });
     }
 
-    const isDark = () => document.documentElement.classList.contains("dark");
-
     const tick = () => {
       ctx.clearRect(0, 0, cvs.width, cvs.height);
 
-      const dark  = isDark();
-      const dotC  = dark ? D_DOT  : L_DOT;
-      const lineC = dark ? D_LINE : L_LINE;
-      const dotA  = dark ? 0.64   : 0.72;
-      const lineA = dark ? 0.40   : 0.38;
+      const dotC  = BRAND_DOT;
+      const lineC = BRAND_LINE;
+      const dotA  = 0.64;
+      const lineA = 0.40;
 
       for (let i = 0; i < pts.length; i++) {
         const p = pts[i];

@@ -21,6 +21,7 @@ import {
   type TaskVulnSummaryForReportResponse,
 } from "../../services/report";
 import type { DeviceRiskForReportDTO } from "../../services/report";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const HeadingClass =
   "mt-1 text-[22px] font-bold leading-[1.25] text-slate-900";
@@ -184,6 +185,7 @@ const Pdf: React.FC<PdfProps> = ({
   refreshToken = 0,
   selectedTaskIDs = [],
 }) => {
+  const { t } = useLanguage();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
@@ -420,7 +422,7 @@ const Pdf: React.FC<PdfProps> = ({
       {
         key: "overview",
         type: "overview",
-        title: "Total Severity & Severity Distribution",
+        title: t("pdf.overviewTitle"),
       },
     ];
 
@@ -430,8 +432,12 @@ const Pdf: React.FC<PdfProps> = ({
         type: "highlights",
         title:
           highlightPages > 1
-            ? `Critical Highlights (${i + 1}/${highlightPages})`
-            : "Critical Highlights",
+            ? t("pdf.sectionWithPage", {
+                title: t("capture.criticalHighlightsHeading"),
+                current: i + 1,
+                total: highlightPages,
+              })
+            : t("capture.criticalHighlightsHeading"),
         pageIndex: i,
         pageSize: HIGHLIGHTS_PAGE_SIZE,
         pageNumberInSection: i + 1,
@@ -445,8 +451,12 @@ const Pdf: React.FC<PdfProps> = ({
         type: "device-risk",
         title:
           devicePages > 1
-            ? `Top Device Risk Report (${i + 1}/${devicePages})`
-            : "Top Device Risk Report",
+            ? t("pdf.sectionWithPage", {
+                title: t("capture.topDeviceRiskHeading"),
+                current: i + 1,
+                total: devicePages,
+              })
+            : t("capture.topDeviceRiskHeading"),
         pageIndex: i,
         pageSize: DEVICE_PAGE_SIZE,
         pageNumberInSection: i + 1,
@@ -457,17 +467,17 @@ const Pdf: React.FC<PdfProps> = ({
     pages.push({
       key: "comparison-monthly",
       type: "comparison-monthly",
-      title: "Risk Comparison & Monthly Overview",
+      title: t("pdf.comparisonMonthlyTitle"),
     });
 
     pages.push({
       key: "conclusion",
       type: "conclusion",
-      title: "Final Conclusion & Executive Summary",
+      title: t("pdf.conclusionTitle"),
     });
 
     return pages;
-  }, [highlightPages, devicePages]);
+  }, [highlightPages, devicePages, t]);
 
   const totalPages = pageDescriptors.length;
 
@@ -504,7 +514,7 @@ const Pdf: React.FC<PdfProps> = ({
 
   const renderFooter = (pageNumber: number) => (
     <div className="mt-auto px-8 pt-8 pb-12">
-      <ReportFooter page={`Page ${pageNumber} of ${totalPages}`} />
+      <ReportFooter page={t("capture.pageOfPages", { current: pageNumber, total: totalPages })} />
     </div>
   );
 
@@ -533,10 +543,9 @@ const Pdf: React.FC<PdfProps> = ({
             <main className="flex-1 px-8 pt-6 pb-8">
               <section className="mt-0">
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
-                  <h1 className={HeadingClass}>Total Severity</h1>
+                  <h1 className={HeadingClass}>{t("capture.totalSeverityHeading")}</h1>
                   <p className={DescClass}>
-                    แสดงสรุปผลการสแกนล่าสุด พร้อมจำนวนช่องโหว่ที่พบ
-                    แยกตามระดับความรุนแรง
+                    {t("capture.totalSeverityDesc")}
                   </p>
                 </div>
 
@@ -552,10 +561,10 @@ const Pdf: React.FC<PdfProps> = ({
               <section className="mt-5">
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <h1 className={HeadingClass}>
-                    Severity Distribution Overview
+                    {t("capture.severityDistributionHeading")}
                   </h1>
                   <p className={`${DescClass}`}>
-                    แสดงจำนวนช่องโหว่ในแต่ละระดับความรุนแรงในรูปแบบกราฟ
+                    {t("capture.severityDistributionDesc")}
                   </p>
                 </div>
 
@@ -581,17 +590,18 @@ const Pdf: React.FC<PdfProps> = ({
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <div className="flex items-end justify-between gap-4">
                     <div>
-                      <h1 className={HeadingClass}>Critical Highlights</h1>
+                      <h1 className={HeadingClass}>{t("capture.criticalHighlightsHeading")}</h1>
                       <p className={`${DescClass}`}>
-                        สรุปช่องโหว่ระดับวิกฤตที่ควรติดตามก่อน
-                        พร้อมผลกระทบ รายละเอียด และแนวทางแก้ไข
+                        {t("capture.criticalHighlightsDesc")}
                       </p>
                     </div>
 
                     {descriptor.totalPagesInSection > 1 ? (
                       <div className="shrink-0 text-[10px] font-medium text-slate-500">
-                        Page {descriptor.pageNumberInSection} of{" "}
-                        {descriptor.totalPagesInSection}
+                        {t("capture.pageOfPages", {
+                          current: descriptor.pageNumberInSection,
+                          total: descriptor.totalPagesInSection,
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -623,18 +633,18 @@ const Pdf: React.FC<PdfProps> = ({
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <div className="flex items-end justify-between gap-4">
                     <div>
-                      <h1 className={HeadingClass}>Top Device Risk Report</h1>
+                      <h1 className={HeadingClass}>{t("capture.topDeviceRiskHeading")}</h1>
                       <p className={`${DescClass}`}>
-                        แสดงรายการอุปกรณ์ที่มีความเสี่ยงสูงจากผลการประเมินล่าสุด
-                        โดยเรียงลำดับตามค่า Risk Score
-                        เพื่อช่วยให้ติดตามอุปกรณ์ที่ควรได้รับการจัดการก่อน
+                        {t("capture.topDeviceRiskDesc")}
                       </p>
                     </div>
 
                     {descriptor.totalPagesInSection > 1 ? (
                       <div className="shrink-0 text-[10px] font-medium text-slate-500">
-                        Page {descriptor.pageNumberInSection} of{" "}
-                        {descriptor.totalPagesInSection}
+                        {t("capture.pageOfPages", {
+                          current: descriptor.pageNumberInSection,
+                          total: descriptor.totalPagesInSection,
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -671,11 +681,10 @@ const Pdf: React.FC<PdfProps> = ({
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <h1 className={HeadingClass}>
-                    Top 10 Risk Score Comparison
+                    {t("capture.riskComparisonHeading")}
                   </h1>
                   <p className={`${DescClass}`}>
-                    เปรียบเทียบค่า Latest Risk และ Previous Risk ของแต่ละเป้าหมาย
-                    เพื่อให้เห็นแนวโน้มความเสี่ยงล่าสุด
+                    {t("capture.riskComparisonDesc")}
                   </p>
                 </div>
 
@@ -695,11 +704,10 @@ const Pdf: React.FC<PdfProps> = ({
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <h1 className={HeadingClass}>
-                    Monthly Risk Score Overview
+                    {t("capture.monthlyRiskHeading")}
                   </h1>
                   <p className={`${DescClass}`}>
-                    แสดงจำนวนช่องโหว่และค่า Risk Score รายเดือนของปี
-                    พร้อมตารางสรุปสำหรับใช้ตรวจสอบรายงาน
+                    {t("capture.monthlyRiskDesc")}
                   </p>
                 </div>
 
@@ -728,11 +736,10 @@ const Pdf: React.FC<PdfProps> = ({
               >
                 <div className="mb-3 border-b border-slate-200 pb-2.5">
                   <h1 className={HeadingClass}>
-                    Final Conclusion and Executive Summary
+                    {t("capture.finalConclusionHeading")}
                   </h1>
                   <p className={`${DescClass}`}>
-                    สรุปภาพรวมรายงานในหน้าเดียว พร้อมตัวเลขสำคัญ
-                    ระดับความรุนแรง ความเสี่ยงหลัก และข้อสังเกตเพื่อการตัดสินใจ
+                    {t("capture.finalConclusionDesc")}
                   </p>
                 </div>
 
@@ -765,16 +772,16 @@ const Pdf: React.FC<PdfProps> = ({
               <div className="inline-flex items-center gap-2 border border-slate-200 px-3 py-1 text-slate-700 transition-colors dark:border-cyan-400/15 dark:bg-[#0d1628] dark:text-white/80">
                 <FiFileText className="text-[13px]" />
                 <span className="text-[11px] font-medium">
-                  PDF Preview Mode
+                  {t("pdf.previewModeBadge")}
                 </span>
               </div>
 
               <h1 className="mt-3 text-[16px] font-semibold text-slate-900 dark:text-white/92 sm:text-[20px]">
-                Network Vulnerability Assessment Report
+                {t("pdf.reportTitle")}
               </h1>
 
               <p className="mt-1 text-[11px] text-slate-500 dark:text-white/50 sm:text-[13px]">
-                Preview one page at a time before exporting or downloading.
+                {t("pdf.previewSubtitle")}
               </p>
             </div>
 
@@ -793,18 +800,18 @@ const Pdf: React.FC<PdfProps> = ({
                     ].join(" ")}
                   >
                     <FiChevronLeft className="text-[14px]" />
-                    Prev
+                    {t("pdf.prev")}
                   </button>
 
                   <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center dark:border-cyan-400/12 dark:bg-[#111a2d]">
                     <div className="text-[11px] font-semibold text-slate-800 dark:text-white/85">
                       {prefetchLoading
-                        ? "Loading..."
-                        : `Page ${currentPage} of ${totalPages}`}
+                        ? t("pdf.loadingEllipsis")
+                        : t("capture.pageOfPages", { current: currentPage, total: totalPages })}
                     </div>
                     <div className="mt-0.5 max-w-full truncate text-[10px] text-slate-500 dark:text-white/45">
                       {prefetchLoading
-                        ? "Preparing report..."
+                        ? t("pdf.preparingReport")
                         : currentDescriptor?.title ?? "-"}
                     </div>
                   </div>
@@ -820,13 +827,13 @@ const Pdf: React.FC<PdfProps> = ({
                         : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
                     ].join(" ")}
                   >
-                    Next
+                    {t("pdf.next")}
                     <FiChevronRight className="text-[14px]" />
                   </button>
                 </div>
 
                 <div className="text-center text-[10px] text-slate-500 dark:text-white/45">
-                  Swipe left or right to preview the full PDF page
+                  {t("pdf.swipeHint")}
                 </div>
               </div>
             ) : (
@@ -844,7 +851,7 @@ const Pdf: React.FC<PdfProps> = ({
                     ].join(" ")}
                   >
                     <FiChevronLeft className="text-[14px]" />
-                    Previous
+                    {t("pdf.previous")}
                   </button>
 
                   <button
@@ -858,7 +865,7 @@ const Pdf: React.FC<PdfProps> = ({
                         : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
                     ].join(" ")}
                   >
-                    Next
+                    {t("pdf.next")}
                     <FiChevronRight className="text-[14px]" />
                   </button>
                 </div>
@@ -899,7 +906,7 @@ const Pdf: React.FC<PdfProps> = ({
                                 ? "bg-slate-900 text-white dark:bg-cyan-400 dark:text-slate-950"
                                 : "text-slate-700 hover:bg-slate-50 dark:text-white/78 dark:hover:bg-[#162238]",
                             ].join(" ")}
-                            title={descriptor?.title ?? `Page ${page}`}
+                            title={descriptor?.title ?? t("pdf.pageN", { page })}
                           >
                             {page}
                           </button>
@@ -919,7 +926,7 @@ const Pdf: React.FC<PdfProps> = ({
                         : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
                     ].join(" ")}
                   >
-                    Next
+                    {t("pdf.next")}
                     <FiChevronRight className="text-[14px]" />
                   </button>
                 </div>
@@ -931,17 +938,17 @@ const Pdf: React.FC<PdfProps> = ({
             <div className="mt-4 flex flex-col gap-2 border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600 dark:border-cyan-400/12 dark:bg-[#0d1628] dark:text-white/65 sm:flex-row sm:items-center sm:justify-between sm:px-4">
               <div className="min-w-0 wrap-break-word">
                 <span className="font-semibold text-slate-800 dark:text-white/85">
-                  Current:
+                  {t("pdf.currentLabel")}
                 </span>{" "}
                 {prefetchLoading
-                  ? "Preparing report data..."
+                  ? t("capture.preparingReportData")
                   : currentDescriptor?.title ?? "-"}
               </div>
 
               <div className="shrink-0">
                 {prefetchLoading
-                  ? "Loading..."
-                  : `Page ${currentPage} of ${totalPages}`}
+                  ? t("pdf.loadingEllipsis")
+                  : t("capture.pageOfPages", { current: currentPage, total: totalPages })}
               </div>
             </div>
           )}
@@ -986,7 +993,7 @@ const Pdf: React.FC<PdfProps> = ({
 
           {isMobile && (
             <div className="mt-3 flex items-center justify-center text-center text-[10px] text-slate-500 dark:text-white/40">
-              PDF preview is optimized for horizontal swipe on mobile
+              {t("pdf.mobileSwipeOptimized")}
             </div>
           )}
         </div>

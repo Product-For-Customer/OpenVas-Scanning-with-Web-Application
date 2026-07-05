@@ -33,9 +33,20 @@ var RouteCategory = map[string]string{
 	//    2026-07-03; Diagrams/Locations stayed behind under reports_diagrams) ──
 	"/app-report/:id":           "dashboard",
 	"/send-pdf-to-email":        "dashboard",
+	"/send-pdf-to-line":         "dashboard",
 	"/compliance/report":        "dashboard",
 	"/compliance/violations":    "dashboard",
 	"/compliance/control-vulns": "dashboard",
+
+	// ── Report data endpoints (2026-07-05: gated behind report.CaptureOrAuth,
+	//    which falls back to this normal session+permission check for anyone
+	//    without the internal capture token) ──────────────────────────────
+	"/summary-vulnerability-report": "dashboard",
+	"/critical-report":              "dashboard",
+	"/devices/risk-report":          "dashboard",
+	"/target-differ-report":         "dashboard",
+	"/report/vulnerability-month":   "dashboard",
+	"/reports/all/:task_id":         "dashboard",
 
 	// ── Threat Intelligence (includes Scan Management, merged 2026-07-03:
 	//    GMP + auto-scan schedules + KEV/CVE/feed schedules) ──────────────
@@ -73,11 +84,6 @@ var RouteCategory = map[string]string{
 	"/feed-schedules":                    "threat_intel",
 	"/feed-schedules/:feed_type":         "threat_intel",
 	"/feed-schedules/:feed_type/trigger": "threat_intel",
-
-	// ── Remediation Tickets ──────────────────────────────────────────────
-	"/remediation-tickets/summary": "remediation",
-	"/remediation-tickets":         "remediation",
-	"/remediation-tickets/:id":     "remediation",
 
 	// ── Diagrams & Locations ───────────────────────────────────────────────
 	"/locations":                "reports_diagrams",

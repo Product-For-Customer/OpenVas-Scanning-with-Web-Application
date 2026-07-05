@@ -6,7 +6,7 @@ import {
   GetServiceSettings,
   DirectSignUp,
   SendOTPForSignUp,
-  ListEmailAndPhoneNumber,
+  ListExistingEmails,
   type ServiceSettings,
 } from "../../../services/auth";
 import {
@@ -14,7 +14,6 @@ import {
   validatePasswordAgainstPolicy,
   type PasswordPolicy,
 } from "../../../services/passwordpolicy";
-import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
@@ -29,17 +28,16 @@ type FormData = {
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
-  "border-gray-300 dark:border-white/10",
-  "bg-white dark:bg-white/5",
-  "text-gray-800 dark:text-white/85",
-  "placeholder:text-gray-400 dark:placeholder:text-white/25",
-  "focus:border-gray-500 dark:focus:border-white/30",
-  "focus:ring-2 focus:ring-gray-100 dark:focus:ring-white/5",
+  "border-gray-300",
+  "bg-white",
+  "text-gray-800",
+  "placeholder:text-gray-400",
+  "focus:border-[#1A97F5]",
+  "focus:ring-2 focus:ring-[#1A97F5]/20",
 ].join(" ");
 
 const RegisterPage: React.FC = () => {
   const navigate         = useNavigate();
-  const { currentColor } = useStateContext();
   const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
@@ -75,9 +73,7 @@ const RegisterPage: React.FC = () => {
     if (!force && hasFetchedRef.current)        return emailsRef.current;
     try {
       isFetchingRef.current = true;
-      const data   = await ListEmailAndPhoneNumber();
-      const arr    = Array.isArray(data) ? data : [];
-      const emails = arr.map((i: any) => (i.email ?? "").trim().toLowerCase());
+      const emails = await ListExistingEmails();
       emailsRef.current = emails;
       if (isMounted.current) setExistingEmails(emails);
       hasFetchedRef.current = true;
@@ -174,11 +170,11 @@ const RegisterPage: React.FC = () => {
         <img
           src={argusWordmark}
           alt="Argus"
-          className="h-8 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          className="h-8 w-auto object-contain select-none"
           draggable={false}
         />
       </div>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+      <p className="text-center text-sm text-gray-500 mb-7">
         {t("auth.registerSubtitle")}
       </p>
 
@@ -186,7 +182,7 @@ const RegisterPage: React.FC = () => {
         {/* First + Last name */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
               {t("auth.firstName")}
             </label>
             <input
@@ -199,7 +195,7 @@ const RegisterPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+            <label className="block text-sm font-semibold text-gray-800 mb-1.5">
               {t("auth.lastName")}
             </label>
             <input
@@ -215,7 +211,7 @@ const RegisterPage: React.FC = () => {
 
         {/* Email */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 mb-1.5">
             {t("auth.emailAddress")}
           </label>
           <input
@@ -228,13 +224,13 @@ const RegisterPage: React.FC = () => {
             className={inputCls}
           />
           {emailError && (
-            <p className="mt-1 text-xs text-red-500 dark:text-red-400">{emailError}</p>
+            <p className="mt-1 text-xs text-red-500">{emailError}</p>
           )}
         </div>
 
         {/* Password */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 mb-1.5">
             {t("auth.password")}
           </label>
           <div className="relative">
@@ -252,7 +248,7 @@ const RegisterPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPw(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               aria-label={showPw ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
@@ -264,7 +260,7 @@ const RegisterPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting || !!emailError}
-          style={{ backgroundColor: submitting || emailError ? undefined : currentColor }}
+          style={{ backgroundColor: submitting || emailError ? undefined : "#1A97F5" }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
         >
           {submitting
@@ -273,9 +269,9 @@ const RegisterPage: React.FC = () => {
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-6">
+      <p className="text-center text-sm text-gray-500 mt-6">
         {t("auth.alreadyHaveAccount")}{" "}
-        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+        <Link to="/login" style={{ color: "#1A97F5" }} className="hover:opacity-80 font-medium transition-opacity">
           {t("auth.signIn")}
         </Link>
       </p>

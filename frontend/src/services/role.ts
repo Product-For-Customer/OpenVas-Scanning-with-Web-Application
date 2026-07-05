@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 import type { CategoryPerm } from "./auth";
 
 // =======================
@@ -14,6 +14,8 @@ const roleApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(roleApi);
 
 // =======================
 // Types

@@ -42,7 +42,7 @@ const LogoAnimationRoute: React.FC = () => {
     }
   };
 
-  return <AnimationSuccess duration={4000} onFinished={handleFinished} />;
+  return <AnimationSuccess duration={2200} onFinished={handleFinished} />;
 };
 
 export default LogoAnimationRoute;

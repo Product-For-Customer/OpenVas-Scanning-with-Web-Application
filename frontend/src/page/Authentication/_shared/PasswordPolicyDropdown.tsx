@@ -49,13 +49,13 @@ const PasswordPolicyDropdown: React.FC<Props> = ({ policy, password, open }) => 
 
   return (
     <div
-      className="absolute left-0 right-0 top-full z-20 mt-1.5 rounded-lg border border-gray-200 bg-white p-3 shadow-lg dark:border-white/10 dark:bg-[#1a1830]"
+      className="absolute left-0 right-0 top-full z-20 mt-1.5 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
       // Prevent the password input's onBlur from firing before a click
       // inside this dropdown would register (not currently interactive,
       // but keeps behaviour predictable if it becomes so later).
       onMouseDown={e => e.preventDefault()}
     >
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-white/30">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
         {t("auth.passwordRequirements")}
       </p>
       <ul className="space-y-1.5">
@@ -66,19 +66,19 @@ const PasswordPolicyDropdown: React.FC<Props> = ({ policy, password, open }) => 
                 "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
                 rule.met
                   ? "border-emerald-500 bg-emerald-500 text-white"
-                  : "border-gray-300 text-transparent dark:border-white/20",
+                  : "border-gray-300 text-transparent",
               ].join(" ")}
             >
               <FiCheck size={10} />
             </span>
-            <span className={rule.met ? "text-gray-700 dark:text-white/80" : "text-gray-400 dark:text-white/40"}>
+            <span className={rule.met ? "text-gray-700" : "text-gray-400"}>
               {t(rule.key, rule.vars)}
             </span>
           </li>
         ))}
       </ul>
       {allMet && (
-        <p className="mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+        <p className="mt-2 text-xs font-semibold text-emerald-600">
           {t("auth.passwordAllRequirementsMet")}
         </p>
       )}

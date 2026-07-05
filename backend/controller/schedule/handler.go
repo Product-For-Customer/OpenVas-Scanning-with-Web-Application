@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Tawunchai/openvas/audit"
@@ -17,6 +18,32 @@ import (
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
+
+// scheduleInFlight claims a schedule ID for the duration of triggerScheduledScan,
+// so a slow GMP call (StartTask can block for a while — see gmp package's
+// single global connection/mutex) that outlives the 1-minute poll tick can't
+// get the same due schedule picked up and fired a second time concurrently
+// before its next_run_at has been advanced in the DB.
+var (
+	scheduleInFlightMu sync.Mutex
+	scheduleInFlight   = map[uint]bool{}
+)
+
+func claimSchedule(id uint) bool {
+	scheduleInFlightMu.Lock()
+	defer scheduleInFlightMu.Unlock()
+	if scheduleInFlight[id] {
+		return false
+	}
+	scheduleInFlight[id] = true
+	return true
+}
+
+func releaseSchedule(id uint) {
+	scheduleInFlightMu.Lock()
+	defer scheduleInFlightMu.Unlock()
+	delete(scheduleInFlight, id)
+}
 
 // ─────────────────────────────────────────────────────────────
 // DTOs
@@ -427,11 +454,16 @@ func runDueSchedules() {
 	db.Where("enabled = true AND next_run_at IS NOT NULL AND next_run_at <= ?", time.Now()).Find(&schedules)
 	for _, s := range schedules {
 		s := s
+		if !claimSchedule(s.ID) {
+			continue // already being processed by a still-running previous tick
+		}
 		go triggerScheduledScan(s)
 	}
 }
 
 func triggerScheduledScan(s entity.AutoScanSchedule) {
+	defer releaseSchedule(s.ID)
+
 	db := config.DB()
 	tz := setting.GetAppTimezone()
 	log.Printf("🎯 Auto scan triggered: task=%q id=%d freq=%s tz=%s\n", s.TaskName, s.ID, s.Frequency, tz)
@@ -439,6 +471,7 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 	// Resolve target name once for both notifications
 	targetName := getTaskTargetName(s.TaskID)
 
+	started := false
 	if _, err := gmp.StartTask(s.TaskID); err != nil {
 		log.Printf("❌ Auto scan failed: task=%q err=%v\n", s.TaskName, err)
 		// Notify LINE that scan FAILED to start
@@ -448,6 +481,7 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 		)
 		go line.SendScanNotification(failMsg)
 	} else {
+		started = true
 		log.Printf("✅ Auto scan started: task=%q\n", s.TaskName)
 		// Notify LINE: scan started
 		go line.SendScanNotification(buildScanStartMessage(s, targetName))
@@ -455,13 +489,20 @@ func triggerScheduledScan(s entity.AutoScanSchedule) {
 		go pollForScanCompletion(s, targetName)
 	}
 
-	now := time.Now()
-	s.LastRunAt = &now
 	s.Timezone = tz
+	if started {
+		now := time.Now()
+		s.LastRunAt = &now
+	}
 
 	if s.Frequency == "once" {
-		s.Enabled = false
-		s.NextRunAt = nil
+		if started {
+			s.Enabled = false
+			s.NextRunAt = nil
+		}
+		// else: leave enabled with next_run_at unchanged so the next poll
+		// tick retries it automatically instead of a failed one-time scan
+		// silently disabling itself with no way to know it never ran.
 	} else {
 		loc := resolveLocation(s.Timezone)
 		var schedAtStr *string

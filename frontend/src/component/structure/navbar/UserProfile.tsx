@@ -272,7 +272,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
         <button
           type="button"
           onClick={close}
-          aria-label="Close user profile"
+          aria-label={t("userProfile.closeAriaLabel")}
           className="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-gray-600 transition-colors hover:bg-gray-100 active:bg-gray-200 dark:text-white/70 dark:hover:bg-white/10 dark:active:bg-white/15"
         >
           <MdOutlineCancel className="text-[18px]" />
@@ -292,7 +292,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                   thumbLoading ? "opacity-90" : "opacity-100",
                 ].join(" ")}
                 src={profileThumbSrc || finalProfileSrc}
-                alt="user-profile"
+                alt={t("userProfile.avatarAlt")}
                 draggable={false}
                 onError={() => setImageError(true)}
               />
@@ -311,7 +311,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
                 </span>
 
                 <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-                  Analyst Access
+                  {t("userProfile.analystAccess")}
                 </span>
               </div>
 
@@ -360,7 +360,7 @@ const UserProfile: React.FC<UserProfileProps> = ({
 
         <div className="px-1 pt-2.5">
           <p className="text-[10px] text-gray-400 dark:text-white/35">
-            Tip: ตรวจสอบ Tasks / Reports / Findings หลังการสแกนเสมอ
+            {t("userProfile.tip")}
           </p>
         </div>
       </div>

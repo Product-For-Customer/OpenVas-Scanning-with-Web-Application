@@ -355,11 +355,19 @@ const index: React.FC = () => {
 
   const loadInitialData = useCallback(async () => {
     if (notificationListCache && lineMasterListCache) {
+      // Show the cached data immediately (no loading flash on repeat visits
+      // to this page within the same session)...
       setRows(notificationListCache);
       setLineMasters(lineMasterListCache);
       setLoading(false);
       setLoadingLineMasters(false);
       setError("");
+      // ...but always revalidate in the background so a LINE integration
+      // created since this cache was last populated (e.g. on the
+      // Integrations page, in the same session) shows up here without the
+      // user having to know to click Refresh manually.
+      void fetchNotifications(true);
+      void fetchLineMasters(true);
       return;
     }
 
@@ -924,9 +932,10 @@ const index: React.FC = () => {
                   void fetchNotifications(true);
                   void fetchLineMasters(true);
                 }}
+                disabled={loading || loadingLineMasters}
                 className="border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-white/80 dark:hover:bg-white/10"
               >
-                <FiRefreshCw className="text-[13px]" />
+                <FiRefreshCw className={`text-[13px] ${loading || loadingLineMasters ? "animate-spin" : ""}`} />
                 {t("common.refresh")}
               </ActionButton>
 

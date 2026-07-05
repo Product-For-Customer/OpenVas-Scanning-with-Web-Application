@@ -8,7 +8,7 @@ export * from "./compliance";
 export * from "./schedule";
 export * from "./setting";
 export * from "./auditlog";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 // =======================
 // Axios instance for cookie-based auth
@@ -22,6 +22,8 @@ const vulnerabilityApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(vulnerabilityApi);
 
 // =======================
 // API: GET /tasks/status

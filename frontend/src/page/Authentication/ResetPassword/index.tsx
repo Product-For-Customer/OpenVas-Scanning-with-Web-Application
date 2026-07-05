@@ -12,7 +12,6 @@ import {
   GetPasswordPolicy,
   type PasswordPolicy,
 } from "../../../services/passwordpolicy";
-import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import PasswordPolicyDropdown from "../_shared/PasswordPolicyDropdown";
@@ -20,18 +19,17 @@ import argusWordmark from "../../../assets/argus-font-sidebar.png";
 
 const inputCls = [
   "w-full border px-4 py-2.5 text-sm outline-none transition",
-  "border-gray-300 dark:border-white/10",
-  "bg-white dark:bg-white/5",
-  "text-gray-800 dark:text-white/85",
-  "placeholder:text-gray-400 dark:placeholder:text-white/25",
-  "focus:border-gray-500 dark:focus:border-white/30",
-  "focus:ring-2 focus:ring-gray-100 dark:focus:ring-white/5",
+  "border-gray-300",
+  "bg-white",
+  "text-gray-800",
+  "placeholder:text-gray-400",
+  "focus:border-[#1A97F5]",
+  "focus:ring-2 focus:ring-[#1A97F5]/20",
 ].join(" ");
 
 const ResetPasswordPage: React.FC = () => {
   const navigate         = useNavigate();
   const location         = useLocation();
-  const { currentColor } = useStateContext();
   const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
@@ -122,27 +120,27 @@ const ResetPasswordPage: React.FC = () => {
         <img
           src={argusWordmark}
           alt="Argus"
-          className="h-8 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          className="h-8 w-auto object-contain select-none"
           draggable={false}
         />
       </div>
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-2">
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 mb-2">
         {t("auth.resetPasswordTitle")}
       </h2>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-7">
+      <p className="text-center text-sm text-gray-500 mb-7">
         {t("auth.setNewPasswordFor")}{" "}
-        <span className="font-semibold text-gray-700 dark:text-white/70">{email || t("auth.yourAccount")}</span>
+        <span className="font-semibold text-gray-700">{email || t("auth.yourAccount")}</span>
       </p>
 
       {error && (
-        <div className="mb-4 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+        <div className="mb-4 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 mb-1.5">
             {t("auth.newPassword")}
           </label>
           <div className="relative">
@@ -159,7 +157,7 @@ const ResetPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowNew(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               aria-label={showNew ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
@@ -169,7 +167,7 @@ const ResetPasswordPage: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1.5">
+          <label className="block text-sm font-semibold text-gray-800 mb-1.5">
             {t("auth.confirmPassword")}
           </label>
           <div className="relative">
@@ -183,7 +181,7 @@ const ResetPasswordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowConfirm(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               aria-label={showConfirm ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
@@ -195,10 +193,10 @@ const ResetPasswordPage: React.FC = () => {
         {newPassword && (
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-gray-500 dark:text-white/40">{t("auth.passwordStrength")}</span>
+              <span className="text-gray-500">{t("auth.passwordStrength")}</span>
               <span className="font-semibold" style={{ color: strengthColor }}>{strengthLabel}</span>
             </div>
-            <div className="h-1.5 bg-gray-200 dark:bg-white/10 overflow-hidden">
+            <div className="h-1.5 bg-gray-200 overflow-hidden">
               <div
                 className="h-full transition-all duration-300"
                 style={{ width: `${strength}%`, backgroundColor: strengthColor }}
@@ -210,7 +208,7 @@ const ResetPasswordPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting}
-          style={{ backgroundColor: submitting ? undefined : currentColor }}
+          style={{ backgroundColor: submitting ? undefined : "#1A97F5" }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {submitting
@@ -219,9 +217,9 @@ const ResetPasswordPage: React.FC = () => {
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-5">
+      <p className="text-center text-sm text-gray-500 mt-5">
         {t("auth.backTo")}{" "}
-        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+        <Link to="/login" style={{ color: "#1A97F5" }} className="hover:opacity-80 font-medium transition-opacity">
           {t("auth.signIn")}
         </Link>
       </p>

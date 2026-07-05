@@ -17,6 +17,7 @@ import (
 	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -185,10 +186,34 @@ func VerifyTOTPSetup(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "TOTP enabled successfully"})
 }
 
+type DisableTOTPInput struct {
+	Password string `json:"password"`
+	Code     string `json:"code"`
+}
+
 // DELETE /auth/totp  — disable TOTP and clear secret
+//
+// Requires re-proving either the account password or a current TOTP code —
+// without this, a stolen/hijacked session cookie alone (e.g. via XSS or a
+// shared machine) was enough to permanently turn off 2FA, since this is a
+// self-service endpoint reachable by any authenticated session.
 func DisableTOTP(c *gin.Context) {
 	user, ok := getUserFromCtx(c)
 	if !ok {
+		return
+	}
+
+	var input DisableTOTPInput
+	_ = c.ShouldBindJSON(&input)
+
+	verified := false
+	if strings.TrimSpace(input.Password) != "" && services.CheckPasswordHash(input.Password, user.Password) {
+		verified = true
+	} else if strings.TrimSpace(input.Code) != "" && user.TOTPEnabled && verifyTOTPCode(user.TOTPSecret, input.Code) {
+		verified = true
+	}
+	if !verified {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "confirm your password or a current authenticator code to disable TOTP"})
 		return
 	}
 

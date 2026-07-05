@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { FiBarChart2, FiCpu, FiShield } from "react-icons/fi";
 import { ListDataForReportVulnerabilityMonth } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type MonthlyRiskRow = {
   month: string;
@@ -150,6 +151,8 @@ type CustomTooltipProps = {
 };
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
+  const { t } = useLanguage();
+
   if (!active || !payload || payload.length === 0) return null;
 
   const row = payload[0]?.payload;
@@ -163,14 +166,14 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
 
       <div className="mt-2 space-y-1.5 text-[12.25px]">
         <div>
-          <span className="font-medium text-slate-700">Vulnerabilities:</span>{" "}
+          <span className="font-medium text-slate-700">{t("conclusion.vulnerabilitiesLabel")}</span>{" "}
           <span className="text-slate-600">
             {formatCount(row.vulnerabilityCount)}
           </span>
         </div>
 
         <div>
-          <span className="font-medium text-slate-700">AVG Risk Score:</span>{" "}
+          <span className="font-medium text-slate-700">{t("conclusion.avgRiskScoreLabel")}</span>{" "}
           <span
             className={`font-semibold ${getTextRiskColor(row.avgRiskScore)}`}
           >
@@ -317,6 +320,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
   onReady,
   selectedTaskIDs = [],
 }) => {
+  const { t } = useLanguage();
   const [apiData, setApiData] = useState<
     ReportVulnerabilityMonthResponse[] | null
   >(null);
@@ -416,7 +420,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
 
                 <div>
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                    Total Device
+                    {t("monthlyRisk.totalDevice")}
                   </p>
 
                   <p className="mt-0.5 text-[18px] font-semibold text-slate-900">
@@ -438,7 +442,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
                   <p
                     className={`text-[10.5px] font-semibold uppercase tracking-[0.12em] ${highestRiskCard.label}`}
                   >
-                    Highest AVG Risk (MAX 10.00)
+                    {t("monthlyRisk.highestAvgRisk")}
                   </p>
 
                   <p className="mt-0.5 text-[18px] font-semibold">
@@ -454,7 +458,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
 
                     <span className="text-[13px] font-medium text-slate-600">
                       {summary.highestAvgRiskMonth === "-"
-                        ? "No month data"
+                        ? t("monthlyRisk.noMonthData")
                         : `${summary.highestAvgRiskMonth} ${currentYear}`}
                     </span>
                   </p>
@@ -470,7 +474,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
 
                 <div>
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-sky-700">
-                    Total Vulnerabilities
+                    {t("monthlyRisk.totalVulnerabilities")}
                   </p>
 
                   <p className="mt-0.5 text-[18px] font-semibold text-slate-900">
@@ -485,11 +489,11 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
         <div className="px-3 py-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Monthly AVG Risk Score Trend
+              {t("monthlyRisk.monthlyTrend")}
             </p>
 
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600">
-              Year {currentYear}
+              {t("conclusion.yearBadge", { year: currentYear })}
             </span>
           </div>
 
@@ -559,15 +563,15 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
               <thead className="bg-slate-50">
                 <tr>
                   <th className="border-b border-slate-200 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-slate-600">
-                    Month
+                    {t("monthlyRisk.monthColumn")}
                   </th>
 
                   <th className="border-b border-slate-200 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-widest text-slate-600">
-                    Vulnerabilities
+                    {t("conclusion.vulnerabilitiesTooltip")}
                   </th>
 
                   <th className="border-b border-slate-200 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-widest text-slate-600">
-                    AVG Risk Score
+                    {t("monthlyRisk.avgRiskScoreColumn")}
                   </th>
                 </tr>
               </thead>
@@ -602,8 +606,7 @@ const index: React.FC<Section6MonthlyRiskReportProps> = ({
           </div>
 
           <p className="mt-2 text-[12px] leading-4.5 text-slate-500">
-            Note: This section presents the monthly AVG risk score together with
-            the corresponding vulnerability counts observed in each month.
+            {t("monthlyRisk.tableFootnote")}
           </p>
         </div>
       </div>

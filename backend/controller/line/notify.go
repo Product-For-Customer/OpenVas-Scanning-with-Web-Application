@@ -406,6 +406,7 @@ type LineConversationState struct {
 	CooldownUntil    time.Time
 	ExpiresAt        time.Time
 	UpdatedAt        time.Time
+	cancelTimeout    chan struct{} // closed to stop this state's pending startRiskLimitTimeoutTimer goroutine, if any
 }
 
 var (
@@ -766,7 +767,7 @@ func expireWaitingRiskLimitIfActive(sendID string, notificationID uint, expiresA
 	return true
 }
 
-func startRiskLimitTimeoutTimer(notification entity.AppNotification, channelToken string, expiresAt time.Time) {
+func startRiskLimitTimeoutTimer(notification entity.AppNotification, channelToken string, expiresAt time.Time, cancel chan struct{}) {
 	sendID := strings.TrimSpace(notification.SendID)
 	notificationID := notification.ID
 
@@ -783,7 +784,17 @@ func startRiskLimitTimeoutTimer(notification entity.AppNotification, channelToke
 		timer := time.NewTimer(waitDuration)
 		defer timer.Stop()
 
-		<-timer.C
+		// Exit immediately if a newer setWaitingRiskLimit call for the same
+		// sendID supersedes this one, instead of leaving this goroutine
+		// sleeping for the full timeout regardless — repeated fake "2"
+		// commands (trivial to send if the LINE webhook secret is
+		// unconfigured, see CreateAppNotificationByLine) would otherwise pile
+		// up one goroutine+timer per message for the whole timeout window.
+		select {
+		case <-cancel:
+			return
+		case <-timer.C:
+		}
 
 		shouldNotify := expireWaitingRiskLimitIfActive(sendID, notificationID, expiresAt)
 		if !shouldNotify {
@@ -801,6 +812,11 @@ func setWaitingRiskLimit(notification entity.AppNotification, channelToken strin
 	key := strings.TrimSpace(notification.SendID)
 	expiresAt := now.Add(lineRiskInputTimeout)
 
+	if old, ok := lineStates[key]; ok && old.cancelTimeout != nil {
+		close(old.cancelTimeout)
+	}
+	cancel := make(chan struct{})
+
 	lineStates[key] = &LineConversationState{
 		NotificationID:   notification.ID,
 		SendID:           key,
@@ -809,11 +825,12 @@ func setWaitingRiskLimit(notification entity.AppNotification, channelToken strin
 		CooldownUntil:    time.Time{},
 		ExpiresAt:        expiresAt,
 		UpdatedAt:        now,
+		cancelTimeout:    cancel,
 	}
 
 	lineStateMu.Unlock()
 
-	startRiskLimitTimeoutTimer(notification, channelToken, expiresAt)
+	startRiskLimitTimeoutTimer(notification, channelToken, expiresAt, cancel)
 }
 
 func addInvalidRiskInput(notification entity.AppNotification) (int, bool) {

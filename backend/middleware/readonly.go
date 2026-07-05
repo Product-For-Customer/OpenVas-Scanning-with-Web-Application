@@ -14,11 +14,12 @@ import (
 // account only (resolved from the JWT inside the handler, no :id param to
 // spoof), so no category/ownership check is needed.
 var selfServiceOpenPaths = map[string]bool{
-	"/auth/me":           true, // session bootstrap — every authenticated user needs this
-	"/auth/totp/status":  true, // read own TOTP status
-	"/auth/totp/init":    true, // start own TOTP setup
-	"/auth/totp/verify":  true, // confirm own TOTP setup
-	"/auth/totp":         true, // disable own TOTP (DELETE)
+	"/auth/me":             true, // session bootstrap — every authenticated user needs this
+	"/auth/totp/status":    true, // read own TOTP status
+	"/auth/totp/init":      true, // start own TOTP setup
+	"/auth/totp/verify":    true, // confirm own TOTP setup
+	"/auth/totp":           true, // disable own TOTP (DELETE)
+	"/email-phone-numbers": true, // any authenticated user's own Account page needs this for its duplicate email/phone check
 }
 
 // selfServiceOwnIDPaths — write endpoints any role may call ONLY when the

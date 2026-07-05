@@ -92,7 +92,7 @@ func CreateUser(c *gin.Context) {
 	position := strings.TrimSpace(input.Position)
 
 	var existing entity.AppUser
-	if err := db.Where("email = ?", email).First(&existing).Error; err == nil {
+	if err := db.Where("LOWER(email) = LOWER(?)", email).First(&existing).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -157,6 +157,10 @@ func CreateUser(c *gin.Context) {
 	}
 
 	if err := db.Create(&user).Error; err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			return
+		}
 		services.RespondInternalError(c, err)
 		return
 	}
@@ -270,7 +274,7 @@ func UpdateUserByID(c *gin.Context) {
 		newEmail := strings.TrimSpace(*input.Email)
 
 		var existing entity.AppUser
-		err := db.Where("email = ? AND id <> ?", newEmail, user.ID).First(&existing).Error
+		err := db.Where("LOWER(email) = LOWER(?) AND id <> ?", newEmail, user.ID).First(&existing).Error
 
 		switch {
 		case err == nil:
@@ -393,6 +397,24 @@ func UpdateUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, mapUserResponse(user))
 }
 
+// isLastActiveAdmin reports whether userID is currently the only user still
+// in the built-in Admin role. Without this check, any user_management-
+// permitted caller could delete or demote the sole remaining admin with no
+// way to recover — every role/permission page requires user_management
+// access, which nobody would have left.
+func isLastActiveAdmin(db *gorm.DB, userID uint) bool {
+	var user entity.AppUser
+	if err := db.Preload("AppRole").First(&user, userID).Error; err != nil {
+		return false
+	}
+	if user.AppRole == nil || !user.AppRole.IsBuiltIn || !strings.EqualFold(user.AppRole.Role, "admin") {
+		return false
+	}
+	var count int64
+	db.Model(&entity.AppUser{}).Where("app_role_id = ?", user.AppRoleID).Count(&count)
+	return count <= 1
+}
+
 func DeleteUserByID(c *gin.Context) {
 	id := c.Param("id")
 
@@ -406,6 +428,11 @@ func DeleteUserByID(c *gin.Context) {
 
 	var deletedUser entity.AppUser
 	db.First(&deletedUser, uint(uid))
+
+	if isLastActiveAdmin(db, uint(uid)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete the last remaining Admin — promote another user to Admin first"})
+		return
+	}
 
 	if tx := db.Delete(&entity.AppUser{}, uint(uid)); tx.Error != nil {
 		services.RespondInternalError(c, tx.Error)
@@ -546,7 +573,7 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		newEmail := strings.TrimSpace(*input.Email)
 
 		var existing entity.AppUser
-		err := db.Where("email = ? AND id <> ?", newEmail, user.ID).First(&existing).Error
+		err := db.Where("LOWER(email) = LOWER(?) AND id <> ?", newEmail, user.ID).First(&existing).Error
 
 		switch {
 		case err == nil:
@@ -610,6 +637,10 @@ func UpdateUserIDByAdmin(c *gin.Context) {
 		}
 
 		newRoleName = role.Role
+		if newRoleName != oldRoleName && isLastActiveAdmin(db, user.ID) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "cannot change the role of the last remaining Admin — promote another user to Admin first"})
+			return
+		}
 		validateUser.AppRoleID = *input.AppRoleID
 		updates["AppRoleID"] = *input.AppRoleID
 	}
@@ -676,4 +707,24 @@ func ListEmailAndPhoneNumber(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, result)
+}
+
+// ListExistingEmails is the PUBLIC, narrowly-scoped counterpart to
+// ListEmailAndPhoneNumber above, used only for the Register page's
+// live "this email is already taken" client-side check before a session
+// exists. It intentionally returns emails only (lowercased, no IDs, no
+// phone numbers) so an unauthenticated caller can no longer bulk-harvest
+// every user's phone number the way the full endpoint used to allow.
+func ListExistingEmails(c *gin.Context) {
+	db := config.DB()
+
+	var emails []string
+	if err := db.Model(&entity.AppUser{}).Pluck("LOWER(email)", &emails).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "failed to fetch existing emails",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, emails)
 }

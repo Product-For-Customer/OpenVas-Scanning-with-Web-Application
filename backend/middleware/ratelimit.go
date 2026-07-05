@@ -111,6 +111,14 @@ func RateLimiter() gin.HandlerFunc {
 			window = time.Hour
 		}
 
+		// LINE webhook: signature verification is skipped entirely when no
+		// channel secret is configured (see CreateAppNotificationByLine), so
+		// this is the only backstop against a flood of forged webhook calls
+		// piling up goroutines/timers per fake "message" event.
+		if path == "/line/webhook/notification" {
+			limit = 30
+		}
+
 		key := ip + "|" + path
 		sw := getWindow(key, limit, window)
 

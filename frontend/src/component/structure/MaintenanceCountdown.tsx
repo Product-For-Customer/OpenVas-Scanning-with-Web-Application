@@ -26,10 +26,18 @@ const MaintenanceCountdown: React.FC = () => {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const didLogoutRef = useRef(false);
+  const secondsRef = useRef(TOTAL_SECONDS);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
   }, []);
+
+  // Guarantee the 1s countdown interval is cleared if this component ever
+  // unmounts while it's running (e.g. the route tree swaps away when
+  // AuthContext force-clears the user on a maintenance block) — without
+  // this, the interval kept firing in the background and could trigger a
+  // second logout+navigate up to 60s after the page had already moved on.
+  useEffect(() => stopTimer, [stopTimer]);
 
   const doLogout = useCallback(async () => {
     if (didLogoutRef.current) return;
@@ -44,16 +52,24 @@ const MaintenanceCountdown: React.FC = () => {
   const startCountdown = useCallback((initialSeconds = TOTAL_SECONDS) => {
     if (didLogoutRef.current) return;
     const secs = Math.max(1, Math.min(initialSeconds, TOTAL_SECONDS));
+    secondsRef.current = secs;
     setSeconds(secs);
     setActive(true);
     setShow(true);
     setLeaving(false);
     stopTimer();
     timerRef.current = setInterval(() => {
-      setSeconds((prev) => {
-        if (prev <= 1) { doLogout(); return 0; }
-        return prev - 1;
-      });
+      // Side effects (doLogout) belong here, in the interval tick itself —
+      // not inside a setState updater function, which React expects to stay
+      // pure and may invoke more than once (e.g. under StrictMode).
+      const next = secondsRef.current - 1;
+      secondsRef.current = next;
+      if (next <= 0) {
+        setSeconds(0);
+        doLogout();
+        return;
+      }
+      setSeconds(next);
     }, 1000);
   }, [stopTimer, doLogout]);
 
@@ -99,6 +115,8 @@ const MaintenanceCountdown: React.FC = () => {
   // after the grace period), AuthContext force-clears the user; just hide the UI.
   useEffect(() => {
     const onBlock = () => {
+      stopTimerRef.current();
+      didLogoutRef.current = true;
       setShow(false);
       setLeaving(true);
       setTimeout(() => setActive(false), 400);

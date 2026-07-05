@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 // =======================
 // Axios instance for cookie-based auth
@@ -13,6 +13,8 @@ const userApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(userApi);
 
 // =======================
 // Types
@@ -243,7 +245,7 @@ export const UpdateUserIDByAdmin = async (
 export interface SendEmailResponse {
   id: number;
   email: string;
-  pass_app: string;
+  has_pass_app: boolean;
   app_user_id: number;
 }
 

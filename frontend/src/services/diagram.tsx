@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 // =======================
 // Axios instance for cookie-based auth
@@ -13,6 +13,8 @@ const diagramApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(diagramApi);
 
 // =======================
 // Types: Diagram

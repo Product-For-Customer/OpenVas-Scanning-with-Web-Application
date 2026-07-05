@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -462,9 +463,13 @@ func ListAssetCriticality(c *gin.Context) {
 
 func GetAssetCriticality(c *gin.Context) {
 	db := config.DB()
-	id := c.Param("id")
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
 	var item entity.AppAssetCriticality
-	if err := db.First(&item, id).Error; err != nil {
+	if err := db.First(&item, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
@@ -524,9 +529,13 @@ type updateAssetCritInput struct {
 
 func UpdateAssetCriticality(c *gin.Context) {
 	db := config.DB()
-	id := c.Param("id")
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
 	var item entity.AppAssetCriticality
-	if err := db.First(&item, id).Error; err != nil {
+	if err := db.First(&item, "id = ?", id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
@@ -569,17 +578,21 @@ func UpdateAssetCriticality(c *gin.Context) {
 		services.RespondInternalError(c, err)
 		return
 	}
-	audit.Log(c, "asset_criticality.updated", "asset_criticality", id, fmt.Sprintf("updated criticality for %s", item.HostIP))
+	audit.Log(c, "asset_criticality.updated", "asset_criticality", fmt.Sprintf("%d", id), fmt.Sprintf("updated criticality for %s", item.HostIP))
 	c.JSON(http.StatusOK, gin.H{"data": item})
 }
 
 func DeleteAssetCriticality(c *gin.Context) {
 	db := config.DB()
-	id := c.Param("id")
-	if err := db.Delete(&entity.AppAssetCriticality{}, id).Error; err != nil {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if err := db.Delete(&entity.AppAssetCriticality{}, "id = ?", id).Error; err != nil {
 		services.RespondInternalError(c, err)
 		return
 	}
-	audit.Log(c, "asset_criticality.deleted", "asset_criticality", id, "deleted asset criticality entry")
+	audit.Log(c, "asset_criticality.deleted", "asset_criticality", fmt.Sprintf("%d", id), "deleted asset criticality entry")
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }

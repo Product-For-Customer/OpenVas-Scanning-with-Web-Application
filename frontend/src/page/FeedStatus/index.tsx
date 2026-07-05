@@ -393,16 +393,24 @@ const FeedStatusPage: React.FC = () => {
 
   const fetchAll = useCallback(async () => {
     setLoadingFeeds(true); setLoadingKev(true); setLoadingSched(true);
-    const [feedsRes, kevRes, schedRes] = await Promise.all([
-      GetGMPFeeds(),
-      GetKEVSyncStatus(),
-      ListFeedSchedules(),
-    ]);
-    setFeeds(feedsRes);
-    setKevStatus(kevRes);
-    setSchedules(schedRes);
-    setLoadingFeeds(false); setLoadingKev(false); setLoadingSched(false);
-  }, []);
+    try {
+      const [feedsRes, kevRes, schedRes] = await Promise.all([
+        GetGMPFeeds(),
+        GetKEVSyncStatus(),
+        ListFeedSchedules(),
+      ]);
+      setFeeds(feedsRes);
+      setKevStatus(kevRes);
+      setSchedules(schedRes);
+    } catch {
+      // If any of the three calls rejects instead of resolving with a
+      // fallback, the loading flags below still need to clear — otherwise
+      // all three sections stay stuck on their loading skeleton forever.
+      message.error(t("feed.loadFailed"));
+    } finally {
+      setLoadingFeeds(false); setLoadingKev(false); setLoadingSched(false);
+    }
+  }, [t]);
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -412,10 +420,18 @@ const FeedStatusPage: React.FC = () => {
 
   const handleKEVSync = async () => {
     setSyncingKEV(true);
-    const ok = await TriggerKEVSync();
-    if (ok) { message.success(t("feed.syncSuccess")); setTimeout(() => void fetchAll(), 3000); }
-    else message.error(t("feed.syncFailed"));
-    setSyncingKEV(false);
+    try {
+      const ok = await TriggerKEVSync();
+      if (ok) { message.success(t("feed.syncSuccess")); setTimeout(() => void fetchAll(), 3000); }
+      else message.error(t("feed.syncFailed"));
+    } catch {
+      // Without this catch, a thrown (rather than resolved-false) failure
+      // left the Sync Now button permanently disabled/spinning until a full
+      // page reload.
+      message.error(t("feed.syncFailed"));
+    } finally {
+      setSyncingKEV(false);
+    }
   };
 
   const handleScheduleSaved = (updated: FeedScheduleDTO) => {

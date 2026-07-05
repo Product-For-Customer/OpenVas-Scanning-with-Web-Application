@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const scheduleApi = axios.create({
   baseURL: apiUrl,
@@ -7,6 +7,8 @@ const scheduleApi = axios.create({
   timeout: 15000,
   headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
 });
+
+installMaintenanceInterceptor(scheduleApi);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

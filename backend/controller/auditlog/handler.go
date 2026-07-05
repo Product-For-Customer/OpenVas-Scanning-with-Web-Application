@@ -9,6 +9,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/permission"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
 )
 
@@ -59,10 +60,24 @@ func ListAuditLogs(c *gin.Context) {
 	if actorID := strings.TrimSpace(c.Query("actor_id")); actorID != "" {
 		db = db.Where("actor_id = ?", actorID)
 	}
-	if from, err := time.Parse(time.RFC3339, c.Query("from")); err == nil {
+	// A malformed "from"/"to" used to be silently ignored (falling through to
+	// an unfiltered query) instead of telling the caller their filter didn't
+	// apply — now rejected with 400 so the caller knows to fix the value
+	// rather than unknowingly getting broader results than they filtered for.
+	if fromRaw := strings.TrimSpace(c.Query("from")); fromRaw != "" {
+		from, err := time.Parse(time.RFC3339, fromRaw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'from' date, expected RFC3339"})
+			return
+		}
 		db = db.Where("created_at >= ?", from)
 	}
-	if to, err := time.Parse(time.RFC3339, c.Query("to")); err == nil {
+	if toRaw := strings.TrimSpace(c.Query("to")); toRaw != "" {
+		to, err := time.Parse(time.RFC3339, toRaw)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid 'to' date, expected RFC3339"})
+			return
+		}
 		db = db.Where("created_at <= ?", to)
 	}
 
@@ -76,13 +91,19 @@ func ListAuditLogs(c *gin.Context) {
 	}
 
 	var total int64
-	db.Count(&total)
+	if err := db.Count(&total).Error; err != nil {
+		services.RespondInternalError(c, err)
+		return
+	}
 
 	var logs []entity.AuditLog
-	db.Order("created_at desc").
+	if err := db.Order("created_at desc").
 		Limit(pageSize).
 		Offset((page - 1) * pageSize).
-		Find(&logs)
+		Find(&logs).Error; err != nil {
+		services.RespondInternalError(c, err)
+		return
+	}
 
 	response := make([]AuditLogResponse, 0, len(logs))
 	for _, l := range logs {

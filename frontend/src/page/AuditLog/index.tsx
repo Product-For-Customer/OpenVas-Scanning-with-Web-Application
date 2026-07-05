@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   FiShield, FiRefreshCw, FiClock, FiUser, FiTag, FiChevronLeft, FiChevronRight,
-  FiDatabase, FiTrash2, FiEdit2, FiSave, FiX,
+  FiDatabase, FiTrash2, FiEdit2, FiSave, FiX, FiAlertTriangle,
 } from "react-icons/fi";
 import { message } from "antd";
 import { CustomSelect } from "../../component/ui/CustomSelect";
@@ -143,6 +143,7 @@ const AuditLogPage: React.FC = () => {
   const [action, setAction] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   // Retention (audit_log_retention_days) — 0/unset = keep forever. See
   // backend/controller/auditlog/cleanup.go for the auto-cleanup goroutine
@@ -155,15 +156,25 @@ const AuditLogPage: React.FC = () => {
 
   const fetchLogs = useCallback(async (showRefreshing = false) => {
     if (showRefreshing) setRefreshing(true); else setLoading(true);
-    const res = await ListAuditLogs({
-      action: action || undefined,
-      page,
-      page_size: PAGE_SIZE,
-    });
-    setLogs(res.data);
-    setTotal(res.total);
-    setLoading(false);
-    setRefreshing(false);
+    setError(false);
+    try {
+      const res = await ListAuditLogs({
+        action: action || undefined,
+        page,
+        page_size: PAGE_SIZE,
+      });
+      setLogs(res.data);
+      setTotal(res.total);
+    } catch {
+      // Distinct from "no log entries found" — a failed fetch must not look
+      // identical to a genuinely empty, successfully-loaded log.
+      setError(true);
+      setLogs([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [action, page]);
 
   useEffect(() => {
@@ -354,6 +365,15 @@ const AuditLogPage: React.FC = () => {
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-14 animate-pulse border-b border-slate-100 last:border-0 dark:border-white/6" />
               ))}
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-2 py-14 text-center">
+              <FiAlertTriangle className="text-[24px] text-red-400" />
+              <p className="text-[12.5px] text-red-500">{t("auditLog.loadFailed")}</p>
+              <button type="button" onClick={() => void fetchLogs()}
+                className="mt-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[11.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/60 dark:hover:bg-white/5">
+                {t("common.retry")}
+              </button>
             </div>
           ) : logs.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-14 text-center">

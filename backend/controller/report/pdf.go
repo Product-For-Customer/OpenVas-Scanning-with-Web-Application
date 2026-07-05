@@ -3,6 +3,9 @@ package report
 import (
 	"bytes"
 	"context"
+	crand "crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,6 +19,7 @@ import (
 
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
+	middlewares "github.com/Tawunchai/openvas/middleware"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
 	"github.com/chromedp/cdproto/page"
@@ -36,7 +40,64 @@ const (
 	defaultWaitBefore   = 1200 * time.Millisecond
 	defaultReadyTimeout = 45 * time.Second
 	defaultPDFTimeout   = 120 * time.Second
+
+	// Generated reports are meant to be downloaded/emailed/sent-to-LINE shortly
+	// after creation, not kept as permanent public files — anything older than
+	// this is cleaned up by StartReportCleanupScheduler.
+	reportRetention     = 2 * time.Hour
+	reportCleanupPeriod = 30 * time.Minute
 )
+
+// randomFileSuffix returns an unguessable hex string used in generated report
+// filenames. Without this, filenames were only distinguished by a second-
+// granularity timestamp, which is small enough to brute-force/guess against
+// the publicly-reachable /public/reports static route and /download-pdf.
+func randomFileSuffix() string {
+	buf := make([]byte, 8)
+	if _, err := crand.Read(buf); err != nil {
+		// crypto/rand failing is effectively unheard-of on supported platforms;
+		// fall back to a timestamp-derived value rather than an empty suffix.
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(buf)
+}
+
+// StartReportCleanupScheduler periodically deletes stale generated report PDFs
+// from fixedReportsDir so a guessed/leaked filename doesn't stay downloadable
+// indefinitely. Safe to call once at startup; runs for the process lifetime.
+func StartReportCleanupScheduler() {
+	go func() {
+		ticker := time.NewTicker(reportCleanupPeriod)
+		defer ticker.Stop()
+		cleanupStaleReportFiles()
+		for range ticker.C {
+			cleanupStaleReportFiles()
+		}
+	}()
+}
+
+func cleanupStaleReportFiles() {
+	entries, err := os.ReadDir(fixedReportsDir)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-reportRetention)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), defaultPDFPrefix) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		path := filepath.Join(fixedReportsDir, entry.Name())
+		if err := os.Remove(path); err != nil {
+			log.Printf("⚠️ failed to clean up stale report file %s: %v", path, err)
+		} else {
+			log.Printf("🧹 removed stale report file: %s", path)
+		}
+	}
+}
 
 type linePushRequest struct {
 	To       string        `json:"to"`
@@ -86,12 +147,38 @@ func getCaptureBaseURL() string {
 	return "http://frontend/capture"
 }
 
+// captureAccessToken is a random, process-lifetime secret that lets the
+// headless-Chrome-rendered /capture page read report data without a normal
+// login session (chromedp starts with a fresh browser context, so it never
+// has the user's auth cookie). It is embedded only in the internal URL the
+// Go backend itself navigates to — never returned to a browser — and is
+// accepted by CaptureOrAuth() as an alternative to a valid session.
+var captureAccessToken = randomFileSuffix()
+
+// CaptureOrAuth guards the report-data endpoints that the headless PDF
+// capture page depends on. It accepts either the capture token above (used
+// only by the backend's own chromedp navigation) or a normal authenticated
+// session with dashboard-view permission — so real logged-in users keep
+// browsing the Report pages exactly as before, while an anonymous caller
+// with neither can no longer read this data at all.
+func CaptureOrAuth() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		got := c.GetHeader("X-Capture-Token")
+		if got != "" && subtle.ConstantTimeCompare([]byte(got), []byte(captureAccessToken)) == 1 {
+			c.Next()
+			return
+		}
+
+		middlewares.Authorizes()(c)
+		if c.IsAborted() {
+			return
+		}
+		middlewares.EnforcePermissions()(c)
+	}
+}
+
 func buildCaptureURL(taskIDs []string) string {
 	baseURL := getCaptureBaseURL()
-
-	if len(taskIDs) == 0 {
-		return baseURL
-	}
 
 	parsedURL, err := url.Parse(baseURL)
 	if err != nil {
@@ -99,7 +186,10 @@ func buildCaptureURL(taskIDs []string) string {
 	}
 
 	query := parsedURL.Query()
-	query.Set("task_id", strings.Join(taskIDs, ","))
+	if len(taskIDs) > 0 {
+		query.Set("task_id", strings.Join(taskIDs, ","))
+	}
+	query.Set("capture_token", captureAccessToken)
 	parsedURL.RawQuery = query.Encode()
 
 	return parsedURL.String()
@@ -199,7 +289,7 @@ func generatePDFFromCapturePage(captureURL string) (string, error) {
 		return "", fmt.Errorf("create reports dir failed: %w", err)
 	}
 
-	fileName := fmt.Sprintf("%s_%s.pdf", defaultPDFPrefix, time.Now().Format("20060102_150405"))
+	fileName := fmt.Sprintf("%s_%s_%s.pdf", defaultPDFPrefix, time.Now().Format("20060102_150405"), randomFileSuffix())
 	filePath := filepath.Join(fixedReportsDir, fileName)
 
 	chromePath := getChromePath()
@@ -281,10 +371,10 @@ func resolvePDFPathFromQuery(pdfQuery string) (string, error) {
 		return "", fmt.Errorf("empty pdf path")
 	}
 
-	if fileExists(pdfQuery) {
-		return pdfQuery, nil
-	}
-
+	// Never trust the raw query value as a filesystem path — always reduce it to a
+	// bare filename first and resolve strictly inside fixedReportsDir. Checking the
+	// raw value against the filesystem before sanitizing (as this used to do) let a
+	// query like "../../.env" resolve to an arbitrary file outside the reports dir.
 	baseName := sanitizeBaseName(pdfQuery)
 	if baseName == "" {
 		return "", fmt.Errorf("invalid pdf path")

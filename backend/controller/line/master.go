@@ -11,6 +11,7 @@ import (
 	"github.com/Tawunchai/openvas/config"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/permission"
+	"github.com/Tawunchai/openvas/services"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -116,9 +117,7 @@ func CreateAppLineMaster(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -175,9 +174,7 @@ func CreateAppLineMaster(c *gin.Context) {
 	}
 
 	if err := db.Create(&lineMaster).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -208,9 +205,7 @@ func ListAppLineMaster(c *gin.Context) {
 		Find(&lineMasters)
 
 	if result.Error != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": result.Error.Error(),
-		})
+		services.RespondInternalError(c, result.Error)
 		return
 	}
 
@@ -266,9 +261,7 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -281,9 +274,7 @@ func UpdateAppLineMasterByID(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 
@@ -434,16 +425,27 @@ func DeleteAppLineMasterByID(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
+		services.RespondInternalError(c, err)
+		return
+	}
+
+	// Block deletion while notifications still reference this master instead
+	// of silently orphaning them (AppNotification.AppLineMasterID would keep
+	// pointing at a row that no longer exists).
+	var notificationCount int64
+	if err := db.Model(&entity.AppNotification{}).Where("app_line_master_id = ?", lineMaster.ID).Count(&notificationCount).Error; err != nil {
+		services.RespondInternalError(c, err)
+		return
+	}
+	if notificationCount > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("cannot delete: %d notification(s) still use this LINE master — reassign or delete them first", notificationCount),
 		})
 		return
 	}
 
 	if err := db.Delete(&lineMaster).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		services.RespondInternalError(c, err)
 		return
 	}
 

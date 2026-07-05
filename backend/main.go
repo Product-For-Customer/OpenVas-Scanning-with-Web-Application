@@ -18,7 +18,6 @@ import (
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
-	"github.com/Tawunchai/openvas/controller/remediation"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
 	"github.com/Tawunchai/openvas/controller/role"
@@ -38,6 +37,7 @@ func main() {
 	// Fail fast at boot instead of crashing mid-request on first login —
 	// GetJWTSecret() itself log.Fatal()s if JWT_SECRET is unset.
 	services.GetJWTSecret()
+	gmp.RequireGVMCredentials() // logs a warning (does not block startup) if still using gvmd's default admin/admin credentials
 
 	config.ConnectDB()     // เชื่อมต่อฐานข้อมูล
 	config.SetupDatabase() // สร้างตารางและข้อมูลเริ่มต้น
@@ -52,6 +52,7 @@ func main() {
 	go risk.StartEPSSSyncScheduler()
 	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
+	go report.StartReportCleanupScheduler()    // ลบไฟล์ PDF ที่ generate ไว้ชั่วคราวเมื่อเก่าเกินไป
 	middlewares.StartRateLimitCleanup()
 	services.StartOTPLockoutCleanup()
 	services.StartAccountLockoutCleanup()
@@ -87,7 +88,7 @@ func main() {
 	r.GET("/settings",                       setting.GetSettings)              // PUBLIC: app settings (timezone, etc.)
 	r.GET("/maintenance/status",             setting.GetMaintenanceStatus)     // PUBLIC: polled for the auto-logout countdown modal
 	r.GET("/password-policy",                passwordpolicy.GetPolicy)         // PUBLIC: rules shown live on Register/Reset Password forms
-	r.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
+	r.GET("/existing-emails", user.ListExistingEmails) // PUBLIC: emails only (no phone numbers), for Register's pre-session duplicate-email check
 
 	// เปิดให้รูปที่แคปไว้เข้าถึงผ่าน URL
 	r.Static("/public/reports", "./tmp/reports")
@@ -97,15 +98,17 @@ func main() {
 	r.POST("/line/webhook/notification", line.CreateAppNotificationByLine)
 
 	//==== Report Data for Frontend =====
-	r.GET("/summary-vulnerability-report", vulnerability.ListTaskVulnSummary)
-	r.GET("/critical-report", report.ListCriticalForReport)
-	r.GET("/devices/risk-report", report.ListDeviceRiskForReport)
-	r.GET("/target-differ-report", report.ListTargetDiffer)
-	r.GET("/report/vulnerability-month", report.ListDataForReportVulnerabilityMonth)
+	// CaptureOrAuth: these must stay reachable by the headless PDF-capture page
+	// (which has no login session), but no longer by a truly anonymous caller —
+	// see report.CaptureOrAuth for the session-or-capture-token gate.
+	r.GET("/summary-vulnerability-report", report.CaptureOrAuth(), vulnerability.ListTaskVulnSummary)
+	r.GET("/critical-report", report.CaptureOrAuth(), report.ListCriticalForReport)
+	r.GET("/devices/risk-report", report.CaptureOrAuth(), report.ListDeviceRiskForReport)
+	r.GET("/target-differ-report", report.CaptureOrAuth(), report.ListTargetDiffer)
+	r.GET("/report/vulnerability-month", report.CaptureOrAuth(), report.ListDataForReportVulnerabilityMonth)
 	r.GET("/download-pdf", report.DownloadPDF)
-	r.GET("/send-pdf-to-line", report.SendPDFToLine)
 	r.GET("/app-report", report.ListAppReport)
-	r.GET("/reports/all/:task_id", vulnerability.ListALLReportByTaskID)
+	r.GET("/reports/all/:task_id", report.CaptureOrAuth(), vulnerability.ListALLReportByTaskID)
 
 	// ===== Protected Routes =====
 	authorized := r.Group("")
@@ -136,6 +139,11 @@ func main() {
 		authorized.GET("/history-notifies", line.ListHistoryNotify)                   // complete
 		authorized.DELETE("/delete-history-notifies", line.DeleteHistoryNotifyByIDs)  // complete
 		authorized.POST("/history-notifies/cleanup", line.TriggerHistoryNotifyCleanup) // manual 6-month cleanup
+
+		// Any authenticated user (not just user_management roles) needs this for
+		// their own Account page's duplicate email/phone check — see
+		// selfServiceOpenPaths in middleware/readonly.go.
+		authorized.GET("/email-phone-numbers", user.ListEmailAndPhoneNumber)
 
 		// ===== Protected Routes for User Management Authorization =====
 		authorized.GET("/users", user.ListUser) // complete
@@ -259,8 +267,13 @@ func main() {
 		authorized.GET("/compliance/violations", compliance.GetComplianceViolations)
 		authorized.GET("/compliance/control-vulns", compliance.GetControlVulnerabilities)
 
-		// ===== Send PDF to Email =====
+		// ===== Send PDF to Email / LINE =====
+		// Both are interactive admin actions from the Report page (never called
+		// by the headless PDF-capture flow), so a normal session is required —
+		// send-pdf-to-line used to be fully public, letting anyone spam an
+		// arbitrary app_notification_id with an unauthenticated GET request.
 		authorized.GET("/send-pdf-to-email", report.SendPDFToEmail)
+		authorized.GET("/send-pdf-to-line", report.SendPDFToLine)
 
 		// ===== Feed Update Schedules (configurable) =====
 		authorized.GET("/feed-schedules", feedschedule.ListSchedules)
@@ -289,14 +302,6 @@ func main() {
 		// ===== Audit Log (admin + auditor, checked inside handler) =====
 		authorized.GET("/audit-logs", auditlog.ListAuditLogs)
 		authorized.POST("/audit-logs/cleanup", auditlog.TriggerAuditLogCleanup)
-
-		// ===== Remediation Tickets =====
-		authorized.GET("/remediation-tickets/summary", remediation.GetRemediationSummary)
-		authorized.GET("/remediation-tickets", remediation.ListRemediationTickets)
-		authorized.GET("/remediation-tickets/:id", remediation.GetRemediationTicket)
-		authorized.POST("/remediation-tickets", remediation.CreateRemediationTicket)
-		authorized.PATCH("/remediation-tickets/:id", remediation.UpdateRemediationTicket)
-		authorized.DELETE("/remediation-tickets/:id", remediation.DeleteRemediationTicket)
 
 	}
 
@@ -334,7 +339,7 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
 		c.Writer.Header().Set(
 			"Access-Control-Allow-Headers",
-			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Automation-Token, ngrok-skip-browser-warning",
+			"Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, X-Automation-Token, X-Capture-Token, ngrok-skip-browser-warning",
 		)
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE, PATCH")
 		c.Writer.Header().Set("Access-Control-Max-Age", "86400")

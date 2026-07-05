@@ -326,3 +326,19 @@ export const ListEmailAndPhoneNumber = async (): Promise<
     return null;
   }
 };
+
+// =======================
+// API: GET /existing-emails
+// PUBLIC — emails only, used by the Register page (no session yet) for its
+// live "this email is already taken" check. Use ListEmailAndPhoneNumber
+// (above) instead for any authenticated context that also needs phone
+// numbers or user IDs.
+// =======================
+export const ListExistingEmails = async (): Promise<string[]> => {
+  try {
+    const response = await authApi.get("/existing-emails");
+    return Array.isArray(response.data) ? (response.data as string[]) : [];
+  } catch {
+    return [];
+  }
+};

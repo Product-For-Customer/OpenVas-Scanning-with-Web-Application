@@ -400,6 +400,13 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
       } catch (e: unknown) {
         const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
         message.error(msg || t("threatConfig.failedUpdatePortList"));
+        // If some ranges in the loop above were already deleted server-side
+        // before a later one failed, the local portRanges/pendingDeleteIds
+        // state would otherwise still show them as present and still
+        // pending — re-syncing from the server here avoids Save re-trying
+        // to delete range IDs that are already gone.
+        setPendingDeleteIds(new Set());
+        void loadPortRanges(editItem.id);
       } finally { setSaving(false); }
       return;
     }
@@ -1027,8 +1034,12 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
       type: cr.type as GMPCredentialType,
       login: cr.login,
       auto_generate: false,
-      auth_algorithm: "sha1",
-      privacy_algorithm: "aes",
+      // Prefill with this credential's actual stored algorithm (now returned
+      // by the backend) instead of always defaulting to sha1/aes — otherwise
+      // saving any edit to an existing MD5/DES credential would silently
+      // downgrade it.
+      auth_algorithm: cr.auth_algorithm || "sha1",
+      privacy_algorithm: cr.privacy_algorithm || "aes",
     });
     setReplaceFlags({});
     setShowPass(false); setShowPrivPass(false);
@@ -1651,14 +1662,6 @@ const getAliveTests = (t: TFn) => [
   { value: "ARP Ping",             label: t("threatConfig.aliveTestArp") },
 ];
 
-// Small "create new" icon button used next to credential / port list dropdowns
-const PlusIconBtn: React.FC<{ title?: string }> = ({ title }) => (
-  <button type="button" title={title}
-    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-400 transition hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/30 dark:hover:bg-white/8">
-    <FiPlus className="text-[13px]" />
-  </button>
-);
-
 // Hosts / Exclude-Hosts: Manual or From-file selector
 const HostsField: React.FC<{
   label: string; required?: boolean;
@@ -1917,7 +1920,6 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
           disabled={disabled}
           className="flex-1"
         />
-        {!disabled && <PlusIconBtn title={`${t("threatConfig.newCredential")} (${label})`} />}
         {!disabled && extra}
         {disabled && extra && (
           <div className="pointer-events-none opacity-50">{extra}</div>
@@ -2229,7 +2231,6 @@ const TargetsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
                       disabled={isLocked}
                       className="flex-1"
                     />
-                    {!isLocked && <PlusIconBtn title={t("threatConfig.newPortList")} />}
                   </div>
                 </div>
 

@@ -29,16 +29,15 @@ export type ListAuditLogsResponse = {
   page_size: number;
 };
 
+// Deliberately does NOT catch and fall back to an empty-but-"successful"
+// result — this page exists specifically for accountability, so a real fetch
+// failure (network error, 401, 500) needs to surface as a visible error to
+// the caller instead of rendering identically to "no log entries exist".
 export const ListAuditLogs = async (
   params: ListAuditLogsParams = {},
 ): Promise<ListAuditLogsResponse> => {
-  try {
-    const res = await baseApi.get("/audit-logs", { params });
-    return res.data as ListAuditLogsResponse;
-  } catch (e) {
-    console.error("ListAuditLogs error:", e);
-    return { data: [], total: 0, page: 1, page_size: 50 };
-  }
+  const res = await baseApi.get("/audit-logs", { params });
+  return res.data as ListAuditLogsResponse;
 };
 
 export type TriggerAuditLogCleanupResponse = {

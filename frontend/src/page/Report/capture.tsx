@@ -15,6 +15,7 @@ import {
   type TaskVulnSummaryForReportResponse,
 } from "../../services/report";
 import type { DeviceRiskForReportDTO } from "../../services/report";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 const HeadingClass =
   "mt-1 text-[22px] font-bold leading-[1.25] text-slate-900";
@@ -121,6 +122,7 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
   refreshToken = 0,
   selectedTaskIDs = [],
 }) => {
+  const { t } = useLanguage();
   const [prefetchedSummaryRows, setPrefetchedSummaryRows] = useState<
     TaskVulnSummaryForReportResponse[]
   >([]);
@@ -386,13 +388,13 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
         boxSizing: "border-box",
       }}
     >
-      <ReportFooter page={`Page ${pageNumber} of ${totalPages}`} />
+      <ReportFooter page={t("capture.pageOfPages", { current: pageNumber, total: totalPages })} />
     </div>
   );
 
   const renderSimpleLoader = () => (
     <div className="flex h-full w-full items-center justify-center bg-white">
-      <div className="text-[12px] text-slate-500">Preparing report data...</div>
+      <div className="text-[12px] text-slate-500">{t("capture.preparingReportData")}</div>
     </div>
   );
 
@@ -412,10 +414,9 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
         <main className="px-8 pt-6 pb-24">
           <section className="mt-0">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
-              <h1 className={HeadingClass}>Total Severity</h1>
+              <h1 className={HeadingClass}>{t("capture.totalSeverityHeading")}</h1>
               <p className={DescClass}>
-                แสดงสรุปผลการสแกนล่าสุด พร้อมจำนวนช่องโหว่ที่พบ
-                แยกตามระดับความรุนแรง
+                {t("capture.totalSeverityDesc")}
               </p>
             </div>
 
@@ -430,12 +431,12 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
           <section className="mt-5">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <h1 className={HeadingClass}>
-                Severity Distribution Overview
+                {t("capture.severityDistributionHeading")}
               </h1>
               <p
                 className={`${DescClass}`}
               >
-                แสดงจำนวนช่องโหว่ในแต่ละระดับความรุนแรงในรูปแบบกราฟ
+                {t("capture.severityDistributionDesc")}
               </p>
             </div>
 
@@ -470,19 +471,20 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <h1 className={HeadingClass}>Critical Highlights</h1>
+                  <h1 className={HeadingClass}>{t("capture.criticalHighlightsHeading")}</h1>
                   <p
                     className={`${DescClass}`}
                   >
-                    สรุปช่องโหว่ระดับวิกฤตที่ควรติดตามก่อน
-                    พร้อมผลกระทบ รายละเอียด และแนวทางแก้ไข
+                    {t("capture.criticalHighlightsDesc")}
                   </p>
                 </div>
 
                 {descriptor.totalPagesInSection > 1 ? (
                   <div className="shrink-0 text-[10px] font-medium text-slate-500">
-                    Page {descriptor.pageNumberInSection} of{" "}
-                    {descriptor.totalPagesInSection}
+                    {t("capture.pageOfPages", {
+                      current: descriptor.pageNumberInSection,
+                      total: descriptor.totalPagesInSection,
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -523,20 +525,20 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <h1 className={HeadingClass}>Top Device Risk Report</h1>
+                  <h1 className={HeadingClass}>{t("capture.topDeviceRiskHeading")}</h1>
                   <p
                     className={`${DescClass}`}
                   >
-                    แสดงรายการอุปกรณ์ที่มีความเสี่ยงสูงจากผลการประเมินล่าสุด
-                    โดยเรียงลำดับตามค่า Risk Score
-                    เพื่อช่วยให้ติดตามอุปกรณ์ที่ควรได้รับการจัดการก่อน
+                    {t("capture.topDeviceRiskDesc")}
                   </p>
                 </div>
 
                 {descriptor.totalPagesInSection > 1 ? (
                   <div className="shrink-0 text-[10px] font-medium text-slate-500">
-                    Page {descriptor.pageNumberInSection} of{" "}
-                    {descriptor.totalPagesInSection}
+                    {t("capture.pageOfPages", {
+                      current: descriptor.pageNumberInSection,
+                      total: descriptor.totalPagesInSection,
+                    })}
                   </div>
                 ) : null}
               </div>
@@ -575,13 +577,12 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
           <section className="mt-0">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <h1 className={HeadingClass}>
-                Top 10 Risk Score Comparison
+                {t("capture.riskComparisonHeading")}
               </h1>
               <p
                 className={`${DescClass}`}
               >
-                เปรียบเทียบค่า Latest Risk และ Previous Risk ของแต่ละเป้าหมาย
-                เพื่อให้เห็นแนวโน้มความเสี่ยงล่าสุด
+                {t("capture.riskComparisonDesc")}
               </p>
             </div>
 
@@ -594,13 +595,12 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
           <section className="mt-5">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <h2 className={HeadingClass}>
-                Monthly Risk Score Overview
+                {t("capture.monthlyRiskHeading")}
               </h2>
               <p
                 className={`${DescClass}`}
               >
-                แสดงจำนวนช่องโหว่และค่า Risk Score รายเดือนของปีปัจจุบัน
-                พร้อมตารางสรุปสำหรับใช้ตรวจสอบรายงาน
+                {t("capture.monthlyRiskDesc")}
               </p>
             </div>
 
@@ -629,12 +629,12 @@ const CaptureTest: React.FC<CaptureTestProps> = ({
           <section className="mt-0">
             <div className="mb-3 border-b border-slate-200 pb-2.5">
               <h1 className={HeadingClass}>
-                Final Conclusion and Executive Summary
+                {t("capture.finalConclusionHeading")}
               </h1>
               <p
                 className={`${DescClass}`}
               >
-                สรุปภาพรวมรายงานในหน้าเดียว พร้อมตัวเลขสำคัญ ระดับความรุนแรง ความเสี่ยงหลัก และข้อสังเกตเพื่อการตัดสินใจ
+                {t("capture.finalConclusionDesc")}
               </p>
             </div>
 

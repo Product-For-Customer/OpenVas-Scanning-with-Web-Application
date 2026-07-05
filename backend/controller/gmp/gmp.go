@@ -1,15 +1,31 @@
 package gmp
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 )
+
+// RequireGVMCredentials warns loudly at startup — unlike services.GetJWTSecret,
+// this does NOT log.Fatal, because this app's current deployment has no
+// GVM_USERNAME/GVM_PASSWORD set and genuinely relies on gvmd's own
+// "admin/admin" default; hard-failing here would take the whole backend down
+// on the next restart with no code change on the operator's part. This is
+// intentionally a visible nudge, not an enforced requirement — set both env
+// vars (and rotate gvmd's admin password away from "admin") when convenient.
+func RequireGVMCredentials() {
+	if strings.TrimSpace(os.Getenv("GVM_USERNAME")) == "" || strings.TrimSpace(os.Getenv("GVM_PASSWORD")) == "" {
+		log.Println("⚠️ SECURITY: GVM_USERNAME/GVM_PASSWORD are not set — connecting to gvmd with the well-known \"admin/admin\" default credentials. Set both env vars (and change gvmd's admin password) when possible.")
+	}
+}
 
 // ===========================
 // GMP XML Types
@@ -209,11 +225,13 @@ type gmpGetCredentialsResponse struct {
 }
 
 type GMPCredential struct {
-	ID      string `xml:"id,attr"`
-	Name    string `xml:"name"`
-	Type    string `xml:"type"`
-	Login   string `xml:"login"`
-	Comment string `xml:"comment"`
+	ID               string `xml:"id,attr"`
+	Name             string `xml:"name"`
+	Type             string `xml:"type"`
+	Login            string `xml:"login"`
+	Comment          string `xml:"comment"`
+	AuthAlgorithm    string `xml:"auth_algorithm"`    // only present for type=snmp, requires details="1"
+	PrivacyAlgorithm string `xml:"privacy_algorithm"` // only present for type=snmp, requires details="1"
 }
 
 type gmpCreateCredentialResponse struct {
@@ -299,13 +317,24 @@ func (c *GMPClient) connect() error {
 
 	conn, err = net.DialTimeout("unix", socketPath, 10*time.Second)
 	if err != nil {
-		// Fallback to TCP
+		// Fallback to TCP. GVM_TLS=true switches this to a TLS connection for
+		// deployments where gvmd's TCP listener is TLS-terminated (directly or
+		// via a sidecar) — the credentials sent right after connecting would
+		// otherwise cross the network in cleartext.
 		host := getEnv("GVM_HOST", "gvmd")
 		port := getEnv("GVM_PORT", "9390")
-		conn, err = net.DialTimeout("tcp", host+":"+port, 10*time.Second)
+		addr := host + ":" + port
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("GVM_TLS")), "true") {
+			conn, err = tls.DialWithDialer(&net.Dialer{Timeout: 10 * time.Second}, "tcp", addr, &tls.Config{
+				InsecureSkipVerify: strings.EqualFold(strings.TrimSpace(os.Getenv("GVM_TLS_INSECURE_SKIP_VERIFY")), "true"),
+			})
+		} else {
+			log.Printf("⚠️ connecting to gvmd over plaintext TCP (%s) — unix socket unavailable and GVM_TLS is not set to \"true\"", addr)
+			conn, err = net.DialTimeout("tcp", addr, 10*time.Second)
+		}
 		if err != nil {
-			return fmt.Errorf("cannot connect to gvmd (tried unix socket %s and tcp %s:%s): %w",
-				socketPath, host, port, err)
+			return fmt.Errorf("cannot connect to gvmd (tried unix socket %s and tcp %s): %w",
+				socketPath, addr, err)
 		}
 	}
 
@@ -373,6 +402,9 @@ func isCompleteXML(data []byte) bool {
 }
 
 func (c *GMPClient) authenticate() error {
+	// Fallback preserved so today's deployment (no GVM_USERNAME/GVM_PASSWORD
+	// set) keeps working exactly as before — RequireGVMCredentials() logs a
+	// warning about this at startup instead of silently hiding it.
 	username := getEnv("GVM_USERNAME", "admin")
 	password := getEnv("GVM_PASSWORD", "admin")
 
@@ -808,7 +840,58 @@ func DeletePortList(id string) error {
 	return nil
 }
 
+// validateSingleXMLElement rejects XML "wrapping" / command-injection attempts:
+// it requires the content to decode as exactly one well-formed root element with
+// nothing else (no sibling elements, no trailing content) before or after it.
+// Without this check, uploaded content like `</port_list><create_user>...` would
+// close the enclosing GMP command early and splice a second, attacker-controlled
+// command into the same authenticated session.
+func validateSingleXMLElement(content []byte) error {
+	dec := xml.NewDecoder(bytes.NewReader(content))
+	depth := 0
+	sawRoot := false
+	rootClosed := false
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("invalid XML: %w", err)
+		}
+		switch t := tok.(type) {
+		case xml.StartElement:
+			if rootClosed {
+				return fmt.Errorf("unexpected content after the closing root element")
+			}
+			if depth == 0 {
+				if sawRoot {
+					return fmt.Errorf("multiple root elements are not allowed")
+				}
+				sawRoot = true
+			}
+			depth++
+		case xml.EndElement:
+			depth--
+			if depth == 0 {
+				rootClosed = true
+			}
+		case xml.CharData:
+			if rootClosed && len(strings.TrimSpace(string(t))) > 0 {
+				return fmt.Errorf("unexpected content after the closing root element")
+			}
+		}
+	}
+	if !sawRoot {
+		return fmt.Errorf("no root element found")
+	}
+	return nil
+}
+
 func ImportPortList(xmlContent string) (string, error) {
+	if err := validateSingleXMLElement([]byte(xmlContent)); err != nil {
+		return "", fmt.Errorf("rejected port list import: %w", err)
+	}
 	cmd := fmt.Sprintf(`<import_port_list>%s</import_port_list>`, xmlContent)
 	data, err := GetClient().Execute(cmd)
 	if err != nil {
@@ -912,7 +995,10 @@ func ModifyTarget(id string, p CreateTargetParams) error {
 // ── Credential operations ─────────────────────────────────────
 
 func GetCredentials() ([]GMPCredential, error) {
-	data, err := GetClient().Execute(`<get_credentials filter="rows=-1"/>`)
+	// details="1" is required for GMP to include auth_algorithm/privacy_algorithm
+	// on SNMP credentials — without it, ListGMPCredentials would have no way to
+	// show or preserve a credential's actual stored algorithm choice on edit.
+	data, err := GetClient().Execute(`<get_credentials filter="rows=-1" details="1"/>`)
 	if err != nil {
 		return nil, err
 	}

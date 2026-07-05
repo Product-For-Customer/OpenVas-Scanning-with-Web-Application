@@ -181,7 +181,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       if (!isMountedRef.current) return;
 
       if (!res) {
-        setError("Load latest report data failed");
+        setError(t("report.loadLatestReportFailed"));
         return;
       }
 
@@ -202,7 +202,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while loading latest report data"
+          t("report.loadingLatestReportError")
       );
     } finally {
       if (isMountedRef.current) {
@@ -210,7 +210,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!open) {
@@ -241,7 +241,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
     if (!file) return;
 
     if (!isAllowedImageFile(file)) {
-      message.error("Only image files can be uploaded");
+      message.error(t("report.onlyImageFiles"));
       e.target.value = "";
       return;
     }
@@ -260,7 +260,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       }));
     } catch (err) {
       console.error("Upload image error:", err);
-      message.error("Upload image failed");
+      message.error(t("report.uploadImageFailed"));
       e.target.value = "";
     } finally {
       if (isMountedRef.current) {
@@ -270,8 +270,8 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
   };
 
   const validateForm = () => {
-    if (!formData.company_name.trim()) return "Please enter company name";
-    if (!formData.logo.trim()) return "Please upload logo image";
+    if (!formData.company_name.trim()) return t("report.pleaseEnterCompanyName");
+    if (!formData.logo.trim()) return t("report.pleaseUploadLogo");
     return "";
   };
 
@@ -296,7 +296,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       const res = await UpdateAppReportByID(1, payload);
 
       if (!res) {
-        setError("Update report failed");
+        setError(t("report.updateReportFailed"));
         return;
       }
 
@@ -305,7 +305,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
         return;
       }
 
-      message.success((res as any).message || "Update report success");
+      message.success((res as any).message || t("report.updateReportSuccess"));
       onUpdated();
       onClose();
     } catch (err: any) {
@@ -313,7 +313,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while updating report"
+          t("report.updatingReportError")
       );
     } finally {
       if (isMountedRef.current) {
@@ -339,7 +339,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
             onClick={onClose}
             disabled={submitting || loadingInitialData}
             className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white/80"
-            aria-label="Close modal"
+            aria-label={t("common.closeModal")}
           >
             <FiX className="text-[16px]" />
           </button>
@@ -349,7 +349,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
               {t("report.editReport")}
             </h3>
             <p className="mt-1 text-[12px] text-slate-500 dark:text-white/50">
-              Change logo and company name
+              {t("report.editReportDesc")}
             </p>
           </div>
 
@@ -363,7 +363,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
             <div className="flex min-h-60 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
               <FiLoader className="animate-spin text-[22px] text-cyan-600 dark:text-cyan-400" />
               <p className="text-[13px] font-medium text-slate-600 dark:text-white/70">
-                Loading latest report data...
+                {t("report.loadingLatestReportData")}
               </p>
             </div>
           ) : (
@@ -372,7 +372,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                 {formData.logo ? (
                   <img
                     src={formData.logo}
-                    alt="Logo Preview"
+                    alt={t("report.logoPreviewAlt")}
                     className="h-14 w-14 shrink-0 rounded-xl bg-white object-contain p-1.5 ring-1 ring-slate-200 dark:bg-white dark:ring-white/10"
                   />
                 ) : (
@@ -386,7 +386,7 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                     {companyPreview}
                   </p>
                   <p className="mt-0.5 text-[11px] text-slate-500 dark:text-white/50">
-                    Logo preview
+                    {t("report.logoPreview")}
                   </p>
                 </div>
               </div>
@@ -400,14 +400,14 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                   name="company_name"
                   value={formData.company_name}
                   onChange={handleChange}
-                  placeholder="Enter company name"
+                  placeholder={t("report.enterCompanyNamePlaceholder")}
                   className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-[13px] text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 dark:border-white/10 dark:bg-white/5 dark:text-white"
                 />
               </div>
 
               <div>
                 <label className="mb-1.5 block text-[12px] font-medium text-slate-700 dark:text-white/80">
-                  Upload Logo
+                  {t("report.uploadLogo")}
                 </label>
                 <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-3 text-center transition hover:border-cyan-400 hover:bg-cyan-50/40 dark:border-white/10 dark:bg-white/5 dark:hover:border-cyan-400/40 dark:hover:bg-cyan-500/5">
                   {uploadingImage ? (
@@ -416,10 +416,10 @@ const EditReportModal: React.FC<EditReportModalProps> = ({
                     <FiUpload className="text-[18px] text-slate-500 dark:text-white/50" />
                   )}
                   <span className="text-[12px] font-medium text-slate-700 dark:text-white/80">
-                    {uploadingImage ? "Uploading..." : "Click to upload image"}
+                    {uploadingImage ? t("report.uploading") : t("report.clickToUploadImage")}
                   </span>
                   <span className="text-[11px] text-slate-500 dark:text-white/45">
-                    เฉพาะไฟล์รูป PNG, JPG, JPEG, WEBP
+                    {t("report.imageFileTypesHint")}
                   </span>
                   <input
                     type="file"
@@ -503,7 +503,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
       if (!isMountedRef.current) return;
 
       if (!res) {
-        setError("Load line targets failed");
+        setError(t("report.loadLineTargetsFailed"));
         setItems([]);
         return;
       }
@@ -521,7 +521,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          "Something went wrong while loading line targets"
+          t("report.loadingLineTargetsError")
       );
       setItems([]);
     } finally {
@@ -530,7 +530,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
       }
       isFetchingRef.current = false;
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!open) {
@@ -573,7 +573,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
             onClick={onClose}
             disabled={submitting}
             className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed dark:text-white/45 dark:hover:bg-white/10 dark:hover:text-white/80"
-            aria-label="Close modal"
+            aria-label={t("common.closeModal")}
           >
             <FiX className="text-[16px]" />
           </button>
@@ -583,7 +583,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
               {t("report.sendToLineTitle")}
             </h3>
             <p className="mt-1 text-[12px] text-slate-500 dark:text-white/50">
-              Select line targets to receive the PDF link
+              {t("report.selectLineTargetsDesc")}
             </p>
           </div>
 
@@ -597,7 +597,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
             <div className="flex min-h-56 flex-col items-center justify-center gap-3 rounded-xl border border-slate-200 bg-slate-50 dark:border-white/10 dark:bg-white/5">
               <FiLoader className="animate-spin text-[22px] text-cyan-600 dark:text-cyan-400" />
               <p className="text-[13px] font-medium text-slate-600 dark:text-white/70">
-                Loading line targets...
+                {t("report.loadingLineTargets")}
               </p>
             </div>
           ) : (
@@ -606,7 +606,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                 {items.length === 0 ? (
                   <div className="flex min-h-36 flex-col items-center justify-center gap-2 text-center text-slate-500 dark:text-white/50">
                     <FiUsers className="text-[22px]" />
-                    <p className="text-[13px] font-medium">No line targets found</p>
+                    <p className="text-[13px] font-medium">{t("report.noLineTargetsFound")}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -637,7 +637,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                                     item.alert
                                   )}`}
                                 >
-                                  {item.alert ? "Alert On" : "Alert Off"}
+                                  {item.alert ? t("line.alertOn") : t("line.alertOff")}
                                 </span>
 
                                 <span
@@ -645,7 +645,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
                                     Boolean(item.is_group)
                                   )}`}
                                 >
-                                  {item.is_group ? "Group" : "User"}
+                                  {item.is_group ? t("line.group") : t("line.user")}
                                 </span>
                               </div>
 
@@ -677,7 +677,7 @@ const SendToLinePickerModal: React.FC<SendToLinePickerModalProps> = ({
 
               <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[12px] text-slate-500 dark:text-white/50">
-                  Selected {selectedIDs.length} target(s)
+                  {t("report.selectedTargetsCount", { n: selectedIDs.length })}
                 </p>
 
                 <div className="flex items-center justify-end gap-2">
@@ -727,6 +727,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
   onToggleTask,
   onClear,
 }) => {
+  const { t } = useLanguage();
   if (!open) return null;
 
   return (
@@ -734,10 +735,10 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
       <div className="mb-2 flex items-center justify-between px-2 pt-1">
         <div>
           <p className="text-[12px] font-semibold text-slate-900 dark:text-white">
-            Select Device Task
+            {t("report.selectDeviceTask")}
           </p>
           <p className="text-[11px] text-slate-500 dark:text-white/50">
-            Choose one or more Devices
+            {t("report.chooseDevicesDesc")}
           </p>
         </div>
 
@@ -746,7 +747,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
           onClick={onClear}
           className="text-[11px] font-medium text-cyan-700 hover:text-cyan-800 dark:text-cyan-300 dark:hover:text-cyan-200"
         >
-          Clear
+          {t("common.clear")}
         </button>
       </div>
 
@@ -755,14 +756,14 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
           <div className="flex min-h-40 flex-col items-center justify-center gap-3">
             <FiLoader className="animate-spin text-[20px] text-cyan-600 dark:text-cyan-400" />
             <p className="text-[12px] text-slate-500 dark:text-white/50">
-              Loading devices...
+              {t("report.loadingDevicesEllipsis")}
             </p>
           </div>
         ) : options.length === 0 ? (
           <div className="flex min-h-40 flex-col items-center justify-center gap-3">
             <FiHardDrive className="text-[20px] text-slate-400 dark:text-white/40" />
             <p className="text-[12px] text-slate-500 dark:text-white/50">
-              No devices found
+              {t("report.noDevicesFound")}
             </p>
           </div>
         ) : (
@@ -813,7 +814,7 @@ const DevicePickerDropdown: React.FC<DevicePickerProps> = ({
       </div>
 
       <div className="px-2 pb-1 pt-2 text-[11px] text-slate-500 dark:text-white/50">
-        Selected {selectedTaskIDs.length} task(s)
+        {t("report.selectedTasksCount", { n: selectedTaskIDs.length })}
       </div>
     </div>
   );
@@ -940,7 +941,7 @@ const ReportPreviewIndex: React.FC = () => {
         )) as SendPDFToLineResponse | null;
 
         if (!res) {
-          message.error("Send to LINE failed");
+          message.error(t("report.sendToLineFailed"));
           return;
         }
 
@@ -956,10 +957,10 @@ const ReportPreviewIndex: React.FC = () => {
 
         if (failedCount > 0) {
           message.success(
-            `sent to LINE successfully (${successCount} success, ${failedCount} failed)`
+            t("report.sentToLineSuccessWithFailures", { success: successCount, failed: failedCount })
           );
         } else {
-          message.success("sent to LINE successfully");
+          message.success(t("report.sentToLineSuccess"));
         }
 
         window.setTimeout(() => {
@@ -969,14 +970,14 @@ const ReportPreviewIndex: React.FC = () => {
         }, 2500);
       } catch (error) {
         console.error("SendPDFToLine error:", error);
-        message.error("Send to LINE failed");
+        message.error(t("report.sendToLineFailed"));
       } finally {
         if (isMountedRef.current) {
           setSendingToLine(false);
         }
       }
     },
-    [selectedTaskIDs]
+    [selectedTaskIDs, t]
   );
 
   const handleSendToEmail = useCallback(async () => {
@@ -998,26 +999,26 @@ const ReportPreviewIndex: React.FC = () => {
       setOpenDownloadMenu(false);
 
       await DownloadPDFFile(undefined, selectedTaskIDs);
-      message.success("Download PDF Success");
+      message.success(t("report.downloadPdfSuccess"));
     } catch (error: any) {
       console.error("DownloadPDFFile error:", error);
       message.error(
         error?.response?.data?.error ||
           error?.message ||
-          "Download PDF failed"
+          t("report.downloadPdfFailed")
       );
     } finally {
       if (isMountedRef.current) {
         setSavingPdf(false);
       }
     }
-  }, [selectedTaskIDs]);
+  }, [selectedTaskIDs, t]);
 
   const handleReportUpdated = useCallback(() => {
     setReportRefreshToken((prev) => prev + 1);
   }, []);
 
-  const actionBusy = sendingToLine || savingPdf;
+  const actionBusy = sendingToLine || savingPdf || sendingEmail;
 
   return (
     <div className="w-full">
@@ -1025,10 +1026,10 @@ const ReportPreviewIndex: React.FC = () => {
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="min-w-0 ml-4">
             <h1 className="text-base font-bold text-slate-900 sm:text-lg dark:text-white/95">
-              PDF Preview
+              {t("report.pdfPreviewTitle")}
             </h1>
             <p className="text-[13px] text-slate-500 sm:text-sm dark:text-white/50">
-              Preview report, save as PDF, and send to LINE
+              {t("report.pdfPreviewSubtitle")}
             </p>
           </div>
 
@@ -1036,7 +1037,7 @@ const ReportPreviewIndex: React.FC = () => {
             {showSuccess && (
               <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                 <FiCheckCircle className="text-[15px]" />
-                <span>Send To LINE Success</span>
+                <span>{t("report.sendToLineSuccessBadge")}</span>
               </div>
             )}
 
@@ -1059,7 +1060,7 @@ const ReportPreviewIndex: React.FC = () => {
               >
                 <FiHardDrive className="text-[15px]" />
                 <span>
-                  DEVICE
+                  {t("report.deviceLabel")}
                   {selectedTaskIDs.length > 0
                     ? ` (${selectedTaskIDs.length})`
                     : ""}
@@ -1092,12 +1093,12 @@ const ReportPreviewIndex: React.FC = () => {
                 {actionBusy ? (
                   <>
                     <FiLoader className="animate-spin text-[15px]" />
-                    <span>{savingPdf ? "PREPARING..." : "SENDING..."}</span>
+                    <span>{savingPdf ? t("report.preparingEllipsis") : t("report.sendingEllipsis")}</span>
                   </>
                 ) : (
                   <>
                     <FiDownload className="text-[15px]" />
-                    <span>DOWNLOAD</span>
+                    <span>{t("report.downloadLabel")}</span>
                     <FiChevronDown className="text-[15px]" />
                   </>
                 )}

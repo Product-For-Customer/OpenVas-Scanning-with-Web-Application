@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const deltaApi = axios.create({
   baseURL: apiUrl,
@@ -7,6 +7,8 @@ const deltaApi = axios.create({
   timeout: 30000,
   headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
 });
+
+installMaintenanceInterceptor(deltaApi);
 
 export const GetVulnerabilityDelta = async () => {
   try {

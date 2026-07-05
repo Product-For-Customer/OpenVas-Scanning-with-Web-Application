@@ -769,11 +769,13 @@ func DeleteGMPPortRange(c *gin.Context) {
 // ─────────────────────────────────────────────────────────────
 
 type CredentialDTO struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Type    string `json:"type"`
-	Login   string `json:"login"`
-	Comment string `json:"comment"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Type             string `json:"type"`
+	Login            string `json:"login"`
+	Comment          string `json:"comment"`
+	AuthAlgorithm    string `json:"auth_algorithm,omitempty"`
+	PrivacyAlgorithm string `json:"privacy_algorithm,omitempty"`
 }
 
 type CreateCredentialRequest struct {
@@ -805,11 +807,13 @@ func ListGMPCredentials(c *gin.Context) {
 	dtos := make([]CredentialDTO, 0, len(creds))
 	for _, cr := range creds {
 		dtos = append(dtos, CredentialDTO{
-			ID:      cr.ID,
-			Name:    cr.Name,
-			Type:    cr.Type,
-			Login:   cr.Login,
-			Comment: cr.Comment,
+			ID:               cr.ID,
+			Name:             cr.Name,
+			Type:             cr.Type,
+			Login:            cr.Login,
+			Comment:          cr.Comment,
+			AuthAlgorithm:    cr.AuthAlgorithm,
+			PrivacyAlgorithm: cr.PrivacyAlgorithm,
 		})
 	}
 	c.JSON(http.StatusOK, dtos)

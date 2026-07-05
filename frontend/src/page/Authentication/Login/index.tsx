@@ -3,7 +3,6 @@ import { message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff, FiServer, FiWifi, FiCpu } from "react-icons/fi";
 import { Login } from "../../../services/auth";
-import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import { preloadLoginSuccessAnimationAssets } from "../animation";
@@ -12,17 +11,16 @@ import argusWordmark from "../../../assets/argus-font-sidebar.png";
 
 const inputCls = [
   "w-full rounded-xl border px-3.5 py-2 text-sm outline-none transition",
-  "border-gray-300 dark:border-white/10",
-  "bg-white dark:bg-white/5",
-  "text-gray-800 dark:text-white/85",
-  "placeholder:text-gray-400 dark:placeholder:text-white/25",
-  "focus:border-blue-400 dark:focus:border-white/30",
-  "focus:ring-4 focus:ring-blue-100 dark:focus:ring-white/5",
+  "border-gray-300",
+  "bg-white",
+  "text-gray-800",
+  "placeholder:text-gray-400",
+  "focus:border-[#1A97F5]",
+  "focus:ring-4 focus:ring-[#1A97F5]/20",
 ].join(" ");
 
 const LoginPage: React.FC = () => {
   const navigate           = useNavigate();
-  const { currentColor }   = useStateContext();
   const { t }               = useLanguage();
   const isMounted          = useRef(true);
 
@@ -104,23 +102,23 @@ const LoginPage: React.FC = () => {
         <img
           src={argusWordmark}
           alt="Argus"
-          className="h-6 w-auto object-contain select-none dark:brightness-125 dark:contrast-125"
+          className="h-6 w-auto object-contain select-none"
           draggable={false}
         />
       </div>
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 mb-3">
+      <p className="text-center text-sm text-gray-500 mb-3">
         {t("auth.loginSubtitle")}
       </p>
 
       {error && (
-        <div className="mb-4 rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1">
+          <label className="block text-sm font-semibold text-gray-800 mb-1">
             {t("auth.usernameOrEmail")}
           </label>
           <input
@@ -134,7 +132,7 @@ const LoginPage: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-800 dark:text-white/80 mb-1">
+          <label className="block text-sm font-semibold text-gray-800 mb-1">
             {t("auth.password")}
           </label>
           <div className="relative">
@@ -149,7 +147,7 @@ const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowPw(p => !p)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/35 hover:text-gray-600 dark:hover:text-white/60 transition"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
               aria-label={showPw ? t("auth.hidePassword") : t("auth.showPassword")}
             >
               {showPw ? <FiEyeOff size={16} /> : <FiEye size={16} />}
@@ -163,13 +161,13 @@ const LoginPage: React.FC = () => {
             <input
               type="checkbox"
               className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-              style={{ accentColor: currentColor }}
+              style={{ accentColor: "#1A97F5" }}
             />
-            <span className="text-sm text-gray-600 dark:text-white/55">{t("auth.rememberMe")}</span>
+            <span className="text-sm text-gray-600">{t("auth.rememberMe")}</span>
           </label>
           <Link
             to="/forgot-password"
-            style={{ color: currentColor }}
+            style={{ color: "#1A97F5" }}
             className="text-sm font-medium hover:opacity-80 transition-opacity whitespace-nowrap"
           >
             {t("auth.forgotPassword")}
@@ -179,8 +177,8 @@ const LoginPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting}
-          style={{ backgroundColor: submitting ? undefined : currentColor }}
-          className="w-full text-white font-semibold py-3 text-sm shadow-md shadow-blue-500/20 transition-all hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
+          style={{ backgroundColor: submitting ? undefined : "#1A97F5" }}
+          className="w-full text-white font-semibold py-3 text-sm shadow-md shadow-[#1A97F5]/20 transition-all hover:opacity-90 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:translate-y-0 disabled:cursor-not-allowed disabled:bg-gray-400 mt-1"
         >
           {submitting ? t("auth.signingIn") : t("auth.signIn")}
         </button>
@@ -188,13 +186,13 @@ const LoginPage: React.FC = () => {
 
       {/* ── Type of Scan ── */}
       <div className="mt-3 flex items-center gap-3">
-        <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
-        <span className="shrink-0 text-sm text-gray-400 dark:text-white/35">{t("auth.typeOfScan")}</span>
-        <span className="h-px flex-1 bg-gray-200 dark:bg-white/10" />
+        <span className="h-px flex-1 bg-gray-200" />
+        <span className="shrink-0 text-sm text-gray-400">{t("auth.typeOfScan")}</span>
+        <span className="h-px flex-1 bg-gray-200" />
       </div>
 
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <div className="flex items-center justify-center gap-1.5 bg-linear-to-br from-blue-600 to-sky-500 py-2 text-white shadow-sm shadow-blue-500/30 transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-110">
+        <div className="flex items-center justify-center gap-1.5 bg-linear-to-br from-[#1A97F5] to-sky-500 py-2 text-white shadow-sm shadow-[#1A97F5]/30 transition-all hover:-translate-y-0.5 hover:shadow-md hover:brightness-110">
           <FiServer size={13} />
           <span className="text-[10px] font-semibold">{t("auth.scanTypeNetwork")}</span>
         </div>
@@ -210,9 +208,9 @@ const LoginPage: React.FC = () => {
         </div>
       </div>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-4">
+      <p className="text-center text-sm text-gray-500 mt-4">
         {t("auth.newToArgus")}{" "}
-        <Link to="/register" style={{ color: currentColor }} className="hover:opacity-80 font-medium transition-opacity">
+        <Link to="/register" style={{ color: "#1A97F5" }} className="hover:opacity-80 font-medium transition-opacity">
           {t("auth.createAccount")}
         </Link>
       </p>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { FiCpu, FiActivity, FiServer, FiWifi, FiHardDrive } from "react-icons/fi";
 import type { DeviceRiskForReportDTO } from "../../../services/report";
 import { ListDeviceRiskForReport } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type TopDeviceRiskReportProps = {
   onReady?: (ready: boolean) => void;
@@ -292,6 +293,7 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
   prefetchedDevices,
   prefetchedLoading = false,
 }) => {
+  const { t } = useLanguage();
   const [devices, setDevices] = useState<DeviceRiskForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
@@ -468,18 +470,18 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
 
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.25px] leading-5 text-slate-600">
                 <span>
-                  <span className="font-semibold text-slate-700">IP:</span>{" "}
+                  <span className="font-semibold text-slate-700">{t("topDeviceRisk.ipLabel")}</span>{" "}
                   {device.ip_address || "-"}
                 </span>
 
                 <span>
-                  <span className="font-semibold text-slate-700">Risk:</span>{" "}
+                  <span className="font-semibold text-slate-700">{t("topDeviceRisk.riskLabel")}</span>{" "}
                   {formatRiskScore(device.risk_score)}
                 </span>
 
                 <span>
                   <span className="font-semibold text-slate-700">
-                    Vulnerabilities:
+                    {t("conclusion.vulnerabilitiesLabel")}
                   </span>{" "}
                   {formatVulnerabilityTotal(device.vulnerability_total)}
                 </span>
@@ -487,7 +489,7 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
 
               {device.firmware_version ? (
                 <p className="mt-1 text-[11.75px] leading-5 text-slate-500">
-                  Firmware: {truncateText(device.firmware_version, 95)}
+                  {t("topDeviceRisk.firmwareLabel")} {truncateText(device.firmware_version, 95)}
                 </p>
               ) : null}
             </div>
@@ -550,14 +552,14 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
           {showOuterHeader ? (
             <>
               <h3 className="text-[19px] font-semibold text-slate-900">
-                Device Risk List
+                {t("topDeviceRisk.deviceRiskList")}
               </h3>
               <p className="mt-2 text-[14px] leading-6 text-slate-600">
-                ไม่พบข้อมูลอุปกรณ์สำหรับรายงานรอบนี้
+                {t("topDeviceRisk.noDeviceDataForCycle")}
               </p>
             </>
           ) : (
-            <p className="text-[14px] leading-6 text-slate-600">No Data</p>
+            <p className="text-[14px] leading-6 text-slate-600">{t("execHighlights.noData")}</p>
           )}
         </div>
       </section>
@@ -578,15 +580,15 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
 
                   <div className="min-w-0">
                     <p className="text-[11.5px] font-semibold uppercase tracking-[0.14em] text-slate-600">
-                      Total Devices
+                      {t("conclusion.totalDevices")}
                     </p>
                     <p className="mt-1 text-[20px] font-bold text-slate-900">
                       {formatNumber(totalTargets)}
                     </p>
                     <p className="mt-1 text-[12.25px] leading-5 text-slate-600">
                       {effectiveTaskMode === "all"
-                        ? "Devices assessed in the latest scan cycle."
-                        : "Devices assessed in the selected task scope."}
+                        ? t("topDeviceRisk.devicesAssessedAll")
+                        : t("topDeviceRisk.devicesAssessedFiltered")}
                     </p>
                   </div>
                 </div>
@@ -634,15 +636,15 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
                     <p
                       className={`text-[11.5px] font-semibold uppercase tracking-[0.14em] ${averageTone.label}`}
                     >
-                      Average Risk Score (max 10.00)
+                      {t("topDeviceRisk.averageRiskScoreMax")}
                     </p>
                     <p className={`mt-1 text-[20px] font-bold ${averageTone.value}`}>
                       {formatRiskScore(averageRiskScore)}
                     </p>
                     <p className={`mt-1 text-[12.25px] leading-5 ${averageTone.desc}`}>
                       {effectiveTaskMode === "all"
-                        ? "Average risk level across assessed devices."
-                        : "Average risk level across selected devices."}
+                        ? t("topDeviceRisk.averageRiskAcrossAssessed")
+                        : t("topDeviceRisk.averageRiskAcrossSelected")}
                     </p>
                   </div>
                 </div>
@@ -682,8 +684,7 @@ const index: React.FC<TopDeviceRiskReportProps> = ({
         </div>
 
         <p className="mt-3 text-[12.25px] leading-5 text-slate-500">
-          Note: The list is ordered by risk score in descending order and shown
-          20 devices per page.
+          {t("topDeviceRisk.orderNote", { n: pageSize })}
         </p>
       </div>
     </section>

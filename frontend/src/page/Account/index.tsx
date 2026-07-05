@@ -98,6 +98,7 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
   const [code,       setCode]       = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error,      setError]      = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -145,10 +146,11 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
   };
 
   const handleDisable = async () => {
+    if (!disablePassword.trim()) { setError(t("account.totp.confirmPasswordRequired")); return; }
     setSubmitting(true);
     setError("");
     try {
-      await DisableTOTP();
+      await DisableTOTP({ password: disablePassword.trim() });
       if (!isMounted.current) return;
       onStatusChange({ is_enabled: false, is_configured: false });
       message.success(t("account.totp.disabledSuccess"));
@@ -224,14 +226,26 @@ const TOTPModal: React.FC<TOTPModalProps> = ({
                   <p className="text-[10.5px] text-slate-500 dark:text-white/40">{t("account.totp.confirmDisableDesc")}</p>
                 </div>
               </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold text-slate-600 dark:text-white/60">
+                  {t("account.totp.confirmPasswordLabel")}
+                </label>
+                <input
+                  type="password"
+                  value={disablePassword}
+                  onChange={(e) => { setDisablePassword(e.target.value); setError(""); }}
+                  placeholder={t("account.totp.confirmPasswordPlaceholder")}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-[13px] text-slate-800 outline-none transition focus:border-red-300 focus:ring-2 focus:ring-red-100 dark:border-white/8 dark:bg-white/5 dark:text-white"
+                />
+              </div>
               {error && <p className="text-[11px] text-red-500">{error}</p>}
               <div className="flex gap-2">
-                <button type="button" onClick={() => void handleDisable()} disabled={submitting}
+                <button type="button" onClick={() => void handleDisable()} disabled={submitting || !disablePassword.trim()}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60">
                   {submitting && <FiRefreshCw className="animate-spin text-[11px]" />}
                   {submitting ? t("account.totp.disabling") : t("account.totp.yesDisable")}
                 </button>
-                <button type="button" onClick={() => { setStep("idle"); setError(""); }}
+                <button type="button" onClick={() => { setStep("idle"); setError(""); setDisablePassword(""); }}
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-white/8 dark:text-white/55">
                   {t("account.totp.cancel")}
                 </button>

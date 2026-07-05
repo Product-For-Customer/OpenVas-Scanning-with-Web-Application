@@ -19,7 +19,8 @@ let BACKGROUND_MODE: "image" | "particles" = "particles";
  * - Full-screen background: either the isometric artwork or the animated
  *   particle network (see BACKGROUND_MODE above)
  * - Centred white card that holds the page's form content
- * - Adapts to light / dark mode automatically
+ * - Fixed single visual style — does not react to the site-wide
+ *   light/dark theme toggle; auth pages always render the same way.
  */
 const AuthLayout: React.FC<Props> = ({ children }) => {
   return (
@@ -27,7 +28,7 @@ const AuthLayout: React.FC<Props> = ({ children }) => {
      * Outer wrapper — sets the background colour behind the canvas.
      * `relative` + `z-0` is needed so the fixed canvas sits behind the card.
      */
-    <div className="relative min-h-screen bg-[#f5f7fa] dark:bg-[#0e1120] flex items-center justify-center py-4 px-4">
+    <div className="relative min-h-screen bg-[#f5f7fa] flex items-center justify-center py-4 px-4">
 
       {/* ── Background layer (position: fixed → always covers viewport) ── */}
       {BACKGROUND_MODE === "particles" ? (
@@ -55,8 +56,8 @@ const AuthLayout: React.FC<Props> = ({ children }) => {
         className={[
           "relative z-10",
           "w-full",
-          "border border-gray-100 dark:border-white/10",
-          "bg-white dark:bg-[#16182e]",
+          "border border-gray-100",
+          "bg-white",
           // overflow-y-auto so tall forms (Register) scroll inside the card
           "overflow-y-auto",
         ].join(" ")}

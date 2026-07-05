@@ -35,7 +35,6 @@ const FeedStatus         = Loadable(lazy(() => import("../page/FeedStatus/index"
 const ThreatConfig       = Loadable(lazy(() => import("../page/ThreatConfig/index")));
 const RecycleBin         = Loadable(lazy(() => import("../page/RecycleBin/index")));
 const AuditLog           = Loadable(lazy(() => import("../page/AuditLog/index")));
-const Remediation        = Loadable(lazy(() => import("../page/Remediation/index")));
 
 // ===== Auth Pages =====
 const LoginPage          = Loadable(lazy(() => import("../page/Authentication/Login")));
@@ -50,6 +49,22 @@ const ResetOTPPage       = Loadable(lazy(() => import("../page/Authentication/Re
 const Loader         = Loadable(lazy(() => import("../component/load/Loader")));
 const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
 const AfterLoginAnimation = Loadable(lazy(() => import("../page/Authentication/animation/route")));
+
+// /capture is not a real page for people to browse — it exists purely as the
+// internal render target the backend's headless-Chrome PDF generator
+// navigates to (see backend report.buildCaptureURL), which always appends a
+// one-time capture_token query param. Logged-in users already can't reach
+// this path at all (it has no entry in AdminRoutes below, so it falls
+// through to the "*" redirect to /admin); this guard closes the remaining
+// gap for anonymous visitors, who could otherwise open the bare URL in a
+// normal browser and see the capture-page shell.
+const CaptureGuard: React.FC = () => {
+  const hasCaptureToken = new URLSearchParams(window.location.search).has("capture_token");
+  if (!hasCaptureToken) {
+    return <Navigate to="/login" replace />;
+  }
+  return <CaptureTest />;
+};
 
 // ======================= ROUTES =======================
 // Single source of truth: every /admin/* page + the permission category that
@@ -97,7 +112,6 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "password-policy",                      element: <PasswordPolicy />, category: "line_settings" },
 
   { path: "audit-log",                           element: <AuditLog />, category: "audit_log" },
-  { path: "remediation",                         element: <Remediation />, category: "remediation" },
 ];
 
 const canView = (permissions: PermissionMap, category?: string) =>
@@ -132,7 +146,7 @@ const MainRoutes = (): RouteObject[] => [
       { path: "otp",                    element: <OTPPage /> },
       { path: "register-otp",           element: <RegisterOTPPage /> },
       { path: "reset-otp",              element: <ResetOTPPage /> },
-      { path: "capture",                element: <CaptureTest /> },
+      { path: "capture",                element: <CaptureGuard /> },
       { path: "after-login-animation",  element: <AfterLoginAnimation /> },
       { path: "*",                      element: <LoginPage /> },
     ],

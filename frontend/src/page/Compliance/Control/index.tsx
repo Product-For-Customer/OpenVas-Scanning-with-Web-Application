@@ -19,6 +19,7 @@ import {
 import type { ControlStatus, FrameworkScore } from "../../../services";
 import {
   GetControlVulnerabilities,
+  GetComplianceReport,
   type ViolationVuln,
 } from "../../../services/compliance";
 import { useStateContext } from "../../../contexts/ProviderContext";
@@ -257,40 +258,82 @@ type LocationState = {
 const ComplianceControlDetail: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  useParams<{ framework: string; controlId: string }>();
+  const { framework: frameworkParam, controlId: controlIdParam } = useParams<{ framework: string; controlId: string }>();
   const location = useLocation();
   const { currentColor } = useStateContext();
 
-  const state = location.state as LocationState | null;
-  const fw = state?.framework ?? null;
-  const ctrl = state?.control ?? null;
+  const navState = location.state as LocationState | null;
+
+  // location.state (fast path, set by the Compliance list page's navigate())
+  // is lost on a refresh or a directly-opened/bookmarked/shared URL — since
+  // react-router never repopulates it. Fall back to re-deriving the same
+  // framework/control from the full report, keyed off the URL params, so the
+  // page actually works without having to navigate here from the list first.
+  const [fetchedFw, setFetchedFw] = useState<FrameworkScore | null>(null);
+  const [fetchedCtrl, setFetchedCtrl] = useState<ControlStatus | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+  const [fallbackFailed, setFallbackFailed] = useState(false);
+  const fetchedForKeyRef = useRef<string | null>(null);
+
+  const fw = navState?.framework ?? fetchedFw;
+  const ctrl = navState?.control ?? fetchedCtrl;
 
   const [vulns, setVulns] = useState<ViolationVuln[]>([]);
   const [vulnLoading, setVulnLoading] = useState(false);
-  const hasFetched = useRef(false);
+  const [vulnError, setVulnError] = useState(false);
+  const fetchedVulnsForRef = useRef<string | null>(null);
 
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   useEffect(() => {
-    if (!ctrl?.control_id || hasFetched.current) return;
-    hasFetched.current = true;
+    if (navState?.framework && navState?.control) return; // fast path already has everything
+    if (!frameworkParam || !controlIdParam) return;
+    const key = `${frameworkParam}/${controlIdParam}`;
+    if (fetchedForKeyRef.current === key) return;
+    fetchedForKeyRef.current = key;
+
+    setFallbackLoading(true);
+    setFallbackFailed(false);
+    GetComplianceReport().then((report) => {
+      const matchedFw = report?.frameworks.find((f) => f.framework === frameworkParam) ?? null;
+      const matchedCtrl = matchedFw?.controls.find((c) => c.control_id === controlIdParam) ?? null;
+      if (!matchedFw || !matchedCtrl) {
+        setFallbackFailed(true);
+        return;
+      }
+      setFetchedFw(matchedFw);
+      setFetchedCtrl(matchedCtrl);
+    }).finally(() => setFallbackLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameworkParam, controlIdParam]);
+
+  useEffect(() => {
+    if (!ctrl?.control_id || fetchedVulnsForRef.current === ctrl.control_id) return;
+    fetchedVulnsForRef.current = ctrl.control_id;
     setVulnLoading(true);
     GetControlVulnerabilities(ctrl.control_id).then((data) => {
-      setVulns(data);
+      setVulnError(data === null);
+      setVulns(data ?? []);
       setVulnLoading(false);
     });
   }, [ctrl?.control_id]);
 
-  // Reset fetch flag when control changes
-  useEffect(() => {
-    hasFetched.current = false;
-  }, [ctrl?.control_id]);
+  if (fallbackLoading) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-3">
+        <FiRefreshCw className="animate-spin text-[28px] text-slate-300 dark:text-white/20" />
+        <p className="text-[13px] text-slate-400 dark:text-white/35">{t("common.loading")}</p>
+      </div>
+    );
+  }
 
   if (!fw || !ctrl) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <FiShield className="text-[40px] text-slate-300 dark:text-white/20" />
-        <p className="text-[13px] text-slate-400 dark:text-white/35">{t("complianceControl.noControlData")}</p>
+        <p className="text-[13px] text-slate-400 dark:text-white/35">
+          {fallbackFailed ? t("complianceControl.loadFailed") : t("complianceControl.noControlData")}
+        </p>
         <button
           type="button"
           onClick={() => navigate("/admin/compliance")}
@@ -441,6 +484,13 @@ const ComplianceControlDetail: React.FC = () => {
             <div className="flex flex-col items-center justify-center gap-3 py-12 text-slate-400 dark:text-white/30">
               <FiRefreshCw className="animate-spin text-[18px]" />
               <span className="text-[11.5px]">{t("complianceControl.loadingVulnerabilities")}</span>
+            </div>
+          ) : vulnError ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <FiXCircle className="text-[32px] text-red-500" />
+              <p className="text-[12px] font-semibold text-slate-500 dark:text-white/40">
+                {t("complianceControl.failedToLoadVulnerabilities")}
+              </p>
             </div>
           ) : vulns.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-10">

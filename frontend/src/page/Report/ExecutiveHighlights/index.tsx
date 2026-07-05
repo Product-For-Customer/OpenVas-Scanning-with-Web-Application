@@ -8,6 +8,8 @@ import {
   FiInfo,
 } from "react-icons/fi";
 import { ListCriticalForReport } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 type HighlightTone = "good" | "warning" | "critical" | "neutral";
 
@@ -75,11 +77,11 @@ const toneStyle: Record<HighlightTone, string> = {
   neutral: "bg-slate-700 text-white border-slate-700",
 };
 
-const toneLabel: Record<HighlightTone, string> = {
-  good: "Improved",
-  warning: "Attention",
-  critical: "Critical",
-  neutral: "Observation",
+const toneLabelKey: Record<HighlightTone, TranslationKey> = {
+  good: "execHighlights.toneGood",
+  warning: "execHighlights.toneWarning",
+  critical: "execHighlights.toneCritical",
+  neutral: "execHighlights.toneNeutral",
 };
 
 const remediateBadgeClass =
@@ -192,6 +194,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
   prefetchedRows,
   prefetchedLoading = false,
 }) => {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<CriticalForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
@@ -285,7 +288,8 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
         return {
           id: index + 1,
           title:
-            normalizeText(item.vulnerability_name) || "Unknown Vulnerability",
+            normalizeText(item.vulnerability_name) ||
+            t("common.unknownVulnerability"),
           target: normalizeText(item.task_name),
           ip: normalizeText(item.ip),
           detectedDate: normalizeText(item.detected_date),
@@ -301,7 +305,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           tone: getToneFromSeverity(severity),
         };
       });
-  }, [rows]);
+  }, [rows, t]);
 
   useEffect(() => {
     onDataCountChange?.(items.length);
@@ -325,17 +329,15 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
-                  Management Summary
+                  {t("execHighlights.managementSummary")}
                 </p>
 
                 <h3 className="mt-1 text-[18.5px] font-bold leading-[1.22] text-slate-900">
-                  Key Critical Findings at a Glance
+                  {t("execHighlights.keyCriticalFindings")}
                 </h3>
 
                 <p className="mt-1.5 text-[12.25px] leading-[1.55] text-slate-600">
-                  Highlighting the most critical vulnerabilities detected in the
-                  latest scan, including business impact, affected scope, and
-                  recommended remediation actions.
+                  {t("execHighlights.descLong")}
                 </p>
               </div>
 
@@ -343,7 +345,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                 <span className={remediateBadgeClass}>
                   <FiAlertTriangle className="shrink-0 text-[12px]" />
                   <span className="whitespace-nowrap">
-                    Remediate within 48 hours
+                    {t("execHighlights.remediateWithin48h")}
                   </span>
                 </span>
               </div>
@@ -370,17 +372,15 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
             <div className="flex items-end justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
-                  Management Summary
+                  {t("execHighlights.managementSummary")}
                 </p>
 
                 <h3 className="mt-1 text-[18.5px] font-bold leading-[1.22] text-slate-900">
-                  Key Critical Findings at a Glance
+                  {t("execHighlights.keyCriticalFindings")}
                 </h3>
 
                 <p className="mt-1.5 text-[12.25px] leading-[1.55] text-slate-600">
-                  Highlighting the most critical vulnerabilities detected in the
-                  latest scan, including business impact, affected scope, and
-                  recommended remediation actions.
+                  {t("execHighlights.descLong")}
                 </p>
               </div>
 
@@ -388,7 +388,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                 <span className={remediateBadgeClass}>
                   <FiAlertTriangle className="shrink-0 text-[12px]" />
                   <span className="whitespace-nowrap">
-                    Remediate within 48 hours
+                    {t("execHighlights.remediateWithin48h")}
                   </span>
                 </span>
               </div>
@@ -397,7 +397,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
         ) : null}
 
         <div className="px-5 py-5">
-          <div className="text-[12.5px] text-slate-500">No Data</div>
+          <div className="text-[12.5px] text-slate-500">{t("execHighlights.noData")}</div>
         </div>
       </section>
     );
@@ -410,15 +410,15 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           <div className="flex items-end justify-between gap-4">
             <div className="min-w-0 flex-1">
               <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
-                Management Summary
+                {t("execHighlights.managementSummary")}
               </p>
 
               <h3 className="mt-1 text-[18.5px] font-bold leading-[1.22] text-slate-900">
-                Key Critical Findings at a Glance
+                {t("execHighlights.keyCriticalFindings")}
               </h3>
 
               <p className="mt-1.5 text-[12.25px] leading-[1.55] text-slate-600">
-                Highlights the most critical vulnerabilities from the latest scan, including impact, scope, and recommended fixes.
+                {t("execHighlights.descShort")}
               </p>
             </div>
 
@@ -426,7 +426,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
               <span className={remediateBadgeClass}>
                 <FiAlertTriangle className="shrink-0 text-[12px]" />
                 <span className="whitespace-nowrap">
-                  Remediate within 48 hours
+                  {t("execHighlights.remediateWithin48h")}
                 </span>
               </span>
             </div>
@@ -443,7 +443,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           if (item.summary) {
             sectionBlocks.push({
               key: "summary",
-              title: "Summary",
+              title: t("execHighlights.summary"),
               content: item.summary,
               icon: <FiFileText className="text-[15px] text-slate-500" />,
               containerClassName:
@@ -456,7 +456,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           if (item.insight) {
             sectionBlocks.push({
               key: "insight",
-              title: "Insight",
+              title: t("execHighlights.insight"),
               content: item.insight,
               icon: <FiInfo className="text-[15px] text-slate-500" />,
               containerClassName:
@@ -469,7 +469,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           if (item.impact) {
             sectionBlocks.push({
               key: "impact",
-              title: "Impact",
+              title: t("execHighlights.impact"),
               content: item.impact,
               icon: (
                 <FiAlertTriangle className="text-[15px] text-slate-500" />
@@ -484,7 +484,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           if (item.affected) {
             sectionBlocks.push({
               key: "affected",
-              title: "Affected Scope",
+              title: t("execHighlights.affectedScope"),
               content: item.affected,
               icon: <FiShield className="text-[15px] text-slate-500" />,
               containerClassName:
@@ -497,7 +497,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
           if (item.solution) {
             sectionBlocks.push({
               key: "solution",
-              title: "Recommended Action",
+              title: t("execHighlights.recommendedAction"),
               content: item.solution,
               icon: <FiTool className="text-[15px] text-slate-500" />,
               containerClassName:
@@ -528,12 +528,12 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                       <span
                         className={`inline-flex items-center border px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] ${toneStyle[tone]}`}
                       >
-                        {toneLabel[tone]}
+                        {t(toneLabelKey[tone])}
                       </span>
 
                       {typeof item.severity === "number" ? (
                         <span className="inline-flex items-center border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">
-                          Severity {item.severity.toFixed(1)}
+                          {t("execHighlights.severityBadge", { score: item.severity.toFixed(1) })}
                         </span>
                       ) : null}
                     </div>
@@ -548,7 +548,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                           <FiShield className="text-[14px] text-slate-500" />
                           <span>
                             <span className="font-semibold text-slate-900">
-                              Target:
+                              {t("execHighlights.targetLabel")}
                             </span>{" "}
                             {item.target}
                           </span>
@@ -560,7 +560,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                           <FiShield className="text-[14px] text-slate-500" />
                           <span>
                             <span className="font-semibold text-slate-900">
-                              IP:
+                              {t("execHighlights.ipLabel")}
                             </span>{" "}
                             {item.ip}
                           </span>
@@ -572,7 +572,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                           <FiClock className="text-[14px] text-slate-500" />
                           <span>
                             <span className="font-semibold text-slate-900">
-                              Detected:
+                              {t("execHighlights.detectedLabel")}
                             </span>{" "}
                             {formatDetectedDate(item.detectedDate)}
                           </span>
@@ -583,9 +583,8 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                         <div className="inline-flex items-center gap-2 border border-rose-200 bg-rose-50 px-3 py-2 text-[12px] leading-normal text-rose-700">
                           <FiClock className="text-[14px]" />
                           <span>
-                            <span className="font-semibold">Exposed for:</span>{" "}
-                            {item.detectedDays} day
-                            {item.detectedDays !== 1 ? "s" : ""}
+                            <span className="font-semibold">{t("execHighlights.exposedForLabel")}</span>{" "}
+                            {t("execHighlights.daysCount", { n: item.detectedDays })}
                           </span>
                         </div>
                       )}
@@ -595,7 +594,7 @@ const index: React.FC<ExecutiveHighlightsProps> = ({
                           <FiFileText className="text-[14px] text-slate-500" />
                           <span>
                             <span className="font-semibold text-slate-900">
-                              CVE:
+                              {t("execHighlights.cveLabel")}
                             </span>{" "}
                             {item.cveList}
                           </span>

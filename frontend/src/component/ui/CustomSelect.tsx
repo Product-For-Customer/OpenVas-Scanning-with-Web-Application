@@ -21,6 +21,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { FiCheck, FiChevronDown, FiSearch, FiX } from "react-icons/fi";
+import { useLanguage } from "../../contexts/LanguageContext";
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -55,8 +56,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = "Select…",
-  searchPlaceholder = "Search…",
+  placeholder,
+  searchPlaceholder,
   searchable,
   disabled = false,
   className = "",
@@ -64,6 +65,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   maxListHeightClass = "max-h-52",
   menuAlign = "left",
 }) => {
+  const { t } = useLanguage();
   const [open, setOpen]     = useState(false);
   const [query, setQuery]   = useState("");
   const ref                 = useRef<HTMLDivElement>(null);
@@ -112,7 +114,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         )}
         <span className="flex-1 truncate">
           {selected ? selected.label : (
-            <span className="text-slate-400 dark:text-white/30">{placeholder}</span>
+            <span className="text-slate-400 dark:text-white/30">{placeholder ?? t("customSelect.defaultPlaceholder")}</span>
           )}
         </span>
         <FiChevronDown
@@ -137,7 +139,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={searchPlaceholder}
+                  placeholder={searchPlaceholder ?? t("customSelect.defaultSearchPlaceholder")}
                   className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
                 />
                 {query && (
@@ -152,7 +154,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
           <div className={`${maxListHeightClass} overflow-y-auto p-2`}>
             {filtered.length === 0 ? (
               <p className="px-2.5 py-3 text-center text-[11px] text-slate-400 dark:text-white/30">
-                No results
+                {t("customSelect.noResults")}
               </p>
             ) : (
               <div className="space-y-0.5">
@@ -219,12 +221,13 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = "Select…",
-  searchPlaceholder = "Search…",
+  placeholder,
+  searchPlaceholder,
   disabled = false,
   className = "",
   icon,
 }) => {
+  const { t } = useLanguage();
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState("");
   const ref               = useRef<HTMLDivElement>(null);
@@ -240,8 +243,8 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
     value.length === 0
       ? null
       : value.length === 1
-      ? (options.find((o) => o.value === value[0])?.label ?? "1 selected")
-      : `${value.length} selected`;
+      ? (options.find((o) => o.value === value[0])?.label ?? t("dashboard.oneSelected"))
+      : t("dashboard.nSelected", { n: value.length });
 
   // Close on outside click
   useEffect(() => {
@@ -294,7 +297,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
         )}
         <span className="flex-1 truncate">
           {triggerLabel ?? (
-            <span className="text-slate-400 dark:text-white/30">{placeholder}</span>
+            <span className="text-slate-400 dark:text-white/30">{placeholder ?? t("customSelect.defaultPlaceholder")}</span>
           )}
         </span>
         {value.length > 0 && (
@@ -317,7 +320,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={searchPlaceholder}
+                placeholder={searchPlaceholder ?? t("customSelect.defaultSearchPlaceholder")}
                 className="h-8 w-full bg-transparent text-[11px] text-slate-700 outline-none placeholder:text-slate-400 dark:text-white/75 dark:placeholder:text-white/30"
               />
               {query && (
@@ -332,7 +335,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
                 onClick={toggleAll}
                 className="text-[10px] font-medium text-blue-500 hover:text-blue-600 dark:text-blue-400"
               >
-                {allFilteredSelected ? "Unselect all" : "Select all"}
+                {allFilteredSelected ? t("customSelect.unselectAll") : t("customSelect.selectAll")}
               </button>
               {value.length > 0 && (
                 <button
@@ -340,7 +343,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
                   onClick={clear}
                   className="text-[10px] font-medium text-slate-400 hover:text-slate-600 dark:text-white/35 dark:hover:text-white/55"
                 >
-                  Clear
+                  {t("common.clear")}
                 </button>
               )}
             </div>
@@ -350,7 +353,7 @@ export const CustomMultiSelect: React.FC<CustomMultiSelectProps> = ({
           <div className="max-h-44 overflow-y-auto p-2">
             {filtered.length === 0 ? (
               <p className="px-2.5 py-3 text-center text-[11px] text-slate-400 dark:text-white/30">
-                No results
+                {t("customSelect.noResults")}
               </p>
             ) : (
               <div className="space-y-0.5">

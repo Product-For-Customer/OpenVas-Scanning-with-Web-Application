@@ -12,6 +12,7 @@ import {
 import { FiCpu, FiTrendingUp } from "react-icons/fi";
 import type { TargetDifferForReportDTO } from "../../../services/report";
 import { ListTargetDifferForReport } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
 
 type ChartRow = {
   id: string;
@@ -58,6 +59,8 @@ type CustomTooltipProps = {
 };
 
 const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
+  const { t } = useLanguage();
+
   if (!active || !payload || payload.length === 0) return null;
 
   const row = payload[0]?.payload;
@@ -70,47 +73,47 @@ const CustomTooltip: React.FC<CustomTooltipProps> = ({ active, payload }) => {
       </p>
 
       <p className="mt-0.5 break-all text-[12px] text-slate-500">
-        Device: {row.host || "-"}
+        {t("comparison.deviceLabel")} {row.host || "-"}
       </p>
 
       <div className="my-2 h-px bg-slate-200" />
 
       <div className="space-y-1.5 text-[12.25px]">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Latest Risk</span>
+          <span className="text-slate-500">{t("comparison.latestRisk")}</span>
           <span className="font-semibold text-slate-900">
             {row.latestRisk.toFixed(2)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Previous Risk</span>
+          <span className="text-slate-500">{t("comparison.previousRisk")}</span>
           <span className="font-semibold text-slate-900">
             {row.previousRisk.toFixed(2)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Latest Total</span>
+          <span className="text-slate-500">{t("comparison.latestTotal")}</span>
           <span className="font-medium text-slate-900">{row.latestTotal}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-slate-500">Previous Total</span>
+          <span className="text-slate-500">{t("comparison.previousTotal")}</span>
           <span className="font-medium text-slate-900">
             {row.previousTotal}
           </span>
         </div>
 
         <div className="flex items-start justify-between gap-3">
-          <span className="text-slate-500">Latest Scan</span>
+          <span className="text-slate-500">{t("comparison.latestScan")}</span>
           <span className="max-w-32.5 text-right font-medium text-slate-900">
             {formatDateTime(row.latestTime)}
           </span>
         </div>
 
         <div className="flex items-start justify-between gap-3">
-          <span className="text-slate-500">Previous Scan</span>
+          <span className="text-slate-500">{t("comparison.previousScan")}</span>
           <span className="max-w-32.5 text-right font-medium text-slate-900">
             {formatDateTime(row.previousTime)}
           </span>
@@ -156,6 +159,7 @@ const index: React.FC<ComparisonReportProps> = ({
   onReady,
   selectedTaskIDs = [],
 }) => {
+  const { t } = useLanguage();
   const [rawData, setRawData] = useState<TargetDifferForReportDTO[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
@@ -298,7 +302,7 @@ const index: React.FC<ComparisonReportProps> = ({
       >
         <div className="py-2">
           <p className="text-[14px] leading-6 text-slate-600">
-            ไม่พบข้อมูลสำหรับแสดงกราฟในรายงานรอบนี้
+            {t("comparison.noChartData")}
           </p>
         </div>
       </section>
@@ -322,7 +326,7 @@ const index: React.FC<ComparisonReportProps> = ({
 
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  Devices
+                  {t("comparison.devicesLabel")}
                 </p>
 
                 <p className="mt-1 text-[19px] font-semibold text-slate-900">
@@ -340,7 +344,7 @@ const index: React.FC<ComparisonReportProps> = ({
 
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-700">
-                  Highest Latest Risk (MAX 10.00)
+                  {t("comparison.highestLatestRisk")}
                 </p>
 
                 <p className="mt-1 text-[19px] font-semibold text-slate-900">
@@ -354,17 +358,17 @@ const index: React.FC<ComparisonReportProps> = ({
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12px] text-slate-600">
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-4 rounded-full bg-violet-500" />
-            <span>Latest Risk</span>
+            <span>{t("comparison.latestRisk")}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-4 rounded-full bg-sky-400" />
-            <span>Previous Risk</span>
+            <span>{t("comparison.previousRisk")}</span>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="h-2.5 w-4 rounded-full bg-violet-200" />
-            <span>Risk Area</span>
+            <span>{t("comparison.riskArea")}</span>
           </div>
         </div>
 
@@ -429,8 +433,7 @@ const index: React.FC<ComparisonReportProps> = ({
         </div>
 
         <p className="mt-2 text-[12.25px] leading-5 text-slate-500">
-          Note: Only the Top 10 targets with the highest Latest Risk are
-          displayed, sorted in descending order.
+          {t("comparison.top10Note")}
         </p>
       </div>
     </section>

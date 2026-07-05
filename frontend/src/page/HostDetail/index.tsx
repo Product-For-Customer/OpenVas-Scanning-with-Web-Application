@@ -266,11 +266,23 @@ export default function HostDetail() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!ip) return;
+    if (!ip) {
+      // Previously left `loading` stuck at its initial `true` forever when ip
+      // was falsy on mount, spinning indefinitely with no error shown.
+      setLoading(false);
+      setError(t("hostDetail.notFound"));
+      return;
+    }
+
+    let ignore = false;
     setLoading(true);
     setError(null);
 
     Promise.all([GetHostSummary(ip), GetSLABreaches()]).then(([summary, sla]) => {
+      // Guards against a slower request for a previous ip (e.g. rapid
+      // back/forward navigation between two host pages) resolving after a
+      // newer one and overwriting it with stale data.
+      if (ignore) return;
       if (!summary) {
         setError(t("hostDetail.notFound"));
       } else {
@@ -281,6 +293,9 @@ export default function HostDetail() {
       }
       setLoading(false);
     });
+
+    return () => { ignore = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ip]);
 
   if (loading) {

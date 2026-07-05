@@ -3,7 +3,6 @@ import { message } from "antd";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { FiMail } from "react-icons/fi";
 import { SendOTP, VerifyOTPAddUpdatePassword } from "../../../services/auth";
-import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 
@@ -22,7 +21,6 @@ const maskEmail = (email: string) => {
 const ResetOTPPage: React.FC = () => {
   const navigate         = useNavigate();
   const location         = useLocation();
-  const { currentColor } = useStateContext();
   const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
@@ -130,31 +128,31 @@ const ResetOTPPage: React.FC = () => {
       <div className="flex justify-center mb-5">
         <div
           className="w-16 h-16 flex items-center justify-center border-2"
-          style={{ borderColor: `${currentColor}50` }}
+          style={{ borderColor: "#1A97F550" }}
         >
-          <FiMail size={30} style={{ color: currentColor }} />
+          <FiMail size={30} style={{ color: "#1A97F5" }} />
         </div>
       </div>
 
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-3">
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 mb-3">
         {t("auth.verifyYourEmail")}
       </h2>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 leading-relaxed mb-1 max-w-xs mx-auto">
+      <p className="text-center text-sm text-gray-500 leading-relaxed mb-1 max-w-xs mx-auto">
         {t("auth.otpSentToPrefix")}
       </p>
-      <p className="text-center text-sm font-semibold text-gray-800 dark:text-white/80">
+      <p className="text-center text-sm font-semibold text-gray-800">
         {maskEmail(state.email)}
       </p>
 
       {error && (
-        <div className="mt-3 mb-1 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300 text-center">
+        <div className="mt-3 mb-1 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 text-center">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <p className="text-center text-sm font-semibold text-gray-800 dark:text-white/80 mt-5 mb-3">
+        <p className="text-center text-sm font-semibold text-gray-800 mt-5 mb-3">
           {t("auth.enterNDigitCode", { n: OTP_LENGTH })}
         </p>
 
@@ -172,10 +170,10 @@ const ResetOTPPage: React.FC = () => {
               onKeyDown={e => handleKeyDown(i, e)}
               onPaste={i === 0 ? handlePaste : undefined}
               autoFocus={i === 0}
-              className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white/90 outline-none transition"
+              className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 bg-white text-gray-900 outline-none transition"
               style={{
-                borderColor: digits[i] ? currentColor : undefined,
-                boxShadow: digits[i] ? `0 0 0 2px ${currentColor}25` : undefined,
+                borderColor: digits[i] ? "#1A97F5" : undefined,
+                boxShadow: digits[i] ? "0 0 0 2px #1A97F525" : undefined,
               }}
             />
           ))}
@@ -184,28 +182,28 @@ const ResetOTPPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting || code.length !== OTP_LENGTH}
-          style={{ backgroundColor: submitting || code.length !== OTP_LENGTH ? undefined : currentColor }}
+          style={{ backgroundColor: submitting || code.length !== OTP_LENGTH ? undefined : "#1A97F5" }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {submitting ? t("auth.verifying") : t("auth.verify")}
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-4">
+      <p className="text-center text-sm text-gray-500 mt-4">
         {t("auth.notReceivedCode")}{" "}
         <button
           type="button"
           onClick={handleResend}
           disabled={cooldown > 0 || resending}
-          style={{ color: cooldown > 0 || resending ? undefined : currentColor }}
-          className="font-medium underline underline-offset-2 disabled:no-underline disabled:text-gray-400 dark:disabled:text-white/25 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
+          style={{ color: cooldown > 0 || resending ? undefined : "#1A97F5" }}
+          className="font-medium underline underline-offset-2 disabled:no-underline disabled:text-gray-400 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
         >
           {resending ? t("common.sending") : cooldown > 0 ? t("auth.resendCodeCountdown", { s: cooldown }) : t("auth.resendCode")}
         </button>
       </p>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-2">
-        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 transition-opacity">
+      <p className="text-center text-sm text-gray-500 mt-2">
+        <Link to="/login" style={{ color: "#1A97F5" }} className="hover:opacity-80 transition-opacity">
           ← {t("auth.backToSignIn")}
         </Link>
       </p>

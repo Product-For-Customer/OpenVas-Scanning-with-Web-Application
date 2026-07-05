@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const complianceApi = axios.create({
   baseURL: apiUrl,
@@ -7,6 +7,8 @@ const complianceApi = axios.create({
   timeout: 30000,
   headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
 });
+
+installMaintenanceInterceptor(complianceApi);
 
 export type ControlStatus = {
   control_id: string;
@@ -63,9 +65,13 @@ export type ViolationVuln = {
   solution_type: string;
 };
 
+// Returns null on failure so callers can distinguish "failed to load" from
+// "loaded successfully with zero violations" — the two used to be
+// indistinguishable (both rendered as []), which made a broken fetch look
+// like a compliant control.
 export const GetControlVulnerabilities = async (
   controlId: string
-): Promise<ViolationVuln[]> => {
+): Promise<ViolationVuln[] | null> => {
   try {
     const r = await complianceApi.get("/compliance/control-vulns", {
       params: { control_id: controlId },
@@ -73,6 +79,7 @@ export const GetControlVulnerabilities = async (
     const d = r.data?.data ?? r.data;
     return Array.isArray(d) ? d : [];
   } catch (e) {
-    return [];
+    console.error("GetControlVulnerabilities error:", e);
+    return null;
   }
 };

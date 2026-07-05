@@ -1,19 +1,34 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 // =======================
-// Axios instance for PUBLIC report endpoints
-// ไม่ส่ง cookie / credential
+// Axios instance for report-data endpoints.
+// These now require either a normal login session (cookie, sent below) or —
+// for the headless PDF-capture page, which has no session at all — a
+// "capture_token" the backend embedded in that page's own URL, forwarded
+// here as a header. See backend report.CaptureOrAuth for the matching gate.
 // =======================
 const publicReportApi = axios.create({
   baseURL: apiUrl,
-  withCredentials: false,
+  withCredentials: true,
   timeout: 120000,
   headers: {
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+publicReportApi.interceptors.request.use((requestConfig) => {
+  if (typeof window !== "undefined") {
+    const captureToken = new URLSearchParams(window.location.search).get("capture_token");
+    if (captureToken) {
+      requestConfig.headers["X-Capture-Token"] = captureToken;
+    }
+  }
+  return requestConfig;
+});
+
+installMaintenanceInterceptor(publicReportApi);
 
 // =======================
 // Axios instance for PROTECTED report endpoints
@@ -28,6 +43,8 @@ const protectedReportApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(protectedReportApi);
 
 // =======================
 // Types: GET /tasks/summary-vulnerability

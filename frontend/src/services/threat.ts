@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const threatApi = axios.create({
   baseURL: apiUrl,
@@ -10,6 +10,8 @@ const threatApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(threatApi);
 
 // ===========================
 // KEV Types

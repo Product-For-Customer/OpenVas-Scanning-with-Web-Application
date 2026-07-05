@@ -176,9 +176,13 @@ const Service: React.FC = () => {
       applyBool(OTP_RESET_KEY,  setOtpReset,    false);
 
       // ── Email config ──
+      // pass_app is intentionally never sent back by the backend anymore (see
+      // has_pass_app), so the edit form always starts blank rather than
+      // silently prefilling with the real Gmail App Password — leaving it
+      // blank on save keeps the currently-configured one unchanged.
       const item = emailData?.[0] ?? null;
       setEmailRecord(item);
-      if (item) setForm({ email: item.email || "", pass_app: item.pass_app || "" });
+      if (item) setForm({ email: item.email || "", pass_app: "" });
     } catch {
       if (isMounted.current) message.error(t("service.loadFailed"));
     } finally {
@@ -189,20 +193,28 @@ const Service: React.FC = () => {
   const isValidEmail = useMemo(() => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()), [form.email]);
   const hasChanged   = useMemo(() => {
     if (!emailRecord) return false;
-    return form.email !== (emailRecord.email || "") || form.pass_app !== (emailRecord.pass_app || "");
+    // form.pass_app starts blank on every load/cancel — any non-blank value
+    // here means the user actively typed a new password to replace it.
+    return form.email !== (emailRecord.email || "") || form.pass_app.trim() !== "";
   }, [form, emailRecord]);
 
   const handleSave = async () => {
     if (!emailRecord) return;
     if (!form.email.trim()) { message.warning(t("service.enterEmail")); return; }
     if (!isValidEmail)      { message.warning(t("service.emailFormatInvalid")); return; }
-    if (!form.pass_app.trim()) { message.warning(t("service.enterAppPassword")); return; }
+    // Only require a password on first-time setup; once one is configured,
+    // leaving the field blank means "keep the current one" (backend already
+    // supports this — see UpdateSendEmailByID's blank-means-unchanged check).
+    if (!emailRecord.has_pass_app && !form.pass_app.trim()) {
+      message.warning(t("service.enterAppPassword"));
+      return;
+    }
     try {
       setSaving(true);
       const res = await UpdateSendEmailByID(emailRecord.id, { email: form.email.trim(), pass_app: form.pass_app.trim() });
       if (!res) { message.error(t("service.saveFailed")); return; }
       setEmailRecord(res);
-      setForm({ email: res.email || "", pass_app: res.pass_app || "" });
+      setForm({ email: res.email || "", pass_app: "" });
       setEditingEmail(false);
       message.success(t("service.saveSuccess"));
     } catch {
@@ -213,13 +225,19 @@ const Service: React.FC = () => {
   };
 
   const cancelEdit = () => {
-    if (emailRecord) setForm({ email: emailRecord.email || "", pass_app: emailRecord.pass_app || "" });
+    if (emailRecord) setForm({ email: emailRecord.email || "", pass_app: "" });
     setEditingEmail(false);
     setShowPass(false);
   };
 
-  const persistSetting = (key: string, value: boolean) => {
+  // Every toggle below updates local state optimistically (for instant visual
+  // feedback) before the backend confirms it. Previously, none of them rolled
+  // back on failure — if UpdateAppSetting rejected, the switch stayed in its
+  // new (unsaved) position, so the on-screen state could permanently
+  // disagree with what's actually persisted until a full page reload.
+  const persistSetting = (key: string, value: boolean, revert: () => void) => {
     UpdateAppSetting(key, String(value)).catch(() => {
+      revert();
       message.warning(t("service.persistFailed"));
     });
   };
@@ -227,40 +245,46 @@ const Service: React.FC = () => {
   const toggleTwoFA = () => {
     const next = !twoFA;
     setTwoFA(next);
-    persistSetting(FA2_KEY, next);
+    persistSetting(FA2_KEY, next, () => setTwoFA(!next));
     message.success(next ? t("service.enabled") : t("service.disabled"));
   };
 
   const toggleOtpLogin = () => {
     const next = !otpLogin;
     setOtpLogin(next);
-    persistSetting(OTP_LOGIN_KEY, next);
+    persistSetting(OTP_LOGIN_KEY, next, () => setOtpLogin(!next));
   };
   const toggleOtpRegister = () => {
     const next = !otpRegister;
     setOtpRegister(next);
-    persistSetting(OTP_REG_KEY, next);
+    persistSetting(OTP_REG_KEY, next, () => setOtpRegister(!next));
   };
   const toggleOtpReset = () => {
     const next = !otpReset;
     setOtpReset(next);
-    persistSetting(OTP_RESET_KEY, next);
+    persistSetting(OTP_RESET_KEY, next, () => setOtpReset(!next));
   };
 
   const toggleTotp = () => {
     const next = !totpEnabled;
     setTotpEnabled(next);
-    persistSetting(TOTP_KEY, next);
+    persistSetting(TOTP_KEY, next, () => setTotpEnabled(!next));
     message.success(next ? t("service.enabled") : t("service.disabled"));
   };
 
   const toggleMaintenance = () => {
     const next = !maintenance;
     setMaintenance(next);
-    UpdateAppSetting(MAINT_KEY, String(next)).catch(() => {
+    UpdateAppSetting(MAINT_KEY, String(next)).then(() => {
+      message.success(next ? t("service.systemInMaintenance") : t("service.systemOperational"));
+    }).catch(() => {
+      // Maintenance mode is the most consequential of these toggles — showing
+      // "System Operational" on screen while the backend is still actually
+      // in maintenance (or vice versa) is worse than a stale-looking switch,
+      // since admins rely on this control to know the real state.
+      setMaintenance(!next);
       message.warning(t("service.persistFailed"));
     });
-    message.success(next ? t("service.systemInMaintenance") : t("service.systemOperational"));
   };
 
   const inputBase = [
@@ -410,7 +434,7 @@ const Service: React.FC = () => {
                           type={showPass ? "text" : "password"}
                           value={form.pass_app}
                           onChange={(e) => setForm((p) => ({ ...p, pass_app: e.target.value }))}
-                          placeholder={t("service.appPasswordPlaceholder")}
+                          placeholder={emailRecord.has_pass_app ? t("service.appPasswordKeepUnchangedHint") : t("service.appPasswordPlaceholder")}
                           className={`${inputBase} pr-10`}
                           style={{ borderColor: `${currentColor}30` }}
                           onFocus={(e) => { e.target.style.borderColor = currentColor; e.target.style.boxShadow = `0 0 0 2px ${currentColor}20`; }}

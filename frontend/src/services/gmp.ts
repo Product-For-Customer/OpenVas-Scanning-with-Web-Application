@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const gmpApi = axios.create({
   baseURL: apiUrl,
@@ -10,6 +10,8 @@ const gmpApi = axios.create({
     "ngrok-skip-browser-warning": "true",
   },
 });
+
+installMaintenanceInterceptor(gmpApi);
 
 // ===========================
 // GMP Types
@@ -125,6 +127,8 @@ export type GMPCredentialDTO = {
   type: GMPCredentialType;
   login: string;
   comment: string;
+  auth_algorithm?: string;    // md5 | sha1 — only present for type=snmp
+  privacy_algorithm?: string; // aes | des | none — only present for type=snmp
 };
 
 export type CreateCredentialRequest = {

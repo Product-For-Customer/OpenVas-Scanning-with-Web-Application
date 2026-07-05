@@ -103,7 +103,12 @@ const DiagramNodePage: React.FC = () => {
 
   const imageWrapperRef = useRef<HTMLDivElement | null>(null);
   const hoverLeaveTimerRef = useRef<number | null>(null);
-  const hasFetchedRef = useRef(false);
+  // Tracks which diagramId was last fetched (not just "have we ever fetched"),
+  // so navigating from one diagram's page to another's — without a full
+  // component remount, e.g. via the list page's navigate() — correctly
+  // triggers a fresh load instead of silently keeping the previous diagram's
+  // image/nodes on screen while diagramId (used for every write) has moved on.
+  const fetchedDiagramIdRef = useRef<number | null>(null);
   const isLoadingDataRef = useRef(false);
   const isMountedRef = useRef(false);
   const editRequestIdRef = useRef(0);
@@ -201,10 +206,10 @@ const DiagramNodePage: React.FC = () => {
   }, [diagramId]);
 
   useEffect(() => {
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
+    if (fetchedDiagramIdRef.current === diagramId) return;
+    fetchedDiagramIdRef.current = diagramId;
     void loadData(true);
-  }, [loadData]);
+  }, [diagramId, loadData]);
 
   const handleOpenCreateByClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (isUserRole || !imageWrapperRef.current || !diagramId) return;
@@ -377,7 +382,7 @@ const DiagramNodePage: React.FC = () => {
             </div>
             <button
               type="button"
-              onClick={() => { hasFetchedRef.current = false; void loadData(false); }}
+              onClick={() => { void loadData(false); }}
               disabled={loading || reloading}
               className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 disabled:opacity-40 dark:text-white/30 dark:hover:bg-white/8"
             >
@@ -620,6 +625,7 @@ const DiagramNodePage: React.FC = () => {
           diagramName={diagram?.name ?? ""}
           initialData={selectedNode}
           draftPosition={draftPosition}
+          targets={targets}
           onClose={() => {
             if (modalLoading) return;
             setModalOpen(false); setSelectedNode(null); setDraftPosition(null); setModalAnchorPoint(null);

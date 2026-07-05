@@ -4,7 +4,6 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { FiShield } from "react-icons/fi";
 import { VerifyLoginEmailOTP } from "../../../services/auth";
 import { VerifyTOTPLogin } from "../../../services/totp";
-import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import AuthLayout from "../_shared/AuthLayout";
 import { preloadLoginSuccessAnimationAssets } from "../animation";
@@ -14,7 +13,6 @@ type OtpType = "totp" | "email_otp";
 const OTPPage: React.FC = () => {
   const navigate         = useNavigate();
   const location         = useLocation();
-  const { currentColor } = useStateContext();
   const { t }             = useLanguage();
   const isMounted        = useRef(true);
 
@@ -101,40 +99,40 @@ const OTPPage: React.FC = () => {
       <div className="flex justify-center mb-5">
         <div
           className="w-16 h-16 flex items-center justify-center border-2"
-          style={{ borderColor: `${currentColor}50` }}
+          style={{ borderColor: "#1A97F550" }}
         >
           {isTotp ? (
-            <FiShield size={32} style={{ color: currentColor }} />
+            <FiShield size={32} style={{ color: "#1A97F5" }} />
           ) : (
             <svg width="38" height="48" viewBox="0 0 38 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="1" y="1" width="36" height="46" rx="4" stroke={currentColor} strokeOpacity="0.6" strokeWidth="2" fill="none"/>
-              <rect x="13" y="4" width="12" height="2" rx="1" fill={currentColor} fillOpacity="0.6"/>
-              <rect x="7" y="16" width="24" height="16" rx="2" stroke={currentColor} strokeOpacity="0.6" strokeWidth="1.5" fill="none"/>
-              <text x="19" y="27" textAnchor="middle" fontSize="8" fill={currentColor} fillOpacity="0.6" fontFamily="monospace" fontWeight="bold">***</text>
-              <rect x="14" y="41" width="10" height="2" rx="1" fill={currentColor} fillOpacity="0.6"/>
+              <rect x="1" y="1" width="36" height="46" rx="4" stroke="#1A97F5" strokeOpacity="0.6" strokeWidth="2" fill="none"/>
+              <rect x="13" y="4" width="12" height="2" rx="1" fill="#1A97F5" fillOpacity="0.6"/>
+              <rect x="7" y="16" width="24" height="16" rx="2" stroke="#1A97F5" strokeOpacity="0.6" strokeWidth="1.5" fill="none"/>
+              <text x="19" y="27" textAnchor="middle" fontSize="8" fill="#1A97F5" fillOpacity="0.6" fontFamily="monospace" fontWeight="bold">***</text>
+              <rect x="14" y="41" width="10" height="2" rx="1" fill="#1A97F5" fillOpacity="0.6"/>
             </svg>
           )}
         </div>
       </div>
 
-      <h2 className="text-[2rem] font-bold text-center text-gray-900 dark:text-white/90 mb-3">
+      <h2 className="text-[2rem] font-bold text-center text-gray-900 mb-3">
         {isTotp ? t("auth.validateTotp") : t("auth.validateOtp")}
       </h2>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/45 leading-relaxed mb-1 max-w-xs mx-auto">
+      <p className="text-center text-sm text-gray-500 leading-relaxed mb-1 max-w-xs mx-auto">
         {isTotp
           ? t("auth.totpInstructions")
           : `${t("auth.otpInstructions")}${maskedEmail ? ` ${t("auth.codeSentTo", { email: maskedEmail })}` : ""}`}
       </p>
 
       {error && (
-        <div className="mt-3 mb-1 border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300 text-center">
+        <div className="mt-3 mb-1 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 text-center">
           {error}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <p className="text-center text-sm font-semibold text-gray-800 dark:text-white/80 mt-5 mb-3">
+        <p className="text-center text-sm font-semibold text-gray-800 mt-5 mb-3">
           {t("auth.enter6DigitCode")}
         </p>
 
@@ -152,10 +150,10 @@ const OTPPage: React.FC = () => {
               onKeyDown={e => handleKeyDown(i, e)}
               onPaste={i === 0 ? handlePaste : undefined}
               autoFocus={i === 0}
-              className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 dark:border-white/10 bg-white dark:bg-white/5 text-gray-900 dark:text-white/90 outline-none transition"
+              className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-300 bg-white text-gray-900 outline-none transition"
               style={{
-                borderColor: digits[i] ? currentColor : undefined,
-                boxShadow: digits[i] ? `0 0 0 2px ${currentColor}25` : undefined,
+                borderColor: digits[i] ? "#1A97F5" : undefined,
+                boxShadow: digits[i] ? "0 0 0 2px #1A97F525" : undefined,
               }}
             />
           ))}
@@ -164,15 +162,15 @@ const OTPPage: React.FC = () => {
         <button
           type="submit"
           disabled={submitting || code.length !== 6}
-          style={{ backgroundColor: submitting || code.length !== 6 ? undefined : currentColor }}
+          style={{ backgroundColor: submitting || code.length !== 6 ? undefined : "#1A97F5" }}
           className="w-full text-white font-semibold py-3 text-sm transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
         >
           {submitting ? t("auth.verifying") : t("auth.verify")}
         </button>
       </form>
 
-      <p className="text-center text-sm text-gray-500 dark:text-white/40 mt-4">
-        <Link to="/login" style={{ color: currentColor }} className="hover:opacity-80 transition-opacity">
+      <p className="text-center text-sm text-gray-500 mt-4">
+        <Link to="/login" style={{ color: "#1A97F5" }} className="hover:opacity-80 transition-opacity">
           ← {t("auth.backToSignIn")}
         </Link>
       </p>

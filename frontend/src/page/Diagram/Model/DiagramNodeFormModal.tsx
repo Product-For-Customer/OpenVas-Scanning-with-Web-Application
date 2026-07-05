@@ -9,8 +9,10 @@ import {
   FiType,
   FiAlignLeft,
   FiRefreshCw,
+  FiTarget,
 } from "react-icons/fi";
 import type { AppDiagramNodeResponse } from "../../../services/diagram";
+import type { AllTargetDTO } from "../../../services";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 
@@ -35,6 +37,7 @@ type Props = {
   diagramName?: string;
   initialData?: AppDiagramNodeResponse | null;
   draftPosition?: { x: number; y: number; width: number; height: number } | null;
+  targets?: AllTargetDTO[];
   onClose: () => void;
   onSubmit: (values: DiagramNodeFormValues) => Promise<void> | void;
   onDelete?: () => void;
@@ -62,6 +65,7 @@ const toNumber = (value: unknown, fallback: number) => {
 const normalizeValue = (value: unknown) => String(value ?? "").trim();
 
 const createComparableForm = (form: DiagramNodeFormValues) => ({
+  task_id: normalizeValue(form.task_id),
   label: normalizeValue(form.label),
   description: normalizeValue(form.description),
   icon: normalizeValue(form.icon),
@@ -79,6 +83,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
   diagramName,
   initialData,
   draftPosition,
+  targets = [],
   onClose,
   onSubmit,
   onDelete,
@@ -141,6 +146,7 @@ const DiagramNodeFormModal: React.FC<Props> = ({
     const cur = createComparableForm(form);
     const orig = initialEditFormRef.current;
     return (
+      cur.task_id !== orig.task_id ||
       cur.label !== orig.label ||
       cur.description !== orig.description ||
       cur.icon !== orig.icon ||
@@ -271,6 +277,30 @@ const DiagramNodeFormModal: React.FC<Props> = ({
           </div>
         ) : (
           <div className="space-y-3.5 px-5 py-4">
+            {/* Target link */}
+            <div>
+              <label className={labelCls}>
+                <FiTarget className="text-[10px]" />
+                {t("diagramModal.linkedTarget")}
+              </label>
+              <select
+                value={form.task_id}
+                onChange={(e) => setField("task_id", e.target.value)}
+                className={inputCls}
+              >
+                <option value="">{t("diagramModal.linkedTargetNone")}</option>
+                {targets.map((target) => (
+                  <option key={target.task_id} value={target.task_id}>
+                    {target.name || target.task_id}
+                    {target.ip ? ` (${target.ip})` : ""}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-slate-400 dark:text-white/35">
+                {t("diagramModal.linkedTargetHint")}
+              </p>
+            </div>
+
             {/* Label */}
             <div>
               <label className={labelCls}>

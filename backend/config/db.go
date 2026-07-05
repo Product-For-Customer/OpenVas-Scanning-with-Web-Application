@@ -99,13 +99,10 @@ func SetupDatabase() {
 		&entity.AppNVDCache{},
 		&entity.AppAssetCriticality{},
 		&entity.AppEPSSCache{},
-		&entity.AppComplianceMapping{},
-		&entity.AppAPIKey{},
 		&entity.SystemConfig{},
 		&entity.AutoScanSchedule{},
 		&entity.FeedUpdateSchedule{},
 		&entity.AuditLog{},
-		&entity.RemediationTicket{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
@@ -175,7 +172,6 @@ var defaultPermissionsByRole = map[string][]defaultRolePermission{
 		{"dashboard", true, true},
 		{"threat_intel", true, true},
 		{"reports_diagrams", true, true},
-		{"remediation", true, true},
 		{"user_management", true, true},
 		{"line_management", true, true},
 		{"line_settings", true, true},
@@ -345,28 +341,45 @@ func migrateDashboardManageMirrorsView() {
 	}
 }
 
-// seedRemediationPermissionForAdmin grants the Admin role full access to the
-// new "remediation" category (Remediation Tickets, added 2026-07-04) on any
-// existing install — fresh installs already get it via
-// defaultPermissionsByRole/seedDefaultRolePermissions. Deliberately does NOT
-// touch any other pre-existing role (including the built-in "User" role):
-// unlike the same-day category splits/merges, remediation is a brand new
-// capability, not a renamed/reshuffled one, so there's no prior access to
-// preserve — an admin opts other roles in via /admin/roles, same as any
-// other new feature (default-deny).
-func seedRemediationPermissionForAdmin() {
-	adminRole, err := getRoleByName("Admin")
-	if err != nil {
+// migrateUniqueEmailIndex adds a case-insensitive unique index on
+// app_users.email (excluding soft-deleted rows, so re-registering an email
+// whose old account was deleted still works). There was previously no unique
+// constraint at all, so two signups racing each other — or simply typing the
+// same address with different casing — could create duplicate accounts for
+// the same email. Runs every boot; safely does nothing once the index
+// exists. If duplicates already exist in an existing install, it logs them
+// and skips creating the index rather than crashing startup — clean those up
+// manually, then restart, to get the constraint enforced.
+func migrateUniqueEmailIndex() {
+	type dupeRow struct {
+		EmailLower string
+		Count      int
+	}
+	var dupes []dupeRow
+	if err := db.Raw(`
+		SELECT LOWER(email) AS email_lower, COUNT(*) AS count
+		FROM app_users
+		WHERE deleted_at IS NULL
+		GROUP BY LOWER(email)
+		HAVING COUNT(*) > 1
+	`).Scan(&dupes).Error; err != nil {
+		log.Printf("⚠️ failed to check for duplicate emails before adding unique index: %v", err)
 		return
 	}
-	var existing entity.AppRolePermission
-	if db.Where("app_role_id = ? AND category = ?", adminRole.ID, "remediation").First(&existing).Error == nil {
-		return // already has a row (fresh-install seed, or ran before)
+	if len(dupes) > 0 {
+		emails := make([]string, 0, len(dupes))
+		for _, d := range dupes {
+			emails = append(emails, d.EmailLower)
+		}
+		log.Printf("⚠️ skipping unique email index — duplicate email(s) already exist: %s (resolve manually, then restart)", strings.Join(emails, ", "))
+		return
 	}
-	if err := db.Create(&entity.AppRolePermission{AppRoleID: adminRole.ID, Category: "remediation", CanView: true, CanManage: true}).Error; err != nil {
-		log.Printf("⚠️ failed to seed remediation permission for Admin: %v", err)
-	} else {
-		fmt.Println("✅ Seeded remediation permission for role: Admin")
+	if err := db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_app_users_email_lower
+		ON app_users (LOWER(email))
+		WHERE deleted_at IS NULL
+	`).Error; err != nil {
+		log.Printf("⚠️ failed to create unique email index: %v", err)
 	}
 }
 
@@ -441,8 +454,8 @@ func SeedDatabase() {
 	migrateReportsIntoDashboard()
 	migrateLineSettingsSplit()
 	migrateDashboardManageMirrorsView()
+	migrateUniqueEmailIndex()
 	seedDefaultRolePermissions()
-	seedRemediationPermissionForAdmin()
 
 	// =========================
 	// Seed AppUser

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiUrl } from "./api";
+import { apiUrl, installMaintenanceInterceptor } from "./api";
 
 const totpApi = axios.create({
   baseURL: apiUrl,
@@ -7,6 +7,8 @@ const totpApi = axios.create({
   timeout: 15000,
   headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
 });
+
+installMaintenanceInterceptor(totpApi);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,8 +40,8 @@ export const VerifyTOTPSetup = async (code: string): Promise<void> => {
   await totpApi.post("/auth/totp/verify", { code });
 };
 
-export const DisableTOTP = async (): Promise<void> => {
-  await totpApi.delete("/auth/totp");
+export const DisableTOTP = async (verification: { password?: string; code?: string }): Promise<void> => {
+  await totpApi.delete("/auth/totp", { data: verification });
 };
 
 // Used after Login returns require_totp: true — verifies code and finalises session

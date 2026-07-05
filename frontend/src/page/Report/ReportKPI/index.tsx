@@ -11,6 +11,8 @@ import {
   ListTaskVulnSummaryForReport,
   type TaskVulnSummaryForReportResponse,
 } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 type SeverityLevel =
   | "total"
@@ -47,13 +49,13 @@ const levelBadgeClassMap: Record<SeverityLevel, string> = {
   info: "border-sky-600 bg-sky-600 text-white",
 };
 
-const levelTextMap: Record<SeverityLevel, string> = {
-  total: "TOTAL FINDINGS",
-  critical: "CRITICAL",
-  high: "HIGH",
-  medium: "MEDIUM",
-  low: "LOW",
-  info: "INFO",
+const levelTextKeyMap: Record<SeverityLevel, TranslationKey> = {
+  total: "reportKpi.badgeTotal",
+  critical: "reportKpi.badgeCritical",
+  high: "reportKpi.badgeHigh",
+  medium: "reportKpi.badgeMedium",
+  low: "reportKpi.badgeLow",
+  info: "reportKpi.badgeInfo",
 };
 
 const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
@@ -99,6 +101,7 @@ const index: React.FC<ReportKPIProps> = ({
   prefetchedRows,
   prefetchedLoading = false,
 }) => {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
@@ -219,12 +222,14 @@ const index: React.FC<ReportKPIProps> = ({
     () => [
       {
         id: 1,
-        label: "Total Findings",
+        label: t("reportKpi.totalFindingsLabel"),
         value: loading ? "..." : summary.total.toLocaleString(),
         hint:
           effectiveTaskMode === "all"
-            ? "Total findings identified across all scanned devices"
-            : `Total findings identified across ${summary.taskCount.toLocaleString()} selected device task(s)`,
+            ? t("reportKpi.totalFindingsHintAll")
+            : t("reportKpi.totalFindingsHintFiltered", {
+                n: summary.taskCount.toLocaleString(),
+              }),
         icon: <MdOutlineReportProblem className="text-[15px]" />,
         iconWrapClass: "bg-slate-100 text-slate-700",
         labelClass: "text-slate-700",
@@ -232,9 +237,9 @@ const index: React.FC<ReportKPIProps> = ({
       },
       {
         id: 2,
-        label: "Critical",
+        label: t("reportKpi.criticalLabel"),
         value: loading ? "..." : summary.critical.toLocaleString(),
-        hint: "Critical vulnerabilities requiring immediate remediation",
+        hint: t("reportKpi.criticalHint"),
         icon: <FiAlertOctagon className="text-[14px]" />,
         iconWrapClass: "bg-rose-50 text-rose-700",
         labelClass: "text-rose-700",
@@ -242,9 +247,9 @@ const index: React.FC<ReportKPIProps> = ({
       },
       {
         id: 3,
-        label: "High",
+        label: t("reportKpi.highLabel"),
         value: loading ? "..." : summary.high.toLocaleString(),
-        hint: "High-risk vulnerabilities with significant impact potential",
+        hint: t("reportKpi.highHint"),
         icon: <FiAlertTriangle className="text-[14px]" />,
         iconWrapClass: "bg-orange-50 text-orange-700",
         labelClass: "text-orange-700",
@@ -252,9 +257,9 @@ const index: React.FC<ReportKPIProps> = ({
       },
       {
         id: 4,
-        label: "Medium",
+        label: t("reportKpi.mediumLabel"),
         value: loading ? "..." : summary.medium.toLocaleString(),
-        hint: "Medium-risk issues to address soon",
+        hint: t("reportKpi.mediumHint"),
         icon: <FiInfo className="text-[14px]" />,
         iconWrapClass: "bg-amber-50 text-amber-700",
         labelClass: "text-amber-700",
@@ -262,9 +267,9 @@ const index: React.FC<ReportKPIProps> = ({
       },
       {
         id: 5,
-        label: "Low",
+        label: t("reportKpi.lowLabel"),
         value: loading ? "..." : summary.low.toLocaleString(),
-        hint: "Low-severity findings with limited immediate impact",
+        hint: t("reportKpi.lowHint"),
         icon: <FiMinusCircle className="text-[14px]" />,
         iconWrapClass: "bg-emerald-50 text-emerald-700",
         labelClass: "text-emerald-700",
@@ -272,16 +277,16 @@ const index: React.FC<ReportKPIProps> = ({
       },
       {
         id: 6,
-        label: "Info",
+        label: t("reportKpi.infoLabel"),
         value: loading ? "..." : summary.info.toLocaleString(),
-        hint: "Informational observations and security-related notices",
+        hint: t("reportKpi.infoHint"),
         icon: <FiShield className="text-[14px]" />,
         iconWrapClass: "bg-sky-50 text-sky-700",
         labelClass: "text-sky-700",
         level: "info",
       },
     ],
-    [loading, summary, effectiveTaskMode]
+    [loading, summary, effectiveTaskMode, t]
   );
 
   return (
@@ -290,17 +295,17 @@ const index: React.FC<ReportKPIProps> = ({
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
-              Security Risk Summary
+              {t("reportKpi.securityRiskSummary")}
             </p>
             <h3 className="mt-1 text-[18.5px] font-bold leading-tight text-slate-900">
-              Vulnerability Severity Overview
+              {t("reportKpi.vulnerabilitySeverityOverview")}
             </h3>
           </div>
 
           <div className="text-right text-[12px] leading-normal text-slate-500">
             {effectiveTaskMode === "all"
-              ? "Consolidated findings by severity level"
-              : `Filtered by ${summary.taskCount.toLocaleString()} selected task(s)`}
+              ? t("reportKpi.consolidatedBySeverity")
+              : t("reportKpi.filteredByTasks", { n: summary.taskCount.toLocaleString() })}
           </div>
         </div>
       </div>
@@ -348,7 +353,7 @@ const index: React.FC<ReportKPIProps> = ({
                     levelBadgeClassMap[item.level],
                   ].join(" ")}
                 >
-                  {levelTextMap[item.level]}
+                  {t(levelTextKeyMap[item.level])}
                 </span>
               </div>
 

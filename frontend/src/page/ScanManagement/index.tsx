@@ -1642,6 +1642,8 @@ const ScanManagement: React.FC = () => {
   const [schedules,         setSchedules]         = useState<AutoScanScheduleDTO[]>([]);
   const [loadingSchedules,  setLoadingSchedules]  = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [schedSaving,       setSchedSaving]       = useState(false);
+  const [scheduleBusyIds,   setScheduleBusyIds]   = useState<Set<number>>(new Set());
   const [schedForm, setSchedForm] = useState<{
     taskId: string; frequency: ScheduleFrequency;
     time: string; date: string; dayOfMonth: number; month: number; day: number;
@@ -1776,9 +1778,12 @@ const ScanManagement: React.FC = () => {
   };
 
   const handleAddSchedule = useCallback(async () => {
+    if (schedSaving) return; // guards against duplicate schedules from a rapid double-click
     const task = tasks.find(t2 => t2.id === schedForm.taskId);
     if (!task) { message.warning(t("scan.selectTask")); return; }
     if (schedForm.frequency === "once" && !schedForm.date) { message.warning(t("scan.selectDate")); return; }
+    if (!schedForm.time.trim()) { message.warning(t("scan.selectTime")); return; }
+    setSchedSaving(true);
     try {
       await CreateScanSchedule({
         task_id: schedForm.taskId, task_name: task.name, frequency: schedForm.frequency, scan_time: schedForm.time,
@@ -1792,18 +1797,39 @@ const ScanManagement: React.FC = () => {
       closeScheduleModal();
       setSchedForm({ taskId: "", frequency: "once", time: "02:00", date: "", dayOfMonth: 1, month: 1, day: 1 });
       void fetchSchedules();
-    } catch { message.error(t("common.noResults")); }
-  }, [schedForm, appTimezone, tasks, fetchSchedules, t, closeScheduleModal]);
+    } catch (err: unknown) {
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedCreateSchedule"));
+    } finally {
+      setSchedSaving(false);
+    }
+  }, [schedSaving, schedForm, appTimezone, tasks, fetchSchedules, t, closeScheduleModal]);
 
   const toggleSchedule = useCallback(async (id: number, enabled: boolean) => {
-    try { await UpdateScanSchedule(id, !enabled); void fetchSchedules(); }
-    catch { message.error(t("common.noResults")); }
-  }, [fetchSchedules, t]);
+    if (scheduleBusyIds.has(id)) return; // guards against overlapping toggle calls for the same schedule
+    setScheduleBusyIds(prev => new Set(prev).add(id));
+    try {
+      await UpdateScanSchedule(id, !enabled);
+      void fetchSchedules();
+    } catch (err: unknown) {
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedToggleSchedule"));
+    } finally {
+      setScheduleBusyIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }
+  }, [scheduleBusyIds, fetchSchedules, t]);
 
   const deleteSchedule = useCallback(async (id: number) => {
-    try { await DeleteScanSchedule(id); message.success(t("scan.scheduleDeleted")); void fetchSchedules(); }
-    catch { message.error(t("common.noResults")); }
-  }, [fetchSchedules, t]);
+    if (scheduleBusyIds.has(id)) return;
+    setScheduleBusyIds(prev => new Set(prev).add(id));
+    try {
+      await DeleteScanSchedule(id);
+      message.success(t("scan.scheduleDeleted"));
+      void fetchSchedules();
+    } catch (err: unknown) {
+      message.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || t("scan.failedDeleteSchedule"));
+    } finally {
+      setScheduleBusyIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    }
+  }, [scheduleBusyIds, fetchSchedules, t]);
 
 
   const ACTIVE_STATUSES = ["running", "requested", "stop requested"];
@@ -2328,18 +2354,18 @@ const ScanManagement: React.FC = () => {
                         {s.enabled ? t("scan.scheduleEnabled") : t("scan.scheduleDisabled")}
                       </span>
                       <button type="button"
-                        onClick={canManageScan ? () => void toggleSchedule(s.id, s.enabled) : undefined}
+                        onClick={canManageScan && !scheduleBusyIds.has(s.id) ? () => void toggleSchedule(s.id, s.enabled) : undefined}
                         aria-label="toggle schedule"
-                        disabled={!canManageScan}
-                        className="relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed"
-                        style={{ backgroundColor: s.enabled ? currentColor : "#e2e8f0", cursor: canManageScan ? "pointer" : "not-allowed" }}>
+                        disabled={!canManageScan || scheduleBusyIds.has(s.id)}
+                        className="relative inline-flex h-5.5 w-10 shrink-0 items-center rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ backgroundColor: s.enabled ? currentColor : "#e2e8f0", cursor: canManageScan && !scheduleBusyIds.has(s.id) ? "pointer" : "not-allowed" }}>
                         <span className="inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
                           style={{ transform: s.enabled ? "translateX(18px)" : "translateX(2px)" }} />
                       </button>
                     </div>
                     {canManageScan && (
-                      <button type="button" onClick={() => void deleteSchedule(s.id)}
-                        className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
+                      <button type="button" onClick={() => void deleteSchedule(s.id)} disabled={scheduleBusyIds.has(s.id)}
+                        className="grid h-8 w-8 place-items-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-60 disabled:cursor-not-allowed dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
                         <FiTrash2 className="text-[12px]" />
                       </button>
                     )}
@@ -2552,10 +2578,10 @@ const ScanManagement: React.FC = () => {
                   className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
                   {t("common.cancel")}
                 </button>
-                <button type="button" onClick={() => void handleAddSchedule()}
+                <button type="button" onClick={() => void handleAddSchedule()} disabled={schedSaving}
                   style={{ background: accentGrad }}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90">
-                  <FiCalendar className="text-[13px]" />{t("scan.newSchedule")}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[12.5px] font-semibold text-white transition hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed">
+                  <FiCalendar className="text-[13px]" />{schedSaving ? t("common.saving") : t("scan.newSchedule")}
                 </button>
               </div>
             </div>

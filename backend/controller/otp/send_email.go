@@ -11,10 +11,10 @@ import (
 )
 
 type SendEmailResponse struct {
-	ID        uint   `json:"id"`
-	Email     string `json:"email"`
-	PassApp   string `json:"pass_app"`
-	AppUserID uint   `json:"app_user_id"`
+	ID         uint   `json:"id"`
+	Email      string `json:"email"`
+	HasPassApp bool   `json:"has_pass_app"`
+	AppUserID  uint   `json:"app_user_id"`
 }
 
 type UpdateSendEmailInput struct {
@@ -22,12 +22,18 @@ type UpdateSendEmailInput struct {
 	PassApp string `json:"pass_app"`
 }
 
+// mapSendEmailResponse deliberately never includes the raw Gmail App Password —
+// it used to (`PassApp` field), meaning any user_management-permitted session
+// received this real SMTP credential in plaintext just by loading the Service
+// settings page, whether or not they ever clicked "show password". Callers
+// that need to let an admin change it use UpdateSendEmailByID, which already
+// supports "leave blank to keep the current one" (see its PassApp check below).
 func mapSendEmailResponse(s entity.SendEmail) SendEmailResponse {
 	return SendEmailResponse{
-		ID:        s.ID,
-		Email:     s.Email,
-		PassApp:   s.PassApp,
-		AppUserID: s.AppUserID,
+		ID:         s.ID,
+		Email:      s.Email,
+		HasPassApp: strings.TrimSpace(s.PassApp) != "",
+		AppUserID:  s.AppUserID,
 	}
 }
 

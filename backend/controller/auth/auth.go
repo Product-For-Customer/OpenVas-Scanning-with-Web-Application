@@ -514,9 +514,12 @@ func DirectSignUpHandler(c *gin.Context) {
 		return
 	}
 
-	// Check duplicate email
+	// Check duplicate email — case-insensitively, matching how Login looks
+	// users up, so "Foo@x.com" is correctly treated as a duplicate of an
+	// existing "foo@x.com" instead of slipping through this check only to
+	// fail confusingly against the DB's own case-insensitive unique index.
 	var existing entity.AppUser
-	if err := db.Where("email = ?", req.Email).First(&existing).Error; err == nil {
+	if err := db.Where("LOWER(email) = LOWER(?)", req.Email).First(&existing).Error; err == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
 		return
 	}
@@ -544,6 +547,14 @@ func DirectSignUpHandler(c *gin.Context) {
 		AppRoleID:   2,
 	}
 	if err := db.Create(&user).Error; err != nil {
+		// A concurrent signup for the same email between the check above and
+		// this write is now caught by the DB's unique index rather than
+		// silently creating a duplicate account — surface it as the same
+		// friendly message instead of a generic 500.
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
 	}
@@ -859,9 +870,9 @@ func VerifyOTPSignUp(c *gin.Context) {
 
 	db := config.DB()
 
-	// 1) ตรวจสอบ email ซ้ำก่อน
+	// 1) ตรวจสอบ email ซ้ำก่อน (case-insensitive ให้ตรงกับตอน Login)
 	var existing entity.AppUser
-	err := db.Where("email = ?", req.Email).First(&existing).Error
+	err := db.Where("LOWER(email) = LOWER(?)", req.Email).First(&existing).Error
 
 	switch {
 	case err == nil:
@@ -955,6 +966,10 @@ func VerifyOTPSignUp(c *gin.Context) {
 
 	if err := tx.Create(&user).Error; err != nil {
 		tx.Rollback()
+		if strings.Contains(strings.ToLower(err.Error()), "duplicate") || strings.Contains(strings.ToLower(err.Error()), "unique") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "create user failed",
 		})

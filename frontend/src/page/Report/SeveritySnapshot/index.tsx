@@ -15,6 +15,8 @@ import {
   ListTaskVulnSummaryForReport,
   type TaskVulnSummaryForReportResponse,
 } from "../../../services/report";
+import { useLanguage } from "../../../contexts/LanguageContext";
+import type { TranslationKey } from "../../../locales";
 
 type SeveritySnapshotProps = {
   title?: string;
@@ -40,6 +42,14 @@ const COLORS: Record<SeverityKey, string> = {
   Medium: "#eab308",
   Low: "#22c55e",
   Info: "#3b82f6",
+};
+
+const severityNameKeyMap: Record<SeverityKey, TranslationKey> = {
+  Critical: "severity.critical",
+  High: "severity.high",
+  Medium: "severity.medium",
+  Low: "severity.low",
+  Info: "severity.info",
 };
 
 const readTaskIDsFromQuery = (): { mode: "all" | "filtered"; ids: string[] } => {
@@ -80,13 +90,14 @@ const normalizeTaskIDs = (ids?: string[]): string[] => {
 };
 
 const index: React.FC<SeveritySnapshotProps> = ({
-  title = "Severity Snapshot",
-  totalLabel = "Total Findings",
+  title,
+  totalLabel,
   onReady,
   selectedTaskIDs = [],
   prefetchedRows,
   prefetchedLoading = false,
 }) => {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<TaskVulnSummaryForReportResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [queryTaskIDs, setQueryTaskIDs] = useState<string[]>([]);
@@ -222,7 +233,8 @@ const index: React.FC<SeveritySnapshotProps> = ({
     value: number | string | undefined,
     name: string | undefined
   ): [string, string] => {
-    return [Number(value ?? 0).toLocaleString(), name ?? ""];
+    const nameKey = name ? severityNameKeyMap[name as SeverityKey] : undefined;
+    return [Number(value ?? 0).toLocaleString(), nameKey ? t(nameKey) : name ?? ""];
   };
 
   return (
@@ -231,23 +243,25 @@ const index: React.FC<SeveritySnapshotProps> = ({
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[11.5px] font-semibold uppercase tracking-normal text-slate-500">
-              Severity Distribution
+              {t("severitySnapshot.severityDistribution")}
             </p>
 
             <h3 className="mt-1 text-[18.5px] font-bold leading-[1.22] text-slate-900">
-              {title}
+              {title || t("severitySnapshot.defaultTitle")}
             </h3>
 
             <p className="mt-1.5 text-[12.25px] leading-[1.45] text-slate-600">
               {effectiveTaskMode === "all"
-                ? "Summary of findings by severity level based on the latest consolidated task assessment."
-                : `Summary of findings by severity level for ${filteredTaskCount.toLocaleString()} selected task(s).`}
+                ? t("severitySnapshot.summaryAll")
+                : t("severitySnapshot.summaryFiltered", {
+                    n: filteredTaskCount.toLocaleString(),
+                  })}
             </p>
           </div>
 
           <div className="border border-slate-300 bg-slate-50 px-3.5 py-2.5">
             <p className="text-[10.5px] font-semibold uppercase tracking-normal text-slate-500">
-              {totalLabel}
+              {totalLabel || t("severitySnapshot.defaultTotalLabel")}
             </p>
 
             <p className="mt-1 text-[25px] font-bold leading-none text-slate-900">
@@ -261,24 +275,24 @@ const index: React.FC<SeveritySnapshotProps> = ({
         <div className="col-span-5">
           <div className="h-full border border-slate-200 bg-white p-3.5">
             <h4 className="text-[16px] font-semibold text-slate-900">
-              Proportion by Severity
+              {t("severitySnapshot.proportionBySeverity")}
             </h4>
 
             <p className="mt-1.5 text-[12px] leading-[1.45] text-slate-600">
-              Donut chart showing the proportional distribution of findings.
+              {t("severitySnapshot.donutDesc")}
             </p>
 
             <div className="relative mt-3 h-47.5">
               <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center">
                 <p className="text-[10px] font-semibold uppercase tracking-normal text-slate-500">
-                  Total
+                  {t("conclusion.totalLabel")}
                 </p>
 
                 <p className="mt-1 text-[22px] font-bold leading-none text-slate-900">
                   {loading ? "..." : total.toLocaleString()}
                 </p>
 
-                <p className="mt-1 text-[10px] text-slate-500">Findings</p>
+                <p className="mt-1 text-[10px] text-slate-500">{t("conclusion.findingsLabel")}</p>
               </div>
 
               <ResponsiveContainer width="100%" height="100%">
@@ -306,7 +320,7 @@ const index: React.FC<SeveritySnapshotProps> = ({
               {!loading && !hasData && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-500">
-                    No Data
+                    {t("execHighlights.noData")}
                   </div>
                 </div>
               )}
@@ -317,12 +331,11 @@ const index: React.FC<SeveritySnapshotProps> = ({
         <div className="col-span-7">
           <div className="h-full border border-slate-200 bg-white p-3.5">
             <h4 className="text-[16px] font-semibold text-slate-900">
-              Findings Count by Severity
+              {t("severitySnapshot.findingsCountBySeverity")}
             </h4>
 
             <p className="mt-1.5 text-[12px] leading-[1.45] text-slate-600">
-              Bar chart presenting the total number of findings in each severity
-              category.
+              {t("severitySnapshot.barChartDesc")}
             </p>
 
             <div className="mt-3 h-47.5">
@@ -339,6 +352,7 @@ const index: React.FC<SeveritySnapshotProps> = ({
                     tick={{ fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
+                    tickFormatter={(value) => t(severityNameKeyMap[value as SeverityKey])}
                   />
 
                   <YAxis
@@ -350,7 +364,7 @@ const index: React.FC<SeveritySnapshotProps> = ({
 
                   <Tooltip formatter={tooltipFormatter} />
 
-                  <Bar dataKey="value" name="Findings" radius={[3, 3, 0, 0]}>
+                  <Bar dataKey="value" name={t("conclusion.findingsLabel")} radius={[3, 3, 0, 0]}>
                     {chartData.map((entry) => (
                       <Cell key={entry.name} fill={entry.color} />
                     ))}
@@ -365,18 +379,18 @@ const index: React.FC<SeveritySnapshotProps> = ({
           <div className="overflow-hidden border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-3.5 py-3">
               <h4 className="text-[16px] font-semibold text-slate-900">
-                Severity Breakdown Table
+                {t("severitySnapshot.breakdownTableTitle")}
               </h4>
 
               <p className="mt-1.5 text-[12px] leading-[1.45] text-slate-600">
-                Detailed breakdown of severity counts and percentage share.
+                {t("severitySnapshot.breakdownTableDesc")}
               </p>
             </div>
 
             <div className="grid grid-cols-[1.5fr_1fr_1fr] bg-slate-100 px-3.5 py-2.5 text-[12px] font-semibold text-slate-700">
-              <div>Severity</div>
-              <div className="text-right">Findings</div>
-              <div className="text-right">Share</div>
+              <div>{t("severitySnapshot.severityColumn")}</div>
+              <div className="text-right">{t("conclusion.findingsLabel")}</div>
+              <div className="text-right">{t("severitySnapshot.shareColumn")}</div>
             </div>
 
             <div className="divide-y divide-slate-200">
@@ -391,7 +405,7 @@ const index: React.FC<SeveritySnapshotProps> = ({
                       style={{ backgroundColor: item.color }}
                     />
 
-                    <span>{item.name}</span>
+                    <span>{t(severityNameKeyMap[item.name])}</span>
                   </div>
 
                   <div className="text-right font-medium">
