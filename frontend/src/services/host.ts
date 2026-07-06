@@ -10,6 +10,9 @@ type HostAssetInfo = {
   asset_type: string;
   owner: string;
   business_impact: string;
+  department: string;
+  os_version: string;
+  eol_date: string | null;
 };
 
 type KEVHitItem = {

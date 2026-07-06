@@ -85,6 +85,21 @@ var RouteCategory = map[string]string{
 	"/feed-schedules/:feed_type":         "threat_intel",
 	"/feed-schedules/:feed_type/trigger": "threat_intel",
 
+	// ── Network asset discovery (Nmap) — added 2026-07-06 ──────────────────
+	"/discovery/trigger": "threat_intel",
+	"/discovery/status":  "threat_intel",
+	"/discovery/hosts":   "threat_intel",
+	"/discovery/hosts/:id/acknowledge": "threat_intel",
+
+	// ── Web application scanning (OWASP ZAP) — added 2026-07-06 ────────────
+	"/webscan/targets":                "threat_intel",
+	"/webscan/targets/:id":            "threat_intel",
+	"/webscan/targets/:id/scan":       "threat_intel",
+	"/webscan/status":                 "threat_intel",
+	"/webscan/stop":                   "threat_intel",
+	"/webscan/results":                "threat_intel",
+	"/webscan/results/:id/findings":   "threat_intel",
+
 	// ── Diagrams & Locations ───────────────────────────────────────────────
 	"/locations":                "reports_diagrams",
 	"/locations/:id":            "reports_diagrams",

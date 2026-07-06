@@ -6,7 +6,6 @@ import {
   FiFileText,
   FiUsers,
   FiZap,
-  FiSettings,
   FiBarChart2,
   FiGitMerge,
   FiLock,
@@ -17,9 +16,12 @@ import {
   FiTrash2,
   FiClipboard,
   FiKey,
+  FiWifi,
+  FiGlobe,
+  FiRadio,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
-import { FaProjectDiagram } from "react-icons/fa";
+import { FaProjectDiagram, FaVirus } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
 import type { TranslationKey } from "../../../locales";
 import type { PermissionMap } from "../../../services/auth";
@@ -55,7 +57,7 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       icon: <MdDashboardCustomize />,
       links: filterLinks([
         { name: "dashboard",     icon: <MdSpaceDashboard />, labelKey: "nav.dashboard", category: "dashboard" },
-        { name: "vulnerability", icon: <FiShield />,          labelKey: "nav.vulnerability", category: "dashboard" },
+        { name: "vulnerability", icon: <FaVirus />,           labelKey: "nav.vulnerability", category: "dashboard" },
         { name: "target",        icon: <FiTarget />,          labelKey: "nav.target", category: "dashboard" },
       ]),
     },
@@ -75,10 +77,11 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.threatIntelligence",
       icon: <FiZap />,
       links: filterLinks([
-        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
         { name: "feed-status",          icon: <FiActivity />, labelKey: "nav.feedStatus", category: "threat_intel" },
+        { name: "discovery",            icon: <FiWifi />,     labelKey: "nav.discovery", category: "threat_intel" },
+        { name: "scan-application",     icon: <FiGlobe />,    labelKey: "nav.scanApplication", category: "threat_intel" },
         { name: "threat-config",        icon: <FiSliders />,  labelKey: "nav.threatConfig", category: "threat_intel" },
-        { name: "scan-management",      icon: <FiSettings />, labelKey: "nav.scanManagement", category: "threat_intel" },
+        { name: "scan-management",      icon: <FiRadio />,    labelKey: "nav.scanManagement", category: "threat_intel" },
       ]),
     },
     {
@@ -98,6 +101,7 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.analytics",
       icon: <FiBarChart2 />,
       links: filterLinks([
+        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
         { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "dashboard" },
         { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "dashboard" },
         { name: "vulnerability-delta", icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta", category: "dashboard" },

@@ -14,6 +14,9 @@ type AppAssetCriticality struct {
 	AssetType        string         `gorm:"column:asset_type;default:'server'" json:"asset_type"` // server, database, network, workstation, iot, web
 	Owner            string         `gorm:"column:owner" json:"owner"`
 	BusinessImpact   string         `gorm:"column:business_impact;type:text" json:"business_impact"`
+	Department       string         `gorm:"column:department" json:"department"`
+	OSVersion        string         `gorm:"column:os_version" json:"os_version"`
+	EOLDate          *time.Time     `gorm:"column:eol_date" json:"eol_date"` // warranty / end-of-life date, optional
 	CreatedAt        time.Time      `json:"created_at"`
 	UpdatedAt        time.Time      `json:"updated_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index" json:"-"`

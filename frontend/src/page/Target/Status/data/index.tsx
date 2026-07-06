@@ -182,14 +182,14 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
   if (item.last_report_at_unix && item.last_report_at_unix > 0) {
     const date = new Date(item.last_report_at_unix * 1000);
 
-    const dateText = date.toLocaleDateString("th-TH", {
+    const dateText = date.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
       year: "numeric",
       timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
     });
 
-    const timeText = date.toLocaleTimeString("th-TH", {
+    const timeText = date.toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -204,14 +204,14 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
     const date = new Date(item.last_report_at.replace(" ", "T"));
 
     if (!Number.isNaN(date.getTime())) {
-      const dateText = date.toLocaleDateString("th-TH", {
+      const dateText = date.toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
         timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
       });
 
-      const timeText = date.toLocaleTimeString("th-TH", {
+      const timeText = date.toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -219,7 +219,7 @@ const formatThaiDateTime = (item: TaskStatusDTO) => {
         timeZone: localStorage.getItem("appTimezone") ?? "Asia/Bangkok",
       });
 
-      return `${dateText} ${timeText} น.`;
+      return `${dateText} ${timeText}`;
     }
 
     return item.last_report_at;

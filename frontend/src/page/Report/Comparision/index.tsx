@@ -38,7 +38,7 @@ const clamp = (num: number, min: number, max: number) =>
 const formatDateTime = (unix?: number | null) => {
   if (!unix) return "-";
 
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
     month: "short",
     day: "2-digit",

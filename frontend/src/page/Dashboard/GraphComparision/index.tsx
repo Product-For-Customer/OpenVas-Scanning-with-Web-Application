@@ -182,7 +182,7 @@ const formatUnixThai = (unix?: number | null) => {
 
   const date = new Date(unix * 1000);
 
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat("en-GB", {
     year: "numeric",
     month: "short",
     day: "2-digit",

@@ -32,6 +32,9 @@ const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Del
 const HostDetail         = Loadable(lazy(() => import("../page/HostDetail/index")));
 const CalendarPage       = Loadable(lazy(() => import("../page/Calendar/index")));
 const FeedStatus         = Loadable(lazy(() => import("../page/FeedStatus/index")));
+const Discovery          = Loadable(lazy(() => import("../page/Discovery/index")));
+const ScanApplication    = Loadable(lazy(() => import("../page/ScanApplication/index")));
+const ScanApplicationFindingDetail = Loadable(lazy(() => import("../page/ScanApplication/FindingDetail/index")));
 const ThreatConfig       = Loadable(lazy(() => import("../page/ThreatConfig/index")));
 const RecycleBin         = Loadable(lazy(() => import("../page/RecycleBin/index")));
 const AuditLog           = Loadable(lazy(() => import("../page/AuditLog/index")));
@@ -96,6 +99,9 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "threat-intelligence",                  element: <ThreatIntelligence />, category: "threat_intel" },
   { path: "threat-intelligence/detail/:hostIp",   element: <ThreatIntelligenceDetail />, category: "threat_intel" },
   { path: "feed-status",                          element: <FeedStatus />, category: "threat_intel" },
+  { path: "discovery",                            element: <Discovery />, category: "threat_intel" },
+  { path: "scan-application",                     element: <ScanApplication />, category: "threat_intel" },
+  { path: "scan-application/finding-detail",      element: <ScanApplicationFindingDetail />, category: "threat_intel" },
   { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
 
   { path: "report",                              element: <Report />, category: "dashboard" },

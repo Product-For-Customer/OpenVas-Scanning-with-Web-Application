@@ -536,6 +536,15 @@ func DirectSignUpHandler(c *gin.Context) {
 		return
 	}
 
+	// Look up the "User" role by name rather than assuming its ID — matches
+	// CreateUser's default-role lookup, so this doesn't break if role seeding
+	// order ever changes.
+	var defaultRole entity.AppRole
+	if err := db.Where("LOWER(role) = ?", "user").First(&defaultRole).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "default user role not found"})
+		return
+	}
+
 	user := entity.AppUser{
 		Email:       req.Email,
 		Password:    hashed,
@@ -544,7 +553,7 @@ func DirectSignUpHandler(c *gin.Context) {
 		PhoneNumber: req.PhoneNumber,
 		Location:    req.Location,
 		Position:    req.Position,
-		AppRoleID:   2,
+		AppRoleID:   defaultRole.ID,
 	}
 	if err := db.Create(&user).Error; err != nil {
 		// A concurrent signup for the same email between the check above and

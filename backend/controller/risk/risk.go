@@ -477,12 +477,29 @@ func GetAssetCriticality(c *gin.Context) {
 }
 
 type assetCritInput struct {
-	HostIP           string `json:"host_ip" binding:"required"`
-	Criticality      string `json:"criticality"`
-	CriticalityScore int    `json:"criticality_score"`
-	AssetType        string `json:"asset_type"`
-	Owner            string `json:"owner"`
-	BusinessImpact   string `json:"business_impact"`
+	HostIP           string  `json:"host_ip" binding:"required"`
+	Criticality      string  `json:"criticality"`
+	CriticalityScore int     `json:"criticality_score"`
+	AssetType        string  `json:"asset_type"`
+	Owner            string  `json:"owner"`
+	BusinessImpact   string  `json:"business_impact"`
+	Department       string  `json:"department"`
+	OSVersion        string  `json:"os_version"`
+	EOLDate          *string `json:"eol_date"` // "YYYY-MM-DD", optional
+}
+
+// parseEOLDate parses an optional "YYYY-MM-DD" string into a *time.Time.
+// Returns (nil, nil) for an empty/absent value, matching the field's optional
+// nature — asset EOL dates are frequently unknown when a host is first tagged.
+func parseEOLDate(raw *string) (*time.Time, error) {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", strings.TrimSpace(*raw))
+	if err != nil {
+		return nil, fmt.Errorf("invalid eol_date, expected YYYY-MM-DD")
+	}
+	return &t, nil
 }
 
 func CreateAssetCriticality(c *gin.Context) {
@@ -501,6 +518,12 @@ func CreateAssetCriticality(c *gin.Context) {
 		input.AssetType = "server"
 	}
 
+	eolDate, err := parseEOLDate(input.EOLDate)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	db := config.DB()
 	item := entity.AppAssetCriticality{
 		HostIP:           input.HostIP,
@@ -509,6 +532,9 @@ func CreateAssetCriticality(c *gin.Context) {
 		AssetType:        input.AssetType,
 		Owner:            input.Owner,
 		BusinessImpact:   input.BusinessImpact,
+		Department:       input.Department,
+		OSVersion:        input.OSVersion,
+		EOLDate:          eolDate,
 	}
 	if err := db.Create(&item).Error; err != nil {
 		services.RespondInternalError(c, err)
@@ -525,6 +551,10 @@ type updateAssetCritInput struct {
 	AssetType        *string `json:"asset_type"`
 	Owner            *string `json:"owner"`
 	BusinessImpact   *string `json:"business_impact"`
+	Department       *string `json:"department"`
+	OSVersion        *string `json:"os_version"`
+	// EOLDate: nil = leave unchanged, "" = clear to unknown, "YYYY-MM-DD" = set.
+	EOLDate *string `json:"eol_date"`
 }
 
 func UpdateAssetCriticality(c *gin.Context) {
@@ -567,6 +597,20 @@ func UpdateAssetCriticality(c *gin.Context) {
 	}
 	if input.BusinessImpact != nil {
 		updates["business_impact"] = *input.BusinessImpact
+	}
+	if input.Department != nil {
+		updates["department"] = *input.Department
+	}
+	if input.OSVersion != nil {
+		updates["os_version"] = *input.OSVersion
+	}
+	if input.EOLDate != nil {
+		eolDate, err := parseEOLDate(input.EOLDate)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		updates["eol_date"] = eolDate
 	}
 
 	if len(updates) == 0 {

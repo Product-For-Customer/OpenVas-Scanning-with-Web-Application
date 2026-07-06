@@ -303,6 +303,17 @@ services:
       psql -h /var/run/postgresql -U postgres -d gvmd -f /init.sql
       "
     restart: "no"
+    
+  zap:
+    image: zaproxy/zap-stable
+    container_name: zap
+    restart: unless-stopped
+    command: >
+      zap.sh -daemon -host 0.0.0.0 -port 8080
+      -config api.disablekey=false
+      -config api.key=${ZAP_API_KEY}
+      -config api.addrs.addr.name=.*
+      -config api.addrs.addr.regex=true
 
   backend:
     build: ./backend
@@ -322,8 +333,11 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - JWT_SECRET=${JWT_SECRET}
       - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
+      - ZAP_API_URL=http://zap:8080
+      - ZAP_API_KEY=${ZAP_API_KEY}
     depends_on:
       - pg-gvm
+      - zap
 
   frontend:
     build:

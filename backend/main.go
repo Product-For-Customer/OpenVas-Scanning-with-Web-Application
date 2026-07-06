@@ -12,6 +12,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/automation"
 	"github.com/Tawunchai/openvas/controller/compliance"
 	"github.com/Tawunchai/openvas/controller/diagram"
+	"github.com/Tawunchai/openvas/controller/discovery"
 	"github.com/Tawunchai/openvas/controller/passwordpolicy"
 	"github.com/Tawunchai/openvas/controller/gmp"
 	"github.com/Tawunchai/openvas/controller/host"
@@ -28,6 +29,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/feedschedule"
 	"github.com/Tawunchai/openvas/controller/user"
 	"github.com/Tawunchai/openvas/controller/vulnerability"
+	"github.com/Tawunchai/openvas/controller/webscan"
 	middlewares "github.com/Tawunchai/openvas/middleware"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,7 @@ func main() {
 	// GetJWTSecret() itself log.Fatal()s if JWT_SECRET is unset.
 	services.GetJWTSecret()
 	gmp.RequireGVMCredentials() // logs a warning (does not block startup) if still using gvmd's default admin/admin credentials
+	webscan.RequireZAPAPIKey()  // logs a warning (does not block startup) if the ZAP scanner API key is unset
 
 	config.ConnectDB()     // เชื่อมต่อฐานข้อมูล
 	config.SetupDatabase() // สร้างตารางและข้อมูลเริ่มต้น
@@ -279,6 +282,23 @@ func main() {
 		authorized.GET("/feed-schedules", feedschedule.ListSchedules)
 		authorized.PUT("/feed-schedules/:feed_type", feedschedule.UpdateSchedule)
 		authorized.POST("/feed-schedules/:feed_type/trigger", feedschedule.TriggerFeedNow)
+
+		// ===== Network Asset Discovery (Nmap) =====
+		authorized.POST("/discovery/trigger", discovery.TriggerDiscoveryScanHandler)
+		authorized.GET("/discovery/status", discovery.GetDiscoveryScanStatusHandler)
+		authorized.GET("/discovery/hosts", discovery.ListDiscoveredHosts)
+		authorized.PATCH("/discovery/hosts/:id/acknowledge", discovery.AcknowledgeDiscoveredHost)
+
+		// ===== Web Application Scanning (OWASP ZAP) =====
+		authorized.GET("/webscan/targets", webscan.ListWebScanTargets)
+		authorized.POST("/webscan/targets", webscan.CreateWebScanTarget)
+		authorized.PATCH("/webscan/targets/:id", webscan.UpdateWebScanTarget)
+		authorized.DELETE("/webscan/targets/:id", webscan.DeleteWebScanTarget)
+		authorized.POST("/webscan/targets/:id/scan", webscan.TriggerWebScan)
+		authorized.GET("/webscan/status", webscan.GetWebScanStatus)
+		authorized.POST("/webscan/stop", webscan.StopWebScan)
+		authorized.GET("/webscan/results", webscan.ListWebScanResults)
+		authorized.GET("/webscan/results/:id/findings", webscan.ListWebScanFindings)
 
 		// ===== TOTP (Authenticator App) =====
 		authorized.GET("/auth/totp/status", totpctrl.GetTOTPStatus)

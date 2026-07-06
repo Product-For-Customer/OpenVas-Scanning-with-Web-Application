@@ -103,6 +103,10 @@ func SetupDatabase() {
 		&entity.AutoScanSchedule{},
 		&entity.FeedUpdateSchedule{},
 		&entity.AuditLog{},
+		&entity.AppDiscoveredHost{},
+		&entity.AppWebScanTarget{},
+		&entity.AppWebScanResult{},
+		&entity.AppWebScanFinding{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)

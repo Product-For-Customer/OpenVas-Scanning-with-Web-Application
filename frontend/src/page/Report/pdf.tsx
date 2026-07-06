@@ -22,6 +22,7 @@ import {
 } from "../../services/report";
 import type { DeviceRiskForReportDTO } from "../../services/report";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useStateContext } from "../../contexts/ProviderContext";
 
 const HeadingClass =
   "mt-1 text-[22px] font-bold leading-[1.25] text-slate-900";
@@ -186,6 +187,7 @@ const Pdf: React.FC<PdfProps> = ({
   selectedTaskIDs = [],
 }) => {
   const { t } = useLanguage();
+  const { currentColor } = useStateContext();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1);
   const [viewportMode, setViewportMode] = useState<ViewportMode>("desktop");
@@ -764,12 +766,12 @@ const Pdf: React.FC<PdfProps> = ({
   const isTablet = viewportMode === "tablet";
 
   return (
-    <div className="min-h-screen w-full bg-slate-100 text-slate-900 transition-colors dark:bg-[#07101d] dark:text-white/90">
-      <div className="w-full border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#08111f] dark:shadow-[0_0_0_1px_rgba(34,211,238,0.06),0_18px_50px_-28px_rgba(0,0,0,0.75)]">
+    <div className="min-h-screen w-full bg-slate-100 text-slate-900 transition-colors dark:bg-[#0b0d17] dark:text-white/90">
+      <div className="w-full border border-slate-200 bg-white transition-colors dark:border-white/8 dark:bg-[#0d0b1a] dark:shadow-[0_18px_50px_-28px_rgba(0,0,0,0.85)]">
         <div className="mx-auto max-w-420 px-2 py-2 sm:px-4 sm:py-4 md:px-5 lg:px-6">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 border border-slate-200 px-3 py-1 text-slate-700 transition-colors dark:border-cyan-400/15 dark:bg-[#0d1628] dark:text-white/80">
+              <div className="inline-flex items-center gap-2 border border-slate-200 px-3 py-1 text-slate-700 transition-colors dark:border-white/10 dark:bg-white/5 dark:text-white/80">
                 <FiFileText className="text-[13px]" />
                 <span className="text-[11px] font-medium">
                   {t("pdf.previewModeBadge")}
@@ -786,7 +788,7 @@ const Pdf: React.FC<PdfProps> = ({
             </div>
 
             {isMobile ? (
-              <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-cyan-400/12 dark:bg-[#0d1628]">
+              <div className="flex w-full flex-col gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2.5 dark:border-white/8 dark:bg-white/5">
                 <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
@@ -796,14 +798,14 @@ const Pdf: React.FC<PdfProps> = ({
                       "inline-flex h-9 min-w-23 items-center justify-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition",
                       currentPage === 1 || prefetchLoading
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/82 dark:hover:bg-white/10",
                     ].join(" ")}
                   >
                     <FiChevronLeft className="text-[14px]" />
                     {t("pdf.prev")}
                   </button>
 
-                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center dark:border-cyan-400/12 dark:bg-[#111a2d]">
+                  <div className="flex min-w-0 flex-1 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-center dark:border-white/8 dark:bg-white/5">
                     <div className="text-[11px] font-semibold text-slate-800 dark:text-white/85">
                       {prefetchLoading
                         ? t("pdf.loadingEllipsis")
@@ -824,7 +826,7 @@ const Pdf: React.FC<PdfProps> = ({
                       "inline-flex h-9 min-w-23 items-center justify-center gap-2 rounded-xl border px-3 text-[12px] font-medium transition",
                       currentPage === totalPages || prefetchLoading
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/82 dark:hover:bg-white/10",
                     ].join(" ")}
                   >
                     {t("pdf.next")}
@@ -847,7 +849,7 @@ const Pdf: React.FC<PdfProps> = ({
                       "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition",
                       currentPage === 1 || prefetchLoading
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/82 dark:hover:bg-white/10",
                     ].join(" ")}
                   >
                     <FiChevronLeft className="text-[14px]" />
@@ -862,7 +864,7 @@ const Pdf: React.FC<PdfProps> = ({
                       "inline-flex h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:hidden",
                       currentPage === totalPages || prefetchLoading
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/82 dark:hover:bg-white/10",
                     ].join(" ")}
                   >
                     {t("pdf.next")}
@@ -872,7 +874,7 @@ const Pdf: React.FC<PdfProps> = ({
 
                 <div className="flex w-full items-center gap-2 xl:w-auto">
                   <div className="-mx-0.5 flex-1 overflow-x-auto pb-1 xl:flex-none xl:overflow-visible xl:pb-0">
-                    <div className="flex w-max items-center border border-slate-200 bg-white transition-colors dark:border-cyan-400/12 dark:bg-[#111a2d]">
+                    <div className="flex w-max items-center border border-slate-200 bg-white transition-colors dark:border-white/8 dark:bg-white/5">
                       {visiblePageNumbers.map((item, index) => {
                         if (
                           item === "ellipsis-left" ||
@@ -881,7 +883,7 @@ const Pdf: React.FC<PdfProps> = ({
                           return (
                             <div
                               key={`${item}-${index}`}
-                              className="inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-2 text-[12px] font-medium text-slate-400 last:border-r-0 dark:border-cyan-400/12 dark:text-white/35"
+                              className="inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-2 text-[12px] font-medium text-slate-400 last:border-r-0 dark:border-white/8 dark:text-white/35"
                             >
                               ...
                             </div>
@@ -898,13 +900,14 @@ const Pdf: React.FC<PdfProps> = ({
                             type="button"
                             onClick={() => goToPage(page)}
                             disabled={prefetchLoading}
+                            style={active ? { backgroundColor: currentColor } : undefined}
                             className={[
-                              "inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-3 text-[12px] font-medium transition last:border-r-0 dark:border-cyan-400/12",
+                              "inline-flex h-9 min-w-9 items-center justify-center border-r border-slate-200 px-3 text-[12px] font-medium transition last:border-r-0 dark:border-white/8",
                               prefetchLoading
                                 ? "cursor-not-allowed text-slate-400 dark:text-white/30"
                                 : active
-                                ? "bg-slate-900 text-white dark:bg-cyan-400 dark:text-slate-950"
-                                : "text-slate-700 hover:bg-slate-50 dark:text-white/78 dark:hover:bg-[#162238]",
+                                ? "text-white"
+                                : "text-slate-700 hover:bg-slate-50 dark:text-white/78 dark:hover:bg-white/10",
                             ].join(" ")}
                             title={descriptor?.title ?? t("pdf.pageN", { page })}
                           >
@@ -923,7 +926,7 @@ const Pdf: React.FC<PdfProps> = ({
                       "hidden h-9 items-center gap-2 border px-3 text-[12px] font-medium transition xl:inline-flex",
                       currentPage === totalPages || prefetchLoading
                         ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-white/30"
-                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-cyan-400/12 dark:bg-[#111a2d] dark:text-white/82 dark:hover:bg-[#162238]",
+                        : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/82 dark:hover:bg-white/10",
                     ].join(" ")}
                   >
                     {t("pdf.next")}
@@ -935,7 +938,7 @@ const Pdf: React.FC<PdfProps> = ({
           </div>
 
           {!isMobile && (
-            <div className="mt-4 flex flex-col gap-2 border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600 dark:border-cyan-400/12 dark:bg-[#0d1628] dark:text-white/65 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <div className="mt-4 flex flex-col gap-2 border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] text-slate-600 dark:border-white/8 dark:bg-white/5 dark:text-white/65 sm:flex-row sm:items-center sm:justify-between sm:px-4">
               <div className="min-w-0 wrap-break-word">
                 <span className="font-semibold text-slate-800 dark:text-white/85">
                   {t("pdf.currentLabel")}
@@ -956,7 +959,7 @@ const Pdf: React.FC<PdfProps> = ({
           <div
             ref={previewFrameRef}
             className={[
-              "mt-4 border border-slate-200 bg-slate-200/70 dark:border-cyan-400/12 dark:bg-[#050b14]",
+              "mt-4 border border-slate-200 bg-slate-200/70 dark:border-white/8 dark:bg-black/20",
               isMobile
                 ? "overflow-x-auto overflow-y-hidden px-1.5 py-2"
                 : isTablet

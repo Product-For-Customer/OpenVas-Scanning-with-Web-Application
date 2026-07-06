@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { message } from "antd";
 import {
   FiArrowLeft,
   FiAlertTriangle,
@@ -10,6 +12,8 @@ import {
   FiServer,
   FiUser,
   FiActivity,
+  FiEdit2,
+  FiX,
 } from "react-icons/fi";
 import {
   GetHostSummary,
@@ -18,7 +22,12 @@ import {
   type SLABreachItem,
   GetSLABreaches,
 } from "../../services/host";
+import {
+  UpsertHostCriticality,
+  type AssetCriticalityInput,
+} from "../../services/assetCriticality";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 // ========================
 // Utility helpers
@@ -251,12 +260,238 @@ const VulnTable: React.FC<{ items: HostVulnDetail[] }> = ({ items }) => {
   );
 };
 
+const CRITICALITY_OPTIONS = ["crown_jewel", "high", "medium", "low"] as const;
+const ASSET_TYPE_OPTIONS = ["server", "database", "network", "workstation", "iot", "web"] as const;
+
+const criticalityLabelKey = (value: string) => {
+  switch (value) {
+    case "crown_jewel": return "hostDetail.critCrownJewel";
+    case "high":         return "hostDetail.critHigh";
+    case "low":           return "hostDetail.critLow";
+    default:              return "hostDetail.critMedium";
+  }
+};
+
+const assetTypeLabelKey = (value: string) => {
+  switch (value) {
+    case "database":     return "hostDetail.assetTypeDatabase";
+    case "network":      return "hostDetail.assetTypeNetwork";
+    case "workstation":  return "hostDetail.assetTypeWorkstation";
+    case "iot":          return "hostDetail.assetTypeIot";
+    case "web":          return "hostDetail.assetTypeWeb";
+    default:             return "hostDetail.assetTypeServer";
+  }
+};
+
+const EditAssetCriticalityModal: React.FC<{
+  hostIP: string;
+  initial: HostSummaryResponse["asset"];
+  onCancel: () => void;
+  onSaved: (asset: HostSummaryResponse["asset"]) => void;
+}> = ({ hostIP, initial, onCancel, onSaved }) => {
+  const { t } = useLanguage();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    criticality: initial.criticality || "medium",
+    criticality_score: initial.criticality_score || 3,
+    asset_type: initial.asset_type || "server",
+    owner: initial.owner || "",
+    business_impact: initial.business_impact || "",
+    department: initial.department || "",
+    os_version: initial.os_version || "",
+    eol_date: initial.eol_date || "",
+  });
+
+  const handleSave = async () => {
+    setSaving(true);
+    const input: AssetCriticalityInput = {
+      host_ip: hostIP,
+      criticality: form.criticality,
+      criticality_score: form.criticality_score,
+      asset_type: form.asset_type,
+      owner: form.owner.trim(),
+      business_impact: form.business_impact.trim(),
+      department: form.department.trim(),
+      os_version: form.os_version.trim(),
+      eol_date: form.eol_date,
+    };
+    const saved = await UpsertHostCriticality(input);
+    setSaving(false);
+
+    if (!saved) {
+      message.error(t("hostDetail.saveCriticalityFailed"));
+      return;
+    }
+
+    message.success(t("hostDetail.savedCriticality"));
+    onSaved({
+      criticality: saved.criticality,
+      criticality_score: saved.criticality_score,
+      asset_type: saved.asset_type,
+      owner: saved.owner,
+      business_impact: saved.business_impact,
+      department: saved.department,
+      os_version: saved.os_version,
+      eol_date: saved.eol_date,
+    });
+  };
+
+  const inputCls =
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-blue-400 dark:border-white/10 dark:bg-white/5 dark:text-white/85 dark:focus:border-blue-400/60";
+  const labelCls = "mb-1 block text-xs font-medium text-gray-500 dark:text-white/45";
+
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={saving ? undefined : onCancel} />
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#12101f]">
+        <div className="flex items-start justify-between border-b border-gray-100 px-5 py-4 dark:border-white/8">
+          <div>
+            <h3 className="text-sm font-bold text-gray-800 dark:text-white/90">
+              {t("hostDetail.editAssetModalTitle")}
+            </h3>
+            <p className="mt-0.5 max-w-xs text-[11.5px] text-gray-400 dark:text-white/35">
+              {t("hostDetail.editAssetModalDesc")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8"
+          >
+            <FiX />
+          </button>
+        </div>
+
+        <div className="max-h-[65vh] space-y-3.5 overflow-y-auto px-5 py-4">
+          <div>
+            <label className={labelCls}>{t("hostDetail.criticalityLevel")}</label>
+            <select
+              value={form.criticality}
+              onChange={(e) => setForm((p) => ({ ...p, criticality: e.target.value }))}
+              className={inputCls}
+            >
+              {CRITICALITY_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{t(criticalityLabelKey(opt))}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.criticalityScore")}</label>
+            <input
+              type="number"
+              min={1}
+              max={5}
+              value={form.criticality_score}
+              onChange={(e) => {
+                const raw = Number(e.target.value);
+                const clamped = Number.isFinite(raw) ? Math.min(5, Math.max(1, raw)) : 3;
+                setForm((p) => ({ ...p, criticality_score: clamped }));
+              }}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.assetType")}</label>
+            <select
+              value={form.asset_type}
+              onChange={(e) => setForm((p) => ({ ...p, asset_type: e.target.value }))}
+              className={inputCls}
+            >
+              {ASSET_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{t(assetTypeLabelKey(opt))}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.owner")}</label>
+            <input
+              type="text"
+              value={form.owner}
+              onChange={(e) => setForm((p) => ({ ...p, owner: e.target.value }))}
+              placeholder={t("hostDetail.ownerPlaceholder")}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.businessImpact")}</label>
+            <textarea
+              value={form.business_impact}
+              onChange={(e) => setForm((p) => ({ ...p, business_impact: e.target.value }))}
+              placeholder={t("hostDetail.businessImpactPlaceholder")}
+              rows={3}
+              className={`${inputCls} resize-none`}
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.department")}</label>
+            <input
+              type="text"
+              value={form.department}
+              onChange={(e) => setForm((p) => ({ ...p, department: e.target.value }))}
+              placeholder={t("hostDetail.departmentPlaceholder")}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.osVersion")}</label>
+            <input
+              type="text"
+              value={form.os_version}
+              onChange={(e) => setForm((p) => ({ ...p, os_version: e.target.value }))}
+              placeholder={t("hostDetail.osVersionPlaceholder")}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className={labelCls}>{t("hostDetail.eolDate")}</label>
+            <input
+              type="date"
+              value={form.eol_date}
+              onChange={(e) => setForm((p) => ({ ...p, eol_date: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-2.5 border-t border-gray-100 px-5 py-3.5 dark:border-white/8">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="flex-1 rounded-xl border border-gray-200 py-2.5 text-[12.5px] font-semibold text-gray-600 transition hover:bg-gray-50 disabled:opacity-50 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 rounded-xl bg-blue-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-blue-600 disabled:opacity-60"
+          >
+            {saving ? t("common.saving") : t("common.save")}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ========================
 // Main page
 // ========================
 
 export default function HostDetail() {
   const { t } = useLanguage();
+  const { can } = useAuth();
   const { ip } = useParams<{ ip: string }>();
   const navigate = useNavigate();
 
@@ -264,6 +499,8 @@ export default function HostDetail() {
   const [slaBreaches, setSlaBreaches] = useState<SLABreachItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editAssetOpen, setEditAssetOpen] = useState(false);
+  const canManageAsset = can("dashboard", "manage");
 
   useEffect(() => {
     if (!ip) {
@@ -395,15 +632,29 @@ export default function HostDetail() {
 
         {/* Asset info */}
         <div className="rounded-xl border border-gray-100 bg-white p-5 dark:border-white/8 dark:bg-white/4">
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
-            <FiServer className="text-blue-500" /> {t("hostDetail.assetInformation")}
-          </h3>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-white/80">
+              <FiServer className="text-blue-500" /> {t("hostDetail.assetInformation")}
+            </h3>
+            {canManageAsset && (
+              <button
+                type="button"
+                onClick={() => setEditAssetOpen(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5"
+              >
+                <FiEdit2 className="text-[11px]" /> {t("hostDetail.editButton")}
+              </button>
+            )}
+          </div>
           <dl className="space-y-2 text-sm">
             {[
               { label: t("hostDetail.criticality"),    value: data.asset.criticality || "—" },
               { label: t("hostDetail.assetType"),     value: data.asset.asset_type || "—" },
               { label: t("hostDetail.owner"),          value: data.asset.owner || "—" },
               { label: t("hostDetail.businessImpact"),value: data.asset.business_impact || "—" },
+              { label: t("hostDetail.department"),    value: data.asset.department || "—" },
+              { label: t("hostDetail.osVersion"),     value: data.asset.os_version || "—" },
+              { label: t("hostDetail.eolDate"),       value: data.asset.eol_date || "—" },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-start justify-between gap-2">
                 <dt className="shrink-0 text-gray-500 dark:text-white/40">{label}</dt>
@@ -545,6 +796,18 @@ export default function HostDetail() {
         </h3>
         <VulnTable items={data.vulnerabilities} />
       </div>
+
+      {editAssetOpen && (
+        <EditAssetCriticalityModal
+          hostIP={data.host_ip}
+          initial={data.asset}
+          onCancel={() => setEditAssetOpen(false)}
+          onSaved={(asset) => {
+            setData((prev) => (prev ? { ...prev, asset } : prev));
+            setEditAssetOpen(false);
+          }}
+        />
+      )}
 
     </div>
   );

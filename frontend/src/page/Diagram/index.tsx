@@ -42,7 +42,7 @@ const formatDateTime = (value?: string) => {
   if (Number.isNaN(d.getTime())) return value;
 
   const tz = localStorage.getItem("appTimezone") ?? "Asia/Bangkok";
-  return new Intl.DateTimeFormat("th-TH", {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",

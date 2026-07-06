@@ -18,11 +18,14 @@ import (
 // ========================
 
 type HostAssetInfo struct {
-	Criticality      string `json:"criticality"`
-	CriticalityScore int    `json:"criticality_score"`
-	AssetType        string `json:"asset_type"`
-	Owner            string `json:"owner"`
-	BusinessImpact   string `json:"business_impact"`
+	Criticality      string  `json:"criticality"`
+	CriticalityScore int     `json:"criticality_score"`
+	AssetType        string  `json:"asset_type"`
+	Owner            string  `json:"owner"`
+	BusinessImpact   string  `json:"business_impact"`
+	Department       string  `json:"department"`
+	OSVersion        string  `json:"os_version"`
+	EOLDate          *string `json:"eol_date"` // "YYYY-MM-DD", nil if unset
 }
 
 type KEVHitItem struct {
@@ -330,6 +333,12 @@ ORDER BY va.severity DESC, va.vuln_name
 		critLabel = "medium"
 	}
 
+	var eolDateStr *string
+	if asset.EOLDate != nil {
+		s := asset.EOLDate.Format("2006-01-02")
+		eolDateStr = &s
+	}
+
 	// Build response
 	resp := HostSummaryResponse{
 		HostIP:    ip,
@@ -341,6 +350,9 @@ ORDER BY va.severity DESC, va.vuln_name
 			AssetType:        asset.AssetType,
 			Owner:            asset.Owner,
 			BusinessImpact:   asset.BusinessImpact,
+			Department:       asset.Department,
+			OSVersion:        asset.OSVersion,
+			EOLDate:          eolDateStr,
 		},
 		KEVItems:        make([]KEVHitItem, 0),
 		TopEPSS:         make([]EPSSHitItem, 0),
