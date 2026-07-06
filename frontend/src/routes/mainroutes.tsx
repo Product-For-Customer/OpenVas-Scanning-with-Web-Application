@@ -49,6 +49,7 @@ const ResetOTPPage       = Loadable(lazy(() => import("../page/Authentication/Re
 const Loader         = Loadable(lazy(() => import("../component/load/Loader")));
 const CaptureTest    = Loadable(lazy(() => import("../page/Report/capture")));
 const AfterLoginAnimation = Loadable(lazy(() => import("../page/Authentication/animation/route")));
+const AnimationPreview    = Loadable(lazy(() => import("../page/Authentication/animation/preview")));
 
 // /capture is not a real page for people to browse — it exists purely as the
 // internal render target the backend's headless-Chrome PDF generator
@@ -130,6 +131,7 @@ const AdminRoutes = (permissions: PermissionMap): RouteObject[] => [
     ],
   },
   { path: "after-login-animation",  element: <AfterLoginAnimation /> },
+  { path: "animation-preview",      element: <AnimationPreview /> },
   { path: "*",               element: <Navigate to="/admin" replace /> },
 ];
 
@@ -148,6 +150,7 @@ const MainRoutes = (): RouteObject[] => [
       { path: "reset-otp",              element: <ResetOTPPage /> },
       { path: "capture",                element: <CaptureGuard /> },
       { path: "after-login-animation",  element: <AfterLoginAnimation /> },
+      { path: "animation-preview",      element: <AnimationPreview /> },
       { path: "*",                      element: <LoginPage /> },
     ],
   },

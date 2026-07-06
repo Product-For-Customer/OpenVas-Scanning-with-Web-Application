@@ -923,6 +923,28 @@ const PortListsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
 const getPrivAlgoLabel = (t: TFn, algo: string): string =>
   algo === "none" ? t("threatConfig.algoNone") : algo.toUpperCase();
 
+// Hoisted to module scope so its identity is stable across re-renders — defining
+// it inside the tab component would make React treat every keystroke's re-render
+// as a brand-new component type, remounting the <input> and dropping focus after
+// each character.
+const PwField: React.FC<{
+  label: string; value: string; show: boolean;
+  onChange: (v: string) => void; onToggle: () => void; placeholder?: string;
+}> = ({ label, value, show, onChange, onToggle, placeholder = "••••••••" }) => (
+  <div>
+    <label className={labelCls}>{label}</label>
+    <div className="relative">
+      <input type={show ? "text" : "password"} value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder} className={`${inputCls} pr-10`} />
+      <button type="button" onClick={onToggle}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-white/30 focus:outline-none">
+        {show ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
+      </button>
+    </div>
+  </div>
+);
+
 const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = ({
   currentColor, accentGrad,
 }) => {
@@ -1109,25 +1131,6 @@ const CredentialsTab: React.FC<{ currentColor: string; accentGrad: string }> = (
     };
     return map[type] ?? { bg: "#F1F5F9", text: "#475569" };
   };
-
-  // Password field helper
-  const PwField: React.FC<{
-    label: string; value: string; show: boolean;
-    onChange: (v: string) => void; onToggle: () => void; placeholder?: string;
-  }> = ({ label, value, show, onChange, onToggle, placeholder = "••••••••" }) => (
-    <div>
-      <label className={labelCls}>{label}</label>
-      <div className="relative">
-        <input type={show ? "text" : "password"} value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder} className={`${inputCls} pr-10`} />
-        <button type="button" onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-white/30 focus:outline-none">
-          {show ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
-        </button>
-      </div>
-    </div>
-  );
 
   const autoGen = form.auto_generate ?? false;
 

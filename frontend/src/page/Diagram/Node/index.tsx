@@ -268,7 +268,7 @@ const DiagramNodePage: React.FC = () => {
       } else {
         if (!selectedNode?.id) { message.error(t("diagramNode.errorNodeNotFoundEdit")); return; }
         const payload: UpdateAppDiagramNodeInput = {
-          diagram_id: diagramId, label: values.label.trim(),
+          diagram_id: diagramId, task_id: values.task_id.trim(), label: values.label.trim(),
           description: values.description.trim(), icon: values.icon.trim(),
           x: normalizePercentValue(values.x), y: normalizePercentValue(values.y),
           width: normalizeSizePercent(values.width, 12), height: normalizeSizePercent(values.height, 9),

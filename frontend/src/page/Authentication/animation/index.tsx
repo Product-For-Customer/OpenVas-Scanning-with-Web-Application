@@ -12,6 +12,7 @@ import VulnerabilityScanAnimation, {
 type Props = {
   onFinished?: () => void;
   duration?: number;
+  freeze?: boolean;
 };
 
 /**

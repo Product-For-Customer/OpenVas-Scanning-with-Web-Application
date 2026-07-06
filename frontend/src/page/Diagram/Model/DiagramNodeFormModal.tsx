@@ -15,6 +15,7 @@ import type { AppDiagramNodeResponse } from "../../../services/diagram";
 import type { AllTargetDTO } from "../../../services";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
+import { CustomSelect } from "../../../component/ui/CustomSelect";
 
 export type DiagramNodeModalMode = "create" | "edit";
 
@@ -283,19 +284,18 @@ const DiagramNodeFormModal: React.FC<Props> = ({
                 <FiTarget className="text-[10px]" />
                 {t("diagramModal.linkedTarget")}
               </label>
-              <select
+              <CustomSelect
+                options={[
+                  { value: "", label: t("diagramModal.linkedTargetNone") },
+                  ...targets.map((target) => ({
+                    value: target.task_id,
+                    label: `${target.name || target.task_id}${target.ip ? ` (${target.ip})` : ""}`,
+                  })),
+                ]}
                 value={form.task_id}
-                onChange={(e) => setField("task_id", e.target.value)}
-                className={inputCls}
-              >
-                <option value="">{t("diagramModal.linkedTargetNone")}</option>
-                {targets.map((target) => (
-                  <option key={target.task_id} value={target.task_id}>
-                    {target.name || target.task_id}
-                    {target.ip ? ` (${target.ip})` : ""}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setField("task_id", v)}
+                disabled={submitting}
+              />
               <p className="mt-1 text-[10px] text-slate-400 dark:text-white/35">
                 {t("diagramModal.linkedTargetHint")}
               </p>
