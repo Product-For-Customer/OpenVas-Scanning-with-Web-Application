@@ -11,6 +11,7 @@ import {
   type SendEmailResponse,
 } from "../../../services";
 import { GetAppSettings, UpdateAppSetting } from "../../../services/setting";
+import ReportDigestSection from "./ReportDigestSection";
 import { useStateContext } from "../../../contexts/ProviderContext";
 import { useLanguage } from "../../../contexts/LanguageContext";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -324,6 +325,9 @@ const Service: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Auto-Report Digest (moved here — sits at the top) ── */}
+      <ReportDigestSection />
 
       {/* ── Email & Security Settings ── */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">

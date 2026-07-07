@@ -73,6 +73,7 @@ const FEED_META: Record<FeedType, { labelKey: TranslationKey; descKey: Translati
   openvas: { labelKey: "feedschedule.openvas", descKey: "feedschedule.openvasDesc", color: "#6366f1", icon: <FiDatabase /> },
   kev:     { labelKey: "feedschedule.kev",     descKey: "feedschedule.kevDesc",     color: "#ef4444", icon: <FiZap /> },
   epss:    { labelKey: "feedschedule.epss",    descKey: "feedschedule.epssDesc",    color: "#f97316", icon: <FiActivity /> },
+  exploit: { labelKey: "feedschedule.exploit", descKey: "feedschedule.exploitDesc", color: "#dc2626", icon: <FiZap /> },
 };
 
 const inputCls = "h-9 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80";
@@ -101,7 +102,14 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ schedule, onSaved, currentCol
   const [day,        setDay]        = useState(schedule.day);
   const [enabled,    setEnabled]    = useState(schedule.enabled);
 
-  const meta = FEED_META[schedule.feed_type];
+  // Fallback keeps the row from crashing if the backend ever returns a feed
+  // type the UI doesn't have metadata for yet (e.g. a newly-added feed).
+  const meta = FEED_META[schedule.feed_type] ?? {
+    labelKey: "feedschedule.openvas" as TranslationKey,
+    descKey: "feedschedule.openvasDesc" as TranslationKey,
+    color: currentColor,
+    icon: <FiDatabase />,
+  };
 
   const handleSave = async () => {
     setSaving(true);

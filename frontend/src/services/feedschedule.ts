@@ -12,7 +12,7 @@ installMaintenanceInterceptor(api);
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type FeedType = "openvas" | "kev" | "epss";
+export type FeedType = "openvas" | "kev" | "epss" | "exploit";
 export type FeedFrequency = "daily" | "monthly" | "yearly";
 
 export type FeedScheduleDTO = {

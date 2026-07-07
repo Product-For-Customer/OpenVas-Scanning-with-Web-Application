@@ -146,9 +146,10 @@ type NVDCVEDetailDTO struct {
 }
 
 type CVEEnrichDTO struct {
-	CVEID string           `json:"cve_id"`
-	NVD   *NVDCVEDetailDTO `json:"nvd"`
-	KEV   *KEVEntryDTO     `json:"kev"`
+	CVEID   string           `json:"cve_id"`
+	NVD     *NVDCVEDetailDTO `json:"nvd"`
+	KEV     *KEVEntryDTO     `json:"kev"`
+	Exploit *ExploitIntelDTO `json:"exploit"`
 }
 
 // ===========================
@@ -462,6 +463,9 @@ func EnrichCVEs(c *gin.Context) {
 		kevMap[k.CVEID] = k
 	}
 
+	// Bulk-load Exploit Availability Intel (offline Exploit-DB/Metasploit cache)
+	exploitMap := loadExploitIntelMap(cveIDs)
+
 	result := make(map[string]*CVEEnrichDTO, len(cveIDs))
 
 	for _, cveID := range cveIDs {
@@ -478,6 +482,11 @@ func EnrichCVEs(c *gin.Context) {
 		if kev, ok := kevMap[cveID]; ok {
 			kevDTO := entityToKEVDTO(kev)
 			dto.KEV = &kevDTO
+		}
+
+		if ex, ok := exploitMap[cveID]; ok {
+			exDTO := entityToExploitDTO(ex)
+			dto.Exploit = &exDTO
 		}
 
 		result[cveID] = dto

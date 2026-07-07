@@ -20,7 +20,6 @@ const VulnerabilityByLevel  = Loadable(lazy(() => import("../page/Dashboard/Desc
 const Vulnerability         = Loadable(lazy(() => import("../page/Vulnerability/index")));
 const VulnerabilityDetail   = Loadable(lazy(() => import("../page/Vulnerability/List/Detail/index")));
 const Report             = Loadable(lazy(() => import("../page/Report/index")));
-const ReportDigest       = Loadable(lazy(() => import("../page/ReportDigest/index")));
 const Diagram            = Loadable(lazy(() => import("../page/Diagram/index")));
 const DiagramNode        = Loadable(lazy(() => import("../page/Diagram/Node/index")));
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
@@ -33,6 +32,7 @@ const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Del
 const HostDetail         = Loadable(lazy(() => import("../page/HostDetail/index")));
 const CalendarPage       = Loadable(lazy(() => import("../page/Calendar/index")));
 const FeedStatus         = Loadable(lazy(() => import("../page/FeedStatus/index")));
+const ExploitIntelligence = Loadable(lazy(() => import("../page/ExploitIntelligence/index")));
 const Discovery          = Loadable(lazy(() => import("../page/Discovery/index")));
 const ScanApplication    = Loadable(lazy(() => import("../page/ScanApplication/index")));
 const ScanApplicationFindingDetail = Loadable(lazy(() => import("../page/ScanApplication/FindingDetail/index")));
@@ -105,8 +105,8 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "scan-application/finding-detail",      element: <ScanApplicationFindingDetail />, category: "threat_intel" },
   { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
 
+  { path: "exploit-intelligence",                 element: <ExploitIntelligence />, category: "threat_intel" },
   { path: "report",                              element: <Report />, category: "dashboard" },
-  { path: "report-digest",                       element: <ReportDigest />, category: "dashboard" },
   { path: "diagrams",                            element: <Diagram />, category: "reports_diagrams" },
   { path: "diagram-node",                         element: <DiagramNode />, category: "reports_diagrams" },
   { path: "compliance",                          element: <Compliance />, category: "dashboard" },

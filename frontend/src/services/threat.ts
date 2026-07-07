@@ -80,10 +80,26 @@ type NVDCVEDetailDTO = {
   from_cache: boolean;
 };
 
+// Exploit Availability Intelligence — attached to each CVE by the backend enrich
+// endpoint from the offline Exploit-DB + Metasploit cache.
+export type ExploitIntelDTO = {
+  cve_id: string;
+  has_exploit_db: boolean;
+  has_metasploit: boolean;
+  has_poc: boolean;
+  exploit_db_ids: string[];   // EDB-#### numbers
+  metasploit_refs: string[];  // module paths, e.g. exploit/windows/smb/ms17_010_eternalblue
+  poc_refs: string[];         // PoC URLs
+  maturity_score: number;     // 0-100
+  maturity_label: "Weaponized" | "Public Exploit" | "PoC Available" | "None";
+  sources: string[];
+};
+
 type CVEEnrichDTO = {
   cve_id: string;
   nvd: NVDCVEDetailDTO | null;
   kev: KEVEntryDTO | null;
+  exploit: ExploitIntelDTO | null;
 };
 
 export type CVEEnrichMap = Record<string, CVEEnrichDTO | null>;

@@ -23,12 +23,14 @@ const (
 	FeedOpenVAS = "openvas"
 	FeedKEV     = "kev"
 	FeedEPSS    = "epss"
+	FeedExploit = "exploit"
 )
 
 var defaultSchedules = []entity.FeedUpdateSchedule{
 	{FeedType: FeedOpenVAS, Frequency: "daily", Hour: 2,  Minute: 0, DayOfMonth: 1, Month: 1, Day: 1, Enabled: true},
 	{FeedType: FeedKEV,     Frequency: "daily", Hour: 3,  Minute: 0, DayOfMonth: 1, Month: 1, Day: 1, Enabled: true},
 	{FeedType: FeedEPSS,    Frequency: "daily", Hour: 4,  Minute: 30,DayOfMonth: 1, Month: 1, Day: 1, Enabled: true},
+	{FeedType: FeedExploit, Frequency: "daily", Hour: 5,  Minute: 0, DayOfMonth: 1, Month: 1, Day: 1, Enabled: true},
 }
 
 // ── DTO ──────────────────────────────────────────────────────────────────────
@@ -279,6 +281,16 @@ func triggerFeedUpdate(feedType string) error {
 		)
 		if err != nil {
 			return fmt.Errorf("epss sync: %w", err)
+		}
+		defer resp.Body.Close()
+
+	case FeedExploit:
+		resp, err := http.Post(
+			fmt.Sprintf("http://127.0.0.1:%s/threats/exploit/sync", port),
+			"application/json", nil,
+		)
+		if err != nil {
+			return fmt.Errorf("exploit intel sync: %w", err)
 		}
 		defer resp.Body.Close()
 

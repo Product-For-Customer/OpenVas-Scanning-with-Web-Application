@@ -52,6 +52,7 @@ func main() {
 	go auditlog.StartAuditLogAutoCleanup()
 	go automation.StartDailyFeedUpdateScheduler()
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
+	go threat.StartExploitIntelScheduler() // เริ่ม scheduler ซิงค์ Exploit-DB/Metasploit intel ทุกวัน
 	go risk.StartEPSSSyncScheduler()
 	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
@@ -258,6 +259,14 @@ func main() {
 		authorized.GET("/threats/kev/status", threat.GetKEVSyncStatus)
 		authorized.POST("/threats/kev/sync", threat.TriggerKEVSync)
 		authorized.GET("/threats/cve/enrich", threat.EnrichCVEs)
+
+		// ===== Exploit Availability Intelligence (Exploit-DB + Metasploit, offline) =====
+		authorized.GET("/threats/exploit", threat.ListExploitIntel)
+		authorized.GET("/threats/exploit/check", threat.CheckExploitByCVEIDs)
+		authorized.GET("/threats/exploit/summary", threat.GetExploitSummary)
+		authorized.GET("/threats/exploit/status", threat.GetExploitSyncStatus)
+		authorized.POST("/threats/exploit/sync", threat.TriggerExploitSync)
+		authorized.POST("/threats/exploit/import", threat.ImportExploitIntel)
 
 		// ===== GMP Scan Management =====
 		authorized.GET("/gmp/status", gmp.GetGMPStatus)

@@ -4,7 +4,6 @@ import {
   FiTarget,
   FiBell,
   FiFileText,
-  FiMail,
   FiUsers,
   FiZap,
   FiBarChart2,
@@ -103,8 +102,8 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       icon: <FiBarChart2 />,
       links: filterLinks([
         { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
+        { name: "exploit-intelligence", icon: <FiZap />,     labelKey: "nav.exploitIntel", category: "threat_intel" },
         { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "dashboard" },
-        { name: "report-digest",       icon: <FiMail />,     labelKey: "nav.reportDigest", category: "dashboard" },
         { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "dashboard" },
         { name: "vulnerability-delta", icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta", category: "dashboard" },
       ]),
