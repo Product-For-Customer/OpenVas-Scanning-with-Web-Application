@@ -388,7 +388,6 @@ const DiscoveryPage: React.FC = () => {
               <option value="">{t("discovery.filterAll")}</option>
               <option value="unrecognized">{t("discovery.statusUnrecognized")}</option>
               <option value="known">{t("discovery.statusKnown")}</option>
-              <option value="acknowledged">{t("discovery.statusAcknowledged")}</option>
             </select>
             <button type="button" onClick={() => void handleRefresh()} disabled={refreshing || loading} title={t("common.refresh")}
               className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
@@ -426,9 +425,8 @@ const DiscoveryPage: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
                 {hosts.map(h => {
-                  const isUnrecognized = !h.is_known_target && !h.acknowledged;
                   return (
-                    <tr key={h.id} className={isUnrecognized ? "bg-red-50/40 dark:bg-red-500/5" : "transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2"}>
+                    <tr key={h.id} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2">
                       <td className="px-4 py-3.5 font-mono text-[12px] text-slate-700 dark:text-white/80">{h.ip_address}</td>
                       <td className="px-4 py-3.5 text-[12px] text-slate-500 dark:text-white/45">{h.hostname || "—"}</td>
                       <td className="px-4 py-3.5 text-[11.5px] text-slate-500 dark:text-white/45">{h.open_ports || "—"}</td>
