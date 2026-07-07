@@ -13,6 +13,8 @@ import (
 
 	"github.com/Tawunchai/openvas/audit"
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/line"
+	"github.com/Tawunchai/openvas/controller/setting"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
@@ -177,6 +179,110 @@ func DeleteWebScanTarget(c *gin.Context) {
 }
 
 // ===========================
+// LINE notifications (scan start / stop / done)
+// ===========================
+
+func webScanNowInAppTZ() (string, string) {
+	tz := setting.GetAppTimezone()
+	loc, err := time.LoadLocation(tz)
+	if err != nil || loc == nil {
+		loc = time.Local
+	}
+	return time.Now().In(loc).Format("02/01/2006 15:04"), tz
+}
+
+func webScanTypeLabel(scanType string) string {
+	if scanType == "full" {
+		return "Full Scan (Active)"
+	}
+	return "Baseline Scan"
+}
+
+func buildWebScanStartMessage(targetName string, targetURL string, scanType string) string {
+	now, tz := webScanNowInAppTZ()
+	if strings.TrimSpace(targetName) == "" {
+		targetName = "-"
+	}
+	return fmt.Sprintf(
+		"🚀 Scan Application เริ่มต้นแล้วครับ\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Target : %s\n"+
+			"🔗 URL    : %s\n"+
+			"🛡️ ประเภท : %s\n"+
+			"⏰ เวลา   : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"ระบบกำลังสแกนหาช่องโหว่ของ Web Application ครับ",
+		targetName, targetURL, webScanTypeLabel(scanType), now, tz,
+	)
+}
+
+func buildWebScanStopMessage(targetName string, targetURL string, scanType string) string {
+	now, tz := webScanNowInAppTZ()
+	if strings.TrimSpace(targetName) == "" {
+		targetName = "-"
+	}
+	return fmt.Sprintf(
+		"🛑 Scan Application ถูกหยุดแล้วครับ\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Target : %s\n"+
+			"🔗 URL    : %s\n"+
+			"🛡️ ประเภท : %s\n"+
+			"⏰ เวลา   : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"การสแกนถูกหยุดโดยผู้ใช้งานครับ",
+		targetName, targetURL, webScanTypeLabel(scanType), now, tz,
+	)
+}
+
+func buildWebScanFailedMessage(targetName string, targetURL string, scanType string, errMsg string) string {
+	now, tz := webScanNowInAppTZ()
+	if strings.TrimSpace(targetName) == "" {
+		targetName = "-"
+	}
+	if strings.TrimSpace(errMsg) == "" {
+		errMsg = "ไม่ทราบสาเหตุ"
+	}
+	return fmt.Sprintf(
+		"❌ Scan Application ล้มเหลวครับ\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Target : %s\n"+
+			"🔗 URL    : %s\n"+
+			"🛡️ ประเภท : %s\n"+
+			"⏰ เวลา   : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"ข้อผิดพลาด: %s",
+		targetName, targetURL, webScanTypeLabel(scanType), now, tz, errMsg,
+	)
+}
+
+func buildWebScanDoneMessage(targetName string, targetURL string, scanType string, counts map[string]int) string {
+	now, tz := webScanNowInAppTZ()
+	if strings.TrimSpace(targetName) == "" {
+		targetName = "-"
+	}
+	return fmt.Sprintf(
+		"✅ Scan Application เสร็จสิ้นแล้วครับ\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"📋 Target : %s\n"+
+			"🔗 URL    : %s\n"+
+			"🛡️ ประเภท : %s\n"+
+			"⏰ เวลา   : %s\n"+
+			"🌐 Timezone: %s\n"+
+			"━━━━━━━━━━━━━━━━━\n"+
+			"สรุปช่องโหว่ที่ตรวจพบครับ\n"+
+			"🔴 High          : %d\n"+
+			"🟠 Medium        : %d\n"+
+			"🟡 Low           : %d\n"+
+			"🔵 Informational : %d",
+		targetName, targetURL, webScanTypeLabel(scanType), now, tz,
+		counts["High"], counts["Medium"], counts["Low"], counts["Informational"],
+	)
+}
+
+// ===========================
 // Scan lifecycle
 // ===========================
 
@@ -253,7 +359,10 @@ func TriggerWebScan(c *gin.Context) {
 	currentResultID = result.ID
 	scanMu.Unlock()
 
-	go runWebScan(result.ID, target.URL, input.ScanType, target.AuthCookie)
+	go runWebScan(result.ID, target.Name, target.URL, input.ScanType, target.AuthCookie)
+
+	// Notify LINE: web scan started (with target URL)
+	go line.SendScanNotification(buildWebScanStartMessage(target.Name, target.URL, input.ScanType))
 
 	audit.Log(c, "webscan.triggered", "webscan_result", fmt.Sprintf("%d", result.ID), fmt.Sprintf("started a %s scan against %s (%s)", input.ScanType, target.Name, target.URL))
 
@@ -322,6 +431,17 @@ func StopWebScan(c *gin.Context) {
 	isScanning = false
 	scanMu.Unlock()
 
+	// Notify LINE: web scan stopped (target lookup is best-effort — the
+	// notification still goes out even if the target row was deleted).
+	targetName := "-"
+	targetURL := "-"
+	var target entity.AppWebScanTarget
+	if err := db.First(&target, "id = ?", result.TargetID).Error; err == nil {
+		targetName = target.Name
+		targetURL = target.URL
+	}
+	go line.SendScanNotification(buildWebScanStopMessage(targetName, targetURL, result.ScanType))
+
 	audit.Log(c, "webscan.stopped", "webscan_result", fmt.Sprintf("%d", resultID), "manually stopped a running web scan")
 	c.JSON(http.StatusOK, gin.H{"message": "scan stopped"})
 }
@@ -370,7 +490,7 @@ func ListWebScanFindings(c *gin.Context) {
 const pollInterval = 3 * time.Second
 const scanOverallTimeout = 3 * time.Hour
 
-func runWebScan(resultID uint, targetURL string, scanType string, authCookie string) {
+func runWebScan(resultID uint, targetName string, targetURL string, scanType string, authCookie string) {
 	defer func() {
 		scanMu.Lock()
 		isScanning = false
@@ -395,6 +515,9 @@ func runWebScan(resultID uint, targetURL string, scanType string, authCookie str
 			"finished_at":   now,
 		})
 		log.Println("❌ webscan failed:", errMsg)
+
+		// Notify LINE: web scan failed
+		line.SendScanNotification(buildWebScanFailedMessage(targetName, targetURL, scanType, errMsg))
 	}
 
 	if err := NewSession(); err != nil {
@@ -533,6 +656,9 @@ func runWebScan(resultID uint, targetURL string, scanType string, authCookie str
 		"informational": counts["Informational"],
 		"finished_at":   now,
 	})
+
+	// Notify LINE: web scan done (with findings summary)
+	line.SendScanNotification(buildWebScanDoneMessage(targetName, targetURL, scanType, counts))
 }
 
 func normalizeRisk(r string) string {

@@ -23,6 +23,20 @@ const CATEGORY_LABEL_KEY: Record<string, TranslationKey> = {
   audit_log: "roleMgmt.category.audit_log",
 };
 
+// One-line description of exactly which app features each category gates, so
+// whoever assigns a role can see that (e.g.) "Threat Intelligence" also
+// controls Asset Discovery and Scan Application — the labels alone don't make
+// the bundling obvious.
+const CATEGORY_DESC_KEY: Record<string, TranslationKey> = {
+  dashboard: "roleMgmt.categoryDesc.dashboard",
+  threat_intel: "roleMgmt.categoryDesc.threat_intel",
+  reports_diagrams: "roleMgmt.categoryDesc.reports_diagrams",
+  user_management: "roleMgmt.categoryDesc.user_management",
+  line_management: "roleMgmt.categoryDesc.line_management",
+  line_settings: "roleMgmt.categoryDesc.line_settings",
+  audit_log: "roleMgmt.categoryDesc.audit_log",
+};
+
 type PermState = Record<string, { view: boolean; manage: boolean }>;
 
 const emptyPermState = (categories: PermissionCategory[]): PermState => {
@@ -220,8 +234,15 @@ const ModalCreateandUpdateRole: React.FC<Props> = ({ open, role, categories, onC
                   const p = perms[c.key] ?? { view: false, manage: false };
                   return (
                     <tr key={c.key} className="border-b border-slate-100 last:border-0 dark:border-white/5">
-                      <td className="px-3 py-2 text-[11.5px] text-slate-700 dark:text-white/70">
-                        {t(CATEGORY_LABEL_KEY[c.key] ?? (c.key as TranslationKey))}
+                      <td className="px-3 py-2">
+                        <p className="text-[11.5px] font-medium text-slate-700 dark:text-white/70">
+                          {t(CATEGORY_LABEL_KEY[c.key] ?? (c.key as TranslationKey))}
+                        </p>
+                        {CATEGORY_DESC_KEY[c.key] && (
+                          <p className="mt-0.5 text-[9.5px] leading-snug text-slate-400 dark:text-white/35">
+                            {t(CATEGORY_DESC_KEY[c.key])}
+                          </p>
+                        )}
                       </td>
                       <td className="px-2 py-2 text-center">
                         <input

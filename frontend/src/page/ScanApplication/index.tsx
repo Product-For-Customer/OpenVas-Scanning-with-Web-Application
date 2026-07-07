@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { message } from "antd";
@@ -6,7 +6,12 @@ import {
   FiGlobe, FiPlus, FiEdit2, FiTrash2, FiPlay, FiSquare,
   FiAlertTriangle, FiCheckCircle, FiChevronDown, FiChevronRight,
   FiX, FiRefreshCw, FiShield, FiClock, FiEye, FiEyeOff, FiArrowRight,
+  FiTarget, FiActivity, FiChevronLeft,
 } from "react-icons/fi";
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from "recharts";
 import {
   ListWebScanTargets, CreateWebScanTarget, UpdateWebScanTarget, DeleteWebScanTarget,
   TriggerWebScan, GetWebScanStatus, StopWebScan, ListWebScanResults, ListWebScanFindings,
@@ -377,7 +382,203 @@ const FindingsList: React.FC<{
   );
 };
 
+// ── Chart 1: Vulnerability Severity Distribution (Donut) ──────────────────
+
+const SeverityDonutTooltip: React.FC<{
+  active?: boolean;
+  payload?: Array<{ payload?: { name: string; value: number; color: string } }>;
+}> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-[10.5px] font-semibold text-white shadow-xl" style={{ background: d.color }}>
+      {d.name} · <span className="tabular-nums">{d.value}</span>
+    </div>
+  );
+};
+
+const SeverityDonut: React.FC<{ results: WebScanResultDTO[]; loading: boolean }> = ({ results, loading }) => {
+  const { t } = useLanguage();
+  const data = useMemo(() => {
+    const totals = { High: 0, Medium: 0, Low: 0, Informational: 0 };
+    for (const r of results) {
+      totals.High += r.high;
+      totals.Medium += r.medium;
+      totals.Low += r.low;
+      totals.Informational += r.informational;
+    }
+    return (["High", "Medium", "Low", "Informational"] as const)
+      .map((name) => ({ name, value: totals[name], color: RISK_COLOR[name] }))
+      .filter((d) => d.value > 0);
+  }, [results]);
+
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">
+        {t("scanApp.chartSeverityTitle")}
+      </p>
+      <div className="flex flex-1 items-center gap-5">
+        <div className="relative h-36 w-36 shrink-0">
+          {loading ? (
+            <div className="h-full w-full animate-pulse rounded-full bg-slate-100 dark:bg-white/10" />
+          ) : total === 0 ? (
+            <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-dashed border-slate-200 dark:border-white/10">
+              <span className="text-[10px] text-slate-400 dark:text-white/30">{t("scanApp.chartNoData")}</span>
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={data} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="84%" paddingAngle={2} stroke="transparent">
+                    {data.map((e) => <Cell key={e.name} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip content={<SeverityDonutTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-[24px] font-bold leading-none text-slate-900 dark:text-white">{total}</span>
+                <span className="mt-0.5 text-[9px] text-slate-400 dark:text-white/35">{t("scanApp.chartFindingsUnit")}</span>
+              </div>
+            </>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {loading
+            ? [1, 2, 3, 4].map((i) => <div key={i} className="h-5 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />)
+            : (["High", "Medium", "Low", "Informational"] as const).map((name) => {
+                const value = data.find((d) => d.name === name)?.value ?? 0;
+                return (
+                  <div key={name} className="flex items-center gap-2">
+                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: RISK_COLOR[name] }} />
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-slate-600 dark:text-white/60">{name}</span>
+                    <span className="shrink-0 text-[12px] font-bold tabular-nums text-slate-800 dark:text-white/80">{value}</span>
+                  </div>
+                );
+              })
+          }
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Chart 2: Findings Trend across recent scans (Bar) ─────────────────────
+
+type StatChartDatum = { name: string; value: number; color: string };
+
+const StatsTooltip: React.FC<{
+  active?: boolean;
+  payload?: Array<{ payload?: StatChartDatum }>;
+}> = ({ active, payload }) => {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-xl px-3 py-2 text-[10.5px] font-semibold text-white shadow-xl" style={{ background: d.color }}>
+      {d.name} · <span className="tabular-nums">{d.value}</span>
+    </div>
+  );
+};
+
+// Horizontal bar chart of the four headline metrics (Targets, Total Scans,
+// Completed, High Findings) — same numbers as the stat cards above, in graph
+// form. Horizontal so the (sometimes long) metric names sit on the axis
+// without overlapping.
+const ScanStatsChart: React.FC<{ data: StatChartDatum[]; loading: boolean }> = ({ data, loading }) => {
+  const { t } = useLanguage();
+  const hasData = data.some((d) => d.value > 0);
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-white/40">
+        {t("scanApp.chartStatsTitle")}
+      </p>
+      <div className="min-h-36 flex-1">
+        {loading ? (
+          <div className="h-36 w-full animate-pulse rounded-xl bg-slate-100 dark:bg-white/10" />
+        ) : !hasData ? (
+          <div className="flex h-36 w-full items-center justify-center rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10">
+            <span className="text-[10px] text-slate-400 dark:text-white/30">{t("scanApp.chartNoData")}</span>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%" minHeight={144}>
+            <BarChart data={data} layout="vertical" barCategoryGap="26%" margin={{ top: 4, right: 14, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 10, fill: "rgba(100,116,139,0.9)" }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" width={96} tick={{ fontSize: 10, fill: "rgba(100,116,139,0.9)" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<StatsTooltip />} cursor={{ fill: "rgba(148,163,184,0.08)" }} />
+              <Bar dataKey="value" radius={[0, 5, 5, 0]} barSize={16}>
+                {data.map((e) => <Cell key={e.name} fill={e.color} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Pager (shared by Targets + History tables, 5 rows/page) ───────────────
+// Numbered, windowed page buttons in the ThreatConfig footer style.
+
+const Pager: React.FC<{
+  page: number;
+  totalPages: number;
+  total: number;
+  pageSize: number;
+  accentGrad: string;
+  onPrev: () => void;
+  onNext: () => void;
+  onGoto: (n: number) => void;
+}> = ({ page, totalPages, total, pageSize, accentGrad, onPrev, onNext, onGoto }) => {
+  const { t } = useLanguage();
+  if (total === 0) return null;
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
+  // Window of up to 5 page numbers centered on the current page.
+  const maxButtons = 5;
+  let start = Math.max(1, page - Math.floor(maxButtons / 2));
+  const end = Math.min(totalPages, start + maxButtons - 1);
+  start = Math.max(1, end - maxButtons + 1);
+  const nums = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 dark:border-white/8">
+      <span className="text-[11px] text-slate-400 dark:text-white/30">
+        {t("scanApp.pageShowing", { from, to, total })}
+        <span className="mx-1.5 text-slate-300 dark:text-white/15">·</span>
+        {t("scanApp.pageOf", { page, totalPages })}
+      </span>
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={onPrev} disabled={page <= 1}
+          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+          <FiChevronLeft className="text-[12px]" />
+        </button>
+        {nums.map((n) => (
+          <button key={n} type="button" onClick={() => onGoto(n)}
+            style={n === page ? { background: accentGrad } : undefined}
+            className={["grid h-7 w-7 place-items-center rounded-lg text-[11.5px] font-semibold transition",
+              n === page ? "text-white" : "border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50",
+            ].join(" ")}>
+            {n}
+          </button>
+        ))}
+        <button type="button" onClick={onNext} disabled={page >= totalPages}
+          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+          <FiChevronRight className="text-[12px]" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ── Main page ────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 5;
 
 const ScanApplicationPage: React.FC = () => {
   const { currentColor } = useStateContext();
@@ -397,6 +598,9 @@ const ScanApplicationPage: React.FC = () => {
   const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
   const [stopping, setStopping] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const [targetPage, setTargetPage] = useState(1);
+  const [resultPage, setResultPage] = useState(1);
 
   const hasFetched = useRef(false);
   const pollTimer = useRef<number | null>(null);
@@ -466,6 +670,33 @@ const ScanApplicationPage: React.FC = () => {
   };
 
   const targetName = (targetId: number) => targets.find((t) => t.id === targetId)?.name ?? `#${targetId}`;
+
+  // Summary stats
+  const stats = useMemo(() => {
+    const completed = results.filter((r) => r.status === "completed");
+    const highFindings = results.reduce((sum, r) => sum + r.high, 0);
+    return {
+      targets: targets.length,
+      totalScans: results.length,
+      completed: completed.length,
+      highFindings,
+    };
+  }, [targets, results]);
+
+  const statCards = [
+    { key: "targets", label: t("scanApp.statTargets"), val: stats.targets, icon: <FiTarget />, color: currentColor },
+    { key: "scans", label: t("scanApp.statTotalScans"), val: stats.totalScans, icon: <FiActivity />, color: "#3b82f6" },
+    { key: "completed", label: t("scanApp.statCompleted"), val: stats.completed, icon: <FiCheckCircle />, color: "#10b981" },
+    { key: "high", label: t("scanApp.statHighFindings"), val: stats.highFindings, icon: <FiAlertTriangle />, color: "#dc2626" },
+  ];
+
+  // Pagination (5 rows/page) — clamp the page if the underlying list shrank.
+  const targetTotalPages = Math.max(1, Math.ceil(targets.length / PAGE_SIZE));
+  const resultTotalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const curTargetPage = Math.min(targetPage, targetTotalPages);
+  const curResultPage = Math.min(resultPage, resultTotalPages);
+  const pagedTargets = targets.slice((curTargetPage - 1) * PAGE_SIZE, curTargetPage * PAGE_SIZE);
+  const pagedResults = results.slice((curResultPage - 1) * PAGE_SIZE, curResultPage * PAGE_SIZE);
 
   const runningResult = scanStatus?.is_running ? scanStatus.data : undefined;
   const runningPhaseProgress = runningResult
@@ -546,10 +777,41 @@ const ScanApplicationPage: React.FC = () => {
         </div>
       )}
 
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {statCards.map(({ key, label, val, icon, color }) => (
+          <div key={key} className="rounded-xl border border-slate-200/70 bg-white px-5 py-4 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+            <div className="flex items-center justify-between">
+              <p className="text-[11px] font-bold tracking-wide text-slate-600 dark:text-white/55">{label}</p>
+              <span style={{ color }} className="text-[15px] opacity-75">{icon}</span>
+            </div>
+            <p className="mt-2.5 text-[30px] font-bold leading-none tracking-tight text-slate-900 dark:text-white">
+              {loading
+                ? <span className="inline-block h-8 w-10 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
+                : val}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="min-h-50 rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <SeverityDonut results={results} loading={loading} />
+        </div>
+        <div className="min-h-50 rounded-xl border border-slate-200/70 bg-white p-5 dark:border-white/8 dark:bg-[#0d0b1a]/80">
+          <ScanStatsChart data={statCards.map((c) => ({ name: c.label, value: c.val, color: c.color }))} loading={loading} />
+        </div>
+      </div>
+
       {/* Targets */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
-        <div className="border-b border-slate-100 px-4 py-3 dark:border-white/8">
-          <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">{t("scanApp.targetsHeading")}</p>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <FiGlobe className="text-[14px] text-slate-400 dark:text-white/35" />
+          <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
+            {t("scanApp.targetsHeading")}
+            {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({targets.length})</span>}
+          </p>
         </div>
         {loading ? (
           <div className="h-20 animate-pulse bg-slate-50 dark:bg-white/3" />
@@ -560,8 +822,9 @@ const ScanApplicationPage: React.FC = () => {
             <p className="text-[11px] text-slate-400 dark:text-white/30">{t("scanApp.noTargetsHint")}</p>
           </div>
         ) : (
+          <>
           <div className="divide-y divide-slate-100/70 dark:divide-white/5">
-            {targets.map((target) => (
+            {pagedTargets.map((target) => (
               <div key={target.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
@@ -603,13 +866,28 @@ const ScanApplicationPage: React.FC = () => {
               </div>
             ))}
           </div>
+          <Pager
+            page={curTargetPage}
+            totalPages={targetTotalPages}
+            total={targets.length}
+            pageSize={PAGE_SIZE}
+            accentGrad={accentGrad}
+            onPrev={() => setTargetPage((p) => Math.max(1, p - 1))}
+            onNext={() => setTargetPage((p) => Math.min(targetTotalPages, p + 1))}
+            onGoto={(n) => setTargetPage(n)}
+          />
+          </>
         )}
       </div>
 
       {/* Results */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
-        <div className="border-b border-slate-100 px-4 py-3 dark:border-white/8">
-          <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">{t("scanApp.resultsHeading")}</p>
+        <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <FiShield className="text-[14px] text-slate-400 dark:text-white/35" />
+          <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
+            {t("scanApp.resultsHeading")}
+            {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({results.length})</span>}
+          </p>
         </div>
         {loading ? (
           <div className="h-20 animate-pulse bg-slate-50 dark:bg-white/3" />
@@ -629,7 +907,7 @@ const ScanApplicationPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/70 dark:divide-white/5">
-                {results.map((r) => {
+                {pagedResults.map((r) => {
                   const isExpanded = expandedResult === r.id;
                   const isDone = r.status === "completed" || r.status === "failed" || r.status === "stopped";
                   return (
@@ -640,7 +918,7 @@ const ScanApplicationPage: React.FC = () => {
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            {isDone ? (isExpanded ? <FiChevronDown className="shrink-0 text-[11px] text-slate-400" /> : <FiChevronRight className="shrink-0 text-[11px] text-slate-400" />) : <span className="w-[11px]" />}
+                            {isDone ? (isExpanded ? <FiChevronDown className="shrink-0 text-[11px] text-slate-400" /> : <FiChevronRight className="shrink-0 text-[11px] text-slate-400" />) : <span className="w-2.75" />}
                             <span className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">{targetName(r.target_id)}</span>
                           </div>
                         </td>
@@ -697,6 +975,16 @@ const ScanApplicationPage: React.FC = () => {
                 })}
               </tbody>
             </table>
+            <Pager
+              page={curResultPage}
+              totalPages={resultTotalPages}
+              total={results.length}
+              pageSize={PAGE_SIZE}
+              accentGrad={accentGrad}
+              onPrev={() => setResultPage((p) => Math.max(1, p - 1))}
+              onNext={() => setResultPage((p) => Math.min(resultTotalPages, p + 1))}
+              onGoto={(n) => setResultPage(n)}
+            />
           </div>
         )}
       </div>

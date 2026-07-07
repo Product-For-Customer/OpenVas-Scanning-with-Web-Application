@@ -3,10 +3,11 @@ package discovery
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -29,16 +30,34 @@ var lastScanStartedAt time.Time
 var lastScanFinishedAt time.Time
 var lastScanError string
 
+// lastScanHostsFound is the running count of live hosts saved so far by the
+// in-progress (or most recent) scan. Exposed via the status endpoint so the
+// UI can show a live "N hosts found" counter while a scan streams in.
+var lastScanHostsFound int
+
 const scriptPath = "/app/scripts/discovery-scan.sh"
+
+// ValidateSubnet checks that s is a subnet in CIDR notation like
+// "192.168.1.0/24". Returns a human-readable error suitable for surfacing
+// straight to the API caller. Shared by the trigger handler and the settings
+// PUT handler so the value is rejected both when saved and before a scan runs.
+func ValidateSubnet(s string) error {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return fmt.Errorf("subnet is empty")
+	}
+	if !strings.Contains(s, "/") {
+		return fmt.Errorf("subnet must be in CIDR notation, e.g. 192.168.1.0/24")
+	}
+	if _, _, err := net.ParseCIDR(s); err != nil {
+		return fmt.Errorf("invalid subnet %q — must be CIDR notation, e.g. 192.168.1.0/24", s)
+	}
+	return nil
+}
 
 // ===========================
 // Nmap XML output structs (only the fields this feature needs)
 // ===========================
-
-type nmapRun struct {
-	XMLName xml.Name   `xml:"nmaprun"`
-	Hosts   []nmapHost `xml:"host"`
-}
 
 type nmapHost struct {
 	Status    nmapStatus    `xml:"status"`
@@ -96,6 +115,10 @@ func TriggerDiscoveryScanHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "discovery subnet is not configured — set it on the Asset Discovery page first"})
 		return
 	}
+	if err := ValidateSubnet(subnet); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	scanMu.Lock()
 	if isScanning {
@@ -106,6 +129,7 @@ func TriggerDiscoveryScanHandler(c *gin.Context) {
 	isScanning = true
 	lastScanStartedAt = time.Now()
 	lastScanError = ""
+	lastScanHostsFound = 0
 	scanMu.Unlock()
 
 	go runDiscoveryScan(subnet)
@@ -124,6 +148,7 @@ func GetDiscoveryScanStatusHandler(c *gin.Context) {
 	startedAt := lastScanStartedAt
 	finishedAt := lastScanFinishedAt
 	lastErr := lastScanError
+	hostsFound := lastScanHostsFound
 	scanMu.Unlock()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -131,6 +156,7 @@ func GetDiscoveryScanStatusHandler(c *gin.Context) {
 		"started_at":  startedAt,
 		"finished_at": finishedAt,
 		"last_error":  lastErr,
+		"hosts_found": hostsFound,
 	})
 }
 
@@ -268,11 +294,32 @@ func runDiscoveryScan(subnet string) {
 	cmd := exec.CommandContext(ctx, "bash", scriptPath)
 	cmd.Env = append(os.Environ(), "DISCOVERY_SUBNET="+subnet)
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
+	// Stream nmap's stdout instead of buffering it all: this lets us parse and
+	// upsert each host into the DB as nmap emits it, so the UI (which polls the
+	// hosts list) sees devices appear progressively during the scan rather than
+	// only after the whole subnet finishes.
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		scanMu.Lock()
+		lastScanError = err.Error()
+		scanMu.Unlock()
+		log.Println("❌ discovery scan: stdout pipe:", err)
+		return
+	}
+	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	if err := cmd.Start(); err != nil {
+		scanMu.Lock()
+		lastScanError = err.Error()
+		scanMu.Unlock()
+		log.Println("❌ discovery scan: start:", err)
+		return
+	}
+
+	upCount, procErr := streamScanOutput(stdoutPipe)
+
+	waitErr := cmd.Wait()
 
 	if stderr.Len() > 0 {
 		for _, line := range strings.Split(strings.TrimRight(stderr.String(), "\n"), "\n") {
@@ -282,15 +329,14 @@ func runDiscoveryScan(subnet string) {
 		}
 	}
 
-	if err != nil {
+	if waitErr != nil {
 		scanMu.Lock()
-		lastScanError = err.Error()
+		lastScanError = waitErr.Error()
 		scanMu.Unlock()
-		log.Println("❌ discovery scan: script failed:", err)
+		log.Println("❌ discovery scan: script failed:", waitErr)
 		return
 	}
 
-	upCount, procErr := processScanOutput(stdout.Bytes())
 	if procErr != nil {
 		scanMu.Lock()
 		lastScanError = procErr.Error()
@@ -312,19 +358,11 @@ func runDiscoveryScan(subnet string) {
 	}
 }
 
-// processScanOutput returns the number of "up" hosts it saved, so the caller
-// can tell "ran fine, genuinely found nothing" apart from a silent failure.
-func processScanOutput(xmlOutput []byte) (int, error) {
-	trimmed := bytes.TrimSpace(xmlOutput)
-	if len(trimmed) == 0 {
-		return 0, fmt.Errorf("nmap produced no output")
-	}
-
-	var run nmapRun
-	if err := xml.Unmarshal(trimmed, &run); err != nil {
-		return 0, fmt.Errorf("failed to parse nmap XML output: %w", err)
-	}
-
+// streamScanOutput decodes nmap's XML from r incrementally, saving each <host>
+// element the moment it's fully read. Returns the number of "up" hosts saved,
+// so the caller can tell "ran fine, genuinely found nothing" apart from a
+// silent failure. Updates lastScanHostsFound live as it goes.
+func streamScanOutput(r io.Reader) (int, error) {
 	db := config.DB()
 
 	knownIPs, err := knownTargetIPs(db)
@@ -336,81 +374,109 @@ func processScanOutput(xmlOutput []byte) (int, error) {
 		knownIPs = map[string]bool{}
 	}
 
-	now := time.Now()
-	newUnknownHosts := make([]string, 0)
+	dec := xml.NewDecoder(r)
 	upCount := 0
 
-	for _, h := range run.Hosts {
-		if h.Status.State != "up" {
+	for {
+		tok, err := dec.Token()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			// If some hosts were already parsed and saved, treat a trailing
+			// parse hiccup as non-fatal — we keep what we got. Only surface an
+			// error if nothing came through at all.
+			if upCount > 0 {
+				return upCount, nil
+			}
+			return 0, fmt.Errorf("failed to parse nmap XML stream: %w", err)
+		}
+
+		se, ok := tok.(xml.StartElement)
+		if !ok || se.Name.Local != "host" {
 			continue
 		}
 
-		var ip string
-		for _, addr := range h.Addresses {
-			if addr.AddrType == "ipv4" {
-				ip = addr.Addr
-				break
-			}
-		}
-		if ip == "" {
-			continue
-		}
-		upCount++
-
-		hostname := ""
-		if len(h.Hostnames.Hostname) > 0 {
-			hostname = h.Hostnames.Hostname[0].Name
-		}
-
-		var openPorts []string
-		for _, p := range h.Ports.Port {
-			if p.State.State == "open" {
-				openPorts = append(openPorts, p.PortID)
-			}
-		}
-
-		isKnown := knownIPs[ip]
-
-		var existing entity.AppDiscoveredHost
-		findErr := db.Where("ip_address = ?", ip).First(&existing).Error
-
-		if findErr == gorm.ErrRecordNotFound {
-			newHost := entity.AppDiscoveredHost{
-				IPAddress:     ip,
-				Hostname:      hostname,
-				OpenPorts:     strings.Join(openPorts, ","),
-				IsKnownTarget: isKnown,
-				FirstSeenAt:   now,
-				LastSeenAt:    now,
-			}
-			if err := db.Create(&newHost).Error; err != nil {
-				log.Println("❌ discovery scan: failed to save new host", ip, ":", err)
-				continue
-			}
-			if !isKnown {
-				newUnknownHosts = append(newUnknownHosts, ip)
-			}
+		var h nmapHost
+		if err := dec.DecodeElement(&h, &se); err != nil {
+			// Skip a single malformed host rather than aborting the whole scan.
 			continue
 		}
 
-		if findErr != nil {
-			log.Println("❌ discovery scan: failed to look up host", ip, ":", findErr)
-			continue
+		if saveDiscoveredHost(db, knownIPs, h, time.Now()) {
+			upCount++
+			scanMu.Lock()
+			lastScanHostsFound = upCount
+			scanMu.Unlock()
 		}
-
-		db.Model(&existing).Updates(map[string]interface{}{
-			"hostname":        hostname,
-			"open_ports":      strings.Join(openPorts, ","),
-			"is_known_target": isKnown,
-			"last_seen_at":    now,
-		})
-	}
-
-	if len(newUnknownHosts) > 0 {
-		notifyNewUnknownHosts(newUnknownHosts)
 	}
 
 	return upCount, nil
+}
+
+// saveDiscoveredHost upserts one nmap host row and reports whether it counted
+// as a live ("up") host with a resolvable IPv4 address.
+func saveDiscoveredHost(db *gorm.DB, knownIPs map[string]bool, h nmapHost, now time.Time) bool {
+	if h.Status.State != "up" {
+		return false
+	}
+
+	var ip string
+	for _, addr := range h.Addresses {
+		if addr.AddrType == "ipv4" {
+			ip = addr.Addr
+			break
+		}
+	}
+	if ip == "" {
+		return false
+	}
+
+	hostname := ""
+	if len(h.Hostnames.Hostname) > 0 {
+		hostname = h.Hostnames.Hostname[0].Name
+	}
+
+	var openPorts []string
+	for _, p := range h.Ports.Port {
+		if p.State.State == "open" {
+			openPorts = append(openPorts, p.PortID)
+		}
+	}
+
+	isKnown := knownIPs[ip]
+
+	var existing entity.AppDiscoveredHost
+	findErr := db.Where("ip_address = ?", ip).First(&existing).Error
+
+	if findErr == gorm.ErrRecordNotFound {
+		newHost := entity.AppDiscoveredHost{
+			IPAddress:     ip,
+			Hostname:      hostname,
+			OpenPorts:     strings.Join(openPorts, ","),
+			IsKnownTarget: isKnown,
+			FirstSeenAt:   now,
+			LastSeenAt:    now,
+		}
+		if err := db.Create(&newHost).Error; err != nil {
+			log.Println("❌ discovery scan: failed to save new host", ip, ":", err)
+			return false
+		}
+		return true
+	}
+
+	if findErr != nil {
+		log.Println("❌ discovery scan: failed to look up host", ip, ":", findErr)
+		return false
+	}
+
+	db.Model(&existing).Updates(map[string]interface{}{
+		"hostname":        hostname,
+		"open_ports":      strings.Join(openPorts, ","),
+		"is_known_target": isKnown,
+		"last_seen_at":    now,
+	})
+	return true
 }
 
 // knownTargetIPs reads the distinct set of host IPs the GVM scan engine has
@@ -429,93 +495,4 @@ func knownTargetIPs(db *gorm.DB) (map[string]bool, error) {
 		set[strings.TrimSpace(ip)] = true
 	}
 	return set, nil
-}
-
-// ===========================
-// LINE alert on new unknown host (mirrors automation.go's
-// sendLinePushToAllNotifications — kept as its own small copy here rather
-// than a shared export, consistent with how that pattern already exists)
-// ===========================
-
-type lineTextMessage struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-type linePushRequest struct {
-	To       string            `json:"to"`
-	Messages []lineTextMessage `json:"messages"`
-}
-
-func notifyNewUnknownHosts(ips []string) {
-	db := config.DB()
-
-	var notifications []entity.AppNotification
-	if err := db.
-		Preload("AppLineMaster").
-		Where("alert = ?", true).
-		Find(&notifications).Error; err != nil {
-		log.Println("⚠️ discovery scan: failed to load LINE notifications:", err)
-		return
-	}
-	if len(notifications) == 0 {
-		return
-	}
-
-	message := fmt.Sprintf(
-		"⚠️ พบอุปกรณ์ใหม่ในเครือข่ายที่ไม่รู้จัก %d เครื่อง\nIP: %s",
-		len(ips),
-		strings.Join(ips, ", "),
-	)
-
-	sentTo := map[string]struct{}{}
-	for _, notify := range notifications {
-		if notify.AppLineMaster == nil {
-			continue
-		}
-		token := strings.TrimSpace(notify.AppLineMaster.Token)
-		sendID := strings.TrimSpace(notify.SendID)
-		if token == "" || sendID == "" {
-			continue
-		}
-		dedupKey := token + "::" + sendID
-		if _, exists := sentTo[dedupKey]; exists {
-			continue
-		}
-		sentTo[dedupKey] = struct{}{}
-
-		if err := sendLinePush(token, sendID, message); err != nil {
-			log.Println("⚠️ discovery scan: LINE notify failed:", err)
-		}
-	}
-}
-
-func sendLinePush(channelToken, to, message string) error {
-	payload := linePushRequest{
-		To:       to,
-		Messages: []lineTextMessage{{Type: "text", Text: message}},
-	}
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, "https://api.line.me/v2/bot/message/push", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+channelToken)
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("line send failed: status=%s", resp.Status)
-	}
-	return nil
 }

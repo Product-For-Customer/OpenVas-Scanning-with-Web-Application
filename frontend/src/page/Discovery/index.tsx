@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FiRadio, FiRefreshCw, FiPlay, FiAlertTriangle,
-  FiCheckCircle, FiCheck, FiWifi, FiSave, FiSliders,
+  FiWifi, FiSave, FiSliders,
   FiSearch, FiChevronLeft, FiChevronRight, FiX,
 } from "react-icons/fi";
 import { message } from "antd";
 import {
-  ListDiscoveredHosts, GetDiscoveryScanStatus, TriggerDiscoveryScan, AcknowledgeDiscoveredHost,
+  ListDiscoveredHosts, GetDiscoveryScanStatus, TriggerDiscoveryScan,
   type DiscoveredHostDTO, type DiscoveryScanStatusDTO, type DiscoveredHostStatusFilter,
 } from "../../services/discovery";
 import { GetAppSettings, UpdateAppSetting } from "../../services/setting";
@@ -15,6 +15,13 @@ import { useLanguage } from "../../contexts/LanguageContext";
 import { useAuth } from "../../contexts/AuthContext";
 
 const DISCOVERY_SUBNET_KEY = "discovery_subnet";
+const PAGE_SIZE = 20;
+
+// While a scan runs we poll every POLL_MS for status + the current page of
+// hosts (2 lightweight requests per tick). 3s is a deliberate middle ground:
+// fast enough that devices visibly appear as nmap streams them in, slow enough
+// that a multi-minute scan doesn't hammer the backend with requests.
+const POLL_MS = 3000;
 
 const fmtDateTime = (iso: string | undefined | null): string => {
   if (!iso || iso === "0001-01-01T00:00:00Z") return "—";
@@ -23,6 +30,18 @@ const fmtDateTime = (iso: string | undefined | null): string => {
     day: "2-digit", month: "short", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+};
+
+// Client-side CIDR check (IPv4) — mirrors the backend's net.ParseCIDR guard so
+// an obviously-bad subnet is rejected before it's ever sent/saved.
+const isValidCIDR = (raw: string): boolean => {
+  const v = raw.trim();
+  const m = v.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\/(\d{1,2})$/);
+  if (!m) return false;
+  const octets = [m[1], m[2], m[3], m[4]].map(Number);
+  if (octets.some(o => o > 255)) return false;
+  const prefix = Number(m[5]);
+  return prefix >= 0 && prefix <= 32;
 };
 
 const DiscoveryPage: React.FC = () => {
@@ -34,8 +53,6 @@ const DiscoveryPage: React.FC = () => {
   // line_settings.manage regardless of which page writes it — same precedent
   // as ScanManagement's global timezone picker.
   const canManageSubnet = can("line_settings", "manage");
-
-  const PAGE_SIZE = 20;
 
   const [hosts, setHosts] = useState<DiscoveredHostDTO[]>([]);
   const [totalHostsCount, setTotalHostsCount] = useState(0);
@@ -50,8 +67,8 @@ const DiscoveryPage: React.FC = () => {
 
   const [status, setStatus] = useState<DiscoveryScanStatusDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [triggering, setTriggering] = useState(false);
-  const [ackBusyId, setAckBusyId] = useState<number | null>(null);
 
   const [subnet, setSubnet] = useState("");
   const [subnetInput, setSubnetInput] = useState("");
@@ -59,9 +76,12 @@ const DiscoveryPage: React.FC = () => {
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  const pollTimer = useRef<number | null>(null);
   const tickTimer = useRef<number | null>(null);
+  const wasRunning = useRef(false);
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
+
+  const subnetTrimmed = subnetInput.trim();
+  const subnetInvalid = subnetTrimmed !== "" && !isValidCIDR(subnetTrimmed);
 
   // Debounce the free-text search box — wait for the user to stop typing
   // before hitting the backend, and jump back to page 1 since the previous
@@ -78,42 +98,66 @@ const DiscoveryPage: React.FC = () => {
     setPage(1);
   }, [hostStatusFilter]);
 
-  const fetchAll = useCallback(async () => {
-    const [hostsRes, statusRes, settingsRes] = await Promise.all([
-      ListDiscoveredHosts({ page, pageSize: PAGE_SIZE, search, status: hostStatusFilter }),
-      GetDiscoveryScanStatus(),
-      GetAppSettings(),
-    ]);
-    setHosts(hostsRes.data);
-    setTotalHostsCount(hostsRes.total_hosts);
-    setUnrecognizedCount(hostsRes.unrecognized_count);
-    setTotalPages(hostsRes.total_pages);
-    setTotalFiltered(hostsRes.total);
-    setStatus(statusRes);
-    const savedSubnet = settingsRes[DISCOVERY_SUBNET_KEY] ?? "";
-    setSubnet(savedSubnet);
-    setSubnetInput(savedSubnet);
+  // Fetch just the current page of hosts (used on mount, on page/search/filter
+  // change, after acknowledge, and every poll tick while a scan runs).
+  const fetchHosts = useCallback(async () => {
+    const res = await ListDiscoveredHosts({ page, pageSize: PAGE_SIZE, search, status: hostStatusFilter });
+    setHosts(res.data);
+    setTotalHostsCount(res.total_hosts);
+    setUnrecognizedCount(res.unrecognized_count);
+    setTotalPages(res.total_pages);
+    setTotalFiltered(res.total);
     setLoading(false);
   }, [page, search, hostStatusFilter]);
 
-  useEffect(() => {
-    void fetchAll();
-  }, [fetchAll]);
+  const fetchStatus = useCallback(async () => {
+    setStatus(await GetDiscoveryScanStatus());
+  }, []);
 
+  // Initial one-time load of the settings (subnet) + status; the hosts list is
+  // loaded by the fetchHosts effect below.
+  useEffect(() => {
+    let ignore = false;
+    void (async () => {
+      const [statusRes, settingsRes] = await Promise.all([GetDiscoveryScanStatus(), GetAppSettings()]);
+      if (ignore) return;
+      setStatus(statusRes);
+      const savedSubnet = settingsRes[DISCOVERY_SUBNET_KEY] ?? "";
+      setSubnet(savedSubnet);
+      setSubnetInput(savedSubnet);
+    })();
+    return () => { ignore = true; };
+  }, []);
+
+  useEffect(() => {
+    void fetchHosts();
+  }, [fetchHosts]);
+
+  // Real-time polling while a scan runs: status + hosts every POLL_MS so newly
+  // discovered devices stream into the table live.
+  useEffect(() => {
+    if (!status?.is_running) return;
+    const id = window.setInterval(() => {
+      void fetchStatus();
+      void fetchHosts();
+    }, POLL_MS);
+    return () => window.clearInterval(id);
+  }, [status?.is_running, fetchStatus, fetchHosts]);
+
+  // When a scan transitions running → finished, do one final hosts refresh so
+  // the table reflects everything saved right up to completion (the last poll
+  // tick can miss hosts inserted in the final second).
   useEffect(() => {
     if (status?.is_running) {
-      pollTimer.current = window.setInterval(() => void fetchAll(), 5000);
+      wasRunning.current = true;
+    } else if (wasRunning.current) {
+      wasRunning.current = false;
+      void fetchHosts();
     }
-    return () => {
-      if (pollTimer.current) window.clearInterval(pollTimer.current);
-    };
-  }, [status?.is_running, fetchAll]);
+  }, [status?.is_running, fetchHosts]);
 
-  // A ticking "Scanning… Ns" counter so a slow run (first-ever scan pulls
-  // the nmap image, which can take a few minutes) still visibly proves it's
-  // alive instead of sitting on a static "Scanning…" label the whole time —
-  // a user watching that for minutes with zero movement reasonably assumes
-  // it's frozen.
+  // A ticking "Scanning… Ns" counter so a slow run (first-ever scan pulls the
+  // nmap image, which can take a few minutes) still visibly proves it's alive.
   useEffect(() => {
     if (!status?.is_running || !status.started_at) {
       setElapsedSeconds(0);
@@ -128,12 +172,21 @@ const DiscoveryPage: React.FC = () => {
     };
   }, [status?.is_running, status?.started_at]);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([fetchHosts(), fetchStatus()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleTrigger = async () => {
     setTriggering(true);
     try {
       await TriggerDiscoveryScan();
       message.success(t("discovery.triggered"));
-      void fetchAll();
+      await fetchStatus();
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
       message.error(msg || t("discovery.triggerFailed"));
@@ -143,33 +196,34 @@ const DiscoveryPage: React.FC = () => {
   };
 
   const handleSaveSubnet = async () => {
-    const trimmed = subnetInput.trim();
+    if (subnetInvalid || subnetTrimmed === "") {
+      message.warning(t("discovery.subnetInvalid"));
+      return;
+    }
     setSavingSubnet(true);
     try {
-      await UpdateAppSetting(DISCOVERY_SUBNET_KEY, trimmed);
-      setSubnet(trimmed);
+      await UpdateAppSetting(DISCOVERY_SUBNET_KEY, subnetTrimmed);
+      setSubnet(subnetTrimmed);
       message.success(t("discovery.subnetSaved"));
-    } catch {
-      message.error(t("discovery.subnetSaveFailed"));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || t("discovery.subnetSaveFailed"));
     } finally {
       setSavingSubnet(false);
     }
   };
 
-  const handleAcknowledge = async (id: number) => {
-    setAckBusyId(id);
-    try {
-      await AcknowledgeDiscoveredHost(id);
-      // Refetch rather than patch in place — acknowledging can move a row out
-      // of the currently active status filter (e.g. "unrecognized"), so a
-      // local patch could leave a row visible that no longer matches it.
-      await fetchAll();
-    } catch {
-      message.error(t("discovery.acknowledgeFailed"));
-    } finally {
-      setAckBusyId(null);
-    }
-  };
+  // Windowed page numbers (max 5) centered on the current page, so the footer
+  // stays compact even when there are many pages.
+  const pageNumbers = useMemo(() => {
+    const maxButtons = 5;
+    let start = Math.max(1, page - Math.floor(maxButtons / 2));
+    const end = Math.min(totalPages, start + maxButtons - 1);
+    start = Math.max(1, end - maxButtons + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [page, totalPages]);
+
+  const running = !!status?.is_running;
 
   return (
     <div className="w-full space-y-5">
@@ -202,21 +256,22 @@ const DiscoveryPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {status?.is_running && (
+            {running && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
-                <FiRefreshCw className="animate-spin text-[10px]" /> {t("discovery.scanning")} {elapsedSeconds}s
+                <FiRefreshCw className="animate-spin text-[10px]" />
+                {t("discovery.scanning")} {elapsedSeconds}s · {status?.hosts_found ?? 0} {t("discovery.hostsFound")}
               </span>
             )}
-            <button type="button" onClick={() => void fetchAll()} disabled={loading}
+            <button type="button" onClick={() => void handleRefresh()} disabled={refreshing || loading}
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
-              <FiRefreshCw className={`text-[13px] ${loading ? "animate-spin" : ""}`} />
+              <FiRefreshCw className={`text-[13px] ${refreshing ? "animate-spin" : ""}`} />
             </button>
             {canManage && (
               <button type="button" onClick={() => void handleTrigger()}
-                disabled={triggering || !!status?.is_running}
+                disabled={triggering || running}
                 style={{ background: accentGrad }}
                 className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                {triggering || status?.is_running
+                {triggering || running
                   ? <FiRefreshCw className="animate-spin text-[11px]" />
                   : <FiPlay className="text-[11px]" />}
                 {t("discovery.scanNow")}
@@ -226,7 +281,7 @@ const DiscoveryPage: React.FC = () => {
         </div>
       </div>
 
-      {status?.is_running && elapsedSeconds > 20 && (
+      {running && elapsedSeconds > 20 && (
         <div className="flex items-start gap-2.5 rounded-xl border border-blue-200 bg-blue-50/70 px-4 py-3 dark:border-blue-500/20 dark:bg-blue-500/10">
           <FiRefreshCw className="mt-0.5 shrink-0 animate-spin text-[13px] text-blue-500" />
           <p className="text-[11.5px] text-blue-700 dark:text-blue-300">{t("discovery.scanningSlowHint")}</p>
@@ -253,12 +308,18 @@ const DiscoveryPage: React.FC = () => {
               value={subnetInput}
               onChange={(e) => setSubnetInput(e.target.value)}
               placeholder={t("discovery.subnetPlaceholder")}
-              className="h-9 min-w-56 flex-1 rounded-lg border border-slate-200 bg-white px-3 font-mono text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
+              aria-invalid={subnetInvalid}
+              className={[
+                "h-9 min-w-56 flex-1 rounded-lg border bg-white px-3 font-mono text-[12.5px] text-slate-700 outline-none focus:ring-2 dark:bg-white/5 dark:text-white/80",
+                subnetInvalid
+                  ? "border-red-300 focus:border-red-400 focus:ring-red-100 dark:border-red-500/40"
+                  : "border-slate-200 focus:border-blue-400 focus:ring-blue-100 dark:border-white/8",
+              ].join(" ")}
             />
             <button
               type="button"
               onClick={() => void handleSaveSubnet()}
-              disabled={savingSubnet || subnetInput.trim() === subnet}
+              disabled={savingSubnet || subnetInvalid || subnetTrimmed === "" || subnetTrimmed === subnet}
               style={{ background: accentGrad }}
               className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -269,7 +330,13 @@ const DiscoveryPage: React.FC = () => {
         ) : (
           <p className="font-mono text-[12.5px] text-slate-600 dark:text-white/60">{subnet || "—"}</p>
         )}
-        <p className="mt-1.5 text-[10.5px] text-slate-400 dark:text-white/30">{t("discovery.subnetHint")}</p>
+        {canManageSubnet && subnetInvalid ? (
+          <p className="mt-1.5 flex items-center gap-1 text-[10.5px] text-red-500 dark:text-red-400">
+            <FiAlertTriangle className="text-[10px]" /> {t("discovery.subnetInvalid")}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[10.5px] text-slate-400 dark:text-white/30">{t("discovery.subnetHint")}</p>
+        )}
       </div>
 
       {/* Summary row — always whole-inventory counts, unaffected by the
@@ -285,41 +352,55 @@ const DiscoveryPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Search + status filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
-          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-slate-400 dark:text-white/30" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={t("discovery.searchPlaceholder")}
-            className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-8 text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
-          />
-          {searchInput && (
-            <button type="button" onClick={() => setSearchInput("")} aria-label={t("common.clear")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-white/30 dark:hover:text-white/60">
-              <FiX className="text-[12px]" />
-            </button>
-          )}
-        </div>
-        <select
-          value={hostStatusFilter}
-          onChange={(e) => setHostStatusFilter(e.target.value as DiscoveredHostStatusFilter)}
-          className="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-[12.5px] text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/80"
-        >
-          <option value="">{t("discovery.filterAll")}</option>
-          <option value="unrecognized">{t("discovery.statusUnrecognized")}</option>
-          <option value="known">{t("discovery.statusKnown")}</option>
-          <option value="acknowledged">{t("discovery.statusAcknowledged")}</option>
-        </select>
-      </div>
-
-      {/* Hosts table */}
+      {/* Hosts card — toolbar + table + footer pagination (ThreatConfig style) */}
       <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white dark:border-white/8 dark:bg-[#0d0b1a]/60">
+        {/* Toolbar */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-5 py-3.5 dark:border-white/8">
+          <div className="flex shrink-0 items-center gap-2.5">
+            <FiRadio className="text-[14px] text-slate-400 dark:text-white/35" />
+            <p className="text-[13px] font-bold text-slate-800 dark:text-white/90">
+              {t("discovery.hostsHeading")}
+              {!loading && <span className="ml-2 text-[11px] font-normal text-slate-400 dark:text-white/30">({totalFiltered}/{totalHostsCount})</span>}
+            </p>
+          </div>
+          <div className="relative min-w-44 flex-1 sm:max-w-64">
+            <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 dark:text-white/30" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t("discovery.searchPlaceholder")}
+              className="w-full rounded-lg border border-slate-200/80 bg-white py-1.5 pl-8 pr-8 text-[12px] text-slate-700 placeholder-slate-400 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85 dark:placeholder-white/25"
+            />
+            {searchInput && (
+              <button type="button" onClick={() => setSearchInput("")} aria-label={t("common.clear")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-white/30 dark:hover:text-white/60">
+                <FiX className="text-[12px]" />
+              </button>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <select
+              value={hostStatusFilter}
+              onChange={(e) => setHostStatusFilter(e.target.value as DiscoveredHostStatusFilter)}
+              className="h-8 rounded-lg border border-slate-200/80 bg-white px-2.5 text-[12px] text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100 dark:border-white/8 dark:bg-white/5 dark:text-white/85"
+            >
+              <option value="">{t("discovery.filterAll")}</option>
+              <option value="unrecognized">{t("discovery.statusUnrecognized")}</option>
+              <option value="known">{t("discovery.statusKnown")}</option>
+              <option value="acknowledged">{t("discovery.statusAcknowledged")}</option>
+            </select>
+            <button type="button" onClick={() => void handleRefresh()} disabled={refreshing || loading} title={t("common.refresh")}
+              className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+              <FiRefreshCw className={`text-[12px] ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {/* Table */}
         {loading ? (
           <div className="space-y-0">{[1, 2, 3].map(i => (
-            <div key={i} className="h-16 animate-pulse border-b border-slate-100 last:border-0 dark:border-white/6" />
+            <div key={i} className="h-14 animate-pulse border-b border-slate-100 last:border-0 dark:border-white/6" />
           ))}</div>
         ) : hosts.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-14 text-center">
@@ -330,85 +411,72 @@ const DiscoveryPage: React.FC = () => {
             <p className="text-[11px] text-slate-400 dark:text-white/30">{t("discovery.noResultsHint")}</p>
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="w-full min-w-160">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-white/8">
                   {[
                     t("discovery.colIP"), t("discovery.colHostname"), t("discovery.colPorts"),
-                    t("discovery.colFirstSeen"), t("discovery.colLastSeen"), t("discovery.colStatus"), "",
-                  ].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>
+                    t("discovery.colFirstSeen"), t("discovery.colLastSeen"),
+                  ].map((h, i) => (
+                    <th key={i} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100/70 dark:divide-white/5">
+              <tbody className="divide-y divide-slate-100/60 dark:divide-white/5">
                 {hosts.map(h => {
                   const isUnrecognized = !h.is_known_target && !h.acknowledged;
                   return (
                     <tr key={h.id} className={isUnrecognized ? "bg-red-50/40 dark:bg-red-500/5" : "transition-colors hover:bg-slate-50/60 dark:hover:bg-white/2"}>
-                      <td className="px-4 py-3 font-mono text-[12px] text-slate-700 dark:text-white/80">{h.ip_address}</td>
-                      <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-white/45">{h.hostname || "—"}</td>
-                      <td className="px-4 py-3 text-[11.5px] text-slate-500 dark:text-white/45">{h.open_ports || "—"}</td>
-                      <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-white/45">{fmtDateTime(h.first_seen_at)}</td>
-                      <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-white/45">{fmtDateTime(h.last_seen_at)}</td>
-                      <td className="px-4 py-3">
-                        {h.is_known_target ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
-                            <FiCheckCircle className="text-[9px]" /> {t("discovery.statusKnown")}
-                          </span>
-                        ) : h.acknowledged ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10.5px] font-semibold text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/40">
-                            <FiCheck className="text-[9px]" /> {t("discovery.statusAcknowledged")}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10.5px] font-semibold text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">
-                            <FiAlertTriangle className="text-[9px]" /> {t("discovery.statusUnrecognized")}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {canManage && isUnrecognized && (
-                          <button type="button" onClick={() => void handleAcknowledge(h.id)} disabled={ackBusyId === h.id}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:opacity-50 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
-                            {ackBusyId === h.id ? "…" : t("discovery.acknowledge")}
-                          </button>
-                        )}
-                      </td>
+                      <td className="px-4 py-3.5 font-mono text-[12px] text-slate-700 dark:text-white/80">{h.ip_address}</td>
+                      <td className="px-4 py-3.5 text-[12px] text-slate-500 dark:text-white/45">{h.hostname || "—"}</td>
+                      <td className="px-4 py-3.5 text-[11.5px] text-slate-500 dark:text-white/45">{h.open_ports || "—"}</td>
+                      <td className="px-4 py-3.5 text-[12px] text-slate-500 dark:text-white/45">{fmtDateTime(h.first_seen_at)}</td>
+                      <td className="px-4 py-3.5 text-[12px] text-slate-500 dark:text-white/45">{fmtDateTime(h.last_seen_at)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+
+          {/* Footer pagination */}
+          {totalFiltered > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 px-5 py-3 dark:border-white/8">
+              <span className="text-[11px] text-slate-400 dark:text-white/30">
+                {t("discovery.showingRange", {
+                  from: (page - 1) * PAGE_SIZE + 1,
+                  to: Math.min(page * PAGE_SIZE, totalFiltered),
+                  total: totalFiltered,
+                })}
+                <span className="mx-1.5 text-slate-300 dark:text-white/15">·</span>
+                {t("discovery.pageOf", { page, totalPages })}
+              </span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                  <FiChevronLeft className="text-[12px]" />
+                </button>
+                {pageNumbers.map(n => (
+                  <button key={n} type="button" onClick={() => setPage(n)}
+                    style={n === page ? { background: accentGrad } : undefined}
+                    className={["grid h-7 w-7 place-items-center rounded-lg text-[11.5px] font-semibold transition",
+                      n === page ? "text-white" : "border border-slate-200/70 bg-white text-slate-500 hover:bg-slate-50 dark:border-white/8 dark:bg-white/5 dark:text-white/50",
+                    ].join(" ")}>
+                    {n}
+                  </button>
+                ))}
+                <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200/70 bg-white text-slate-500 transition hover:bg-slate-50 disabled:opacity-40 dark:border-white/8 dark:bg-white/5 dark:text-white/50">
+                  <FiChevronRight className="text-[12px]" />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
-
-      {/* Pagination */}
-      {!loading && totalFiltered > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-          <p className="text-[11.5px] text-slate-500 dark:text-white/40">
-            {t("discovery.showingRange", {
-              from: (page - 1) * PAGE_SIZE + 1,
-              to: Math.min(page * PAGE_SIZE, totalFiltered),
-              total: totalFiltered,
-            })}
-          </p>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5">
-              <FiChevronLeft className="text-[13px]" />
-            </button>
-            <span className="text-[11.5px] font-medium text-slate-600 dark:text-white/55">
-              {t("discovery.pageOf", { page, totalPages })}
-            </span>
-            <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/8 dark:text-white/50 dark:hover:bg-white/5">
-              <FiChevronRight className="text-[13px]" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -18,6 +18,8 @@ export type DiscoveryScanStatusDTO = {
   started_at: string;
   finished_at: string;
   last_error: string;
+  // Live count of hosts saved so far by the in-progress (or most recent) scan.
+  hosts_found: number;
 };
 
 export type DiscoveredHostStatusFilter = "" | "known" | "unrecognized" | "acknowledged";
@@ -76,7 +78,14 @@ export const ListDiscoveredHosts = async (params: ListDiscoveredHostsParams = {}
 export const GetDiscoveryScanStatus = async (): Promise<DiscoveryScanStatusDTO | null> => {
   try {
     const res = await baseApi.get("/discovery/status");
-    return res.data as DiscoveryScanStatusDTO;
+    const body = res.data ?? {};
+    return {
+      is_running: !!body.is_running,
+      started_at: body.started_at ?? "",
+      finished_at: body.finished_at ?? "",
+      last_error: body.last_error ?? "",
+      hosts_found: body.hosts_found ?? 0,
+    };
   } catch (e) {
     console.error("GetDiscoveryScanStatus error:", e);
     return null;

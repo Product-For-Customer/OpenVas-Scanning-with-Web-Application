@@ -3,6 +3,7 @@ package setting
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -154,6 +155,22 @@ func UpdateSetting(c *gin.Context) {
 	if body.Key == "timezone" {
 		if _, err := time.LoadLocation(body.Value); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid IANA timezone: " + body.Value})
+			return
+		}
+	}
+
+	// discovery_subnet must be a CIDR subnet (e.g. 192.168.1.0/24) — validated
+	// both here (so a bad value can never be saved) and again in the discovery
+	// controller before a scan runs. Kept as a local net.ParseCIDR check rather
+	// than importing the discovery package to avoid coupling settings to it.
+	if body.Key == "discovery_subnet" {
+		v := strings.TrimSpace(body.Value)
+		if !strings.Contains(v, "/") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "subnet must be in CIDR notation, e.g. 192.168.1.0/24"})
+			return
+		}
+		if _, _, err := net.ParseCIDR(v); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid subnet %q — must be CIDR notation, e.g. 192.168.1.0/24", body.Value)})
 			return
 		}
 	}
