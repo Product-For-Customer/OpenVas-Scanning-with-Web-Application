@@ -43,7 +43,17 @@ echo "Scanning subnet: ${SUBNET}" >&2
 # which is exactly the bug this fixes: a /24 reporting all 256 addresses
 # as "up" with no hostname/ports data is the signature of that fallback,
 # not a real network.
-docker run --rm --cap-add=NET_RAW --cap-add=NET_ADMIN instrumentisto/nmap:latest \
+# Hardened throwaway container (defense-in-depth for the brokered Docker
+# access): drop ALL capabilities then re-add only the two Nmap actually needs,
+# forbid privilege escalation, and run with a read-only root filesystem (Nmap
+# writes its XML to stdout via `-oX -`, so it needs no writable rootfs; a small
+# in-memory /tmp is provided just in case).
+docker run --rm \
+  --security-opt no-new-privileges \
+  --cap-drop ALL \
+  --cap-add NET_RAW --cap-add NET_ADMIN \
+  --read-only --tmpfs /tmp \
+  instrumentisto/nmap:latest \
   -T4 -F -oX - "${SUBNET}"
 
 echo "[$(date -Iseconds)] DONE network discovery scan" >&2

@@ -34,6 +34,9 @@ var RouteCategory = map[string]string{
 	"/app-report/:id":           "dashboard",
 	"/send-pdf-to-email":        "dashboard",
 	"/send-pdf-to-line":         "dashboard",
+	"/report-digests":           "dashboard",
+	"/report-digests/:id":       "dashboard",
+	"/report-digests/:id/run":   "dashboard",
 	"/compliance/report":        "dashboard",
 	"/compliance/violations":    "dashboard",
 	"/compliance/control-vulns": "dashboard",
@@ -98,7 +101,10 @@ var RouteCategory = map[string]string{
 	"/webscan/status":                 "threat_intel",
 	"/webscan/stop":                   "threat_intel",
 	"/webscan/results":                "threat_intel",
+	"/webscan/results/:id":            "threat_intel",
 	"/webscan/results/:id/findings":   "threat_intel",
+	"/webscan/targets/:id/http-audit":  "threat_intel",
+	"/webscan/targets/:id/fingerprint": "threat_intel",
 
 	// ── Diagrams & Locations ───────────────────────────────────────────────
 	"/locations":                "reports_diagrams",

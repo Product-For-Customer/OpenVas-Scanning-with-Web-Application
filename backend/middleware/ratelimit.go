@@ -80,13 +80,17 @@ func StartRateLimitCleanup() {
 	}()
 }
 
+// clientIP returns the caller's IP for rate-limit keying.
+//
+// It deliberately does NOT read X-Real-IP / X-Forwarded-For directly: those
+// are attacker-controllable and, since the backend is exposed without a
+// reverse proxy in front, trusting them let a caller rotate the header value
+// to get a brand-new rate-limit window on every request (bypassing the auth
+// brute-force limits entirely). c.ClientIP() honours gin's trusted-proxy
+// configuration (set in main.go): it returns the real TCP peer unless the
+// request genuinely came from a configured TRUSTED_PROXIES address, in which
+// case — and only then — the forwarded-for chain is parsed.
 func clientIP(c *gin.Context) string {
-	if ip := c.GetHeader("X-Real-IP"); ip != "" {
-		return ip
-	}
-	if ip := c.GetHeader("X-Forwarded-For"); ip != "" {
-		return ip
-	}
 	return c.ClientIP()
 }
 
@@ -103,6 +107,13 @@ func RateLimiter() gin.HandlerFunc {
 		// Tighter limit for auth-related endpoints
 		if path == "/auth/login" || path == "/send-otp" || path == "/send-otp-signup" {
 			limit = 10
+		}
+
+		// Email-existence probe: allow enough for normal typing on the
+		// Register form but throttle bulk enumeration (this replaced the old
+		// endpoint that dumped every address at once).
+		if path == "/check-email-available" {
+			limit = 20
 		}
 
 		// Tighter limit for PDF generation

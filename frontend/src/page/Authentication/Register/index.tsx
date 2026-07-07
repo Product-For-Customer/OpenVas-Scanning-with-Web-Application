@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff } from "react-icons/fi";
@@ -6,7 +6,7 @@ import {
   GetServiceSettings,
   DirectSignUp,
   SendOTPForSignUp,
-  ListExistingEmails,
+  CheckEmailAvailable,
   type ServiceSettings,
 } from "../../../services/auth";
 import {
@@ -54,11 +54,6 @@ const RegisterPage: React.FC = () => {
     first_name: "", last_name: "", email: "", password: "",
   });
 
-  const [existingEmails, setExistingEmails] = useState<string[]>([]);
-  const emailsRef     = useRef<string[]>([]);
-  const hasFetchedRef = useRef(false);
-  const isFetchingRef = useRef(false);
-
   useEffect(() => {
     isMounted.current = true;
     GetPasswordPolicy().then(setPolicy).catch(() => {});
@@ -68,34 +63,23 @@ const RegisterPage: React.FC = () => {
     return () => { isMounted.current = false; };
   }, []);
 
-  const loadEmails = useCallback(async (force = false): Promise<string[]> => {
-    if (isFetchingRef.current)                 return emailsRef.current;
-    if (!force && hasFetchedRef.current)        return emailsRef.current;
-    try {
-      isFetchingRef.current = true;
-      const emails = await ListExistingEmails();
-      emailsRef.current = emails;
-      if (isMounted.current) setExistingEmails(emails);
-      hasFetchedRef.current = true;
-      return emails;
-    } catch {
-      return emailsRef.current;
-    } finally {
-      isFetchingRef.current = false;
-    }
-  }, []);
-
+  // Live "email already taken" check, debounced so we ask the backend once
+  // the user pauses typing a syntactically-valid address — one email at a
+  // time (the endpoint no longer hands the whole user list to the browser).
   useEffect(() => {
-    if (!hasFetchedRef.current) void loadEmails();
-  }, [loadEmails]);
-
-  const computedEmailError = useMemo(() => {
     const ne = form.email.trim().toLowerCase();
-    if (!ne) return "";
-    return existingEmails.includes(ne) ? t("auth.emailInUse") : "";
-  }, [form.email, existingEmails, t]);
-
-  useEffect(() => { setEmailError(computedEmailError); }, [computedEmailError]);
+    if (!ne || !/\S+@\S+\.\S+/.test(ne)) {
+      setEmailError("");
+      return;
+    }
+    const handle = setTimeout(async () => {
+      const available = await CheckEmailAvailable(ne);
+      if (isMounted.current) {
+        setEmailError(available ? "" : t("auth.emailInUse"));
+      }
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [form.email, t]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -107,7 +91,7 @@ const RegisterPage: React.FC = () => {
     if (!form.last_name.trim())  return t("auth.enterLastName");
     if (!form.email.trim())      return t("auth.enterEmailRequired");
     if (!/\S+@\S+\.\S+/.test(form.email)) return t("auth.invalidEmailFormat");
-    if (computedEmailError)      return computedEmailError;
+    if (emailError)              return emailError;
     if (!form.password.trim())   return t("auth.enterPasswordRequired");
     const pwErr = validatePasswordAgainstPolicy(form.password, policy);
     if (pwErr) return pwErr;
@@ -117,12 +101,16 @@ const RegisterPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const latestEmails = await loadEmails(true);
-    const ne           = form.email.trim().toLowerCase();
-    if (latestEmails.includes(ne)) {
-      setEmailError(t("auth.emailInUse"));
-      message.error(t("auth.emailInUse"));
-      return;
+    // Fresh server-side availability check at submit time (the debounced
+    // check above may not have fired yet, or may be stale).
+    const ne = form.email.trim().toLowerCase();
+    if (ne && /\S+@\S+\.\S+/.test(ne)) {
+      const available = await CheckEmailAvailable(ne);
+      if (!available) {
+        setEmailError(t("auth.emailInUse"));
+        message.error(t("auth.emailInUse"));
+        return;
+      }
     }
 
     const err = validate();

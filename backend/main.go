@@ -56,6 +56,7 @@ func main() {
 	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
 	go report.StartReportCleanupScheduler()    // ลบไฟล์ PDF ที่ generate ไว้ชั่วคราวเมื่อเก่าเกินไป
+	go report.StartReportDigestScheduler()     // ส่งรายงานสรุปอัตโนมัติ (email/LINE) ตามเวลาที่ตั้งไว้
 	middlewares.StartRateLimitCleanup()
 	services.StartOTPLockoutCleanup()
 	services.StartAccountLockoutCleanup()
@@ -66,6 +67,36 @@ func main() {
 	}
 
 	r := gin.Default()
+
+	// ── Trusted proxy configuration ─────────────────────────────────────────
+	// By default gin trusts ALL proxies, meaning it derives the client IP from
+	// the attacker-controllable X-Forwarded-For / X-Real-IP headers. Because
+	// the backend is published directly (see docker-compose: "9000:9000") with
+	// no reverse proxy in front, a caller can spoof those headers to get a
+	// fresh per-IP rate-limit window on every request — defeating the auth
+	// brute-force protection. We therefore trust NO proxy by default, so
+	// c.ClientIP() falls back to the real TCP peer address. When you DO deploy
+	// behind a trusted reverse proxy, list its address(es) in TRUSTED_PROXIES
+	// (comma-separated) so forwarded-for parsing is re-enabled only for it.
+	if tp := strings.TrimSpace(os.Getenv("TRUSTED_PROXIES")); tp != "" {
+		var proxies []string
+		for _, p := range strings.Split(tp, ",") {
+			if p = strings.TrimSpace(p); p != "" {
+				proxies = append(proxies, p)
+			}
+		}
+		if err := r.SetTrustedProxies(proxies); err != nil {
+			log.Fatalf("❌ invalid TRUSTED_PROXIES: %v", err)
+		}
+		log.Printf("🔒 Trusting forwarded headers only from: %v", proxies)
+	} else {
+		// Trust none: X-Forwarded-For / X-Real-IP are ignored and the real
+		// TCP peer is used as the client IP for rate limiting.
+		if err := r.SetTrustedProxies(nil); err != nil {
+			log.Fatalf("❌ failed to disable trusted proxies: %v", err)
+		}
+	}
+
 	r.MaxMultipartMemory = middlewares.MaxRequestBodyBytes
 	r.Use(CORSMiddleware())
 	r.Use(middlewares.LimitRequestBody())
@@ -91,10 +122,25 @@ func main() {
 	r.GET("/settings",                       setting.GetSettings)              // PUBLIC: app settings (timezone, etc.)
 	r.GET("/maintenance/status",             setting.GetMaintenanceStatus)     // PUBLIC: polled for the auto-logout countdown modal
 	r.GET("/password-policy",                passwordpolicy.GetPolicy)         // PUBLIC: rules shown live on Register/Reset Password forms
-	r.GET("/existing-emails", user.ListExistingEmails) // PUBLIC: emails only (no phone numbers), for Register's pre-session duplicate-email check
+	r.POST("/check-email-available", user.CheckEmailAvailable) // PUBLIC: returns {available:bool} for ONE email at a time — replaces the old bulk /existing-emails dump; used by Register's pre-session duplicate-email check
 
-	// เปิดให้รูปที่แคปไว้เข้าถึงผ่าน URL
-	r.Static("/public/reports", "./tmp/reports")
+	// Generated report PDFs. This MUST stay public because LINE's servers fetch
+	// the file from this URL when a report is pushed to a LINE chat (they have
+	// no session). The exposure is bounded three ways: filenames carry an
+	// unguessable 64-bit crypto-random suffix (see report.randomFileSuffix), so
+	// the URL is effectively a bearer capability that can't be brute-forced;
+	// files are auto-deleted after 2h (StartReportCleanupScheduler); and the
+	// headers below tell proxies/CDNs not to cache and search engines not to
+	// index a URL that happens to leak (e.g. via the ngrok tunnel or LINE logs).
+	// Directory listing is off (gin.Static uses Dir(root,false)).
+	reportsFS := r.Group("/public/reports")
+	reportsFS.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store, private, max-age=0")
+		c.Header("X-Robots-Tag", "noindex, nofollow")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
+	})
+	reportsFS.StaticFS("/", gin.Dir("./tmp/reports", false))
 
 	// ===== Public Routes =====
 	r.POST("/automation/feed/update", automation.TriggerFeedUpdateHandler)
@@ -183,6 +229,13 @@ func main() {
 
 		// ===== Report Management =====
 		authorized.PUT("/app-report/:id", report.UpdateAppReportByID) // complete
+
+		// ===== Auto-Report Digest (scheduled report → email/LINE) =====
+		authorized.GET("/report-digests", report.ListDigestSchedules)
+		authorized.POST("/report-digests", report.CreateDigestSchedule)
+		authorized.PATCH("/report-digests/:id", report.UpdateDigestSchedule)
+		authorized.DELETE("/report-digests/:id", report.DeleteDigestSchedule)
+		authorized.POST("/report-digests/:id/run", report.RunDigestNow)
 
 		// ===== Diagram Management =====
 		authorized.GET("/diagrams", diagram.ListDiagrams) 
@@ -275,8 +328,12 @@ func main() {
 		// by the headless PDF-capture flow), so a normal session is required —
 		// send-pdf-to-line used to be fully public, letting anyone spam an
 		// arbitrary app_notification_id with an unauthenticated GET request.
-		authorized.GET("/send-pdf-to-email", report.SendPDFToEmail)
-		authorized.GET("/send-pdf-to-line", report.SendPDFToLine)
+		// POST (not GET): these have real side effects (send an email / push to
+		// LINE), so they must not be triggerable by a crafted <img>/link that a
+		// logged-in admin merely loads (CSRF-via-GET). Task ids stay as query
+		// params, which the handlers already read via c.Query.
+		authorized.POST("/send-pdf-to-email", report.SendPDFToEmail)
+		authorized.POST("/send-pdf-to-line", report.SendPDFToLine)
 
 		// ===== Feed Update Schedules (configurable) =====
 		authorized.GET("/feed-schedules", feedschedule.ListSchedules)
@@ -298,7 +355,12 @@ func main() {
 		authorized.GET("/webscan/status", webscan.GetWebScanStatus)
 		authorized.POST("/webscan/stop", webscan.StopWebScan)
 		authorized.GET("/webscan/results", webscan.ListWebScanResults)
+		authorized.DELETE("/webscan/results/:id", webscan.DeleteWebScanResult)
 		authorized.GET("/webscan/results/:id/findings", webscan.ListWebScanFindings)
+		// B-2 HTTP security-header + TLS grade, B-3 tech fingerprint + EOL —
+		// on-demand, in-process checks against an existing web scan target.
+		authorized.GET("/webscan/targets/:id/http-audit", webscan.HTTPAudit)
+		authorized.GET("/webscan/targets/:id/fingerprint", webscan.Fingerprint)
 
 		// ===== TOTP (Authenticator App) =====
 		authorized.GET("/auth/totp/status", totpctrl.GetTOTPStatus)

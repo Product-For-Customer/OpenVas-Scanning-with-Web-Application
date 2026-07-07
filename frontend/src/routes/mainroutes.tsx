@@ -20,6 +20,7 @@ const VulnerabilityByLevel  = Loadable(lazy(() => import("../page/Dashboard/Desc
 const Vulnerability         = Loadable(lazy(() => import("../page/Vulnerability/index")));
 const VulnerabilityDetail   = Loadable(lazy(() => import("../page/Vulnerability/List/Detail/index")));
 const Report             = Loadable(lazy(() => import("../page/Report/index")));
+const ReportDigest       = Loadable(lazy(() => import("../page/ReportDigest/index")));
 const Diagram            = Loadable(lazy(() => import("../page/Diagram/index")));
 const DiagramNode        = Loadable(lazy(() => import("../page/Diagram/Node/index")));
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
@@ -105,6 +106,7 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
 
   { path: "report",                              element: <Report />, category: "dashboard" },
+  { path: "report-digest",                       element: <ReportDigest />, category: "dashboard" },
   { path: "diagrams",                            element: <Diagram />, category: "reports_diagrams" },
   { path: "diagram-node",                         element: <DiagramNode />, category: "reports_diagrams" },
   { path: "compliance",                          element: <Compliance />, category: "dashboard" },

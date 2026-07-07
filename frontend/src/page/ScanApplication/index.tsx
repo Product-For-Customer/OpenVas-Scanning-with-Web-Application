@@ -15,8 +15,9 @@ import {
 import {
   ListWebScanTargets, CreateWebScanTarget, UpdateWebScanTarget, DeleteWebScanTarget,
   TriggerWebScan, GetWebScanStatus, StopWebScan, ListWebScanResults, ListWebScanFindings,
+  DeleteWebScanResult,
   type WebScanTargetDTO, type WebScanResultDTO, type WebScanStatusDTO, type WebScanFindingDTO,
-  type ScanType,
+  type ScanType, type HTTPAuditResult, type FingerprintResult,
 } from "../../services/webscan";
 import { useStateContext } from "../../contexts/ProviderContext";
 import { useLanguage } from "../../contexts/LanguageContext";
@@ -35,6 +36,23 @@ const fmtDateTime = (iso: string | undefined | null): string => {
 
 const RISK_COLOR: Record<string, string> = {
   High: "#dc2626", Medium: "#f97316", Low: "#eab308", Informational: "#3b82f6",
+};
+
+const gradeColor = (grade: string): string => {
+  switch (grade) {
+    case "A": return "#10b981";
+    case "B": return "#22c55e";
+    case "C": return "#f59e0b";
+    case "D": return "#f97316";
+    case "E": return "#ef4444";
+    default:  return "#b91c1c";
+  }
+};
+
+// Safely JSON.parse a possibly-empty/invalid string column into T, or null.
+const safeParse = <T,>(raw: string | undefined | null): T | null => {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as T; } catch { return null; }
 };
 
 // Matches page/ThreatConfig/index.tsx's shared input/label styling exactly,
@@ -61,11 +79,19 @@ const TargetFormModal: React.FC<{
   const [description, setDescription] = useState(initial?.description ?? "");
   const [authCookie, setAuthCookie] = useState("");
   const [showCookie, setShowCookie] = useState(false);
+  const [authHeader, setAuthHeader] = useState("");
+  const [showHeader, setShowHeader] = useState(false);
+  const [openapiUrl, setOpenapiUrl] = useState(initial?.openapi_url ?? "");
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const input = { name: name.trim(), url: url.trim(), description: description.trim(), auth_cookie: authCookie.trim() };
+      const input = {
+        name: name.trim(), url: url.trim(), description: description.trim(),
+        auth_cookie: authCookie.trim(),
+        auth_header: authHeader.trim(),
+        openapi_url: openapiUrl.trim(),
+      };
       const saved = initial
         ? await UpdateWebScanTarget(initial.id, input)
         : await CreateWebScanTarget(input);
@@ -143,6 +169,38 @@ const TargetFormModal: React.FC<{
                 <FiCheckCircle className="text-[10px]" /> {t("scanApp.authCookieConfigured")}
               </p>
             )}
+          </div>
+
+          {/* Authorization header (optional) — token-based auth for APIs/SPAs */}
+          <div>
+            <label className={labelCls}>{t("scanApp.authHeader")}</label>
+            <div className="relative">
+              <input
+                type={showHeader ? "text" : "password"}
+                value={authHeader}
+                onChange={(e) => setAuthHeader(e.target.value)}
+                placeholder={initial?.has_auth_header ? t("scanApp.authHeaderKeepPlaceholder") : t("scanApp.authHeaderPlaceholder")}
+                className={`${inputCls} pr-10 font-mono text-[11.5px]`}
+              />
+              <button type="button" onClick={() => setShowHeader((p) => !p)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-white/30 focus:outline-none">
+                {showHeader ? <FiEyeOff className="text-[13px]" /> : <FiEye className="text-[13px]" />}
+              </button>
+            </div>
+            <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">{t("scanApp.authHeaderHint")}</p>
+            {initial?.has_auth_header && (
+              <p className="mt-1 flex items-center gap-1 text-[10.5px] text-emerald-600 dark:text-emerald-400">
+                <FiCheckCircle className="text-[10px]" /> {t("scanApp.authHeaderConfigured")}
+              </p>
+            )}
+          </div>
+
+          {/* OpenAPI / Swagger spec URL (optional) */}
+          <div>
+            <label className={labelCls}>{t("scanApp.openapiUrl")}</label>
+            <input type="text" value={openapiUrl} onChange={(e) => setOpenapiUrl(e.target.value)}
+              placeholder={t("scanApp.openapiUrlPlaceholder")} className={`${inputCls} font-mono text-[11.5px]`} />
+            <p className="mt-1 text-[10.5px] text-slate-400 dark:text-white/30">{t("scanApp.openapiUrlHint")}</p>
           </div>
         </div>
 
@@ -264,6 +322,76 @@ const TriggerScanModal: React.FC<{
   );
 };
 
+// ── Delete-confirmation modal for a Scan History row (mirrors the project's
+//    Target/Map ModalDelete pattern: red header, warning, item summary) ─────
+
+const ResultDeleteModal: React.FC<{
+  result: WebScanResultDTO;
+  targetName: string;
+  loading: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}> = ({ result, targetName, loading, onCancel, onConfirm }) => {
+  const { t } = useLanguage();
+  const { currentColor } = useStateContext();
+  return createPortal(
+    <div className="fixed inset-0 z-9999 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={loading ? undefined : onCancel} />
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white dark:bg-[#12101f]"
+        style={{ boxShadow: `0 24px 64px -12px ${currentColor}30, 0 8px 24px rgba(0,0,0,.18)` }}>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-white/8">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500 text-white">
+              <FiTrash2 className="text-[14px]" />
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-red-500">{t("common.confirmDeleteTitle")}</p>
+              <h3 className="text-[14px] font-bold text-slate-800 dark:text-white/90">{t("scanApp.deleteResult")}</h3>
+            </div>
+          </div>
+          <button type="button" onClick={onCancel} disabled={loading}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 disabled:opacity-40 dark:text-white/35 dark:hover:bg-white/8">
+            <FiX className="text-[15px]" />
+          </button>
+        </div>
+        {/* Body */}
+        <div className="space-y-4 px-5 py-5">
+          <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50/80 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/8">
+            <FiAlertTriangle className="mt-0.5 shrink-0 text-[14px] text-red-500" />
+            <p className="text-[12px] text-red-700 dark:text-red-300">{t("scanApp.deleteResultWarning")}</p>
+          </div>
+          <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 dark:border-white/8 dark:bg-white/3">
+            <div className="space-y-1.5 text-[11.5px]">
+              <p className="text-slate-500 dark:text-white/45">
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("scanApp.colTarget")}:</span>{" "}{targetName}
+              </p>
+              <p className="text-slate-500 dark:text-white/45">
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("scanApp.colType")}:</span>{" "}<span className="capitalize">{result.scan_type}</span>
+              </p>
+              <p className="text-slate-500 dark:text-white/45">
+                <span className="font-semibold text-slate-700 dark:text-white/75">{t("scanApp.colStarted")}:</span>{" "}{fmtDateTime(result.started_at)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2.5 pt-1">
+            <button type="button" onClick={onCancel} disabled={loading}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-[12.5px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-white/8 dark:text-white/55 dark:hover:bg-white/5">
+              {t("common.cancel")}
+            </button>
+            <button type="button" onClick={onConfirm} disabled={loading}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-red-500 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-red-600 disabled:opacity-60">
+              {loading && <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />}
+              {loading ? t("common.deleting") : t("common.yesDelete")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // ── Findings list (used inline under an expanded result row) ──────────────
 
 const RISK_LEVELS = ["All", "High", "Medium", "Low", "Informational"] as const;
@@ -377,6 +505,76 @@ const FindingsList: React.FC<{
         </div>
       ))}
       </div>
+      )}
+    </div>
+  );
+};
+
+// ── Security-grade + technology summaries (shown in an expanded result row,
+//    parsed from the JSON captured alongside the ZAP scan) ─────────────────
+
+const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-white/30">{children}</p>
+);
+
+const ScanGradeSummary: React.FC<{ audit: HTTPAuditResult }> = ({ audit }) => {
+  const { t } = useLanguage();
+  const missing = audit.checks.filter((c) => !c.good);
+  return (
+    <div className="rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 dark:border-white/8 dark:bg-white/3">
+      <SectionLabel>{t("scanApp.securityGradeSection")}</SectionLabel>
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[18px] font-extrabold text-white"
+          style={{ background: gradeColor(audit.grade) }}>
+          {audit.grade}
+        </span>
+        <div className="min-w-0 text-[11.5px] text-slate-600 dark:text-white/60">
+          <p className="font-semibold text-slate-800 dark:text-white/85">{t("scanApp.securityGrade")} · {audit.score}/{audit.max_score}</p>
+          {audit.tls.enabled ? (
+            <p className="truncate">TLS {audit.tls.version} · {audit.tls.cipher_suite}</p>
+          ) : (
+            <p className="text-red-500">Plaintext HTTP (no TLS)</p>
+          )}
+          {audit.tls.warnings?.map((w, i) => (
+            <p key={i} className="flex items-center gap-1 text-red-500"><FiAlertTriangle className="text-[9px]" /> {w}</p>
+          ))}
+        </div>
+      </div>
+      {missing.length > 0 && (
+        <div className="mt-2">
+          <p className="text-[10.5px] font-semibold text-slate-500 dark:text-white/40">{t("scanApp.missingHeaders")}:</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {missing.map((c) => (
+              <span key={c.name} className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
+                {c.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ScanTechSummary: React.FC<{ fp: FingerprintResult }> = ({ fp }) => {
+  const { t } = useLanguage();
+  return (
+    <div className="rounded-lg border border-slate-200/70 bg-white px-3 py-2.5 dark:border-white/8 dark:bg-white/3">
+      <SectionLabel>{t("scanApp.techSection")}</SectionLabel>
+      {fp.technologies.length === 0 ? (
+        <p className="text-[11.5px] text-slate-400 dark:text-white/35">{t("scanApp.noTechDetected")}</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {fp.technologies.map((tech, i) => (
+            <span key={i}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-600 dark:border-white/8 dark:bg-white/5 dark:text-white/60">
+              <span className="font-semibold text-slate-700 dark:text-white/80">{tech.name}{tech.version ? ` ${tech.version}` : ""}</span>
+              {tech.eol?.is_eol && (
+                <span className="rounded bg-red-500 px-1 py-0.5 text-[8.5px] font-bold text-white">{t("scanApp.eolBadge")}</span>
+              )}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -596,6 +794,8 @@ const ScanApplicationPage: React.FC = () => {
   const [targetModal, setTargetModal] = useState<{ mode: "create" | "edit"; target?: WebScanTargetDTO } | null>(null);
   const [scanModalTarget, setScanModalTarget] = useState<WebScanTargetDTO | null>(null);
   const [deleteBusyId, setDeleteBusyId] = useState<number | null>(null);
+  const [deleteResultBusyId, setDeleteResultBusyId] = useState<number | null>(null);
+  const [deleteResultConfirm, setDeleteResultConfirm] = useState<WebScanResultDTO | null>(null);
   const [stopping, setStopping] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
@@ -653,6 +853,22 @@ const ScanApplicationPage: React.FC = () => {
       message.error(msg || t("scanApp.targetDeleteFailed"));
     } finally {
       setDeleteBusyId(null);
+    }
+  };
+
+  const handleDeleteResult = async (id: number) => {
+    setDeleteResultBusyId(id);
+    try {
+      await DeleteWebScanResult(id);
+      setResults((prev) => prev.filter((r) => r.id !== id));
+      if (expandedResult === id) setExpandedResult(null);
+      setDeleteResultConfirm(null);
+      message.success(t("scanApp.resultDeleted"));
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      message.error(msg || t("scanApp.resultDeleteFailed"));
+    } finally {
+      setDeleteResultBusyId(null);
     }
   };
 
@@ -910,6 +1126,8 @@ const ScanApplicationPage: React.FC = () => {
                 {pagedResults.map((r) => {
                   const isExpanded = expandedResult === r.id;
                   const isDone = r.status === "completed" || r.status === "failed" || r.status === "stopped";
+                  const audit = safeParse<HTTPAuditResult>(r.http_audit_json);
+                  const fp = safeParse<FingerprintResult>(r.fingerprint_json);
                   return (
                     <React.Fragment key={r.id}>
                       <tr
@@ -920,6 +1138,18 @@ const ScanApplicationPage: React.FC = () => {
                           <div className="flex items-center gap-1.5">
                             {isDone ? (isExpanded ? <FiChevronDown className="shrink-0 text-[11px] text-slate-400" /> : <FiChevronRight className="shrink-0 text-[11px] text-slate-400" />) : <span className="w-2.75" />}
                             <span className="truncate text-[12.5px] font-medium text-slate-700 dark:text-white/80">{targetName(r.target_id)}</span>
+                            {r.security_grade && (
+                              <span className="grid h-4.5 w-4.5 shrink-0 place-items-center rounded text-[9px] font-bold text-white"
+                                title={t("scanApp.securityGrade")}
+                                style={{ background: gradeColor(r.security_grade) }}>
+                                {r.security_grade}
+                              </span>
+                            )}
+                            {r.eol_warnings > 0 && (
+                              <span className="shrink-0 rounded bg-red-500 px-1 py-0.5 text-[8.5px] font-bold text-white" title={t("scanApp.techSection")}>
+                                {r.eol_warnings} {t("scanApp.eolBadge")}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-[12px] capitalize text-slate-500 dark:text-white/45">{r.scan_type}</td>
@@ -929,6 +1159,8 @@ const ScanApplicationPage: React.FC = () => {
                         <td className="px-4 py-3 text-[12px] text-slate-400 dark:text-white/35">{r.informational}</td>
                         <td className="px-4 py-3 text-[12px] text-slate-500 dark:text-white/45">{fmtDateTime(r.started_at)}</td>
                         <td className="px-4 py-3">
+                          <div className="flex items-center justify-between gap-2">
+                          <span className="inline-flex items-center">
                           {r.status === "completed" && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10.5px] font-semibold text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
                               <FiCheckCircle className="text-[9px]" /> {t("scanApp.statusCompleted")}
@@ -949,24 +1181,43 @@ const ScanApplicationPage: React.FC = () => {
                               <FiRefreshCw className="animate-spin text-[9px]" /> {t("scanApp.statusRunning")}
                             </span>
                           )}
+                          </span>
+                          {canManage && isDone && (
+                            <button type="button"
+                              onClick={(e) => { e.stopPropagation(); setDeleteResultConfirm(r); }}
+                              disabled={deleteResultBusyId === r.id}
+                              title={t("scanApp.deleteResult")}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-400 transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40 dark:border-white/8 dark:text-white/40 dark:hover:bg-red-500/10">
+                              <FiTrash2 className="text-[11px]" />
+                            </button>
+                          )}
+                          </div>
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr>
                           <td colSpan={8} className="border-t border-slate-100 bg-slate-50/60 px-4 py-3 dark:border-white/8 dark:bg-white/2">
-                            {r.status === "failed" ? (
-                              <p className="flex items-start gap-2 text-[11.5px] text-red-500 dark:text-red-400">
-                                <FiAlertTriangle className="mt-0.5 shrink-0 text-[12px]" /> {r.error_message}
-                              </p>
-                            ) : (
-                              <FindingsList
-                                resultId={r.id}
-                                targetName={targetName(r.target_id)}
-                                targetUrl={targets.find((tg) => tg.id === r.target_id)?.url ?? ""}
-                                scanType={r.scan_type}
-                                startedAt={r.started_at}
-                              />
-                            )}
+                            <div className="space-y-3">
+                              {r.status === "failed" && (
+                                <p className="flex items-start gap-2 text-[11.5px] text-red-500 dark:text-red-400">
+                                  <FiAlertTriangle className="mt-0.5 shrink-0 text-[12px]" /> {r.error_message}
+                                </p>
+                              )}
+                              {audit && <ScanGradeSummary audit={audit} />}
+                              {fp && <ScanTechSummary fp={fp} />}
+                              {r.status !== "failed" && (
+                                <div>
+                                  <SectionLabel>{t("scanApp.zapFindingsSection")}</SectionLabel>
+                                  <FindingsList
+                                    resultId={r.id}
+                                    targetName={targetName(r.target_id)}
+                                    targetUrl={targets.find((tg) => tg.id === r.target_id)?.url ?? ""}
+                                    scanType={r.scan_type}
+                                    startedAt={r.started_at}
+                                  />
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -1017,6 +1268,16 @@ const ScanApplicationPage: React.FC = () => {
             setScanModalTarget(null);
             void fetchAll();
           }}
+        />
+      )}
+
+      {deleteResultConfirm && (
+        <ResultDeleteModal
+          result={deleteResultConfirm}
+          targetName={targetName(deleteResultConfirm.target_id)}
+          loading={deleteResultBusyId === deleteResultConfirm.id}
+          onCancel={() => setDeleteResultConfirm(null)}
+          onConfirm={() => void handleDeleteResult(deleteResultConfirm.id)}
         />
       )}
     </div>

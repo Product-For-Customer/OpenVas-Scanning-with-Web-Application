@@ -1,0 +1,45 @@
+# ==========================================================================
+# Line-ending policy
+#
+# The file types below are executed on Linux and/or inside Docker containers,
+# so they MUST use LF line endings — even when this repo is checked out on
+# Windows. Without this, core.autocrlf=true rewrites them to CRLF on checkout,
+# turning a leading `#!/usr/bin/env bash` into `bash\r` and failing at runtime
+# with "bad interpreter: No such file or directory".
+#
+# `eol=lf` OVERRIDES core.autocrlf and forces LF in BOTH the repository and the
+# working tree on every operating system. That means these files are already
+# LF the moment they're checked out — copy them to any machine and they run
+# unchanged, with no manual CRLF→LF conversion.
+# ==========================================================================
+
+# Shell scripts
+*.sh          text eol=lf
+*.bash        text eol=lf
+
+# Container build files (executed by the Docker builder on Linux)
+Dockerfile    text eol=lf
+*.Dockerfile  text eol=lf
+.dockerignore text eol=lf
+
+# SQL seed/init scripts run by tooling
+*.sql         text eol=lf
+
+# ==========================================================================
+# Binary files — git must never touch their bytes (no line-ending conversion).
+# ==========================================================================
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary
+*.pdf    binary
+*.tar    binary
+*.tar.gz binary
+*.gz     binary
+*.zip    binary

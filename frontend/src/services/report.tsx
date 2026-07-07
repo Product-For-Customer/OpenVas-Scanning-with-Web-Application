@@ -524,7 +524,8 @@ export const SendPDFToLine = async (
       params.task_id = normalizedTaskIDs.join(",");
     }
 
-    const response = await publicReportApi.get("/send-pdf-to-line", {
+    // POST (not GET): this action sends a message — see the backend route note.
+    const response = await publicReportApi.post("/send-pdf-to-line", null, {
       params,
     });
 
@@ -604,7 +605,7 @@ export const SendPDFToEmail = async (
   if (normalized.length > 0) {
     params.task_id = normalized.join(",");
   }
-  const response = await protectedReportApi.get("/send-pdf-to-email", { params });
+  const response = await protectedReportApi.post("/send-pdf-to-email", null, { params });
   return response.data as { message: string; email: string };
 };
 

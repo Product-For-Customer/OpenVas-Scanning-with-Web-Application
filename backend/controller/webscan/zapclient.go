@@ -157,6 +157,53 @@ func ClearRequestCookie() error {
 	return nil
 }
 
+// authHeaderRuleDescription identifies the Replacer rule SetRequestHeader
+// creates (an Authorization/bearer header), kept distinct from the cookie
+// rule so each can be added/removed independently.
+const authHeaderRuleDescription = "webscan-auth-header"
+
+// SetRequestHeader makes ZAP attach a fixed request header (e.g.
+// "Authorization: Bearer <token>") to every request matching urlPattern for
+// the rest of the current scan. This is the token-based counterpart to
+// SetRequestCookie, for APIs/SPAs that authenticate with a bearer token
+// rather than a session cookie.
+func SetRequestHeader(urlPattern, headerName, headerValue string) error {
+	params := url.Values{}
+	params.Set("description", authHeaderRuleDescription)
+	params.Set("enabled", "true")
+	params.Set("matchType", "REQ_HEADER")
+	params.Set("matchRegex", "false")
+	params.Set("matchString", headerName)
+	params.Set("replacement", headerValue)
+	params.Set("initiators", "")
+	params.Set("url", urlPattern)
+	return zapGet("/JSON/replacer/action/addRule/", params, nil)
+}
+
+// ClearRequestHeader removes the rule SetRequestHeader created. Called
+// unconditionally at scan end (like ClearRequestCookie) so a stale
+// Authorization header can never leak into the next target's scan.
+func ClearRequestHeader() error {
+	params := url.Values{}
+	params.Set("description", authHeaderRuleDescription)
+	_ = zapGet("/JSON/replacer/action/removeRule/", params, nil)
+	return nil
+}
+
+// ImportOpenAPI asks ZAP to import an OpenAPI/Swagger definition from specURL
+// so every documented endpoint is added to the scan tree before spidering —
+// covering API surfaces the crawler would never reach by following links.
+// hostOverride tells ZAP which host the (possibly relative) spec paths belong
+// to, set to the target's own origin.
+func ImportOpenAPI(specURL, hostOverride string) error {
+	params := url.Values{}
+	params.Set("url", specURL)
+	if hostOverride != "" {
+		params.Set("hostOverride", hostOverride)
+	}
+	return zapGet("/JSON/openapi/action/importUrl/", params, nil)
+}
+
 // StartSpider begins crawling targetURL and returns ZAP's scan id.
 func StartSpider(targetURL string) (string, error) {
 	params := url.Values{}

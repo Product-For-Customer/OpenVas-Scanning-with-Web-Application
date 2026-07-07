@@ -328,17 +328,22 @@ export const ListEmailAndPhoneNumber = async (): Promise<
 };
 
 // =======================
-// API: GET /existing-emails
-// PUBLIC — emails only, used by the Register page (no session yet) for its
-// live "this email is already taken" check. Use ListEmailAndPhoneNumber
-// (above) instead for any authenticated context that also needs phone
-// numbers or user IDs.
+// API: POST /check-email-available
+// PUBLIC — checks ONE email at a time and returns whether it is still
+// available (not yet registered). Replaces the old ListExistingEmails, which
+// downloaded every registered address to the browser (a bulk-enumeration
+// leak). Used by the Register page (no session yet) for its live
+// "this email is already taken" check.
+//
+// Fails "open" (returns true = available) on network/parse errors so a
+// transient backend hiccup never blocks a legitimate signup; the server-side
+// uniqueness check at submit time remains the source of truth.
 // =======================
-export const ListExistingEmails = async (): Promise<string[]> => {
+export const CheckEmailAvailable = async (email: string): Promise<boolean> => {
   try {
-    const response = await authApi.get("/existing-emails");
-    return Array.isArray(response.data) ? (response.data as string[]) : [];
+    const response = await authApi.post("/check-email-available", { email });
+    return response.data?.available !== false;
   } catch {
-    return [];
+    return true;
   }
 };

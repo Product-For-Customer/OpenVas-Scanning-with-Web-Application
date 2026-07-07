@@ -709,22 +709,39 @@ func ListEmailAndPhoneNumber(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// ListExistingEmails is the PUBLIC, narrowly-scoped counterpart to
-// ListEmailAndPhoneNumber above, used only for the Register page's
-// live "this email is already taken" client-side check before a session
-// exists. It intentionally returns emails only (lowercased, no IDs, no
-// phone numbers) so an unauthenticated caller can no longer bulk-harvest
-// every user's phone number the way the full endpoint used to allow.
-func ListExistingEmails(c *gin.Context) {
-	db := config.DB()
-
-	var emails []string
-	if err := db.Model(&entity.AppUser{}).Pluck("LOWER(email)", &emails).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "failed to fetch existing emails",
-		})
+// CheckEmailAvailable is the PUBLIC endpoint the Register page uses for its
+// live "this email is already taken" check before a session exists.
+//
+// It replaces the old ListExistingEmails, which dumped EVERY registered
+// email address to any anonymous caller — a bulk enumeration/harvesting
+// leak. This version answers one email at a time with only a boolean, so no
+// caller can pull the whole user list, and it sits in the tight per-IP
+// rate-limit bucket (see middleware/ratelimit.go) to throttle one-by-one
+// probing. It never echoes the submitted email back, to avoid becoming a
+// reflection oracle.
+func CheckEmailAvailable(c *gin.Context) {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
 		return
 	}
 
-	c.JSON(http.StatusOK, emails)
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email is required"})
+		return
+	}
+
+	db := config.DB()
+	var count int64
+	if err := db.Model(&entity.AppUser{}).
+		Where("LOWER(email) = ?", email).
+		Count(&count).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to check email"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"available": count == 0})
 }

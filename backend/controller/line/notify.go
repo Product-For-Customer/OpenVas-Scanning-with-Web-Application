@@ -1469,9 +1469,19 @@ func CreateAppNotificationByLine(c *gin.Context) {
 		return
 	}
 
-	if channelSecret := getLineChannelSecret(); channelSecret == "" {
-		log.Println("⚠️ line_channel_secret is not configured — webhook signature is NOT being verified")
-	} else if !verifyLineSignature(rawBody, c.GetHeader("X-Line-Signature"), channelSecret) {
+	// Fail closed: this endpoint is public, so an unverifiable request must be
+	// rejected — not accepted. Previously, when line_channel_secret was unset
+	// the handler logged a warning and processed the body anyway, letting
+	// anyone forge webhook events (spawning notifications / timers) with a
+	// plain unauthenticated POST. Now a missing secret rejects every call
+	// until an admin configures it, and a present secret is always verified.
+	channelSecret := getLineChannelSecret()
+	if channelSecret == "" {
+		log.Println("⚠️ line_channel_secret is not configured — rejecting webhook (configure it to enable the LINE integration)")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "line webhook is not configured"})
+		return
+	}
+	if !verifyLineSignature(rawBody, c.GetHeader("X-Line-Signature"), channelSecret) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid line signature"})
 		return
 	}

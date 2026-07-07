@@ -315,14 +315,74 @@ services:
       -config api.addrs.addr.name=.*
       -config api.addrs.addr.regex=true
 
+  # docker-socket-proxy sits between the backend and the real Docker socket.
+  # The backend needs Docker to (a) run throwaway Nmap containers for network
+  # discovery and (b) pull feed images / `docker compose up` for feed updates.
+  # Previously it got that by bind-mounting /var/run/docker.sock directly —
+  # which meant any RCE in the backend was instant host root (the socket is
+  # root-equivalent). Now only this tiny haproxy-based proxy holds the raw
+  # socket (read-only), and it exposes a filtered TCP API on the internal
+  # network that ALLOWS just the endpoints the two scripts use and DENIES the
+  # rest (exec, secrets, swarm, build, …). The proxy has no app code and is
+  # not published to the host.
+  #
+  # Residual limitation (documented, not solved here): container-create must
+  # stay allowed for Nmap/compose, so an attacker with backend RCE could still
+  # craft a container with a host bind-mount to escape. Fully closing that
+  # needs a dedicated, separately-sandboxed scan-runner service — a larger
+  # refactor. This change still removes the raw socket from the app container
+  # and blocks the exec/secrets/swarm/build vectors entirely.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest  # tiny (~5MB) haproxy; pin to a digest for production
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    # Defense-in-depth: this container brokers Docker access, so forbid it from
+    # ever gaining new privileges via setuid binaries.
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      # --- Allowed: exactly what discovery-scan.sh + update-feed.sh need ---
+      - POST=1           # required — create/start/pull/restart are POST requests
+      - CONTAINERS=1     # `docker run` (Nmap) + compose create/start
+      - IMAGES=1         # `docker pull` feed images + image inspect
+      - NETWORKS=1       # compose networks
+      - VOLUMES=1        # compose named volumes
+      - INFO=1           # scripts call `docker info` as a readiness probe
+      - VERSION=1        # CLI/compose API-version negotiation
+      - PING=1
+      - ALLOW_RESTARTS=1 # compose restart gvmd/ospd-openvas/openvasd/openvas
+      # --- Denied: dangerous and unused by this app (0 = blocked) ---
+      - EXEC=0           # no `docker exec` into the running privileged scanner containers
+      - AUTH=0
+      - SECRETS=0
+      - CONFIGS=0
+      - SERVICES=0
+      - TASKS=0
+      - SWARM=0
+      - NODES=0
+      - PLUGINS=0
+      - SYSTEM=0
+      - BUILD=0
+      - COMMIT=0
+      - DISTRIBUTION=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
   backend:
     build: ./backend
     container_name: backend
     restart: unless-stopped
+    # The backend holds brokered Docker access, so lock down privilege
+    # escalation inside it. Safe with the bundled Chromium: report PDF capture
+    # runs it with --no-sandbox/--disable-setuid-sandbox (see report/pdf.go), so
+    # nothing here relies on gaining privileges through a setuid binary.
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "9000:9000"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      # NOTE: the raw docker.sock bind-mount was removed — the backend now
+      # reaches Docker only through docker-socket-proxy (see DOCKER_HOST below).
       - ./backend/scripts:/app/scripts:ro
       - .:/workspace:ro
       - ./backend/tmp/reports:/app/tmp/reports
@@ -335,9 +395,13 @@ services:
       - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
       - ZAP_API_URL=http://zap:8080
       - ZAP_API_KEY=${ZAP_API_KEY}
+      # Route every `docker` / `docker compose` call through the filtered proxy
+      # instead of a locally-mounted socket.
+      - DOCKER_HOST=tcp://docker-socket-proxy:2375
     depends_on:
       - pg-gvm
       - zap
+      - docker-socket-proxy
 
   frontend:
     build:

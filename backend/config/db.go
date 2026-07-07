@@ -107,14 +107,31 @@ func SetupDatabase() {
 		&entity.AppWebScanTarget{},
 		&entity.AppWebScanResult{},
 		&entity.AppWebScanFinding{},
+		&entity.AppEOLCache{},
+		&entity.AppReportDigestSchedule{},
 	)
 	if err != nil {
 		log.Fatalf("❌ AutoMigrate failed: %v", err)
 	}
 
 	ensureAuditLogIndexes()
+	dropDeprecatedTables()
 
 	fmt.Println("✅ AutoMigrate completed")
+}
+
+// dropDeprecatedTables removes tables from features that were fully removed, so
+// they don't linger as orphans after their entity/code was deleted. AutoMigrate
+// never drops tables on its own. DROP TABLE IF EXISTS makes this idempotent and
+// a cheap no-op once the tables are gone.
+//   - app_nuclei_scan_results / app_nuclei_findings: the Nuclei template
+//     scanner was removed 2026-07-07.
+// Safe to delete this function once every deployment has started at least once
+// after that date.
+func dropDeprecatedTables() {
+	if err := db.Exec(`DROP TABLE IF EXISTS app_nuclei_findings, app_nuclei_scan_results`).Error; err != nil {
+		log.Printf("⚠️ could not drop deprecated nuclei tables: %v", err)
+	}
 }
 
 // ensureAuditLogIndexes adds an index on audit_logs.created_at. GORM's

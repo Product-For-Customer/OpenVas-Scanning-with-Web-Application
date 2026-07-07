@@ -46,19 +46,30 @@ type targetInput struct {
 	// field elsewhere in this app) — there is no separate "clear it" action
 	// via this field; delete and recreate the target for that.
 	AuthCookie string `json:"auth_cookie"`
+	// AuthHeader: an optional raw Authorization header value (e.g.
+	// "Bearer eyJ...") for token-authenticated APIs/SPAs. Same "empty on
+	// update = leave unchanged" convention as AuthCookie.
+	AuthHeader string `json:"auth_header"`
+	// OpenAPIURL: optional OpenAPI/Swagger spec URL imported before spidering
+	// so documented API endpoints get scanned. Not a secret.
+	OpenAPIURL string `json:"openapi_url"`
 }
 
-// targetResponse embeds the entity (whose AuthCookie field is already
-// json:"-", so it's never at risk of being echoed back) and adds a computed
-// boolean so the frontend can show "authenticated" without ever seeing the
-// actual cookie value.
+// targetResponse embeds the entity (whose secret fields are already json:"-",
+// so they're never at risk of being echoed back) and adds computed booleans so
+// the frontend can show "authenticated" without ever seeing the actual values.
 type targetResponse struct {
 	entity.AppWebScanTarget
 	HasAuthCookie bool `json:"has_auth_cookie"`
+	HasAuthHeader bool `json:"has_auth_header"`
 }
 
 func toTargetResponse(t entity.AppWebScanTarget) targetResponse {
-	return targetResponse{AppWebScanTarget: t, HasAuthCookie: strings.TrimSpace(t.AuthCookie) != ""}
+	return targetResponse{
+		AppWebScanTarget: t,
+		HasAuthCookie:    strings.TrimSpace(t.AuthCookie) != "",
+		HasAuthHeader:    strings.TrimSpace(t.AuthHeader) != "",
+	}
 }
 
 func ListWebScanTargets(c *gin.Context) {
@@ -88,11 +99,23 @@ func CreateWebScanTarget(c *gin.Context) {
 		return
 	}
 
+	// If an OpenAPI spec URL is supplied, it's fetched by ZAP at scan time, so
+	// it goes through the same SSRF allowlist as the target itself.
+	openAPIURL := strings.TrimSpace(input.OpenAPIURL)
+	if openAPIURL != "" {
+		if err := ValidateTargetURL(openAPIURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "openapi_url: " + err.Error()})
+			return
+		}
+	}
+
 	target := entity.AppWebScanTarget{
 		Name:        strings.TrimSpace(input.Name),
 		URL:         strings.TrimSpace(input.URL),
 		Description: strings.TrimSpace(input.Description),
 		AuthCookie:  strings.TrimSpace(input.AuthCookie),
+		AuthHeader:  strings.TrimSpace(input.AuthHeader),
+		OpenAPIURL:  openAPIURL,
 	}
 
 	db := config.DB()
@@ -131,11 +154,25 @@ func UpdateWebScanTarget(c *gin.Context) {
 		return
 	}
 
+	openAPIURL := strings.TrimSpace(input.OpenAPIURL)
+	if openAPIURL != "" {
+		if err := ValidateTargetURL(openAPIURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "openapi_url: " + err.Error()})
+			return
+		}
+	}
+
 	target.Name = strings.TrimSpace(input.Name)
 	target.URL = strings.TrimSpace(input.URL)
 	target.Description = strings.TrimSpace(input.Description)
+	// OpenAPIURL is not a secret and can be cleared by sending an empty string.
+	target.OpenAPIURL = openAPIURL
+	// Secret fields follow the "empty on update = leave unchanged" convention.
 	if trimmed := strings.TrimSpace(input.AuthCookie); trimmed != "" {
 		target.AuthCookie = trimmed
+	}
+	if trimmed := strings.TrimSpace(input.AuthHeader); trimmed != "" {
+		target.AuthHeader = trimmed
 	}
 
 	if err := db.Save(&target).Error; err != nil {
@@ -359,7 +396,7 @@ func TriggerWebScan(c *gin.Context) {
 	currentResultID = result.ID
 	scanMu.Unlock()
 
-	go runWebScan(result.ID, target.Name, target.URL, input.ScanType, target.AuthCookie)
+	go runWebScan(result.ID, target, input.ScanType)
 
 	// Notify LINE: web scan started (with target URL)
 	go line.SendScanNotification(buildWebScanStartMessage(target.Name, target.URL, input.ScanType))
@@ -464,6 +501,48 @@ func ListWebScanResults(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": results})
 }
 
+// DeleteWebScanResult removes one scan-history row and its findings. A scan
+// that is still in progress (or is the currently running one) can't be
+// deleted — stop it first.
+func DeleteWebScanResult(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid result id"})
+		return
+	}
+
+	db := config.DB()
+	var result entity.AppWebScanResult
+	if err := db.First(&result, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	if result.Status == "spidering" || result.Status == "active_scanning" {
+		c.JSON(http.StatusConflict, gin.H{"error": "cannot delete a scan that is still running — stop it first"})
+		return
+	}
+	scanMu.Lock()
+	isCurrent := isScanning && currentResultID == uint(id)
+	scanMu.Unlock()
+	if isCurrent {
+		c.JSON(http.StatusConflict, gin.H{"error": "cannot delete the currently running scan"})
+		return
+	}
+
+	if err := db.Where("result_id = ?", id).Delete(&entity.AppWebScanFinding{}).Error; err != nil {
+		services.RespondInternalError(c, err)
+		return
+	}
+	if err := db.Delete(&result).Error; err != nil {
+		services.RespondInternalError(c, err)
+		return
+	}
+
+	audit.Log(c, "webscan.result_deleted", "webscan_result", fmt.Sprintf("%d", id), "deleted a web scan result")
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
+}
+
 func ListWebScanFindings(c *gin.Context) {
 	resultID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -490,17 +569,29 @@ func ListWebScanFindings(c *gin.Context) {
 const pollInterval = 3 * time.Second
 const scanOverallTimeout = 3 * time.Hour
 
-func runWebScan(resultID uint, targetName string, targetURL string, scanType string, authCookie string) {
+func runWebScan(resultID uint, target entity.AppWebScanTarget, scanType string) {
+	// Local aliases keep the rest of this function unchanged while the caller
+	// now passes the whole target (so the aux capture below has everything it
+	// needs — URL, auth, etc.).
+	targetName := target.Name
+	targetURL := target.URL
+	authCookie := target.AuthCookie
+	authHeader := target.AuthHeader
+	openAPIURL := target.OpenAPIURL
+
 	defer func() {
 		scanMu.Lock()
 		isScanning = false
 		scanMu.Unlock()
 
-		// Unconditional, regardless of whether this scan set a cookie at
+		// Unconditional, regardless of whether this scan set a cookie/header at
 		// all or failed/stopped partway through — a stale Replacer rule
 		// must never survive to leak into the next scan's requests.
 		if err := ClearRequestCookie(); err != nil {
 			log.Println("⚠️ webscan: failed to clear auth cookie rule:", err)
+		}
+		if err := ClearRequestHeader(); err != nil {
+			log.Println("⚠️ webscan: failed to clear auth header rule:", err)
 		}
 	}()
 
@@ -525,13 +616,40 @@ func runWebScan(resultID uint, targetName string, targetURL string, scanType str
 		return
 	}
 
+	// Capture the lightweight HTTP security-header/TLS grade + technology/EOL
+	// fingerprint for this target and store them on the result, so the Scan
+	// History detail shows ZAP findings + grade + tech from a single scan.
+	// Runs in its own goroutine so its ~2 short HTTP fetches don't delay the
+	// ZAP spider start; it only touches its own columns on the result row
+	// (grade/http_audit_json/fingerprint_json/eol_warnings), so it can't clash
+	// with the scan's status/progress updates. Best-effort — never aborts the
+	// scan, and is bounded by httpAuditTimeout so it can't outlive it.
+	go captureAuxData(resultID, target)
+
+	// Auth rules are scoped to this target's own origin (escaped for regex
+	// safety) so credentials are only ever attached to requests actually going
+	// to this target, not anything else ZAP might touch.
+	urlPattern := regexp.QuoteMeta(targetURL) + ".*"
 	if strings.TrimSpace(authCookie) != "" {
-		// Scoped to this target's own origin (escaped for regex safety) so
-		// the cookie is only ever attached to requests actually going to
-		// this target, not anything else ZAP might touch.
-		if err := SetRequestCookie(regexp.QuoteMeta(targetURL)+".*", authCookie); err != nil {
+		if err := SetRequestCookie(urlPattern, authCookie); err != nil {
 			fail("failed to configure authentication cookie: " + err.Error())
 			return
+		}
+	}
+	if strings.TrimSpace(authHeader) != "" {
+		if err := SetRequestHeader(urlPattern, "Authorization", authHeader); err != nil {
+			fail("failed to configure authentication header: " + err.Error())
+			return
+		}
+	}
+
+	// Import the OpenAPI/Swagger spec (if any) BEFORE spidering so its
+	// endpoints are already in ZAP's tree when the crawl + active scan run.
+	// A failed import is non-fatal — log it and continue with a normal crawl
+	// rather than aborting the whole scan over an unreachable/invalid spec.
+	if strings.TrimSpace(openAPIURL) != "" {
+		if err := ImportOpenAPI(openAPIURL, targetURL); err != nil {
+			log.Println("⚠️ webscan: OpenAPI import failed (continuing with crawl only):", err)
 		}
 	}
 
@@ -659,6 +777,32 @@ func runWebScan(resultID uint, targetName string, targetURL string, scanType str
 
 	// Notify LINE: web scan done (with findings summary)
 	line.SendScanNotification(buildWebScanDoneMessage(targetName, targetURL, scanType, counts))
+}
+
+// captureAuxData runs the header/TLS grade + tech/EOL fingerprint for a target
+// and persists them onto its scan result row. Each half is best-effort: a
+// failure is logged and skipped so it can never fail the surrounding ZAP scan.
+func captureAuxData(resultID uint, target entity.AppWebScanTarget) {
+	db := config.DB()
+
+	if audit, err := runHTTPAudit(target); err != nil {
+		log.Println("⚠️ webscan: header/TLS grade capture failed:", err)
+	} else if b, err := json.Marshal(audit); err == nil {
+		db.Model(&entity.AppWebScanResult{}).Where("id = ?", resultID).Updates(map[string]interface{}{
+			"security_grade":  audit.Grade,
+			"security_score":  audit.Score,
+			"http_audit_json": string(b),
+		})
+	}
+
+	if fp, err := runFingerprintForTarget(target); err != nil {
+		log.Println("⚠️ webscan: technology fingerprint capture failed:", err)
+	} else if b, err := json.Marshal(fp); err == nil {
+		db.Model(&entity.AppWebScanResult{}).Where("id = ?", resultID).Updates(map[string]interface{}{
+			"fingerprint_json": string(b),
+			"eol_warnings":     fp.EOLWarnings,
+		})
+	}
 }
 
 func normalizeRisk(r string) string {

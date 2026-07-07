@@ -24,7 +24,18 @@ type AppWebScanTarget struct {
 	// `json:"-"`: never echoed back in any API response (same treatment as
 	// LINE tokens/Gmail app passwords elsewhere in this app) — only
 	// accepted on write, via the separate targetInput struct in webscan.go.
-	AuthCookie string         `gorm:"column:auth_cookie;type:text" json:"-"`
+	AuthCookie string `gorm:"column:auth_cookie;type:text" json:"-"`
+	// AuthHeader is an optional raw Authorization header value (e.g.
+	// "Bearer eyJhbGc...") for APIs / SPAs that authenticate with a token
+	// rather than a session cookie. Same secret treatment as AuthCookie:
+	// `json:"-"`, write-only, never echoed back — the frontend only learns
+	// whether one is set via the computed HasAuthHeader flag.
+	AuthHeader string `gorm:"column:auth_header;type:text" json:"-"`
+	// OpenAPIURL, when set, points at an OpenAPI/Swagger spec (JSON or YAML).
+	// Before spidering, ZAP imports it so every documented endpoint is added
+	// to the scan tree — this is how API surfaces that the crawler would never
+	// discover by following links get covered. Not a secret, so it IS returned.
+	OpenAPIURL string         `gorm:"column:openapi_url;type:text" json:"openapi_url"`
 	CreatedAt  time.Time      `json:"created_at"`
 	UpdatedAt  time.Time      `json:"updated_at"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
@@ -46,6 +57,17 @@ type AppWebScanResult struct {
 	Medium          int            `gorm:"column:medium" json:"medium"`
 	Low             int            `gorm:"column:low" json:"low"`
 	Informational   int            `gorm:"column:informational" json:"informational"`
+	// ── B-2/B-3 captured alongside the ZAP scan (see webscan.captureAuxData) ──
+	// SecurityGrade/Score summarise the HTTP security-header + TLS check;
+	// HTTPAuditJSON holds the full httpAuditResult and FingerprintJSON the full
+	// fingerprintResult, both stored opaquely as JSON and parsed by the
+	// frontend's Scan History detail. EOLWarnings is the count of end-of-life
+	// technologies detected. All empty/zero for older scans or a failed capture.
+	SecurityGrade   string         `gorm:"column:security_grade" json:"security_grade"`
+	SecurityScore   int            `gorm:"column:security_score" json:"security_score"`
+	HTTPAuditJSON   string         `gorm:"column:http_audit_json;type:text" json:"http_audit_json"`
+	FingerprintJSON string         `gorm:"column:fingerprint_json;type:text" json:"fingerprint_json"`
+	EOLWarnings     int            `gorm:"column:eol_warnings" json:"eol_warnings"`
 	ErrorMessage    string         `gorm:"column:error_message;type:text" json:"error_message"`
 	StartedAt       time.Time      `gorm:"column:started_at" json:"started_at"`
 	FinishedAt      *time.Time     `gorm:"column:finished_at" json:"finished_at"`
