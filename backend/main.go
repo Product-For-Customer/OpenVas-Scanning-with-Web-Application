@@ -19,6 +19,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/line"
 	"github.com/Tawunchai/openvas/controller/location"
 	"github.com/Tawunchai/openvas/controller/otp"
+	"github.com/Tawunchai/openvas/controller/remediation"
 	"github.com/Tawunchai/openvas/controller/report"
 	"github.com/Tawunchai/openvas/controller/risk"
 	"github.com/Tawunchai/openvas/controller/role"
@@ -55,6 +56,7 @@ func main() {
 	go threat.StartKEVSyncScheduler() // เริ่ม scheduler ซิงค์ CISA KEV catalog ทุกวัน
 	go threat.StartExploitIntelScheduler() // เริ่ม scheduler ซิงค์ Exploit-DB/Metasploit intel ทุกวัน
 	go risk.StartEPSSSyncScheduler()
+	go remediation.StartRemediationSyncScheduler() // เริ่ม closed-loop remediation sync (auto-open/verify/reopen)
 	go schedule.StartAutoScanScheduler()       // เริ่ม auto scan scheduler ตรวจทุก 1 นาที
 	go feedschedule.StartFeedUpdateScheduler() // เริ่ม feed update scheduler ที่ config ได้
 	go report.StartReportCleanupScheduler()    // ลบไฟล์ PDF ที่ generate ไว้ชั่วคราวเมื่อเก่าเกินไป
@@ -333,6 +335,16 @@ func main() {
 		authorized.POST("/risk/asset-criticality", risk.CreateAssetCriticality)
 		authorized.PATCH("/risk/asset-criticality/:id", risk.UpdateAssetCriticality)
 		authorized.DELETE("/risk/asset-criticality/:id", risk.DeleteAssetCriticality)
+
+		// ===== Closed-Loop Remediation =====
+		authorized.GET("/remediations", remediation.ListRemediations)
+		authorized.GET("/remediations/summary", remediation.GetRemediationSummary)
+		authorized.GET("/remediations/:id", remediation.GetRemediation)
+		authorized.GET("/remediations/:id/fix-script", remediation.GetFixScript)
+		authorized.PATCH("/remediations/:id", remediation.UpdateRemediation)
+		authorized.POST("/remediations/:id/notes", remediation.AddNote)
+		authorized.POST("/remediations/:id/rescan", remediation.RescanRemediation)
+		authorized.POST("/remediations/sync", remediation.TriggerSync)
 
 		// ===== Compliance Framework =====
 		authorized.GET("/compliance/report", compliance.GetComplianceReport)

@@ -353,6 +353,17 @@ func sendLinePushToAllNotifications(message string) error {
 	return nil
 }
 
+// BroadcastText pushes a plain-text message to every LINE recipient that has
+// alerts enabled, reusing the exact fan-out the built-in status alerts use.
+// Exported so other features — e.g. the remediation lifecycle engine announcing
+// verified-closed / reopened / SLA-breach events — can notify through the same
+// channel without duplicating recipient/token handling. Best-effort by nature:
+// callers typically ignore the error (a missing recipient shouldn't fail a scan
+// reconciliation).
+func BroadcastText(message string) error {
+	return sendLinePushToAllNotifications(message)
+}
+
 // =====================================================
 // PostgreSQL Ready Wait (for pq listener)
 // =====================================================

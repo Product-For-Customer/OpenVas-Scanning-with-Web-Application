@@ -19,6 +19,7 @@ import {
   FiWifi,
   FiGlobe,
   FiRadio,
+  FiTool,
 } from "react-icons/fi";
 import { MdSpaceDashboard, MdDashboardCustomize, MdAdminPanelSettings } from "react-icons/md";
 import { FaProjectDiagram, FaVirus } from "react-icons/fa";
@@ -58,6 +59,7 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       links: filterLinks([
         { name: "dashboard",     icon: <MdSpaceDashboard />, labelKey: "nav.dashboard", category: "dashboard" },
         { name: "vulnerability", icon: <FaVirus />,           labelKey: "nav.vulnerability", category: "dashboard" },
+        { name: "remediation",   icon: <FiTool />,            labelKey: "nav.remediation", category: "dashboard" },
         { name: "target",        icon: <FiTarget />,          labelKey: "nav.target", category: "dashboard" },
       ]),
     },

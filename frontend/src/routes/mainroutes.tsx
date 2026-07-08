@@ -24,6 +24,7 @@ const DiagramNode        = Loadable(lazy(() => import("../page/Diagram/Node/inde
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
 const ScanManagement     = Loadable(lazy(() => import("../page/ScanManagement/index")));
 const Compliance         = Loadable(lazy(() => import("../page/Compliance/index")));
+const Remediation        = Loadable(lazy(() => import("../page/Remediation/index")));
 const ComplianceControl  = Loadable(lazy(() => import("../page/Compliance/Control/index")));
 const PasswordPolicy     = Loadable(lazy(() => import("../page/PasswordPolicy/index")));
 const VulnerabilityDelta = Loadable(lazy(() => import("../page/Vulnerability/Delta/index")));
@@ -87,6 +88,7 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "vulnerability-by-level",              element: <VulnerabilityByLevel />, category: "dashboard" },
   { path: "vulnerability-detail",                element: <VulnerabilityDetail />, category: "dashboard" },
   { path: "vulnerability-delta",                  element: <VulnerabilityDelta />, category: "dashboard" },
+  { path: "remediation",                          element: <Remediation />, category: "dashboard" },
   { path: "status-target-data",                  element: <StatusTargetData />, category: "dashboard" },
   { path: "host/:ip",                            element: <HostDetail />, category: "dashboard" },
 

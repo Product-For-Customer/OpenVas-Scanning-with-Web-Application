@@ -290,6 +290,19 @@ func riskLevel(score float64) string {
 	}
 }
 
+// CalcRiskScore and RiskLevelFor expose the internal composite-risk formula to
+// other packages (the remediation lifecycle engine) so both features compute
+// identical scores from the same inputs — CVSS, EPSS, KEV/ransomware flags and
+// asset criticality — instead of drifting apart with duplicated maths.
+func CalcRiskScore(cvssScore, epssScore float64, isKEV, isRansomware bool, criticalityScore int) float64 {
+	return calcRiskScore(cvssScore, epssScore, isKEV, isRansomware, criticalityScore)
+}
+
+// RiskLevelFor maps a composite risk score to its CRITICAL/HIGH/MEDIUM/LOW band.
+func RiskLevelFor(score float64) string {
+	return riskLevel(score)
+}
+
 // ===========================
 // DTOs
 // ===========================

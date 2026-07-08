@@ -41,6 +41,16 @@ var RouteCategory = map[string]string{
 	"/compliance/violations":    "dashboard",
 	"/compliance/control-vulns": "dashboard",
 
+	// ── Closed-Loop Remediation (auto-opened from scan findings; view =
+	//    dashboard.view, workflow changes = dashboard.manage) ──────────────
+	"/remediations":                "dashboard",
+	"/remediations/summary":        "dashboard",
+	"/remediations/:id":            "dashboard",
+	"/remediations/:id/fix-script": "dashboard",
+	"/remediations/:id/notes":      "dashboard",
+	"/remediations/:id/rescan":     "dashboard",
+	"/remediations/sync":           "dashboard",
+
 	// ── Report data endpoints (2026-07-05: gated behind report.CaptureOrAuth,
 	//    which falls back to this normal session+permission check for anyone
 	//    without the internal capture token) ──────────────────────────────
