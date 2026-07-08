@@ -17,7 +17,6 @@ import {
   MdMemory,
   MdSecurity,
 } from "react-icons/md";
-import { useNavigate } from "react-router-dom";
 import type { DeviceRiskDTO } from "../../../services";
 
 type SortOrder = "desc" | "asc";
@@ -115,7 +114,6 @@ const buildPageNumbers = (currentPage: number, totalPages: number): number[] => 
 
 const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
   const { t } = useLanguage();
-  const navigate = useNavigate();
   const { currentColor } = useStateContext();
 
   const [search,         setSearch]         = useState("");
@@ -242,13 +240,6 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
 
   useEffect(() => { setCurrentPage(1); }, [search, sortOrder, selectedTargets]);
   useEffect(() => { if (currentPage > totalPages) setCurrentPage(totalPages); }, [currentPage, totalPages]);
-
-  const goToDevice = (row: Row) => {
-    if (!row.taskID.trim()) return;
-    navigate("/admin/vulnerability-by-device", {
-      state: { task_id: row.taskID, ip_address: row.ip, task_name: row.name, firmware_version: row.firmwareVersion },
-    });
-  };
 
   // ─────────────────────────────────────────────────────────────
   // Render
@@ -443,11 +434,7 @@ const TableTarget: React.FC<TableTargetProps> = ({ data, loading }) => {
                   return (
                     <tr
                       key={row.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => goToDevice(row)}
-                      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goToDevice(row); } }}
-                      className="cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/60 focus:bg-slate-50/80 focus:outline-none dark:border-white/5 dark:hover:bg-white/3 dark:focus:bg-white/5"
+                      className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/60 dark:border-white/5 dark:hover:bg-white/3"
                     >
                       {/* No */}
                       <td className="whitespace-nowrap px-4 py-3.5 text-[12px] text-slate-500 dark:text-white/50">

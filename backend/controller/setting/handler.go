@@ -49,6 +49,25 @@ func GetAppTimezone() string {
 	return tzCached
 }
 
+// AppTimezoneSQL returns the app timezone guaranteed safe to interpolate
+// directly into a SQL literal (e.g. AT TIME ZONE '<tz>'). The stored value is
+// already validated on write, but many raw queries build the tz into the SQL
+// string by hand; re-validating here at read time means a tainted value could
+// never reach a query even if the write-side validation ever regressed. Any
+// value that isn't a loadable IANA zone, or that contains a quote/metacharacter,
+// falls back to UTC. Prefer this over GetAppTimezone() anywhere the result is
+// concatenated into SQL.
+func AppTimezoneSQL() string {
+	tz := GetAppTimezone()
+	if strings.ContainsAny(tz, "'\";\\ \t\r\n") {
+		return "UTC"
+	}
+	if _, err := time.LoadLocation(tz); err != nil {
+		return "UTC"
+	}
+	return tz
+}
+
 func setTimezoneCache(tz string) {
 	tzMu.Lock()
 	tzCached = tz

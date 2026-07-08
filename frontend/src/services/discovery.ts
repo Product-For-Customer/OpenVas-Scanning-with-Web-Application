@@ -98,8 +98,3 @@ export const GetDiscoveryScanStatus = async (): Promise<DiscoveryScanStatusDTO |
 export const TriggerDiscoveryScan = async (): Promise<void> => {
   await baseApi.post("/discovery/trigger");
 };
-
-export const AcknowledgeDiscoveredHost = async (id: number): Promise<DiscoveredHostDTO> => {
-  const res = await baseApi.patch(`/discovery/hosts/${id}/acknowledge`);
-  return (res.data?.data ?? res.data) as DiscoveredHostDTO;
-};

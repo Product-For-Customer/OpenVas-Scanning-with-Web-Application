@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Tawunchai/openvas/config"
+	"github.com/Tawunchai/openvas/controller/risk"
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/gin-gonic/gin"
 )
@@ -150,6 +151,15 @@ type CVEEnrichDTO struct {
 	NVD     *NVDCVEDetailDTO `json:"nvd"`
 	KEV     *KEVEntryDTO     `json:"kev"`
 	Exploit *ExploitIntelDTO `json:"exploit"`
+	EPSS    *EPSSEnrichDTO   `json:"epss"`
+}
+
+// EPSSEnrichDTO คือคะแนน EPSS (ความน่าจะถูกโจมตีใน 30 วัน) ต่อ CVE — เสิร์ฟจาก
+// cache ฝั่ง backend แทนที่จะให้ browser ยิง first.org เอง
+type EPSSEnrichDTO struct {
+	Score      float64 `json:"score"`      // 0-1
+	Percentile float64 `json:"percentile"` // 0-1
+	Date       string  `json:"date"`
 }
 
 // ===========================
@@ -466,6 +476,10 @@ func EnrichCVEs(c *gin.Context) {
 	// Bulk-load Exploit Availability Intel (offline Exploit-DB/Metasploit cache)
 	exploitMap := loadExploitIntelMap(cveIDs)
 
+	// Bulk-load EPSS from the backend cache (fetches misses from first.org once,
+	// then caches) so the browser no longer calls first.org per page load.
+	epssMap := risk.GetOrFetchEPSS(cveIDs)
+
 	result := make(map[string]*CVEEnrichDTO, len(cveIDs))
 
 	for _, cveID := range cveIDs {
@@ -487,6 +501,10 @@ func EnrichCVEs(c *gin.Context) {
 		if ex, ok := exploitMap[cveID]; ok {
 			exDTO := entityToExploitDTO(ex)
 			dto.Exploit = &exDTO
+		}
+
+		if ep, ok := epssMap[cveID]; ok {
+			dto.EPSS = &EPSSEnrichDTO{Score: ep.EPSSScore, Percentile: ep.Percentile, Date: ep.ScoreDate}
 		}
 
 		result[cveID] = dto

@@ -381,7 +381,7 @@ LIMIT COALESCE(NULLIF(?, '')::int, 50);
 `
 
 	out := make([]CriticalForReportDTO, 0)
-	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.AppTimezoneSQL()+"'")
 	if err := db.Raw(query, taskIDRaw, allowedTaskIDs, taskIDRaw, limit).Scan(&out).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "failed to load critical findings for report",

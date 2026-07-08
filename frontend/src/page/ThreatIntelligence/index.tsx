@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FiAlertTriangle,
   FiShield,
@@ -14,7 +13,7 @@ import {
 import {
   GetKEVSummary,
   GetKEVSyncStatus,
-  ListKEVCatalog,
+  ListKEVCatalogPaged,
   type KEVByHost,
   type KEVEntryDTO,
   type KEVSummaryDTO,
@@ -30,6 +29,30 @@ import { useStateContext } from "../../contexts/ProviderContext";
 const Pulse: React.FC = () => (
   <span className="inline-block h-5.5 w-12 animate-pulse rounded-lg bg-slate-100 dark:bg-white/10" />
 );
+
+// Linkify แปลง URL ในข้อความให้เป็นลิงก์กดได้ (ใช้กับ Notes ของ KEV ที่มักมีหลาย URL)
+const Linkify: React.FC<{ text: string }> = ({ text }) => {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (!/^https?:\/\//.test(part)) return <React.Fragment key={i}>{part}</React.Fragment>;
+        // แยกเครื่องหมายวรรคตอนท้าย URL ออก ไม่ให้ติดไปในลิงก์
+        const trail = part.match(/[.,;:)\]]+$/)?.[0] ?? "";
+        const url = trail ? part.slice(0, part.length - trail.length) : part;
+        return (
+          <React.Fragment key={i}>
+            <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+              className="wrap-break-word text-blue-600 hover:underline dark:text-blue-400">
+              {url}
+            </a>
+            {trail}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+};
 
 type SummaryCardProps = {
   label: string;
@@ -181,8 +204,8 @@ const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
                       <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">
                         {t("threat.notes")}
                       </p>
-                      <p className="mt-1 text-[11px] text-slate-500 dark:text-white/55">
-                        {entry.notes}
+                      <p className="mt-1 wrap-break-word text-[11px] text-slate-500 dark:text-white/55">
+                        <Linkify text={entry.notes} />
                       </p>
                     </>
                   )}
@@ -197,58 +220,179 @@ const KEVRow: React.FC<{ entry: KEVEntryDTO; index: number }> = ({ entry }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// Host Scan Row
+// Host KEV Row — one KEV CVE on a host, expandable to full detail
 // ─────────────────────────────────────────────────────────────
 
-const HostScanRow: React.FC<{
-  host: KEVByHost;
-  index: number;
-  onClick: () => void;
-}> = ({ host, index, onClick }) => {
-  const ransomwareCount = host.cve_list.filter((c) => c.is_ransomware_related).length;
+const HostKEVRow: React.FC<{ entry: KEVEntryDTO }> = ({ entry }) => {
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
+  const accent = entry.is_ransomware_related ? "#dc2626" : "#f97316";
 
   return (
-    <tr
-      onClick={onClick}
-      className="group border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3"
-    >
-      <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-400 dark:text-white/30">
-        {index + 1}
-      </td>
-      <td className="px-4 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
-            <FiServer className="text-[12px]" />
+    <>
+      <tr onClick={() => setOpen((p) => !p)} className="cursor-pointer border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3">
+        {/* CVE */}
+        <td className="px-3 py-2.5">
+          <a href={`https://nvd.nist.gov/vuln/detail/${entry.cve_id}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-slate-700 hover:underline dark:text-white/80">
+            {entry.cve_id}
+            <FiExternalLink className="text-[8px] opacity-50" />
+          </a>
+        </td>
+        {/* Vulnerability name + vendor/product */}
+        <td className="px-3 py-2.5">
+          <p className="max-w-65 truncate text-[11.5px] font-medium text-slate-700 dark:text-white/75" title={entry.vulnerability_name}>{entry.vulnerability_name || "—"}</p>
+          <p className="text-[10px] text-slate-400 dark:text-white/35">{entry.vendor_project} · {entry.product}</p>
+        </td>
+        {/* Tags */}
+        <td className="px-3 py-2.5">
+          <div className="flex flex-wrap gap-1.5">
+            <KEVBadge isRansomware={false} />
+            {entry.is_ransomware_related && <KEVBadge isRansomware={true} />}
           </div>
-          <div>
-            <p className="font-mono text-[12.5px] font-bold text-slate-800 dark:text-white/88">
-              {host.host_ip}
-            </p>
-            <p className="text-[10px] text-slate-400 dark:text-white/35">
-              {host.task_name || "—"}
-            </p>
+        </td>
+        {/* Date added / due */}
+        <td className="hidden px-3 py-2.5 text-[10.5px] text-slate-500 dark:text-white/45 lg:table-cell">
+          <div className="flex items-center gap-1.5"><FiCalendar className="text-[10px]" />{entry.date_added || "—"}</div>
+          {entry.due_date && <div className="mt-0.5 text-[10px] text-rose-600 dark:text-rose-400">{t("threat.due", { date: entry.due_date })}</div>}
+        </td>
+        {/* chevron */}
+        <td className="px-3 py-2.5 text-right">
+          <FiChevronRight className={`ml-auto text-[12px] text-slate-400 transition-transform dark:text-white/30 ${open ? "rotate-90" : ""}`} />
+        </td>
+      </tr>
+      {open && (
+        <tr className="border-b border-slate-100 last:border-0 dark:border-white/6">
+          <td colSpan={5} className="bg-slate-50/50 px-3 pb-3.5 pt-0 dark:bg-white/2">
+            <div className="rounded-xl border border-slate-200/70 bg-white p-3.5 dark:border-white/8 dark:bg-white/4">
+              {/* full vulnerability name (row above is truncated) */}
+              <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 border-b border-slate-100 pb-2.5 dark:border-white/8">
+                <span className="font-mono text-[11px] font-bold" style={{ color: accent }}>{entry.cve_id}</span>
+                <span className="text-[12.5px] font-semibold text-slate-800 dark:text-white/85">{entry.vulnerability_name || "—"}</span>
+              </div>
+              {/* meta strip */}
+              <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[10.5px]">
+                <span className="text-slate-400 dark:text-white/35">{t("threat.colVendor")}: <span className="font-semibold text-slate-600 dark:text-white/70">{entry.vendor_project || "—"}</span></span>
+                <span className="text-slate-400 dark:text-white/35">{t("threat.colProduct")}: <span className="font-semibold text-slate-600 dark:text-white/70">{entry.product || "—"}</span></span>
+                <span className="text-slate-400 dark:text-white/35">{t("threat.colDateAdded")}: <span className="font-semibold text-slate-600 dark:text-white/70">{entry.date_added || "—"}</span></span>
+                {entry.due_date && <span className="text-slate-400 dark:text-white/35">{t("threat.due", { date: entry.due_date })}</span>}
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">{t("common.description")}</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-white/70">{entry.short_description || t("threat.noDescription")}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">{t("threat.requiredAction")}</p>
+                  <p className="mt-1 text-[11.5px] leading-relaxed text-slate-600 dark:text-white/70">{entry.required_action || t("threat.notAvailable")}</p>
+                  {entry.notes && (
+                    <>
+                      <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-white/35">{t("threat.notes")}</p>
+                      <p className="mt-1 wrap-break-word text-[11px] text-slate-500 dark:text-white/55"><Linkify text={entry.notes} /></p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
+// Host Scan Row — expandable to an inline KEV CVE table (no navigation)
+// ─────────────────────────────────────────────────────────────
+
+const HostScanRow: React.FC<{ host: KEVByHost; index: number }> = ({ host, index }) => {
+  const { t } = useLanguage();
+  const [expanded, setExpanded] = useState(false);
+  const ransomwareCount = host.cve_list.filter((c) => c.is_ransomware_related).length;
+  // Ransomware-linked CVEs first, then most recently added
+  const sortedCves = host.cve_list
+    .slice()
+    .sort((a, b) =>
+      Number(b.is_ransomware_related) - Number(a.is_ransomware_related) ||
+      (b.date_added || "").localeCompare(a.date_added || "")
+    );
+
+  return (
+    <>
+      <tr onClick={() => setExpanded((p) => !p)} className="group border-b border-slate-100 cursor-pointer transition-colors hover:bg-slate-50/70 dark:border-white/6 dark:hover:bg-white/3">
+        <td className="px-4 py-3.5 text-[11px] font-semibold text-slate-400 dark:text-white/30">
+          {index + 1}
+        </td>
+        <td className="px-4 py-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-slate-200/70 bg-slate-50 text-slate-500 dark:border-white/8 dark:bg-white/5 dark:text-white/55">
+              <FiServer className="text-[12px]" />
+            </div>
+            <div>
+              <p className="font-mono text-[12.5px] font-bold text-slate-800 dark:text-white/88">
+                {host.host_ip}
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-white/35">
+                {host.task_name || "—"}
+              </p>
+            </div>
           </div>
-        </div>
-      </td>
-      <td className="px-4 py-3.5">
-        <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-          <FiZap className="text-[10px]" />
-          {host.kev_count}
-        </span>
-      </td>
-      <td className="px-4 py-3.5">
-        {ransomwareCount > 0 ? (
-          <span className="text-[12px] font-bold text-red-600 dark:text-red-400">
-            {ransomwareCount}
+        </td>
+        <td className="px-4 py-3.5">
+          <span className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-bold text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+            <FiZap className="text-[10px]" />
+            {host.kev_count}
           </span>
-        ) : (
-          <span className="text-[11px] text-slate-400 dark:text-white/30">—</span>
-        )}
-      </td>
-      <td className="px-4 py-3.5 text-right">
-        <FiChevronRight className="ml-auto text-[14px] text-slate-400 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-600 dark:text-white/30 dark:group-hover:text-white/55" />
-      </td>
-    </tr>
+        </td>
+        <td className="px-4 py-3.5">
+          {ransomwareCount > 0 ? (
+            <span className="text-[12px] font-bold text-red-600 dark:text-red-400">
+              {ransomwareCount}
+            </span>
+          ) : (
+            <span className="text-[11px] text-slate-400 dark:text-white/30">—</span>
+          )}
+        </td>
+        <td className="px-4 py-3.5 text-right">
+          <FiChevronRight className={`ml-auto text-[14px] text-slate-400 transition-transform dark:text-white/30 ${expanded ? "rotate-90" : ""}`} />
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-slate-100 dark:border-white/6">
+          <td colSpan={5} className="px-4 pb-4 pt-0">
+            <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-white/8 dark:bg-white/4">
+              {/* panel header: which host / task these KEV CVEs belong to */}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-100 bg-slate-50/60 px-3.5 py-2.5 dark:border-white/8 dark:bg-white/3">
+                <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-slate-700 dark:text-white/80">
+                  <FiServer className="text-[11px] text-slate-400" />
+                  <span className="font-mono">{host.host_ip || "—"}</span>
+                </span>
+                <span className="text-[10.5px] text-slate-400 dark:text-white/35">{t("threat.task")}: {host.task_name || "—"}</span>
+                <span className="text-[10.5px] text-slate-400 dark:text-white/35">{t("threat.colKevCves")}: {host.kev_count}</span>
+                {ransomwareCount > 0 && (
+                  <span className="text-[10.5px] font-semibold text-red-600 dark:text-red-400">{t("threat.ransomwareCount", { n: ransomwareCount })}</span>
+                )}
+                <span className="ml-auto text-[10px] text-slate-400 dark:text-white/30">{t("threat.clickRowHint")}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-160">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-white/8">
+                      {[t("threat.cveId"), t("threat.colVulnerability"), t("threat.colTags"), t("threat.colDateAdded"), ""].map((h, i) => (
+                        <th key={i} className={["px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/35", i === 3 ? "hidden lg:table-cell" : "", i === 4 ? "w-8" : ""].join(" ")}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedCves.map((entry, i) => <HostKEVRow key={`${entry.cve_id}-${i}`} entry={entry} />)}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 };
 
@@ -259,12 +403,12 @@ const HostScanRow: React.FC<{
 const ThreatIntelligence: React.FC = () => {
   const { t } = useLanguage();
   const { currentColor } = useStateContext();
-  const navigate = useNavigate();
   const accentGrad = `linear-gradient(135deg, ${currentColor}, color-mix(in srgb, ${currentColor} 65%, #a855f7))`;
 
   const [summary, setSummary]         = useState<KEVSummaryDTO | null>(null);
   const [syncStatus, setSyncStatus]   = useState<KEVSyncStatusDTO | null>(null);
   const [catalog, setCatalog]         = useState<KEVEntryDTO[]>([]);
+  const [catalogTotal, setCatalogTotal] = useState(0);
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [activeTab, setActiveTab]     = useState<"scans" | "catalog">("scans");
@@ -276,57 +420,52 @@ const ThreatIntelligence: React.FC = () => {
 
   const hasFetched = useRef(false);
 
-  const fetchAll = async () => {
+  // Summary + sync status only (the heavy KEV-in-scans data). The catalog is
+  // fetched separately, one page at a time.
+  const fetchMeta = async () => {
     setLoadingSummary(true);
-    setLoadingCatalog(true);
-    const [summaryData, statusData, catalogData] = await Promise.all([
+    const [summaryData, statusData] = await Promise.all([
       GetKEVSummary(),
       GetKEVSyncStatus(),
-      ListKEVCatalog(),
     ]);
     setSummary(summaryData);
     setSyncStatus(statusData);
-    setCatalog(Array.isArray(catalogData) ? catalogData : []);
     setLoadingSummary(false);
-    setLoadingCatalog(false);
   };
 
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    void fetchAll();
+    void fetchMeta();
   }, []);
 
-  const handleHostClick = (host: KEVByHost) => {
-    navigate(
-      `/admin/threat-intelligence/detail/${encodeURIComponent(host.host_ip)}`,
-      { state: { host, summary } }
-    );
-  };
-
-  const filteredCatalog = useMemo(() => {
-    let list = catalog;
-    if (ransomwareOnly) list = list.filter((e) => e.is_ransomware_related);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (e) =>
-          e.cve_id.toLowerCase().includes(q) ||
-          e.vulnerability_name.toLowerCase().includes(q) ||
-          e.vendor_project.toLowerCase().includes(q) ||
-          e.product.toLowerCase().includes(q)
-      );
-    }
-    return list;
-  }, [catalog, search, ransomwareOnly]);
-
+  // Reset to the first page whenever the filters change.
   useEffect(() => { setCatalogPage(1); }, [search, ransomwareOnly]);
+
+  // Server-side catalog fetch — one page at a time, debounced so typing in the
+  // search box doesn't fire a request per keystroke. Search now spans the whole
+  // catalog in the DB rather than a client-side slice of a preloaded list.
+  useEffect(() => {
+    const h = setTimeout(async () => {
+      setLoadingCatalog(true);
+      const { items, total } = await ListKEVCatalogPaged({
+        search: search.trim() || undefined,
+        ransomware_only: ransomwareOnly,
+        limit: PAGE_SIZE,
+        offset: (catalogPage - 1) * PAGE_SIZE,
+      });
+      setCatalog(items);
+      setCatalogTotal(total);
+      setLoadingCatalog(false);
+    }, 300);
+    return () => clearTimeout(h);
+  }, [search, ransomwareOnly, catalogPage]);
 
   const kevByHostList = summary?.kev_by_host ?? [];
   const scansTotalPages   = Math.max(1, Math.ceil(kevByHostList.length / PAGE_SIZE));
   const pagedScans        = kevByHostList.slice((scansPage - 1) * PAGE_SIZE, scansPage * PAGE_SIZE);
-  const catalogTotalPages = Math.max(1, Math.ceil(filteredCatalog.length / PAGE_SIZE));
-  const pagedCatalog      = filteredCatalog.slice((catalogPage - 1) * PAGE_SIZE, catalogPage * PAGE_SIZE);
+  const catalogTotalPages = Math.max(1, Math.ceil(catalogTotal / PAGE_SIZE));
+  const pagedCatalog      = catalog;
 
   return (
     <div className="w-full space-y-5 py-0 sm:py-0">
@@ -482,7 +621,6 @@ const ThreatIntelligence: React.FC = () => {
                         key={`${host.host_ip}-${host.task_name}-${i}`}
                         host={host}
                         index={(scansPage - 1) * PAGE_SIZE + i}
-                        onClick={() => handleHostClick(host)}
                       />
                     ))}
                   </tbody>
@@ -555,7 +693,7 @@ const ThreatIntelligence: React.FC = () => {
                 <div key={i} className="h-12 animate-pulse rounded-xl bg-slate-100 dark:bg-white/8" />
               ))}
             </div>
-          ) : filteredCatalog.length === 0 ? (
+          ) : pagedCatalog.length === 0 ? (
             <div className="py-14 text-center text-[12px] text-slate-400 dark:text-white/35">
               {t("threat.noEntriesFound")}
             </div>
@@ -595,7 +733,7 @@ const ThreatIntelligence: React.FC = () => {
               <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-2.5 dark:border-white/8">
                 <p className="text-[10.5px] text-slate-400 dark:text-white/30">
                   {t("threat.entriesPage", {
-                    n: filteredCatalog.length.toLocaleString(),
+                    n: catalogTotal.toLocaleString(),
                     x: catalogPage,
                     y: catalogTotalPages,
                   })}

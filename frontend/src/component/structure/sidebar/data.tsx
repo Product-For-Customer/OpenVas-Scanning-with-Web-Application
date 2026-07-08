@@ -101,8 +101,8 @@ export const getLinks = (permissions: PermissionMap): SidebarSection[] => {
       titleKey: "section.analytics",
       icon: <FiBarChart2 />,
       links: filterLinks([
-        { name: "threat-intelligence", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
-        { name: "exploit-intelligence", icon: <FiZap />,     labelKey: "nav.exploitIntel", category: "threat_intel" },
+        { name: "kev-catalog", icon: <FiDatabase />, labelKey: "nav.kevCatalog", category: "threat_intel" },
+        { name: "exploit-catalog", icon: <FiZap />,     labelKey: "nav.exploitIntel", category: "threat_intel" },
         { name: "report",              icon: <FiFileText />, labelKey: "nav.report", category: "dashboard" },
         { name: "compliance",          icon: <FiShield />,   labelKey: "nav.compliance", category: "dashboard" },
         { name: "vulnerability-delta", icon: <FiGitMerge />, labelKey: "nav.vulnerabilityDelta", category: "dashboard" },

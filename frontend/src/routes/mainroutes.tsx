@@ -15,7 +15,6 @@ const User               = Loadable(lazy(() => import("../page/User/index")));
 const RoleManagement     = Loadable(lazy(() => import("../page/RoleManagement/index")));
 const MainLayout         = Loadable(lazy(() => import("../component/structure/MainLayout")));
 const Service            = Loadable(lazy(() => import("../component/structure/navbar/Service")));
-const VulnerabilityByDevice = Loadable(lazy(() => import("../page/Target/TableTarget/vulnerability/index")));
 const VulnerabilityByLevel  = Loadable(lazy(() => import("../page/Dashboard/Description/vulnerability")));
 const Vulnerability         = Loadable(lazy(() => import("../page/Vulnerability/index")));
 const VulnerabilityDetail   = Loadable(lazy(() => import("../page/Vulnerability/List/Detail/index")));
@@ -23,7 +22,6 @@ const Report             = Loadable(lazy(() => import("../page/Report/index")));
 const Diagram            = Loadable(lazy(() => import("../page/Diagram/index")));
 const DiagramNode        = Loadable(lazy(() => import("../page/Diagram/Node/index")));
 const ThreatIntelligence = Loadable(lazy(() => import("../page/ThreatIntelligence/index")));
-const ThreatIntelligenceDetail = Loadable(lazy(() => import("../page/ThreatIntelligence/Detail/index")));
 const ScanManagement     = Loadable(lazy(() => import("../page/ScanManagement/index")));
 const Compliance         = Loadable(lazy(() => import("../page/Compliance/index")));
 const ComplianceControl  = Loadable(lazy(() => import("../page/Compliance/Control/index")));
@@ -86,7 +84,6 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "profile",                            element: <Account /> }, // self-service, always visible
   { path: "target",                             element: <Target />, category: "dashboard" },
   { path: "vulnerability",                      element: <Vulnerability />, category: "dashboard" },
-  { path: "vulnerability-by-device",            element: <VulnerabilityByDevice />, category: "dashboard" },
   { path: "vulnerability-by-level",              element: <VulnerabilityByLevel />, category: "dashboard" },
   { path: "vulnerability-detail",                element: <VulnerabilityDetail />, category: "dashboard" },
   { path: "vulnerability-delta",                  element: <VulnerabilityDelta />, category: "dashboard" },
@@ -97,15 +94,14 @@ const ADMIN_CHILD_ROUTES: AdminRouteDef[] = [
   { path: "recycle-bin",                          element: <RecycleBin />, category: "threat_intel" },
   { path: "calendar",                             element: <CalendarPage />, category: "dashboard" },
 
-  { path: "threat-intelligence",                  element: <ThreatIntelligence />, category: "threat_intel" },
-  { path: "threat-intelligence/detail/:hostIp",   element: <ThreatIntelligenceDetail />, category: "threat_intel" },
+  { path: "kev-catalog",                          element: <ThreatIntelligence />, category: "threat_intel" },
   { path: "feed-status",                          element: <FeedStatus />, category: "threat_intel" },
   { path: "discovery",                            element: <Discovery />, category: "threat_intel" },
   { path: "scan-application",                     element: <ScanApplication />, category: "threat_intel" },
   { path: "scan-application/finding-detail",      element: <ScanApplicationFindingDetail />, category: "threat_intel" },
   { path: "threat-config",                        element: <ThreatConfig />, category: "threat_intel" },
 
-  { path: "exploit-intelligence",                 element: <ExploitIntelligence />, category: "threat_intel" },
+  { path: "exploit-catalog",                      element: <ExploitIntelligence />, category: "threat_intel" },
   { path: "report",                              element: <Report />, category: "dashboard" },
   { path: "diagrams",                            element: <Diagram />, category: "reports_diagrams" },
   { path: "diagram-node",                         element: <DiagramNode />, category: "reports_diagrams" },

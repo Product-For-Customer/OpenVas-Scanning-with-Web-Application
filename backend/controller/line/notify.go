@@ -1258,7 +1258,7 @@ func buildCriticalVulnerabilityMessage(lineMaster *entity.AppLineMaster) string 
 				AND r.host = lrht.host_ip
 				AND COALESCE(r.severity, 0) >= 9
 			LEFT JOIN public.nvts n
-				ON n.uuid = r.nvt
+				ON n.oid = r.nvt
 			GROUP BY
 				lrht.task_name,
 				lrht.host_ip,

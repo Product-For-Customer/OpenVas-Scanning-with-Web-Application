@@ -100,6 +100,7 @@ type CVEEnrichDTO = {
   nvd: NVDCVEDetailDTO | null;
   kev: KEVEntryDTO | null;
   exploit: ExploitIntelDTO | null;
+  epss: { score: number; percentile: number; date: string } | null;
 };
 
 export type CVEEnrichMap = Record<string, CVEEnrichDTO | null>;
@@ -195,17 +196,32 @@ export const FetchGitHubAdvisories = async (
 // KEV API
 // ===========================
 
-export const ListKEVCatalog = async (params?: {
+// Server-paginated KEV catalog — sends limit/offset so only one page (~a handful
+// of rows) is transferred instead of the whole ~1,600-row catalog. Returns the
+// page items plus the total match count for building the pager.
+export const ListKEVCatalogPaged = async (params: {
   search?: string;
   ransomware_only?: boolean;
-}): Promise<KEVEntryDTO[]> => {
+  limit: number;
+  offset: number;
+}): Promise<{ items: KEVEntryDTO[]; total: number }> => {
   try {
-    const response = await threatApi.get("/threats/kev", { params });
-    const data = response.data?.data ?? response.data;
-    return Array.isArray(data) ? (data as KEVEntryDTO[]) : [];
+    const response = await threatApi.get("/threats/kev", {
+      params: {
+        search: params.search || undefined,
+        ransomware_only: params.ransomware_only ? "true" : undefined,
+        limit: params.limit,
+        offset: params.offset,
+      },
+    });
+    const d = response.data;
+    return {
+      items: Array.isArray(d?.items) ? (d.items as KEVEntryDTO[]) : [],
+      total: typeof d?.total === "number" ? d.total : 0,
+    };
   } catch (error) {
-    console.error("ListKEVCatalog error:", error);
-    return [];
+    console.error("ListKEVCatalogPaged error:", error);
+    return { items: [], total: 0 };
   }
 };
 

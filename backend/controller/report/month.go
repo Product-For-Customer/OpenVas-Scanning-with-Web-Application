@@ -320,7 +320,7 @@ ORDER BY
 `
 
 	out := make([]ReportVulnerabilityMonthDTO, 0)
-	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	query = strings.ReplaceAll(query, "'Asia/Bangkok'", "'"+setting.AppTimezoneSQL()+"'")
 	if err := db.Raw(query).Scan(&out).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

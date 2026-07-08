@@ -32,6 +32,7 @@ import (
 	"github.com/Tawunchai/openvas/controller/webscan"
 	middlewares "github.com/Tawunchai/openvas/middleware"
 	"github.com/Tawunchai/openvas/services"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,6 +101,12 @@ func main() {
 
 	r.MaxMultipartMemory = middlewares.MaxRequestBodyBytes
 	r.Use(CORSMiddleware())
+	// Gzip-compress responses. Big JSON list payloads (KEV catalog, vulnerability
+	// list, exploit catalog) are highly repetitive text and shrink ~70-90%,
+	// cutting transfer time for every GET. The gzip handler only kicks in when
+	// the client sends Accept-Encoding: gzip and skips already-compressed types.
+	// Exclude the PDF download route so streamed binaries aren't buffered/re-encoded.
+	r.Use(gzip.Gzip(gzip.DefaultCompression, gzip.WithExcludedPaths([]string{"/download-pdf"})))
 	r.Use(middlewares.LimitRequestBody())
 	r.Use(middlewares.RateLimiter())
 

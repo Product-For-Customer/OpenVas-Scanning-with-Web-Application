@@ -143,6 +143,60 @@ func upsertEPSSCache(data EPSSData) {
 	}
 }
 
+// GetOrFetchEPSS returns EPSS scores for the given CVE IDs, reading the local
+// AppEPSSCache first and fetching any misses from first.org on demand (then
+// caching them). Exported so the CVE-enrichment path (controller/threat) can
+// serve EPSS from the backend instead of the browser calling first.org directly
+// — cached hits return instantly and each CVE only costs a network round-trip
+// the first time it's seen.
+func GetOrFetchEPSS(cveIDs []string) map[string]entity.AppEPSSCache {
+	out := make(map[string]entity.AppEPSSCache)
+	gdb := config.DB()
+	if gdb == nil || len(cveIDs) == 0 {
+		return out
+	}
+
+	norm := make([]string, 0, len(cveIDs))
+	seen := make(map[string]bool)
+	for _, id := range cveIDs {
+		t := strings.ToUpper(strings.TrimSpace(id))
+		if t != "" && !seen[t] {
+			seen[t] = true
+			norm = append(norm, t)
+		}
+	}
+
+	var rows []entity.AppEPSSCache
+	gdb.Where("cve_id IN ?", norm).Find(&rows)
+	for _, r := range rows {
+		out[r.CVEID] = r
+	}
+
+	// Fetch any cache misses on demand, upsert, and add to the result.
+	missing := make([]string, 0)
+	for _, id := range norm {
+		if _, ok := out[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	if len(missing) > 0 {
+		if fetched, err := fetchEPSSBatch(missing); err == nil {
+			for _, d := range fetched {
+				upsertEPSSCache(d)
+				cid := strings.ToUpper(d.CVE)
+				out[cid] = entity.AppEPSSCache{
+					CVEID:      cid,
+					EPSSScore:  d.EPSSScore,
+					Percentile: d.Percentile,
+					ScoreDate:  d.Date,
+					FetchedAt:  time.Now(),
+				}
+			}
+		}
+	}
+	return out
+}
+
 // SyncEPSSForKnownCVEs fetches EPSS scores for all CVEs in our scan results.
 func SyncEPSSForKnownCVEs() {
 	log.Println("🔄 Starting EPSS sync...")

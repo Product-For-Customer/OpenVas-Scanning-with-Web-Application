@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/Tawunchai/openvas/entity"
 	"github.com/Tawunchai/openvas/services"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 const (
@@ -30,6 +32,29 @@ var (
 	kevLastSyncAt  time.Time
 	kevLastSyncErr string
 )
+
+// summaryCacheTTL คือระยะเวลาที่ผลสรุป (KEV/Exploit) ถูก cache ไว้ก่อนคำนวณใหม่.
+// ผลสรุปเป็นค่ารวมทั้งระบบ (ไม่ขึ้นกับ user) และมาจาก query CTE หนักบนตาราง gvmd
+// (results/reports/vt_refs) ที่ข้อมูลเปลี่ยนไม่บ่อย (สแกนวันละครั้ง) — cache สั้นๆ
+// จึงตัดภาระ DB เวลาเปิดหน้า/สลับแท็บซ้ำได้มาก โดยข้อมูลยังสดพอ
+const summaryCacheTTL = 30 * time.Second
+
+// KEV summary cache — ป้องกันการรัน CTE ซ้ำทุก request. mutex ทำหน้าที่ single-flight
+// ด้วย: ถ้าหลาย request เข้ามาพร้อมกันตอน cache หมดอายุ จะมีตัวเดียวที่คำนวณ ที่เหลือรอ
+// แล้วได้ผลจาก cache ทันที (แทนที่จะยิง query หนักพร้อมกันหลายตัว)
+var (
+	kevSummaryMu    sync.Mutex
+	kevSummaryCache *KEVSummaryDTO
+	kevSummaryAt    time.Time
+)
+
+// invalidateKEVSummaryCache บังคับให้คำนวณผลสรุปใหม่ในครั้งถัดไป — เรียกหลัง sync
+// catalog เสร็จ เพื่อให้ตัวเลข total/ransomware อัปเดตทันทีโดยไม่ต้องรอ TTL
+func invalidateKEVSummaryCache() {
+	kevSummaryMu.Lock()
+	kevSummaryCache = nil
+	kevSummaryMu.Unlock()
+}
 
 // ===========================
 // CISA KEV JSON structures
@@ -212,6 +237,7 @@ func SyncKEVCatalog() error {
 		}
 	}
 
+	invalidateKEVSummaryCache() // catalog changed — force fresh summary next request
 	log.Printf("✅ KEV sync complete: %d entries upserted\n", total)
 	return nil
 }
@@ -275,7 +301,12 @@ func entityToKEVDTO(e entity.AppKEVCache) KEVEntryDTO {
 // Gin Handlers
 // ===========================
 
-// GET /threats/kev - คืน KEV catalog ทั้งหมด (พร้อม filter)
+// GET /threats/kev - คืน KEV catalog (server-side filter + pagination)
+//
+// Query params: search, ransomware_only, limit, offset.
+// - ถ้าไม่ส่ง limit → คืนทั้งหมดในรูป array (backward-compatible กับ caller เดิม)
+// - ถ้าส่ง limit → คืน { items: [...], total: N } สำหรับแบ่งหน้าฝั่ง server
+//   (catalog มี ~1,600 แถว การแบ่งหน้าที่ server ทำให้โหลดครั้งละไม่กี่แถวแทนทั้งก้อน)
 func ListKEVCatalog(c *gin.Context) {
 	db := config.DB()
 	if db == nil {
@@ -300,6 +331,40 @@ func ListKEVCatalog(c *gin.Context) {
 		query = query.Where("LOWER(known_ransomware_campaign_use) = 'known'")
 	}
 
+	// Parse pagination. limit<=0 (or absent) means "no pagination — return all".
+	limit := 0
+	if v, err := strconv.Atoi(strings.TrimSpace(c.Query("limit"))); err == nil && v > 0 {
+		limit = v
+		if limit > 200 { // กันขอทีละมากเกินไป
+			limit = 200
+		}
+	}
+	offset := 0
+	if v, err := strconv.Atoi(strings.TrimSpace(c.Query("offset"))); err == nil && v > 0 {
+		offset = v
+	}
+
+	// Paginated mode — count matched rows once, then fetch just the page.
+	if limit > 0 {
+		var total int64
+		if err := query.Count(&total).Error; err != nil {
+			services.RespondInternalError(c, err)
+			return
+		}
+		var entries []entity.AppKEVCache
+		if err := query.Order("date_added DESC").Limit(limit).Offset(offset).Find(&entries).Error; err != nil {
+			services.RespondInternalError(c, err)
+			return
+		}
+		items := make([]KEVEntryDTO, 0, len(entries))
+		for _, e := range entries {
+			items = append(items, entityToKEVDTO(e))
+		}
+		c.JSON(http.StatusOK, gin.H{"items": items, "total": total})
+		return
+	}
+
+	// Legacy mode — no limit, return the whole filtered list as a plain array.
 	var entries []entity.AppKEVCache
 	if err := query.Order("date_added DESC").Find(&entries).Error; err != nil {
 		services.RespondInternalError(c, err)
@@ -362,7 +427,7 @@ func CheckKEVByCVEIDs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GET /threats/kev/summary - สรุป KEV ที่พบในข้อมูล scan
+// GET /threats/kev/summary - สรุป KEV ที่พบในข้อมูล scan (มี cache 30 วินาที)
 func GetKEVSummary(c *gin.Context) {
 	db := config.DB()
 	if db == nil {
@@ -370,6 +435,21 @@ func GetKEVSummary(c *gin.Context) {
 		return
 	}
 
+	kevSummaryMu.Lock()
+	defer kevSummaryMu.Unlock()
+	if kevSummaryCache != nil && time.Since(kevSummaryAt) < summaryCacheTTL {
+		c.JSON(http.StatusOK, *kevSummaryCache)
+		return
+	}
+
+	dto := computeKEVSummary(db)
+	kevSummaryCache = &dto
+	kevSummaryAt = time.Now()
+	c.JSON(http.StatusOK, dto)
+}
+
+// computeKEVSummary รัน query จริงและ build KEVSummaryDTO (ไม่ยุ่งกับ gin/cache)
+func computeKEVSummary(db *gorm.DB) KEVSummaryDTO {
 	// นับ total KEV catalog
 	var totalKEV int64
 	db.Model(&entity.AppKEVCache{}).Count(&totalKEV)
@@ -414,15 +494,14 @@ WHERE LOWER(BTRIM(vr.type)) = 'cve'
 	if err := db.Raw(cveQuery).Scan(&cveRows).Error; err != nil {
 		// ถ้า query ล้มเหลว (เช่นยังไม่มีข้อมูล) ให้คืนค่า summary เปล่า
 		log.Printf("⚠️ KEV summary query error: %v\n", err)
-		c.JSON(http.StatusOK, KEVSummaryDTO{
+		return KEVSummaryDTO{
 			TotalKEVCatalog:   int(totalKEV),
 			TotalKEVInScans:   0,
 			RansomwareRelated: int(ransomwareCount),
 			LastSyncedAt:      kevLastSyncAt.Format(time.RFC3339),
 			LastSyncStatus:    getKEVSyncStatus(),
 			KEVByHost:         []KEVByHost{},
-		})
-		return
+		}
 	}
 
 	// เก็บ CVE IDs ที่พบใน scans
@@ -434,22 +513,28 @@ WHERE LOWER(BTRIM(vr.type)) = 'cve'
 	}
 
 	if len(allCVEIDs) == 0 {
-		c.JSON(http.StatusOK, KEVSummaryDTO{
+		return KEVSummaryDTO{
 			TotalKEVCatalog:   int(totalKEV),
 			TotalKEVInScans:   0,
 			RansomwareRelated: int(ransomwareCount),
 			LastSyncedAt:      kevLastSyncAt.Format(time.RFC3339),
 			LastSyncStatus:    getKEVSyncStatus(),
 			KEVByHost:         []KEVByHost{},
-		})
-		return
+		}
 	}
 
 	// หา KEV entries ที่ match กับ CVE IDs ที่พบ
 	var kevMatches []entity.AppKEVCache
 	if err := db.Where("cve_id IN ?", unique(allCVEIDs)).Find(&kevMatches).Error; err != nil {
-		services.RespondInternalError(c, err)
-		return
+		log.Printf("⚠️ KEV summary match query error: %v\n", err)
+		return KEVSummaryDTO{
+			TotalKEVCatalog:   int(totalKEV),
+			TotalKEVInScans:   0,
+			RansomwareRelated: int(ransomwareCount),
+			LastSyncedAt:      kevLastSyncAt.Format(time.RFC3339),
+			LastSyncStatus:    getKEVSyncStatus(),
+			KEVByHost:         []KEVByHost{},
+		}
 	}
 
 	kevMap := make(map[string]entity.AppKEVCache)
@@ -500,14 +585,14 @@ WHERE LOWER(BTRIM(vr.type)) = 'cve'
 		lastSync = kevLastSyncAt.Format(time.RFC3339)
 	}
 
-	c.JSON(http.StatusOK, KEVSummaryDTO{
+	return KEVSummaryDTO{
 		TotalKEVCatalog:   int(totalKEV),
 		TotalKEVInScans:   totalKEVInScans,
 		RansomwareRelated: int(ransomwareCount),
 		LastSyncedAt:      lastSync,
 		LastSyncStatus:    getKEVSyncStatus(),
 		KEVByHost:         byHostList,
-	})
+	}
 }
 
 // GET /threats/kev/status - สถานะการ sync

@@ -31,7 +31,7 @@ const PAGE_DESCRIPTIONS: Record<string, string> = {
   "calendar":            "Schedule scan tasks and track security events on a calendar",
   "diagrams":            "Visualise network topology and asset relationship diagrams",
   "recycle-bin":         "Restore or permanently remove recently deleted items",
-  "threat-intelligence": "CISA KEV Catalog — track actively exploited CVE vulnerabilities",
+  "kev-catalog":         "CISA KEV Catalog — track actively exploited CVE vulnerabilities",
   "feed-status":         "Monitor synchronisation status of threat intelligence feeds",
   "threat-config":       "Configure threat detection rules and scanner settings",
   "scan-management":     "Create, schedule and manage OpenVAS vulnerability scans",

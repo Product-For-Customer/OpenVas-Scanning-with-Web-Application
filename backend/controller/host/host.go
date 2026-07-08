@@ -279,7 +279,7 @@ ORDER BY va.severity DESC, va.vuln_name
 `
 
 	var rows []vulnRow
-	finalVulnSQL := strings.ReplaceAll(vulnSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	finalVulnSQL := strings.ReplaceAll(vulnSQL, "'Asia/Bangkok'", "'"+setting.AppTimezoneSQL()+"'")
 	if err := db.Raw(finalVulnSQL, ip).Scan(&rows).Error; err != nil {
 		services.RespondInternalError(c, err)
 		return
@@ -547,7 +547,7 @@ ORDER BY
 `
 
 	var items []SLABreachItem
-	finalSlaSQL := strings.ReplaceAll(slaSQL, "'Asia/Bangkok'", "'"+setting.GetAppTimezone()+"'")
+	finalSlaSQL := strings.ReplaceAll(slaSQL, "'Asia/Bangkok'", "'"+setting.AppTimezoneSQL()+"'")
 	if err := db.Raw(finalSlaSQL).Scan(&items).Error; err != nil {
 		services.RespondInternalError(c, err)
 		return
