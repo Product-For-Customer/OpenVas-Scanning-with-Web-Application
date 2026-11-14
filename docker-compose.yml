@@ -296,7 +296,7 @@ services:
       - pg-gvm
     volumes:
       - psql_socket_vol:/var/run/postgresql
-      - ./db.sql:/init.sql:ro
+      - ./backend/scripts/db.sql:/init.sql:ro
     command: >
       sh -c "
       sleep 45 &&
@@ -395,6 +395,13 @@ services:
       - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
       - ZAP_API_URL=http://zap:8080
       - ZAP_API_KEY=${ZAP_API_KEY}
+      # GMP credentials for gvmd. Without these the code falls back to the
+      # well-known admin/admin default and logs a security warning.
+      - GVM_USERNAME=${GVM_USERNAME}
+      - GVM_PASSWORD=${GVM_PASSWORD}
+      - GVM_SOCKET_PATH=${GVM_SOCKET_PATH}
+      # Optional: raises the NVD rate limit for CVE enrichment (blank = anonymous).
+      - NVD_API_KEY=${NVD_API_KEY}
       # Route every `docker` / `docker compose` call through the filtered proxy
       # instead of a locally-mounted socket.
       - DOCKER_HOST=tcp://docker-socket-proxy:2375
