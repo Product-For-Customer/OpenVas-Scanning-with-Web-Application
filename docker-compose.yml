@@ -379,7 +379,7 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "9000:9000"
+      - "9100:9000"
     volumes:
       # NOTE: the raw docker.sock bind-mount was removed — the backend now
       # reaches Docker only through docker-socket-proxy (see DOCKER_HOST below).
@@ -419,7 +419,7 @@ services:
     container_name: frontend
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "5273:80"
     depends_on:
       - backend
 

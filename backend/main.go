@@ -75,7 +75,7 @@ func main() {
 	// ── Trusted proxy configuration ─────────────────────────────────────────
 	// By default gin trusts ALL proxies, meaning it derives the client IP from
 	// the attacker-controllable X-Forwarded-For / X-Real-IP headers. Because
-	// the backend is published directly (see docker-compose: "9000:9000") with
+	// the backend is published directly (see docker-compose: "9100:9000") with
 	// no reverse proxy in front, a caller can spoof those headers to get a
 	// fresh per-IP rate-limit window on every request — defeating the auth
 	// brute-force protection. We therefore trust NO proxy by default, so
